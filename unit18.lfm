@@ -1,0 +1,35 @@
+object Form18: TForm18
+  Left = 332
+  Height = 114
+  Top = 121
+  Width = 412
+  BorderStyle = bsDialog
+  Caption = 'Form18'
+  ClientHeight = 114
+  ClientWidth = 412
+  FormStyle = fsStayOnTop
+  OnCreate = FormCreate
+  Position = poScreenCenter
+  LCLVersion = '2.3.0.0'
+  object Label1: TLabel
+    Left = 8
+    Height = 48
+    Top = 8
+    Width = 396
+    Caption = 'Download and start update.'#10#10'Depending on your internet connection this could take some time.'#10'Please wait until the process is finished.'
+  end
+  object ProgressBar1: TProgressBar
+    Left = 8
+    Height = 20
+    Top = 82
+    Width = 392
+    TabOrder = 0
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 100
+    OnTimer = Timer1Timer
+    Left = 255
+    Top = 36
+  end
+end
