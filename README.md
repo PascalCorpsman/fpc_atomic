@@ -45,6 +45,6 @@ a = load new ai
 ## What needs to be done to get the code compiled:
 - download dglopengl.pas from https://github.com/saschawillems/dglopengl
 - download and install bass.pas from https://www.un4seen.com/
-- download and install the synapse lib from http://www.ararat.cz/synapse/doku.php/download
+- download and install synapse from http://www.ararat.cz/synapse/doku.php/download
 
 install the Lnet package into the Lazarus-IDE from https://github.com/almindor/lnet or the fixed version from https://github.com/PascalCorpsman/lnet
