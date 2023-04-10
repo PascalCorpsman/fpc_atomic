@@ -48,7 +48,7 @@
         <PackageName Value="LCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="42">
+    <Units Count="44">
       <Unit0>
         <Filename Value="fpc_atomic.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -64,7 +64,7 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-        <TopLine Value="469"/>
+        <IsVisibleTab Value="True"/>
         <CursorPos Y="505"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
@@ -294,10 +294,8 @@
       <Unit25>
         <Filename Value="units/uatomic_field.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="1638"/>
-        <CursorPos X="36" Y="1642"/>
+        <CursorPos X="53" Y="1653"/>
         <ExtraEditorCount Value="2"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -470,6 +468,25 @@
         <CursorPos X="30" Y="2204"/>
         <UsageCount Value="10"/>
       </Unit41>
+      <Unit42>
+        <Filename Value="Readme.md"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="-1"/>
+        <CursorPos X="-1" Y="-1"/>
+        <UsageCount Value="20"/>
+        <DefaultSyntaxHighlighter Value="None"/>
+      </Unit42>
+      <Unit43>
+        <Filename Value="README.md"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="-1"/>
+        <CursorPos X="-1" Y="-1"/>
+        <UsageCount Value="20"/>
+        <DefaultSyntaxHighlighter Value="None"/>
+      </Unit43>
     </Units>
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
