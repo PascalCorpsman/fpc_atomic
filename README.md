@@ -28,7 +28,7 @@ Leveldesign : Interplay Productions
 Testing : Uwe Schächterle
 
 ## Manual
-See the [manual](MANUAL.md) for detailed informations.
+See the [manual](MANUAL.md) for detailed information.
 
 ## What needs to be done to get the code compiled:
 - download dglopengl.pas from https://github.com/saschawillems/dglopengl

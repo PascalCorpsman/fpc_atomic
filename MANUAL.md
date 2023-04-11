@@ -18,7 +18,7 @@ This repeats until the first player / team meets the number of wins to win the m
 "m" = Disable enable music during play
 
 ## Powerups and game control
-![](data/res/powbomb.png) give a extra bomb  
+![](data/res/powbomb.png) give an extra bomb  
 ![](data/res/powtrig.png) ability to trigger bombs, if picked up only a limited amount of bombs (see first action)  
 ![](data/res/powspoog.png) ability to spoog all available bombs (disables ability to grab bombs, see first action)  
 ![](data/res/powflame.png) increase flame length by one  
@@ -29,7 +29,7 @@ This repeats until the first player / team meets the number of wins to win the m
 ![](data/res/powgrab.png) add ability to grab bombs (disables ability to spooge bombs, see first action)  
 ![](data/res/powpunch.png) ability to punch bombs (see second action)  
 ![](data/res/powrand.png) random powerup could be good or bad, who knows  
-![](data/res/powslow.png)  decrease walk speed to 80%  
+![](data/res/powslow.png)  decrease walk speed to 60% of normal speed   
 ![](data/res/powdisea.png) get a random disease  
 ![](data/res/powebola.png) get a random super bad disease  
 
