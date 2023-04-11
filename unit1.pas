@@ -161,6 +161,7 @@ End;
 Var
   allowcnt: Integer = 0;
 
+
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
   If allowcnt > 2 Then Begin
@@ -210,6 +211,13 @@ Procedure TForm1.OpenGLControl1Paint(Sender: TObject);
 Var
   s: String;
 Begin
+  (*
+   * Unter Windows kann es vorkommen, dass dieses OnPaint ausgelöst wird obwohl wir noch am Laden in OpenGLControl1MakeCurrent sind
+   * Wenn das Passiert, bekommt der User eine Fehlermeldung die nicht stimmt.
+   *
+   * Zum Glück kann man das Abfangen in dem man hier den Timer1 abprüft und das so verhindert ;)
+   *)
+  If Not Timer1.Enabled Then exit;
   If Not Initialized Then Exit;
   // Render Szene
   glClearColor(0.0, 0.0, 0.0, 0.0);
