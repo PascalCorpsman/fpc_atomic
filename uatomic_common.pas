@@ -55,7 +55,8 @@ Const
    *                      Key 1-7 in Main Menu (as shortcut)
    *                      Disconnect during Vircoty Screen (this gives the ability to reconnect to a new game, while "other" players still in the "old" game)
    *                      Respawn collected powerups of dead player
-   *            0.07005 =
+   *            0.07005 = Fix, invalid errormessage during loading on windows plattforms
+   *
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

@@ -132,9 +132,10 @@
       <Unit9>
         <Filename Value="units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
         <TopLine Value="22"/>
-        <CursorPos X="61" Y="57"/>
+        <CursorPos X="5" Y="59"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -185,9 +186,8 @@
       <Unit15>
         <Filename Value="updater_settings.inc"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="4"/>
-        <CursorPos X="3" Y="21"/>
+        <CursorPos X="29" Y="9"/>
         <UsageCount Value="158"/>
         <Loaded Value="True"/>
       </Unit15>
