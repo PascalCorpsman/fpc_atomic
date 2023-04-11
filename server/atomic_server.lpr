@@ -60,17 +60,15 @@ Var
   Params: Array Of Boolean = Nil; // Zum Prüfen ob auch alle übergebenen Parameter verwendet wurden.
 Begin
   (*
-     OPL: - Mit Zählen welche PowerUps ein Spieler gesammelt hat und diese bei seinem Tod Verteilen (nur die Positiven)
+     OPL: - Diese "Beamer" Löcher
           - Diese Jump Federn in der Gras Landschaft
-          - Diese "Beamer" Löcher
           - Alle Krankheiten (Speed Up, Switch Bombermen,  Fast Bomb,  Small Flame, Eject Bomb Fast + Kick)
           - Alle TODO's
+          - Random Powerup ??
 
     Known Bugs:
           - Wenn eine Bombe in ein Brennendes Feld "Rollt" muss sie instant explodieren
             \-> Implementiert, aber noch nicht getestet.
-          - Wenn Synchronisationspausen sind, dann werden dir xBrick Animationen zu "Lange" gerendert
-            \-> Kann sein, dass der schon erledigt ist, testen !
           - Kein Richtiger Bug, aber doch komisch: Sehr häufig geht das Bomb Spooging nicht, aber warum ?
             \-> Dank neuem Keyboard treiber evtl schon behoben ..
 

@@ -385,6 +385,10 @@ Begin
     sVictory: Begin
         fgameState := gs_MainMenu;
         TVictoryMenu(fScreens[sVictory]).Victor := TMatchStatistikMenu(fScreens[sMatchStatistik]).Victor;
+        (*
+         * Disconnect while showing the "Victory" Screen
+         *)
+//        Disconnect();
       End;
   End;
   // Ist hier unten, weil Host und Join das Gleichermasen machen
@@ -843,7 +847,10 @@ Begin
   log('TGame.Connection_Disconnect', llTrace);
   // Verbindung zum Server verloren / getrennt
   Settings := fBackupSettings;
-  SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
+  // Im Victory Screen können wir beliebig lange bleiben, von da aus geht es eh nur noch ins Hauptmenü ;)
+  If fActualScreen <> fScreens[sVictory] Then Begin
+    SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
+  End;
   LogLeave;
 End;
 
@@ -851,9 +858,6 @@ Procedure TGame.Connection_Error(Const msg: String; aSocket: TLSocket);
 Begin
   log('TGame.Connection_Error', llTrace);
   LogShow(msg, llError);
-  //If assigned(OnDisconnectFromServer) Then Begin
-  //  OnDisconnectFromServer(self);
-  //End;
   SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
   LogLeave;
 End;
@@ -1003,8 +1007,11 @@ Begin
         SwitchToScreen(sPlayerSetup);
       End;
     miCommandoBackToMainMenu: Begin
-        // Der Server Schmeißt alle raus
-        SwitchToScreen(sMainScreen);
+        // Der Server Schmeißt alle raus, das macht er irgendwann, oder wenn er den Victory Screen anzeigt ;)
+        If fActualScreen <> fScreens[sVictory] Then Begin
+          SwitchToScreen(sMainScreen);
+        End;
+        Disconnect();
       End;
     miSplashHint: Begin
         s := Chunk.Data.ReadAnsiString;
@@ -1541,12 +1548,12 @@ Function TGame.LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
         2: result := puDisease;
         3: result := puCanCick;
         4: result := puExtraSpeed;
-        5: result := puPunch;
-        6: result := puGrab;
-        7: result := puSpooger;
+        5: result := puCanPunch;
+        6: result := puCanGrab;
+        7: result := puCanSpooger;
         8: result := puGoldFlame;
         9: result := puTrigger;
-        10: result := puJelly;
+        10: result := puCanJelly;
         11: result := puSuperBadDisease;
         12: result := purandom;
       Else Begin
@@ -1624,7 +1631,6 @@ Procedure TGame.RenderFieldHeader;
 Var
   x, y, i: Integer;
   s: String;
-
 Begin
   glPushMatrix;
   glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
@@ -1772,9 +1778,9 @@ Begin
   log('TGame.Join', lltrace);
   log(format('Joining to %s on port %d as %s', [ip, port, Settings.NodeName]));
   (*
-   * Sollte aus welchem Grund auch immer der Chunkmanager verbunden sein, fliegt er hier raus
-   * über den Wechsel in den MainScreen wird er dann automatisch disconnected
-   * -> Spätestens wenn der User es nun erneut versucht kommt er rein.
+   * Sollte aus welchem Grund auch immer der Chunkmanager nicht verbinden können (ggf weil er schon verbunden ist),
+   * fliegt er hier über den Wechsel in den MainScreen raus und wird dann automatisch disconnected
+   * -> Spätestens wenn der User es nun erneut versucht kommt er wieder rein.
    *)
   If Not fChunkManager.Connect(ip, port) Then Begin
     LogShow('Error could not connect to server', llError);
@@ -1933,7 +1939,6 @@ Begin
   Loader.Percent := 10;
   Loader.Render();
 
-
   fPowerUpsTex[puNone] := 0; // Das Gibts ja net -> Weg
   fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smStretchHard);
   If fPowerUpsTex[puExtraBomb] = 0 Then exit;
@@ -1945,18 +1950,18 @@ Begin
   If fPowerUpsTex[puCanCick] = 0 Then exit;
   fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powskate.png', smStretchHard);
   If fPowerUpsTex[puExtraSpeed] = 0 Then exit;
-  fPowerUpsTex[puPunch] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', smStretchHard);
-  If fPowerUpsTex[puPunch] = 0 Then exit;
-  fPowerUpsTex[puGrab] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', smStretchHard);
-  If fPowerUpsTex[puGrab] = 0 Then exit;
-  fPowerUpsTex[puSpooger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', smStretchHard);
-  If fPowerUpsTex[puSpooger] = 0 Then exit;
+  fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', smStretchHard);
+  If fPowerUpsTex[puCanPunch] = 0 Then exit;
+  fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', smStretchHard);
+  If fPowerUpsTex[puCanGrab] = 0 Then exit;
+  fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', smStretchHard);
+  If fPowerUpsTex[puCanSpooger] = 0 Then exit;
   fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgold.png', smStretchHard);
   If fPowerUpsTex[puGoldFlame] = 0 Then exit;
   fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png', smStretchHard);
   If fPowerUpsTex[puTrigger] = 0 Then exit;
-  fPowerUpsTex[puJelly] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', smStretchHard);
-  If fPowerUpsTex[puJelly] = 0 Then exit;
+  fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', smStretchHard);
+  If fPowerUpsTex[puCanJelly] = 0 Then exit;
   fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powebola.png', smStretchHard);
   If fPowerUpsTex[puSuperBadDisease] = 0 Then exit;
   fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powslow.png', smStretchHard);
@@ -2055,7 +2060,7 @@ Begin
    * Wird über den Idle Handler aufgerufen und ist damit definitiv außerhalb der LEventer Eventloop
    *)
   fNeedDisconnect := false;
-  log('TGame.DisConnect', lltrace);
+  log('TGame.DoDisconnect', lltrace);
   If fChunkManager.Connected Then Begin
     fChunkManager.Disconnect(true);
     While fChunkManager.Connected Do Begin
@@ -2069,9 +2074,6 @@ Begin
   End;
   logleave;
 End;
-
-//Var
-//  Angle: single = 0;
 
 Procedure TGame.Render;
 Var
@@ -2139,31 +2141,16 @@ Begin
       End;
   End;
   fSoundInfo.Render;
-  (*
-
-  glpushmatrix();
-  Angle := angle + 0.48;
-
-  OpenGL_ASCII_Font.Color := clwhite;
-  OpenGL_ASCII_Font.Textout(20, 150, inttostr(round(Angle)));
-
-  glTranslatef(0, 50, 0.8);
-
-  If Angle > 360 Then angle := Angle - 360;
-
-  For i := 0 To high(fAtomics) Do Begin
-    glTranslatef(50, 0, 0);
-    fAtomics[i].fdirection := Angle;
-    fAtomics[i].Render();
-  End;
-
-  glpopmatrix(); // *)
   Exit2d();
 End;
 
 Procedure TGame.OnIdle;
 Begin
   PingForOpenGames;
+  (*
+   * Doing the "real" disconnect in the idle handler, is the fastest way to do without risking a endles
+   * recursion of disconnects in diconnect.
+   *)
   If fNeedDisconnect Then Begin
     DoDisconnect();
   End;

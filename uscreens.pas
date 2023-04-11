@@ -999,6 +999,10 @@ Begin
   If key = VK_UP Then Begin
     fCursorPos := max(fCursorPos - 1, 0);
   End;
+  If (key >= VK_1) And (key <= VK_7) Then Begin
+    fCursorPos := key - VK_1;
+    key := VK_RETURN;
+  End;
   If key = VK_RETURN Then Begin
     Case fCursorPos Of
       0: logshow('Not yet implemented.', llinfo); // TAtomic(fOwner).SwitchToScreen(); -- Single Player

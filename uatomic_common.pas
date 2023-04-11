@@ -47,10 +47,14 @@ Const
    *                      Add Settings.Randomstart implemented
    *                      Fix prevent optical Z-fighting of bombs laying on a arrow
    * -release-  0.07002 = FIX Missing Free on Play Sound
-   *            0.07003 = Fix Brick explosion animation, when server needs sync pausing.
+   * -release-  0.07003 = Fix Brick explosion animation, when server needs sync pausing.
    *                      Enable Conveyor
    *                      FIX Animation in Mainmenu broken if game was left during pause
    *                      FIX not all Zenanimations have been used in release build
+   *            0.07004 = Adjust conveyor speeds to more realistic values
+   *                      Key 1-7 in Main Menu (as shortcut)
+   *                      Disconnect during Vircoty Screen (this gives the ability to reconnect to a new game, while "other" players still in the "old" game)
+   *                      Respawn collected powerups of dead player
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -96,10 +100,13 @@ Const
   AtomicMaxSpeed = AtomicDefaultSpeed * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange; // Maximale Geschwindigkeit Eines Atomic in Kacheln Pro Sekunde
   AtomicSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange); // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
 
-  // TODO: ggf, auch die beiden von oben übernehmen ??
-  ConveyorSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange);
-  ConveyorMiddleSpeed = AtomicDefaultSpeed;
-  ConveyorFastSpeed = AtomicDefaultSpeed * (AtomicSpeedChange * AtomicSpeedChange);
+  (*
+   * Es gibt Starpunkte die direkt auf den Bändern liegen, da muss der Spieler auf jeden Fall
+   * Schneller laufen können, alls die Schnellsten bänder !
+   *)
+  ConveyorSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
+  ConveyorMiddleSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange);
+  ConveyorFastSpeed = AtomicDefaultSpeed / (AtomicSpeedChange);
 
   AtomicShowSoundInfoTime = 1000; // Zeit in ms wie lange die Soundinfo angezeigt wird.
 
@@ -302,12 +309,12 @@ Type
     , puLongerFlameLength // -- Fertig
     , puCanCick // -- Fertig
     , puExtraSpeed // -- Fertig
-    , puSpooger // -- Fertig
-    , puPunch
-    , puGrab // -- Fertig
+    , puCanSpooger // -- Fertig
+    , puCanPunch // -- Fertig
+    , puCanGrab // -- Fertig
     , puGoldFlame // -- Fertig
     , puTrigger // -- Fertig
-    , puJelly // -- Fertig
+    , puCanJelly // -- Fertig
     // Ab hier Krankheiten
     , puDisease // -- Fertig (siehe auch TDisease)
     , puSuperBadDisease // -- Fertig
@@ -450,6 +457,7 @@ Type
     MoveState: TMoveState;
     Action: TAtomicAction;
     Powers: TAtomicPowers;
+    PowerUpCounter: Array[TPowerUps] Of Integer; // Zähler, welche Powerups der Spieler wie oft aufgenommen hat, wenn er stirbt werden diese wieder "Verteilt"
 {$ENDIF}
   End;
 
@@ -679,12 +687,12 @@ Begin
   result.PowerUps[puDisease] := empty;
   result.PowerUps[puCanCick] := empty;
   result.PowerUps[puExtraSpeed] := empty;
-  result.PowerUps[puPunch] := empty;
-  result.PowerUps[puGrab] := empty;
-  result.PowerUps[puSpooger] := empty;
+  result.PowerUps[puCanPunch] := empty;
+  result.PowerUps[puCanGrab] := empty;
+  result.PowerUps[puCanSpooger] := empty;
   result.PowerUps[puGoldFlame] := empty;
   result.PowerUps[puTrigger] := empty;
-  result.PowerUps[puJelly] := empty;
+  result.PowerUps[puCanJelly] := empty;
   result.PowerUps[puSuperBadDisease] := empty;
   result.PowerUps[puSlow] := empty;
   result.PowerUps[purandom] := empty;

@@ -235,7 +235,7 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
      * Alle Farbtabellen laden wir gepuffert, das ist beim 1. mal zwar langsamer, aber ab dann deutlisch schneller ;)
      *)
 {$IFDEF useCaching}
-    fn := IncludeTrailingPathDelimiter(GetAppConfigDir(true)) + fn;
+    fn := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + fn;
     If FileExists(fn) Then Begin
       b := TBitmap.Create;
       b.LoadFromFile(fn);
@@ -245,7 +245,7 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
       b := LoadColorTabledImage(Filename, aTargetColor);
 {$IFDEF useCaching}
       If assigned(b) Then Begin
-        If Not ForceDirectories(GetAppConfigDir(true)) Then exit;
+        If Not ForceDirectories(GetAppConfigDir(false)) Then exit;
         b.SaveToFile(fn);
       End
       Else Begin

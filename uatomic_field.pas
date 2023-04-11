@@ -126,6 +126,7 @@ Type
     Function GetAiInfo(Const Players: TPlayers; TeamPlay: Boolean): TaiInfo;
     Procedure IncHurry();
     Procedure KillPlayer(Var Players: TPlayers; Index: integer); // Ohne Punktewertung
+    Procedure RepopulatePlayersCollectedPowerUps(Const Players: TPlayers; PlayerIndex: Integer);
 {$ENDIF}
   End;
 
@@ -375,7 +376,7 @@ End;
 // Die IDE Code vervollständigung killt manchmal den Korrekten Header, deswegen hier die "Kopiervorlage"
 //Function TAtomicField.loadFromDirectory(Dir: String
 //{$IFDEF Client}
-//  ; aArrows: TOpenGL_Animation
+//  ; aArrows: TOpenGL_Animation; aConveyors: TOpenGL_Animation
 //{$ENDIF}
 //  ): Boolean;
 
@@ -636,12 +637,12 @@ Begin
           3: fField[i, j].PowerUp := puDisease;
           4: fField[i, j].PowerUp := puCanCick;
           5: fField[i, j].PowerUp := puExtraSpeed;
-          6: fField[i, j].PowerUp := puPunch;
-          7: fField[i, j].PowerUp := puGrab;
-          8: fField[i, j].PowerUp := puSpooger;
+          6: fField[i, j].PowerUp := puCanPunch;
+          7: fField[i, j].PowerUp := puCanGrab;
+          8: fField[i, j].PowerUp := puCanSpooger;
           9: fField[i, j].PowerUp := puGoldFlame;
           10: fField[i, j].PowerUp := puTrigger;
-          11: fField[i, j].PowerUp := puJelly;
+          11: fField[i, j].PowerUp := puCanJelly;
           12: fField[i, j].PowerUp := puSuperBadDisease;
           13: fField[i, j].PowerUp := puSlow;
           14: fField[i, j].PowerUp := purandom;
@@ -677,7 +678,8 @@ Begin
 {$ENDIF}
 End;
 
-Function TAtomicField.HandleMovePlayer(Var Players: TPlayers; PlayerIndex: integer; ConveyorSpeed: TConveyorSpeed): Boolean;
+Function TAtomicField.HandleMovePlayer(Var Players: TPlayers;
+  PlayerIndex: integer; ConveyorSpeed: TConveyorSpeed): Boolean;
 
   Function GetBombIndex(x, y: integer): integer;
   Var
@@ -1142,7 +1144,8 @@ Begin
   End;
 End;
 
-Procedure TAtomicField.HandleBombs(Var Players: TPlayers; PreHurry: Boolean; ConveyorSpeed: TConveyorSpeed);
+Procedure TAtomicField.HandleBombs(Var Players: TPlayers; PreHurry: Boolean;
+  ConveyorSpeed: TConveyorSpeed);
 Type
   TDir = (DirUp, DirDown, DirLeft, DirRight);
 
@@ -1626,7 +1629,8 @@ Begin
   fBombsEnabled := false;
 End;
 
-Function TAtomicField.GetAiInfo(Const Players: TPlayers; TeamPlay: Boolean): TaiInfo;
+Function TAtomicField.GetAiInfo(Const Players: TPlayers; TeamPlay: Boolean
+  ): TaiInfo;
 Var
   i, j: Integer;
 Begin
@@ -1687,12 +1691,12 @@ Begin
                 puLongerFlameLength: result.Field[i, j] := fLongerFlame;
                 puCanCick: result.Field[i, j] := fKick;
                 puExtraSpeed: result.Field[i, j] := fExtraSpeed;
-                puSpooger: result.Field[i, j] := fSpooger;
-                puPunch: result.Field[i, j] := fPunch;
-                puGrab: result.Field[i, j] := fGrab;
+                puCanSpooger: result.Field[i, j] := fSpooger;
+                puCanPunch: result.Field[i, j] := fPunch;
+                puCanGrab: result.Field[i, j] := fGrab;
                 puGoldFlame: result.Field[i, j] := fGoldflame;
                 puTrigger: result.Field[i, j] := fTrigger;
-                puJelly: result.Field[i, j] := fJelly;
+                puCanJelly: result.Field[i, j] := fJelly;
                 // Ab hier Krankheiten oder "schlechtes"
                 puDisease: result.Field[i, j] := fBadDisease;
                 puSuperBadDisease: result.Field[i, j] := fBadDisease;
@@ -1743,6 +1747,66 @@ Begin
   Players[Index].Info.Dieing := true;
   Players[Index].Info.Direction := 0;
   Players[Index].Info.Counter := 0;
+End;
+
+Procedure TAtomicField.RepopulatePlayersCollectedPowerUps(
+  Const Players: TPlayers; PlayerIndex: Integer);
+Var
+  pu: TPowerUps;
+  cnt, i, OverflowProtect, j: Integer;
+  x, y: Int64;
+  b: Boolean;
+Begin
+  log('TServer.RepopulatePlayersCollectedPowerUps', lltrace);
+  For pu In TPowerUps Do Begin
+    If pu = puNone Then Continue;
+    (*
+     * Bei "Fähigkeiten" begrenzen wir das ganze auf maximal 1
+     *)
+    cnt := Players[PlayerIndex].PowerUpCounter[pu];
+    If pu In [puCanCick, puCanSpooger, puCanPunch, puCanGrab, puGoldFlame, puCanJelly] Then Begin
+      cnt := min(cnt, 1);
+    End;
+    For i := 0 To cnt - 1 Do Begin
+      OverflowProtect := 0;
+      While (OverflowProtect < FieldWidth * FieldHeight) Do Begin
+        x := Random(FieldWidth);
+        y := Random(FieldHeight);
+        // Das Feld ist Prinzipiel mal "Frei"
+        If (fField[x, y].BrickData = bdBlank) And (fField[x, y].Flame = []) And (fField[x, y].PowerUp = puNone) Then Begin
+          b := true;
+          // Verhindern dass ein Powerup da generiert wird wo ein Spieler Steht.
+          For j := 0 To high(Players) Do Begin
+            If Not Players[j].Info.Alive Then Continue;
+            If Players[j].Flying Then Continue;
+            If (x = trunc(Players[j].Info.Position.x)) And
+              (y = trunc(Players[j].Info.Position.y)) Then Begin
+              b := false;
+              break;
+            End;
+          End;
+          // Verhindern, das ein Powerup da generiert wird wo eine Bombe liegt
+          If b Then Begin
+            For j := 0 To fBombCount - 1 Do Begin
+              If fBombs[j].MoveDir = bmFly Then Continue;
+              If (x = trunc(fBombs[j].Position.x)) And
+                (x = trunc(fBombs[j].Position.x)) Then Begin
+                b := false;
+                break;
+              End;
+            End;
+          End;
+          // Wie haben eine Feld gefunden, das belegt werden kann ;)
+          If b Then Begin
+            fField[x, y].PowerUp := pu;
+            OverflowProtect := FieldWidth * FieldHeight; // Aus der While Sauber Raus gehen..
+          End;
+        End;
+        inc(OverflowProtect);
+      End;
+    End;
+  End;
+  LogLeave;
 End;
 
 {$ENDIF}

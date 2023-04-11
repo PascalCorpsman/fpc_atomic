@@ -1,50 +1,40 @@
 # FPC Atomic
 
 Author   : Uwe Schächterle (Corpsman)  
-Homepage : www.Corpsman.de
+Homepage : https://www.Corpsman.de  
+Source   : https://github.com/PascalCorpsman/fpc_atomic
 
 ## Description
-This is a complete reimplementation of the orig Atomic Bomberman, here on Github is only the Sourceode hosted. To be able to play the game you need to extract the original graphics from the game disc and provide them as requested by the game.
+This is a complete reimplementation of the original Atomic Bomberman (from 1995).
+In this repository only the sourceode is hosted (as the graphics and sounds are copyright of Interplay Productions). To be able to play the game you need to extract the original graphics from the game disc and provide them as requested by the game (for future there is a tool planed to automatically extract the data from the game disc / files).
+
+## Differences to the original
+- Implementation in TCP (instead of slow IPX)
+- missing AI (-> missing Single player)
+- not all sounds are used
+- missing online manual, use this [manual](manual.md) instead
+- Due to guessing the original functionallity a pro gamer could figure out much more differences ...
 
 ## License
 See the file license.md, located under:
  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md
  for details about the license.     
 
-## contributors
+## Contributors
 Idea : Interplay Productions  
 Implementation : Uwe Schächterle  
 Graphics : Interplay Productions  
 Leveldesign : Interplay Productions  
 Testing : Uwe Schächterle
 
-
-## In game commands
-"+" = Increase sound Volume during play  
-"-" = Decrease sound volume during play  
-"m" = Disable enable music during play
-
-
-## Connect the Client over the internet
-start the client with params:  
- -ip \<ip from router of server\>  
- -port \<port that is forwarded to the server port\>
-
-if ip and port are defined, the game will always try to join on this as long as you restart the game or host, then the settings will be cleared.
-
-
-## Server Control commands
-Params:  
--p \<port\> = Port to listen on  
--t \<time\> = Timeout in seconds to automatically close if no user is connected (0= disabled)  
--l \<level\>= Loglevel (default = 2)  
-Commands (typed in via keyboard in the console window):  
-u = unload actual ai  
-a = load new ai
+## Manual
+See the [manual](manual.md) for detailed informations.
 
 ## What needs to be done to get the code compiled:
 - download dglopengl.pas from https://github.com/saschawillems/dglopengl
 - download and install bass.pas from https://www.un4seen.com/
 - download and install synapse from http://www.ararat.cz/synapse/doku.php/download
 
-install the Lnet package into the Lazarus-IDE from https://github.com/almindor/lnet or the fixed version from https://github.com/PascalCorpsman/lnet
+The following packages need to be installed into the Lazarus IDE:
+- Lnet from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
+- LazOpenGLContext (from the list of available packages inside the IDE)

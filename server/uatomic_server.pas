@@ -54,6 +54,7 @@ Type
 
   TServer = Class
   private
+    fKickAllPlayer: boolean;
     fFrameLog: tFrameLog;
     fStatistik: TGameStatistik;
     fRandomMap: Boolean;
@@ -928,14 +929,14 @@ Procedure TServer.HandleStartRound;
     If Scheme.PowerUps[puCanCick].Bornwith > 0 Then Begin
       result.CanKickBombs := true;
     End;
-    If Scheme.PowerUps[puPunch].Bornwith > 0 Then Begin
+    If Scheme.PowerUps[puCanPunch].Bornwith > 0 Then Begin
       result.CanPunchBombs := true;
     End;
-    If Scheme.PowerUps[puSpooger].Bornwith > 0 Then Begin
+    If Scheme.PowerUps[puCanSpooger].Bornwith > 0 Then Begin
       result.CanSpooger := true;
       result.CanGrabBombs := false;
     End;
-    If Scheme.PowerUps[puGrab].Bornwith > 0 Then Begin
+    If Scheme.PowerUps[puCanGrab].Bornwith > 0 Then Begin
       result.CanGrabBombs := true;
       result.CanSpooger := false;
     End;
@@ -945,7 +946,7 @@ Procedure TServer.HandleStartRound;
     If Scheme.PowerUps[puTrigger].Bornwith > 0 Then Begin
       result.TriggerBomb := result.OverAllBombs;
     End;
-    If Scheme.PowerUps[puJelly].Bornwith > 0 Then Begin
+    If Scheme.PowerUps[puCanJelly].Bornwith > 0 Then Begin
       result.JellyBombs := true;
     End;
   End;
@@ -955,7 +956,7 @@ Var
   n: QWord;
   m: TMemoryStream;
   Startindex: Array[0..length(PlayerColors) - 1] Of Integer;
-
+  pu: TPowerUps;
 Begin
   log('TServer.HandleStartRound', llTrace);
   HandleStatisticCallback(sGamesStarted);
@@ -998,7 +999,10 @@ Begin
     fPLayer[i].IdleTimer := 0;
     fPLayer[i].Info.Dieing := false; // Wir Sind alle wieder am Leben ;)
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
-    fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme)
+    fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
+    For pu In TPowerUps Do Begin
+      fPLayer[i].PowerUpCounter[pu] := 0;
+    End;
   End;
   // 2. Init der Karte
   // Steht das Match gerade auf "Zufällige" Karten dann wählen wir hier eine neue Zufällige Karte aus
@@ -1064,6 +1068,7 @@ Begin
   // Den Victory Screen auswählen
   // Der Gewinner wurde bereits in EndGameCheck bestimmt.
   SendChunk(miShowVictory, Nil, 0);
+  fKickAllPlayer := true;
 End;
 
 Procedure TServer.HandlePlayerGetsPowerUp(Var Player: TPlayer;
@@ -1073,8 +1078,15 @@ Var
   tmppos: TVector2;
 Begin
   log('TServer.HandlePlayerGetsPowerUp', llTrace);
-  If PowerUp <> puNone Then HandleStatisticCallback(sPowerupsCollected);
   // TODO: Die Force, Override, forbidden dinge müssen hier noch berücksichtigt werden..
+  //       \-> Das Forbidden wird in TAtomicField.Initialize bereits gemacht.
+  If PowerUp <> puNone Then Begin
+    HandleStatisticCallback(sPowerupsCollected);
+    (*
+     * Mit Zählen, was der Spieler so aufsammelt
+     *)
+    Player.PowerUpCounter[PowerUp] := Player.PowerUpCounter[PowerUp] + 1;
+  End;
   Case PowerUp Of
     puNone: Begin
       End;
@@ -1110,7 +1122,7 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         Player.Powers.CanKickBombs := true;
       End;
-    puPunch: Begin
+    puCanPunch: Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         Player.Powers.CanPunchBombs := true;
       End;
@@ -1118,12 +1130,12 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         Player.Powers.Speed := min(Player.Powers.Speed * AtomicSpeedChange, AtomicMaxSpeed);
       End;
-    puGrab: Begin
+    puCanGrab: Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         Player.Powers.CanGrabBombs := true;
         Player.Powers.CanSpooger := false;
       End;
-    puSpooger: Begin
+    puCanSpooger: Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         Player.Powers.CanSpooger := true;
         Player.Powers.CanGrabBombs := false;
@@ -1136,7 +1148,7 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         Player.Powers.TriggerBomb := Player.Powers.TriggerBomb + Player.Powers.OverAllBombs;
       End;
-    puJelly: Begin
+    puCanJelly: Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         Player.Powers.JellyBombs := true;
       End;
@@ -1723,6 +1735,7 @@ Begin
       If fPLayer[i].Info.Dieing Then Begin
         If fPLayer[i].Info.Counter > AtomicDietimeout Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
+          fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
         End;
       End
       Else Begin
@@ -1950,6 +1963,12 @@ Begin
   While factive Do Begin
     fChunkManager.CallAction(); // Alle Aktuellen Aufgaben des TCP-Stacks Abbarbeiten
     fUDP.CallAction();
+    If fKickAllPlayer Then Begin
+      log('KickAllPlayer', lltrace);
+      fKickAllPlayer := false;
+      HandleSwitchToWaitForPlayersToConnect();
+      LogLeave;
+    End;
     If fGameState = gsPlaying Then Begin // Im Spielmodus Frames und Updates der Clients Berechnen
       //  alle 10 s Loggen wie Groß die Spieldaten waren, welche gesandt
       n := GetTickCount64();
