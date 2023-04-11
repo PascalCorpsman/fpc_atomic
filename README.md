@@ -12,7 +12,7 @@ In this repository only the sourceode is hosted (as the graphics and sounds are 
 - Implementation in TCP (instead of slow IPX)
 - missing AI (-> missing Single player)
 - not all sounds are used
-- missing online manual, use this [manual](manual.md) instead
+- missing online manual, use this [manual](MANUAL.md) instead
 - Due to guessing the original functionallity a pro gamer could figure out much more differences ...
 
 ## License
@@ -28,7 +28,7 @@ Leveldesign : Interplay Productions
 Testing : Uwe Schächterle
 
 ## Manual
-See the [manual](manual.md) for detailed informations.
+See the [manual](MANUAL.md) for detailed informations.
 
 ## What needs to be done to get the code compiled:
 - download dglopengl.pas from https://github.com/saschawillems/dglopengl
