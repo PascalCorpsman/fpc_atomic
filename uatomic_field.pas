@@ -678,8 +678,7 @@ Begin
 {$ENDIF}
 End;
 
-Function TAtomicField.HandleMovePlayer(Var Players: TPlayers;
-  PlayerIndex: integer; ConveyorSpeed: TConveyorSpeed): Boolean;
+Function TAtomicField.HandleMovePlayer(Var Players: TPlayers; PlayerIndex: integer; ConveyorSpeed: TConveyorSpeed): Boolean;
 
   Function GetBombIndex(x, y: integer): integer;
   Var
@@ -1144,8 +1143,7 @@ Begin
   End;
 End;
 
-Procedure TAtomicField.HandleBombs(Var Players: TPlayers; PreHurry: Boolean;
-  ConveyorSpeed: TConveyorSpeed);
+Procedure TAtomicField.HandleBombs(Var Players: TPlayers; PreHurry: Boolean; ConveyorSpeed: TConveyorSpeed);
 Type
   TDir = (DirUp, DirDown, DirLeft, DirRight);
 
@@ -1629,8 +1627,7 @@ Begin
   fBombsEnabled := false;
 End;
 
-Function TAtomicField.GetAiInfo(Const Players: TPlayers; TeamPlay: Boolean
-  ): TaiInfo;
+Function TAtomicField.GetAiInfo(Const Players: TPlayers; TeamPlay: Boolean): TaiInfo;
 Var
   i, j: Integer;
 Begin

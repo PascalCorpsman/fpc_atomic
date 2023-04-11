@@ -62,7 +62,9 @@ Timeline:
   2023.04.02 - Grab Bombs, 3 new diseases, rewrite double key press detection
   2023.04.03 - Add Ai-API
   2023.04.05 - Punch Bombs, Hurry Handling -> All core functions are implemented !
-
+  2023.04.08 - arrows in Fields
+  2023.04.09 - conveyors in fields
+  2023.04.10 - release on github (https://github.com/PascalCorpsman/fpc_atomic)
 
 Used Libraries / Tools
   External:

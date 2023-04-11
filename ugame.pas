@@ -385,10 +385,6 @@ Begin
     sVictory: Begin
         fgameState := gs_MainMenu;
         TVictoryMenu(fScreens[sVictory]).Victor := TMatchStatistikMenu(fScreens[sMatchStatistik]).Victor;
-        (*
-         * Disconnect while showing the "Victory" Screen
-         *)
-//        Disconnect();
       End;
   End;
   // Ist hier unten, weil Host und Join das Gleichermasen machen
@@ -1008,10 +1004,12 @@ Begin
       End;
     miCommandoBackToMainMenu: Begin
         // Der Server Schmeißt alle raus, das macht er irgendwann, oder wenn er den Victory Screen anzeigt ;)
+        // So können sich vereinzelte spieler den Victory screen noch weiter ansehen und die anderen können schon wieder
+        // dem Join beitreten.
         If fActualScreen <> fScreens[sVictory] Then Begin
           SwitchToScreen(sMainScreen);
         End;
-        Disconnect();
+        Disconnect(); // Damit das klappt, muss der Spieler aber auf jeden Fall disconnecten.
       End;
     miSplashHint: Begin
         s := Chunk.Data.ReadAnsiString;

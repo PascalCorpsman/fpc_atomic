@@ -54,7 +54,7 @@ Type
 
   TServer = Class
   private
-    fKickAllPlayer: boolean;
+    fKickAllPlayer: boolean; // If True, the server kicks every player during the next "Idle"
     fFrameLog: tFrameLog;
     fStatistik: TGameStatistik;
     fRandomMap: Boolean;
