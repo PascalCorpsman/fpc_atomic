@@ -48,7 +48,7 @@ Timeline:
   2023.03.01 - Start with research
   2023.03.02 - Start with message documentation (PlantUML)
   2023.03.05 - Finished auto update process for beta tester
-  2023.03.18 - First tech demo (All screens to enter the game, walk no collisions)
+  2023.03.18 - First tech demo (All screens to enter the game with multiple players, walk no collisions)
                -> game is duable lets continue
   2023.03.21 - Walk physics (collisions and grid adjusting)
   2023.03.24 - Bomb placing, damage calculations (to the map)

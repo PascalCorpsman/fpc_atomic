@@ -69,8 +69,6 @@ Begin
     Known Bugs:
           - Wenn eine Bombe in ein Brennendes Feld "Rollt" muss sie instant explodieren
             \-> Implementiert, aber noch nicht getestet.
-          - Kein Richtiger Bug, aber doch komisch: Sehr häufig geht das Bomb Spooging nicht, aber warum ?
-            \-> Dank neuem Keyboard treiber evtl schon behoben ..
 
     Maybe Implementierungen:
           - Kollisionserkennung zwischen Atomic und Bomben via Distanzmessung und nicht via "Koordinaten" ?

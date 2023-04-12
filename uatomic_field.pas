@@ -1036,6 +1036,7 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
 
 Var
   bx, by, x, y, dx, dy, i: Integer;
+  handled: Boolean;
 Begin
   Case player.Action Of
     aaFirstDouble: Begin
@@ -1099,6 +1100,7 @@ Begin
         End;
       End;
     aaSecond: Begin
+        handled := false; // This flag allows to trigger bombs while walking = more responsive ;)
         // Punch = Laufen gegen eine Bombe und dann Second Key ;)
         If Player.Powers.CanPunchBombs And (Player.MoveState <> msStill) Then Begin
           x := trunc(player.Info.Position.x);
@@ -1112,7 +1114,7 @@ Begin
             3: dy := 1;
           End;
           For i := 0 To high(fBombs) Do Begin
-            If fBombs[i].MoveDir = bmFly Then Continue; // Fliegende Bomben dürfen nicht gegriffen werden.
+            If fBombs[i].MoveDir = bmFly Then Continue; // Fliegende Bomben dürfen nicht gepuncht werden.
             bx := trunc(fBombs[i].Position.x);
             by := trunc(fBombs[i].Position.y);
             If (x + dx = bx) And (y + dy = by) Then Begin
@@ -1124,11 +1126,12 @@ Begin
               fPlaySoundEffect(PlayerIndex, seBombPunch);
               Player.Info.Animation := raPunch;
               Player.Info.Counter := 0;
+              handled := true;
               break;
             End;
           End;
-        End
-        Else Begin
+        End;
+        If Not handled Then Begin
           (*
            * Zünden der eigenen Time Triggered Bomben, das geht irgendwie immer ...
            *)
