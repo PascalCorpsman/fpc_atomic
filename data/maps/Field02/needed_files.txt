@@ -1,0 +1,7 @@
+This folder should contain the following files to use fpc_atomic without errors:
+info.txt
+brick.png
+field.png
+solid.png
+sound.wav
+xbrick.ani

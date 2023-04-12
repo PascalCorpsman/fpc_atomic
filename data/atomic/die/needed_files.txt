@@ -1,0 +1,22 @@
+This folder should contain the following files to use fpc_atomic without errors:
+die2.png
+die20.png
+die4.png
+die8.png
+die10.png
+die19.png
+files.txt
+die1.png
+die7.png
+die16.png
+die5.png
+die12.png
+die9.png
+die15.png
+die6.png
+die13.png
+die21.png
+die11.png
+die17.png
+die14.png
+die3.png

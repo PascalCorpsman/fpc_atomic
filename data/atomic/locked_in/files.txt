@@ -1,0 +1,9 @@
+#Filename; AnimationTimePerFrame; FramesPerRow; FramesPerCol; FrameWidth, FrameHeight, TotalFrameCount; RenderOffsetX, RenderOffsetY
+corner0.png;50;7;5;110;110;31;55;90
+corner1.png;50;7;7;110;110;45;55;90
+corner2.png;50;8;5;110;110;39;55;90
+corner3.png;50;8;7;110;110;51;55;90
+corner4.png;50;5;4;110;110;20;55;90
+corner5.png;50;2;5;110;110;10;55;90
+corner6.png;50;6;3;110;110;18;55;90
+corner7.png;50;5;4;110;110;20;55;90

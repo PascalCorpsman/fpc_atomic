@@ -1,0 +1,10 @@
+This folder should contain the following files to use fpc_atomic without errors:
+corner5.png
+corner3.png
+corner0.png
+corner2.png
+files.txt
+corner7.png
+corner6.png
+corner4.png
+corner1.png

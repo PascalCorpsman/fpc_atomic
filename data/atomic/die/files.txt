@@ -1,0 +1,23 @@
+#Filename; AnimationTimePerFrame; FramesPerRow; FramesPerCol; FrameWidth, FrameHeight, TotalFrameCount; RenderOffsetX, RenderOffsetY
+die1.png;50;10;5;73;73;41;37;64
+die2.png;50;9;5;110;110;39;55;82
+die3.png;50;8;3;73;73;24;37;64
+die4.png;50;9;9;110;110;77;55;82
+die5.png;50;4;5;110;110;18;55;82
+die6.png;50;9;5;110;110;38;55;82
+die7.png;50;2;7;110;110;14;55;82
+#die8.png;50;4;3;110;110;12;55;82
+die9.png;50;2;5;110;110;10;55;82
+die10.png;50;9;9;110;110;77;55;82
+die11.png;50;9;8;110;110;67;55;82
+die12.png;50;9;8;110;110;69;55;82
+die13.png;50;9;6;110;110;48;55;82
+die14.png;50;9;7;110;110;58;55;82
+die15.png;50;9;5;110;110;38;55;82
+die16.png;50;4;4;110;110;16;55;82
+die17.png;50;9;7;110;110;60;55;82
+#die18 does not exist
+die19.png;50;4;3;141;200;12;70;100
+die20.png;50;7;1;34;89;7;17;70
+die21.png;50;4;4;79;68;13;40;58
+

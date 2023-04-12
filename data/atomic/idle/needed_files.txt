@@ -1,0 +1,4 @@
+This folder should contain the following files to use fpc_atomic without errors:
+zen.png
+files.txt
+applbite.png
