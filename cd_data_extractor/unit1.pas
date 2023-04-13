@@ -1,3 +1,17 @@
+(******************************************************************************)
+(*                                                                            *)
+(* Author      : Uwe Schächterle (Corpsman)                                   *)
+(*                                                                            *)
+(* This file is part of config_td                                             *)
+(*                                                                            *)
+(*  See the file license.md, located under:                                   *)
+(*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
+(*  for details about the license.                                            *)
+(*                                                                            *)
+(*               It is not allowed to change or remove this text from any     *)
+(*               source file of the project.                                  *)
+(*                                                                            *)
+(******************************************************************************)
 Unit Unit1;
 
 {$MODE objfpc}{$H+}
@@ -92,8 +106,14 @@ Begin
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
+Var
+  n: QWord;
 Begin
+  // TODO: reactivate disabled code, was disabled during development
+  n := GetTickCount64();
+  // Start Extraction
   AddLog('Start');
+  Addlog('  be aware the process will take some time, ...');
   // Start extraction
   If Not CheckCDRootFolder(label1.Caption) Then Begin
     AddLog('Error: invalid atomic bomberman CD-Image folder');
@@ -103,12 +123,18 @@ Begin
     AddLog('Error: invalid fpc-atomic folder');
     exit;
   End;
+  If Not ForceDirectories(IncludeTrailingPathDelimiter(label2.Caption) + 'data') Then Begin
+    addlog('Error, could not create data folder.');
+    exit;
+  End;
   AddLog('Images');
   ExtractAtomicImages(Label1.caption, label2.caption);
-  AddLog('Sounds');
-  ExtractAtomicSounds(Label1.caption, label2.caption);
-  AddLog('Shemes');
-  ExtractAtomicShemes(Label1.caption, label2.caption);
+  //AddLog('Sounds');
+  //ExtractAtomicSounds(Label1.caption, label2.caption);
+  //AddLog('Shemes'); // Fertig, getestet
+  //ExtractAtomicShemes(Label1.caption, label2.caption);
+  n := GetTickCount64() - n;
+  Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
   AddLog('Done, please check results.');
 End;
 
