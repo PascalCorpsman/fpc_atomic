@@ -1,19 +1,21 @@
 object Form1: TForm1
-  Left = 493
-  Height = 366
-  Top = 119
-  Width = 450
+  Left = 349
+  Height = 477
+  Top = 109
+  Width = 451
   Caption = 'Form1'
-  ClientHeight = 366
-  ClientWidth = 450
+  ClientHeight = 477
+  ClientWidth = 451
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
+  Position = poScreenCenter
   LCLVersion = '2.3.0.0'
   object Button1: TButton
     Left = 8
     Height = 25
-    Top = 8
+    Top = 40
     Width = 432
+    Anchors = [akTop, akLeft, akRight]
     Caption = 'Set atomic cd root folder'
     OnClick = Button1Click
     TabOrder = 0
@@ -21,8 +23,9 @@ object Form1: TForm1
   object Button2: TButton
     Left = 8
     Height = 25
-    Top = 328
+    Top = 439
     Width = 432
+    Anchors = [akLeft, akRight, akBottom]
     Caption = 'Close'
     OnClick = Button2Click
     TabOrder = 1
@@ -30,17 +33,75 @@ object Form1: TForm1
   object Label1: TLabel
     Left = 16
     Height = 16
-    Top = 40
+    Top = 72
     Width = 41
     Caption = 'Label1'
   end
+  object Button3: TButton
+    Left = 365
+    Height = 25
+    Top = 8
+    Width = 75
+    Anchors = [akTop, akRight]
+    Caption = 'help'
+    OnClick = Button3Click
+    TabOrder = 2
+  end
+  object Button4: TButton
+    Left = 8
+    Height = 25
+    Top = 96
+    Width = 432
+    Anchors = [akTop, akLeft, akRight]
+    Caption = 'set fpc atomic folder'
+    OnClick = Button4Click
+    TabOrder = 3
+  end
+  object Label2: TLabel
+    Left = 16
+    Height = 16
+    Top = 128
+    Width = 41
+    Caption = 'Label2'
+  end
+  object Label3: TLabel
+    Left = 8
+    Height = 16
+    Top = 160
+    Width = 87
+    Caption = 'extraction log:'
+  end
+  object Memo1: TMemo
+    Left = 8
+    Height = 224
+    Top = 176
+    Width = 432
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    Lines.Strings = (
+      'Memo1'
+    )
+    ReadOnly = True
+    ScrollBars = ssAutoBoth
+    TabOrder = 4
+    WordWrap = False
+  end
+  object Button5: TButton
+    Left = 8
+    Height = 25
+    Top = 408
+    Width = 432
+    Anchors = [akLeft, akRight, akBottom]
+    Caption = 'Start extraction'
+    OnClick = Button5Click
+    TabOrder = 5
+  end
   object IniPropStorage1: TIniPropStorage
     StoredValues = <>
-    Left = 32
-    Top = 88
+    Left = 56
+    Top = 8
   end
   object SelectDirectoryDialog1: TSelectDirectoryDialog
-    Left = 265
-    Top = 75
+    Left = 360
+    Top = 8
   end
 end
