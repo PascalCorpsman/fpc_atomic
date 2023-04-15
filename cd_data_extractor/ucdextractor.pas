@@ -24,8 +24,8 @@ Uses
 Function CheckCDRootFolder(aFolder: String): boolean;
 Function CheckFPCAtomicFolder(aFolder: String): boolean;
 
-Procedure ExtractAtomicImages(CDFolder, AtomicFolder: String);
-Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String); // In Work
+Procedure ExtractAtomicImages(CDFolder, AtomicFolder: String); // in Work
+Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String); // Fertig, getestet.
 Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String); // Fertig, getestet.
 
 Implementation
@@ -33,6 +33,7 @@ Implementation
 Uses
   FileUtil
   , uwave
+  , uanifile
   , Unit1 // Bäh invalid dependency!
   ;
 
@@ -216,7 +217,7 @@ End;
 
 Procedure ExtractAtomicImages(CDFolder, AtomicFolder: String);
 Begin
-  AddLog('  not implemented yet, sry.');
+  hier gehts weiter definieren eines "Jobs" und dann den auch Ausführen ;-)
 End;
 
 Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String);

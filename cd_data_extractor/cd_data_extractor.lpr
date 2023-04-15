@@ -24,7 +24,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, Unit1, ucdextractor, uwave
+  Forms, Unit1, ucdextractor, uanifile, uwave
   { you can add units after this };
 
 {$R *.res}
