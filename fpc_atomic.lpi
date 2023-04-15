@@ -48,13 +48,12 @@
         <PackageName Value="LCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="44">
+    <Units Count="45">
       <Unit0>
         <Filename Value="fpc_atomic.lpr"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="4"/>
-        <CursorPos Y="15"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="43" Y="31"/>
         <UsageCount Value="181"/>
         <Loaded Value="True"/>
       </Unit0>
@@ -65,8 +64,7 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-        <TopLine Value="165"/>
-        <CursorPos X="42" Y="175"/>
+        <TopLine Value="124"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -133,7 +131,8 @@
       <Unit9>
         <Filename Value="units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="5"/>
+        <CursorPos Y="26"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -171,9 +170,10 @@
       <Unit13>
         <Filename Value="../Sample/TCP_IP/uupdate.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="283"/>
         <UsageCount Value="160"/>
+        <Loaded Value="True"/>
       </Unit13>
       <Unit14>
         <Filename Value="../Sample/synapse/httpsend.pas"/>
@@ -184,8 +184,9 @@
       <Unit15>
         <Filename Value="updater_settings.inc"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="5"/>
-        <CursorPos X="29" Y="9"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="7"/>
+        <CursorPos X="27" Y="28"/>
         <UsageCount Value="158"/>
         <Loaded Value="True"/>
       </Unit15>
@@ -243,7 +244,7 @@
       <Unit21>
         <Filename Value="units/uatomic_messages.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="4"/>
         <TopLine Value="28"/>
         <CursorPos X="16" Y="59"/>
         <ExtraEditorCount Value="1"/>
@@ -290,7 +291,7 @@
       <Unit25>
         <Filename Value="units/uatomic_field.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="9"/>
         <TopLine Value="84"/>
         <CursorPos X="43" Y="95"/>
         <ExtraEditorCount Value="2"/>
@@ -342,9 +343,7 @@
       <Unit29>
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="2057"/>
-        <CursorPos X="23" Y="2076"/>
+        <EditorIndex Value="2"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -389,9 +388,9 @@
       <Unit32>
         <Filename Value="globaldefines.inc"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="3" Y="29"/>
+        <EditorIndex Value="3"/>
         <UsageCount Value="36"/>
+        <Loaded Value="True"/>
       </Unit32>
       <Unit33>
         <Filename Value="ukeyboarddialog.pas"/>
@@ -485,6 +484,13 @@
         <UsageCount Value="20"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit43>
+      <Unit44>
+        <Filename Value="updaterlink.inc"/>
+        <EditorIndex Value="8"/>
+        <CursorPos X="63" Y="3"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit44>
     </Units>
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
@@ -492,122 +498,119 @@
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2152" Column="35" TopLine="2095"/>
+        <Caret Line="386" TopLine="355"/>
       </Position1>
       <Position2>
         <Filename Value="ugame.pas"/>
-        <Caret Line="990" TopLine="959"/>
+        <Caret Line="387" TopLine="355"/>
       </Position2>
       <Position3>
         <Filename Value="ugame.pas"/>
-        <Caret Line="330" Column="19" TopLine="299"/>
+        <Caret Line="391" TopLine="355"/>
       </Position3>
       <Position4>
         <Filename Value="ugame.pas"/>
-        <Caret Line="331" TopLine="299"/>
+        <Caret Line="2152" TopLine="2095"/>
       </Position4>
       <Position5>
         <Filename Value="ugame.pas"/>
-        <Caret Line="332" TopLine="299"/>
+        <Caret Line="2059" TopLine="2028"/>
       </Position5>
       <Position6>
         <Filename Value="ugame.pas"/>
-        <Caret Line="336" TopLine="299"/>
+        <Caret Line="2060" TopLine="2028"/>
       </Position6>
       <Position7>
         <Filename Value="ugame.pas"/>
-        <Caret Line="386" TopLine="355"/>
+        <Caret Line="2061" TopLine="2028"/>
       </Position7>
       <Position8>
         <Filename Value="ugame.pas"/>
-        <Caret Line="387" TopLine="355"/>
+        <Caret Line="2062" TopLine="2028"/>
       </Position8>
       <Position9>
         <Filename Value="ugame.pas"/>
-        <Caret Line="391" TopLine="355"/>
+        <Caret Line="2063" TopLine="2028"/>
       </Position9>
       <Position10>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2152" TopLine="2095"/>
+        <Caret Line="2067" TopLine="2028"/>
       </Position10>
       <Position11>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2059" TopLine="2028"/>
+        <Caret Line="2068" TopLine="2028"/>
       </Position11>
       <Position12>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2060" TopLine="2028"/>
+        <Caret Line="2072" TopLine="2028"/>
       </Position12>
       <Position13>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2061" TopLine="2028"/>
+        <Caret Line="2073" TopLine="2028"/>
       </Position13>
       <Position14>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2062" TopLine="2028"/>
+        <Caret Line="173" Column="21" TopLine="131"/>
       </Position14>
       <Position15>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2063" TopLine="2028"/>
+        <Caret Line="391" Column="25" TopLine="344"/>
       </Position15>
       <Position16>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2067" TopLine="2028"/>
+        <Caret Line="121" Column="27" TopLine="100"/>
       </Position16>
       <Position17>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2068" TopLine="2028"/>
+        <Caret Line="845" Column="25" TopLine="836"/>
       </Position17>
       <Position18>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="2072" TopLine="2028"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="483" Column="38" TopLine="450"/>
       </Position18>
       <Position19>
         <Filename Value="ugame.pas"/>
-        <Caret Line="2073" TopLine="2028"/>
+        <Caret Line="998" Column="66" TopLine="973"/>
       </Position19>
       <Position20>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="173" Column="21" TopLine="131"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="107" Column="28" TopLine="93"/>
       </Position20>
       <Position21>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="391" Column="25" TopLine="344"/>
+        <Filename Value="unit1.pas"/>
       </Position21>
       <Position22>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="121" Column="27" TopLine="100"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="185" Column="40" TopLine="130"/>
       </Position22>
       <Position23>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="845" Column="25" TopLine="836"/>
+        <Filename Value="units/uatomic_common.pas"/>
+        <Caret Line="57" Column="61" TopLine="22"/>
       </Position23>
       <Position24>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="483" Column="38" TopLine="450"/>
+        <Filename Value="units/uatomic_common.pas"/>
+        <Caret Line="29" Column="40" TopLine="22"/>
       </Position24>
       <Position25>
         <Filename Value="ugame.pas"/>
-        <Caret Line="998" Column="66" TopLine="973"/>
+        <Caret Line="2087" Column="37" TopLine="2057"/>
       </Position25>
       <Position26>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="107" Column="28" TopLine="93"/>
+        <Filename Value="ugame.pas"/>
       </Position26>
       <Position27>
         <Filename Value="unit1.pas"/>
+        <Caret Line="185" Column="43" TopLine="165"/>
       </Position27>
       <Position28>
         <Filename Value="unit1.pas"/>
-        <Caret Line="185" Column="40" TopLine="130"/>
       </Position28>
       <Position29>
         <Filename Value="units/uatomic_common.pas"/>
-        <Caret Line="57" Column="61" TopLine="22"/>
       </Position29>
       <Position30>
-        <Filename Value="units/uatomic_common.pas"/>
-        <Caret Line="29" Column="40" TopLine="22"/>
+        <Filename Value="updater_settings.inc"/>
+        <Caret Line="28" Column="28"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>

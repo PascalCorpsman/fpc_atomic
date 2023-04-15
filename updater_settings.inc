@@ -23,6 +23,6 @@ Const
   updater_AppName = 'FPC Atomic';
   updater_StarterName = 'fpc_atomic';
   updater_UpdaterName = 'updater';
-  updater_DownloadLink = 'https://corpsman.de/download/atomic.zip';
+{$I updater_link.inc}
   updater_Additional = ''; // Liste der Potenziellen weiteren Datenfelder alle durch , getrennt.
 

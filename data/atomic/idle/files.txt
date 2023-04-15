@@ -1,3 +1,5 @@
 #Filename; AnimationTimePerFrame; FramesPerRow; FramesPerCol; FrameWidth, FrameHeight, TotalFrameCount; RenderOffsetX, RenderOffsetY
 applbite.png;50;11;11;73;73;121;36;64
+headwipe.png;50;14;16;73;73;211;36;64
+nuckblow.png;50;11;11;73;73;121;36;64
 zen.png;50;11;11;73;73;121;36;64
