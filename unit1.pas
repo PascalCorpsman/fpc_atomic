@@ -714,7 +714,12 @@ Begin
   //  fUpdater.ProxyPort := getvalue('General', 'ProxyPort', '');
   //  fUpdater.ProxyUser := getvalue('General', 'ProxyUser', '');
   //  fUpdater.ProxyPass := getvalue('General', 'ProxyPass', '');
-  fUpdater.GetVersions(URL_CheckForUpdate, AlwaysShowResult, @UpdateResultCallback);
+  If URL_CheckForUpdate <> '' Then Begin
+    fUpdater.GetVersions(URL_CheckForUpdate, AlwaysShowResult, @UpdateResultCallback);
+  End
+  Else Begin
+    game.VersionInfoString := 'No version checking available';
+  End;
 End;
 
 Procedure TForm1.OnConnectToServer(Sender: TObject);

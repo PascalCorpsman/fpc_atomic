@@ -65,7 +65,6 @@ Const
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
 {$ENDIF}
   ;
-  URL_CheckForUpdate = 'https://corpsman.de/download/atomic.version';
 
   RF_VersionInfo = 'Your version: %s' + LineEnding +
     'Online version: %s' + LineEnding +
