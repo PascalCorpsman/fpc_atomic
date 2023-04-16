@@ -1,8 +1,15 @@
 version: '3.4'
 
 services:
-  build:
-    image: build
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+  atomic:
+    image: atomic
+    volumes:
+      - /d/Projekte/fpc_atomic/bomber/:/AtomicGameRoot
+      - ${PWD}/build:/build
+    tty: true
+    stdin_open: true
+    environment:
+      - ATOMIC_BUILD_WIN64=true
+      - ATOMIC_BUILD_WIN32=true
+      - ATOMIC_BUILD_LINUX=true
+      - ATOMIC_EXTRA_ANI=true
