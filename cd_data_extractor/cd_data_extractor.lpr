@@ -12,28 +12,28 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
-program cd_data_extractor;
+Program cd_data_extractor;
 
-{$mode objfpc}{$H+}
+{$MODE objfpc}{$H+}
 
-uses
-  {$IFDEF UNIX}
+Uses
+{$IFDEF UNIX}
   cthreads,
-  {$ENDIF}
-  {$IFDEF HASAMIGA}
+{$ENDIF}
+{$IFDEF HASAMIGA}
   athreads,
-  {$ENDIF}
+{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, Unit1, ucdextractor, uanifile, uwave, ugraphics, uvectormath, Unit2;
+  Forms, Unit1, Unit2;
 
 {$R *.res}
 
-begin
-  RequireDerivedFormResource:=True;
-  Application.Scaled:=True;
+Begin
+  RequireDerivedFormResource := True;
+  Application.Scaled := True;
   Application.Initialize;
   Application.CreateForm(TForm1, Form1);
   Application.CreateForm(TForm2, Form2);
   Application.Run;
-end.
+End.
 

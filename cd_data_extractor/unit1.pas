@@ -137,7 +137,8 @@ Begin
   //  ExtractAtomicPCXs(Label1.caption, label2.caption);
   AddLog('ANIs');
   ExtractAtomicAnis(Label1.caption, label2.caption);
-  //AddLog('Sounds');
+  // TODO: Es gibt noch die .ani -> .ani convertierung
+  //AddLog('Sounds'); // Fertig, getestet
   //ExtractAtomicSounds(Label1.caption, label2.caption);
   //AddLog('Shemes'); // Fertig, getestet
   //ExtractAtomicShemes(Label1.caption, label2.caption);

@@ -7,7 +7,6 @@ pupbomb.png
 flame.png
 bomb_wobble.png
 bomb_dud.png
-bomb_orig.png
 stand.png
 walk.png
 bomb.png
