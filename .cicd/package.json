@@ -1,0 +1,12 @@
+{
+  "name": "build",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "make": "docker build . -t atomic",
+    "run": "(docker container rm atomic || true) && docker run --name atomic atomic ",
+    "it": "docker run -it atomic /bin/bash"
+  },
+  "author": ""
+}
