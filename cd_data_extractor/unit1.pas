@@ -76,6 +76,9 @@ End;
 Procedure TForm1.FormCreate(Sender: TObject);
 Begin
   IniPropStorage1.IniFileName := 'settings.ini';
+  (*
+   * History: 0.01 = Initial version
+   *)
   caption := 'FPC Atomic data extractor ver. 0.01';
   label1.caption := IniPropStorage1.ReadString('CD-Root', '');
   label2.caption := IniPropStorage1.ReadString('FPC-Atomic', '');
@@ -85,7 +88,7 @@ Begin
   (*
    * Disable the ani job generator, it is only used for developping
    *)
-  button6.Visible := false;
+  //button6.Visible := false;
 End;
 
 Procedure TForm1.Button2Click(Sender: TObject);

@@ -22,6 +22,7 @@ Uses
   Classes, SysUtils, Graphics;
 
 Type
+
   TAniJob = Record
     SourceAni: String;
     Width, Height: integer;
@@ -32,6 +33,8 @@ Type
     DestPng: String;
     TransparentByFirstPixel: Boolean; // if true, than not clBlack is used, instead the color value of the very first pixel.
   End;
+
+  TCascadeJob = Array Of TAniJob;
 
   (*
    * Partly separated to be able to use it in the ani job creator ;)
@@ -169,6 +172,7 @@ Const
 
 Var
   AniJobs: Array Of TAniJob; // All the .ani jobs will be set in the initialization part of the unit.
+  CascadeJobs: Array Of TCascadeJob; // All jobs that where merged into one image.
 
 Function CheckCDRootFolder(aFolder: String): boolean;
 Var
@@ -317,39 +321,75 @@ Begin
 End;
 
 Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String);
+  Function StoreBmp(b: TBitmap; Filename: String): Boolean;
+  Var
+    p: TPortableNetworkGraphic;
+  Begin
+    result := false;
+    p := TPortableNetworkGraphic.Create;
+    p.assign(b);
+    If Not ForceDirectories(ExtractFilePath(Filename)) Then Begin
+      AddLog('  Error: could not create folder: ' + ExtractFilePath(Filename));
+    End
+    Else Begin
+      Try
+        p.SaveToFile(Filename);
+        result := true;
+      Except
+        AddLog('  Error: could not save: ' + Filename);
+      End;
+    End;
+    p.free;
+  End;
+
 Var
   i: Integer;
   b: TBitmap;
-  p: TPortableNetworkGraphic;
-  cnt: integer;
-  dn: String;
+  cnt, j, k: integer;
+  bmps: Array Of TBitmap;
 Begin
   CDFolder := IncludeTrailingPathDelimiter(CDFolder);
   AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
   cnt := 0;
+  // The Normal Jobs
   For i := 0 To high(AniJobs) Do Begin
     b := DoAniJob(CDFolder, AniJobs[i]);
     If assigned(b) Then Begin
-      p := TPortableNetworkGraphic.Create;
-      p.assign(b);
-      dn := AtomicFolder + AniJobs[i].DestPng;
-      If Not ForceDirectories(ExtractFilePath(dn)) Then Begin
-        AddLog('  Error: could not create folder: ' + ExtractFilePath(dn));
-      End
-      Else Begin
-        Try
-          p.SaveToFile(dn);
-          inc(cnt);
-        Except
-          AddLog('  Error: could not save: ' + dn);
-        End;
-      End;
-      p.free;
+      If StoreBmp(b, AtomicFolder + AniJobs[i].DestPng) Then inc(cnt);
       b.free;
     End
     Else Begin
       AddLog(format('  Error: %s could not be done.', [AniJobs[i].SourceAni]));
     End;
+  End;
+  // The Cascade Jobs
+  bmps := Nil;
+  For i := 0 To high(CascadeJobs) Do Begin
+    setlength(bmps, length(CascadeJobs[i]));
+    For j := 0 To high(CascadeJobs[i]) Do Begin
+      bmps[j] := DoAniJob(CDFolder, CascadeJobs[i, j]);
+      If Not assigned(bmps[j]) Then Begin
+        For k := 0 To j - 1 Do Begin
+          bmps[k].free;
+        End;
+        setlength(bmps, 0);
+        AddLog(format('  Error: %s could not be done.', [CascadeJobs[i, j].SourceAni]));
+        break;
+      End;
+    End;
+    If Not Assigned(bmps) Then Continue;
+    b := TBitmap.Create;
+    b.Width := bmps[0].Width;
+    b.Height := bmps[0].Height * length(bmps);
+    b.Transparent := false;
+    For j := high(bmps) Downto 0 Do Begin // as we free the bmp in the same loop and always refer to image 0, the loop needs to run inverted !
+      bmps[j].Transparent := false;
+      b.canvas.Draw(0, j * bmps[0].Height, bmps[j]);
+      bmps[j].free;
+    End;
+    setlength(bmps, 0);
+    If StoreBmp(b, AtomicFolder + CascadeJobs[i, high(CascadeJobs[i])].DestPng) Then inc(cnt);
+    b.free;
   End;
   AddLog(format('  %d files created', [cnt]));
 End;
@@ -458,9 +498,25 @@ Begin
   AniJobs[high(AniJobs)].TransparentByFirstPixel := TransparentByFirstPixel;
 End;
 
+Procedure PopCasCade(JobCount: Integer);
+Var
+  cj: TCascadeJob;
+  i: Integer;
+Begin
+  cj := Nil;
+  setlength(cj, JobCount);
+  For i := 0 To JobCount - 1 Do Begin
+    cj[high(cj) - i] := AniJobs[high(AniJobs) - i];
+  End;
+  setlength(AniJobs, Length(AniJobs) - JobCount);
+  setlength(CascadeJobs, high(CascadeJobs) + 2);
+  CascadeJobs[High(CascadeJobs)] := cj;
+End;
+
 Initialization
 
   AniJobs := Nil;
+  CascadeJobs := Nil;
 
   (*
    * Paste here the content from "Copy job to clipboard" button.
@@ -473,7 +529,14 @@ Initialization
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'DUDS.ANI', 40, 40, 1, taLeftJustify, tlTop, '0, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_dud.png', false); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_trigger.png', true); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 4, taCenter, tlBottom, '10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_wobble.png', false); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MFLAME.ANI', 41, 37, 5, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44', 'data' + Pathdelim + 'atomic' + Pathdelim + 'flame.png', true);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MFLAME.ANI', 41, 37, 5, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44', 'data' + Pathdelim + 'atomic' + Pathdelim + 'flame.png', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KICK.ANI', 50, 69, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39', 'data' + Pathdelim + 'atomic' + Pathdelim + 'kick.png', true);
+
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB1.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB2.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB3.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB4.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'punbomb.png', true);
+  PopCasCade(4);
 
   // data/maps/Field**
 End.
