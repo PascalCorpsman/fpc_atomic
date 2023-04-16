@@ -260,7 +260,8 @@ Begin
     tlBottom: s := s + 'tlBottom, ';
   End;
   s := s + '''' + job.ImageSequence + ''', ' +
-    '''' + FixPath(job.DestPng) + ''');';
+    '''' + FixPath(job.DestPng) + ''', ' +
+    BoolToStr(job.TransparentByFloodFill, 'true', 'false') + ');' + LineEnding;
   Clipboard.AsText := s;
 End;
 

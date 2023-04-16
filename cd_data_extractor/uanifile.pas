@@ -368,6 +368,7 @@ Begin
       Raise Exception.Create('CIMG has unknown image type!');
     End;
   End;
+  result := TTGA.Create(img);
 
   //  printf("info: found an image: %d x %d @ %dbpp\n", img.width, img.height, img.bpp);
   //  if (img.type != 0x04)
@@ -377,12 +378,13 @@ Begin
   // palette data (vary)
   //
   If (has_palette_header) Then Begin
-    Raise exception.create('Problem, wie groß ist nun size_t im vorliegenden Fall ??');
+    Raise exception.create('BOOM');
     stream.Read(dummy32, sizeof(dummy32)); // unknown
     stream.Read(dummy32, sizeof(dummy32)); // unknown
 
     If (img.bpp < 16) Then Begin
-      // In.read_raw(tga_ptr - > palette_data, tga_ptr - > palette_size);
+      //      stream.read(pale
+              // In.read_raw(tga_ptr - > palette_data, tga_ptr - > palette_size);
     End;
 
     // If (palette_size > tga_ptr->palette_size) Then Begin
@@ -405,7 +407,6 @@ Begin
   //
   // Read Image Data
   //
-  result := TTGA.Create(img);
   stream.Read(result.data[0], result.data_size);
 
   //
