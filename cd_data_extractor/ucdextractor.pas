@@ -22,6 +22,7 @@ Uses
   Classes, SysUtils, Graphics;
 
 Type
+  TTransparentMode = (tmBlack, tmFirstPixel, tmFirstPixelPerFrame);
 
   TAniJob = Record
     SourceAni: String;
@@ -31,7 +32,7 @@ Type
     Layout: ttextlayout;
     ImageSequence: String;
     DestPng: String;
-    TransparentByFirstPixel: Boolean; // if true, than not clBlack is used, instead the color value of the very first pixel.
+    TransparentMode: TTransparentMode;
   End;
 
   TCascadeJob = Array Of TAniJob;
@@ -307,16 +308,17 @@ Begin
       tlCenter: y := (h - Ani.Image[index].Bitmap.Height) Div 2;
       tlBottom: y := (h - Ani.Image[index].Bitmap.Height);
     End;
+    If job.TransparentMode = tmFirstPixelPerFrame Then Begin
+      SwapColor(Ani.Image[index].Bitmap, Ani.Image[index].Bitmap.Canvas.Pixels[0, 0], clFuchsia);
+    End;
     SubImage.Canvas.Draw(x, y, Ani.Image[index].Bitmap);
     Result.Canvas.Draw(w * (i Mod fpr), h * (i Div fpr), SubImage);
     subimage.free;
   End;
   ani.free;
-  If job.TransparentByFirstPixel Then Begin
-    SwapColor(result, result.Canvas.Pixels[0, 0], clFuchsia);
-  End
-  Else Begin
-    SwapColor(result, clblack, clFuchsia);
+  Case job.TransparentMode Of
+    tmFirstPixel: SwapColor(result, result.Canvas.Pixels[0, 0], clFuchsia);
+    tmBlack: SwapColor(result, clblack, clFuchsia);
   End;
 End;
 
@@ -484,7 +486,7 @@ Begin
   sl.free;
 End;
 
-Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentByFirstPixel: Boolean);
+Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentMode: TTransparentMode);
 Begin
   setlength(AniJobs, high(AniJobs) + 2);
   AniJobs[high(AniJobs)].SourceAni := SourceAni;
@@ -495,7 +497,7 @@ Begin
   AniJobs[high(AniJobs)].Layout := Layout;
   AniJobs[high(AniJobs)].ImageSequence := ImageSequence;
   AniJobs[high(AniJobs)].DestPng := DestPng;
-  AniJobs[high(AniJobs)].TransparentByFirstPixel := TransparentByFirstPixel;
+  AniJobs[high(AniJobs)].TransparentMode := TransparentMode;
 End;
 
 Procedure PopCasCade(JobCount: Integer);
@@ -522,29 +524,51 @@ Initialization
    * Paste here the content from "Copy job to clipboard" button.
    *)
   // data/atomic/die/*
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE1.ANI', 73, 73, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die1.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE2.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die2.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE3.ANI', 73, 73, 8, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die3.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE4.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die4.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE5.ANI', 110, 110, 4, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die5.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE6.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die6.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE7.ANI', 110, 110, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die7.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE8.ANI', 110, 110, 4, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die8.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE9.ANI', 110, 110, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die9.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE10.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die10.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE11.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die11.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE12.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die12.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE13.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die13.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE14.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die14.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE15.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die15.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE16.ANI', 110, 110, 4, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die16.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE17.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die17.png', tmFirstPixel); // Fertig, getestet
+  // The animations 18 .. 21 are part of the extension pack which can be downloaded here: https://www.oocities.org/timessquare/tower/4056/ani.html
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'xplode18.ani', 110, 110, 9, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die18.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE19.ANI', 141, 200, 4, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die19.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE20.ANI', 34, 89, 7, taLeftJustify, tlCenter, '0, 1, 2, 3, 4, 5, 6', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die20.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE21.ANI', 79, 68, 4, taCenter, tlCenter, '8, 9, 10, 11, 12, 13, 14, 15, 16, 2, 0, 1, 3', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die21.png', tmBlack); // Fertig, getestet
+
+
   // data/atomic/idle/*
   // data/atomic/locked_in/*
   // data/atomic/*
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb.png', false); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'DUDS.ANI', 40, 40, 1, taLeftJustify, tlTop, '0, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_dud.png', false); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_trigger.png', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 4, taCenter, tlBottom, '10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_wobble.png', false); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MFLAME.ANI', 41, 37, 5, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44', 'data' + Pathdelim + 'atomic' + Pathdelim + 'flame.png', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KICK.ANI', 50, 69, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39', 'data' + Pathdelim + 'atomic' + Pathdelim + 'kick.png', true); // Fertig, getestet
-
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB1.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB2.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB3.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB4.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'punbomb.png', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'DUDS.ANI', 40, 40, 1, taLeftJustify, tlTop, '0, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_dud.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_trigger.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 4, taCenter, tlBottom, '10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_wobble.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MFLAME.ANI', 41, 37, 5, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44', 'data' + Pathdelim + 'atomic' + Pathdelim + 'flame.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KICK.ANI', 50, 69, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39', 'data' + Pathdelim + 'atomic' + Pathdelim + 'kick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB1.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB2.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB3.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB4.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'punbomb.png', tmFirstPixel); // Fertig, getestet
   PopCasCade(4);
-
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP1.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP2.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP3.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP4.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'data' + Pathdelim + 'atomic' + Pathdelim + 'pupbomb.png', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP1.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP2.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP3.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP4.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'data' + Pathdelim + 'atomic' + Pathdelim + 'pupbomb.png', tmFirstPixel); // Fertig, getestet
   PopCasCade(4);
-
-
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'STAND.ANI', 110, 110, 2, taLeftJustify, tlTop, '0, 1, 2, 3', 'data' + Pathdelim + 'atomic' + Pathdelim + 'stand.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'WALK.ANI', 110, 110, 15, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59', 'data' + Pathdelim + 'atomic' + Pathdelim + 'walk.png', tmFirstPixel); // Fertig, getestet
   // data/maps/Field**
 End.
 

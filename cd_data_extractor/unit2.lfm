@@ -102,7 +102,7 @@ object Form2: TForm2
       Left = 144
       Height = 49
       Top = 8
-      Width = 261
+      Width = 240
       AutoFill = True
       Caption = ' Alignment '
       ChildSizing.LeftRightSpacing = 6
@@ -113,7 +113,7 @@ object Form2: TForm2
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 3
       ClientHeight = 32
-      ClientWidth = 259
+      ClientWidth = 238
       Columns = 3
       Items.Strings = (
         'Left'
@@ -126,7 +126,7 @@ object Form2: TForm2
       Left = 144
       Height = 49
       Top = 72
-      Width = 261
+      Width = 240
       AutoFill = True
       Caption = ' Layout '
       ChildSizing.LeftRightSpacing = 6
@@ -137,7 +137,7 @@ object Form2: TForm2
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 3
       ClientHeight = 32
-      ClientWidth = 259
+      ClientWidth = 238
       Columns = 3
       Items.Strings = (
         'Top'
@@ -219,10 +219,10 @@ object Form2: TForm2
       Text = 'Edit5'
     end
     object RadioGroup3: TRadioGroup
-      Left = 447
+      Left = 392
       Height = 106
       Top = 8
-      Width = 121
+      Width = 168
       AutoFill = True
       Caption = ' transparent by '
       ChildSizing.LeftRightSpacing = 6
@@ -233,10 +233,11 @@ object Form2: TForm2
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
       ClientHeight = 89
-      ClientWidth = 119
+      ClientWidth = 166
       Items.Strings = (
         'first pixel'
         'clblack'
+        'first pixel per frame'
       )
       TabOrder = 9
     end

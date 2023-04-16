@@ -166,7 +166,11 @@ Begin
   End;
   result.ImageSequence := edit4.text;
   result.DestPng := edit5.text;
-  result.TransparentByFirstPixel := RadioGroup3.ItemIndex = 0;
+  Case RadioGroup3.ItemIndex Of
+    0: result.TransparentMode := tmFirstPixel;
+    1: result.TransparentMode := tmBlack;
+    2: result.TransparentMode := tmFirstPixelPerFrame;
+  End;
 End;
 
 Procedure TForm2.Button1Click(Sender: TObject);
@@ -238,7 +242,6 @@ Procedure TForm2.Button3Click(Sender: TObject);
     result := aFilename;
     result := StringReplace(result, PathDelim, ''' + Pathdelim + ''', [rfReplaceAll]);
   End;
-
 Var
   job: TAniJob;
   s: String;
@@ -260,8 +263,12 @@ Begin
     tlBottom: s := s + 'tlBottom, ';
   End;
   s := s + '''' + job.ImageSequence + ''', ' +
-    '''' + FixPath(job.DestPng) + ''', ' +
-    BoolToStr(job.TransparentByFirstPixel, 'true', 'false') + ');' + LineEnding;
+    '''' + FixPath(job.DestPng) + ''', ';
+  Case job.TransparentMode Of
+    tmBlack: s := s + 'tmBlack);' + LineEnding;
+    tmFirstPixel: s := s + 'tmFirstPixel);' + LineEnding;
+    tmFirstPixelPerFrame: s := s + 'tmFirstPixelPerFrame);' + LineEnding;
+  End;
   Clipboard.AsText := s;
 End;
 
