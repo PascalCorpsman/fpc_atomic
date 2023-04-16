@@ -30,12 +30,13 @@ Type
     Layout: ttextlayout;
     ImageSequence: String;
     DestPng: String;
+    TransparentByFloodFill: Boolean; // if False then clblack will be converted to clfuchsia
   End;
 
   (*
    * Partly separated to be able to use it in the ani job creator ;)
    *)
-Function DoAniJob(CDFolder: String; AniJob: TAniJob): TBitmap;
+Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
 
 Function CheckCDRootFolder(aFolder: String): boolean;
 Function CheckFPCAtomicFolder(aFolder: String): boolean;
@@ -240,7 +241,7 @@ Begin
   sl.free;
 End;
 
-Function DoAniJob(CDFolder: String; AniJob: TAniJob): TBitmap;
+Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
 Var
   ani: TAniFile;
   AniFilename: String;
@@ -251,15 +252,15 @@ Var
   SubImage: TBitmap;
 Begin
   result := Nil;
-  w := AniJob.Width;
-  h := AniJob.Height;
-  fpr := AniJob.FramesPerRow;
+  w := Job.Width;
+  h := Job.Height;
+  fpr := Job.FramesPerRow;
   If fpr = 0 Then Begin
     exit;
   End;
-  AniFilename := GetFileByMatch(ExtractFilePath(CDFolder + AniJob.SourceAni), AniJob.SourceAni);
+  AniFilename := GetFileByMatch(ExtractFilePath(CDFolder + Job.SourceAni), Job.SourceAni);
   If AniFilename = '' Then Begin
-    AddLog('  Error: could not find: ' + AniJob.SourceAni);
+    AddLog('  Error: could not find: ' + Job.SourceAni);
     exit;
   End;
   ani := TAniFile.Create();
@@ -267,7 +268,7 @@ Begin
     ani.free;
     exit;
   End;
-  s := AniJob.ImageSequence;
+  s := Job.ImageSequence;
   elements := s.Split(',');
   cnt := Length(elements);
   Result := TBitmap.Create;
@@ -276,6 +277,7 @@ Begin
   Result.Canvas.Brush.Color := clFuchsia;
   Result.Canvas.Brush.Style := bsSolid;
   Result.Canvas.Rectangle(-1, -1, Result.Width + 1, Result.Height + 1);
+  Result.Transparent := false;
   For i := 0 To high(elements) Do Begin
     index := strtointdef(elements[i], -1);
     If (index >= ani.ImageCount) Or (index < 0) Then Begin
@@ -287,22 +289,28 @@ Begin
     SubImage := TBitmap.Create;
     Subimage.Width := w;
     SubImage.Height := h;
-    Case AniJob.Alignment Of
+    SubImage.Transparent := false;
+    Case Job.Alignment Of
       taLeftJustify: x := 0;
       taCenter: x := (w - Ani.Image[index].Bitmap.Width) Div 2;
       taRightJustify: x := (w - Ani.Image[index].Bitmap.Width);
     End;
-    Case AniJob.Layout Of
+    Case Job.Layout Of
       tlTop: y := 0;
       tlCenter: y := (h - Ani.Image[index].Bitmap.Height) Div 2;
       tlBottom: y := (h - Ani.Image[index].Bitmap.Height);
     End;
     SubImage.Canvas.Draw(x, y, Ani.Image[index].Bitmap);
-    SwapColor(SubImage, clBlack, clFuchsia);
+    If Not job.TransparentByFloodFill Then Begin
+      SwapColor(SubImage, clBlack, clFuchsia);
+    End;
     Result.Canvas.Draw(w * (i Mod fpr), h * (i Div fpr), SubImage);
     subimage.free;
   End;
   ani.free;
+  If job.TransparentByFloodFill Then Begin
+    FloodFill(result, 0, 0, clFuchsia, false);
+  End
 End;
 
 Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String);
@@ -433,7 +441,7 @@ Begin
   sl.free;
 End;
 
-Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String);
+Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentByFloodFill: Boolean);
 Begin
   setlength(AniJobs, high(AniJobs) + 2);
   AniJobs[high(AniJobs)].SourceAni := SourceAni;
@@ -444,6 +452,7 @@ Begin
   AniJobs[high(AniJobs)].Layout := Layout;
   AniJobs[high(AniJobs)].ImageSequence := ImageSequence;
   AniJobs[high(AniJobs)].DestPng := DestPng;
+  AniJobs[high(AniJobs)].TransparentByFloodFill := TransparentByFloodFill;
 End;
 
 Initialization
@@ -457,7 +466,9 @@ Initialization
   // data/atomic/idle/*
   // data/atomic/locked_in/*
   // data/atomic/*
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb.png'); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb.png', false); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'DUDS.ANI', 40, 40, 1, taLeftJustify, tlTop, '0, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_dud.png', false); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_trigger.png', true); // Fertig, getestet
   // data/maps/Field**
 End.
 

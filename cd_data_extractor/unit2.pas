@@ -51,6 +51,7 @@ Type
     OpenDialog1: TOpenDialog;
     RadioGroup1: TRadioGroup;
     RadioGroup2: TRadioGroup;
+    RadioGroup3: TRadioGroup;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
@@ -74,7 +75,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses FileUtil, LazFileUtils, math, ugraphics, Clipbrd;
+Uses FileUtil, LazFileUtils, math, Clipbrd;
 
 { TForm2 }
 
@@ -143,6 +144,7 @@ Begin
   edit5.text := '';
   RadioGroup1.ItemIndex := 0;
   RadioGroup2.ItemIndex := 0;
+  RadioGroup3.ItemIndex := 0;
   label8.caption := '';
 End;
 
@@ -164,6 +166,7 @@ Begin
   End;
   result.ImageSequence := edit4.text;
   result.DestPng := edit5.text;
+  result.TransparentByFloodFill := RadioGroup3.ItemIndex = 1;
 End;
 
 Procedure TForm2.Button1Click(Sender: TObject);

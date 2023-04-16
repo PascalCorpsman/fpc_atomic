@@ -277,6 +277,7 @@ Begin
   TempIntfImg.CreateBitmaps(ImgHandle, ImgMaskHandle, false);
   Bitmap.Handle := ImgHandle;
   Bitmap.MaskHandle := ImgMaskHandle;
+  Bitmap.Transparent := false;
   result := Bitmap;
 End;
 
@@ -536,7 +537,7 @@ Begin
 End;
 
 Function TAniFile.ImageIndexByName(ImageName: String): integer;
-var
+Var
   i: Integer;
 Begin
   result := -1;

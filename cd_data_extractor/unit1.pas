@@ -85,7 +85,7 @@ Begin
   (*
    * Disable the ani job generator, it is only used for developping
    *)
-  button6.Visible := false;
+//  button6.Visible := false;
 End;
 
 Procedure TForm1.Button2Click(Sender: TObject);
@@ -177,4 +177,5 @@ Begin
 End;
 
 End.
+
 
