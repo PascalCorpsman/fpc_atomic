@@ -144,7 +144,7 @@ Begin
   edit5.text := '';
   RadioGroup1.ItemIndex := 0;
   RadioGroup2.ItemIndex := 0;
-  RadioGroup3.ItemIndex := 0;
+  RadioGroup3.ItemIndex := 1;
   label8.caption := '';
 End;
 
@@ -166,7 +166,7 @@ Begin
   End;
   result.ImageSequence := edit4.text;
   result.DestPng := edit5.text;
-  result.TransparentByFloodFill := RadioGroup3.ItemIndex = 1;
+  result.TransparentByFirstPixel := RadioGroup3.ItemIndex = 0;
 End;
 
 Procedure TForm2.Button1Click(Sender: TObject);
@@ -261,7 +261,7 @@ Begin
   End;
   s := s + '''' + job.ImageSequence + ''', ' +
     '''' + FixPath(job.DestPng) + ''', ' +
-    BoolToStr(job.TransparentByFloodFill, 'true', 'false') + ');' + LineEnding;
+    BoolToStr(job.TransparentByFirstPixel, 'true', 'false') + ');' + LineEnding;
   Clipboard.AsText := s;
 End;
 

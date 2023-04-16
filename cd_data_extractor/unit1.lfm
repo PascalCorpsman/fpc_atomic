@@ -98,7 +98,7 @@ object Form1: TForm1
   object Button6: TButton
     Left = 264
     Height = 25
-    Top = 152
+    Top = 144
     Width = 176
     Anchors = [akTop, akRight]
     Caption = 'ani job creator'

@@ -235,8 +235,8 @@ object Form2: TForm2
       ClientHeight = 89
       ClientWidth = 119
       Items.Strings = (
+        'first pixel'
         'clblack'
-        'floodfill'
       )
       TabOrder = 9
     end

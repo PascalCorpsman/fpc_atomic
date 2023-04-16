@@ -30,7 +30,7 @@ Type
     Layout: ttextlayout;
     ImageSequence: String;
     DestPng: String;
-    TransparentByFloodFill: Boolean; // if False then clblack will be converted to clfuchsia
+    TransparentByFirstPixel: Boolean; // if true, than not clBlack is used, instead the color value of the very first pixel.
   End;
 
   (*
@@ -272,12 +272,12 @@ Begin
   elements := s.Split(',');
   cnt := Length(elements);
   Result := TBitmap.Create;
+  Result.Transparent := false;
   Result.Width := w * fpr;
   Result.Height := h * ceil(cnt / fpr);
   Result.Canvas.Brush.Color := clFuchsia;
   Result.Canvas.Brush.Style := bsSolid;
   Result.Canvas.Rectangle(-1, -1, Result.Width + 1, Result.Height + 1);
-  Result.Transparent := false;
   For i := 0 To high(elements) Do Begin
     index := strtointdef(elements[i], -1);
     If (index >= ani.ImageCount) Or (index < 0) Then Begin
@@ -287,9 +287,12 @@ Begin
       exit;
     End;
     SubImage := TBitmap.Create;
+    SubImage.Transparent := false;
     Subimage.Width := w;
     SubImage.Height := h;
-    SubImage.Transparent := false;
+    SubImage.Canvas.Brush.Color := clFuchsia;
+    SubImage.Canvas.Brush.Style := bsSolid;
+    SubImage.Canvas.Rectangle(-1, -1, SubImage.Width + 1, SubImage.Height + 1);
     Case Job.Alignment Of
       taLeftJustify: x := 0;
       taCenter: x := (w - Ani.Image[index].Bitmap.Width) Div 2;
@@ -305,11 +308,11 @@ Begin
     subimage.free;
   End;
   ani.free;
-  If job.TransparentByFloodFill Then Begin
-    FloodFill(result, 0, 0, clFuchsia, false);
+  If job.TransparentByFirstPixel Then Begin
+    SwapColor(result, result.Canvas.Pixels[0, 0], clFuchsia);
   End
   Else Begin
-    SwapColor(result, clBlack, clFuchsia);
+    SwapColor(result, clblack, clFuchsia);
   End;
 End;
 
@@ -441,7 +444,7 @@ Begin
   sl.free;
 End;
 
-Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentByFloodFill: Boolean);
+Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentByFirstPixel: Boolean);
 Begin
   setlength(AniJobs, high(AniJobs) + 2);
   AniJobs[high(AniJobs)].SourceAni := SourceAni;
@@ -452,7 +455,7 @@ Begin
   AniJobs[high(AniJobs)].Layout := Layout;
   AniJobs[high(AniJobs)].ImageSequence := ImageSequence;
   AniJobs[high(AniJobs)].DestPng := DestPng;
-  AniJobs[high(AniJobs)].TransparentByFloodFill := TransparentByFloodFill;
+  AniJobs[high(AniJobs)].TransparentByFirstPixel := TransparentByFirstPixel;
 End;
 
 Initialization
@@ -470,6 +473,8 @@ Initialization
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'DUDS.ANI', 40, 40, 1, taLeftJustify, tlTop, '0, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_dud.png', false); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_trigger.png', true); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 4, taCenter, tlBottom, '10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_wobble.png', false); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MFLAME.ANI', 41, 37, 5, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44', 'data' + Pathdelim + 'atomic' + Pathdelim + 'flame.png', true);
+
   // data/maps/Field**
 End.
 
