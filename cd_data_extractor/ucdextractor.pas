@@ -530,13 +530,20 @@ Initialization
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_trigger.png', true); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 4, taCenter, tlBottom, '10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_wobble.png', false); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MFLAME.ANI', 41, 37, 5, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44', 'data' + Pathdelim + 'atomic' + Pathdelim + 'flame.png', true); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KICK.ANI', 50, 69, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39', 'data' + Pathdelim + 'atomic' + Pathdelim + 'kick.png', true);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KICK.ANI', 50, 69, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39', 'data' + Pathdelim + 'atomic' + Pathdelim + 'kick.png', true); // Fertig, getestet
 
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB1.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true);
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB2.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true);
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB3.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true);
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB4.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'punbomb.png', true);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB1.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB2.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB3.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB4.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'punbomb.png', true); // Fertig, getestet
   PopCasCade(4);
+
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP1.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP2.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP3.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP4.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'data' + Pathdelim + 'atomic' + Pathdelim + 'pupbomb.png', true); // Fertig, getestet
+  PopCasCade(4);
+
 
   // data/maps/Field**
 End.
