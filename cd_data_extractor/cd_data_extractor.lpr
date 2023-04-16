@@ -24,8 +24,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, Unit1, ucdextractor, uanifile, uwave
-  { you can add units after this };
+  Forms, Unit1, ucdextractor, uanifile, uwave, ugraphics, uvectormath, Unit2;
 
 {$R *.res}
 
@@ -34,6 +33,7 @@ begin
   Application.Scaled:=True;
   Application.Initialize;
   Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TForm2, Form2);
   Application.Run;
 end.
 

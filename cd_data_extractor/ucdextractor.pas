@@ -19,21 +19,38 @@ Unit ucdextractor;
 Interface
 
 Uses
-  Classes, SysUtils;
+  Classes, SysUtils, Graphics;
+
+Type
+  TAniJob = Record
+    SourceAni: String;
+    Width, Height: integer;
+    FramesPerRow: integer;
+    Alignment: TAlignment;
+    Layout: ttextlayout;
+    ImageSequence: String;
+    DestPng: String;
+  End;
+
+  (*
+   * Partly separated to be able to use it in the ani job creator ;)
+   *)
+Function DoAniJob(CDFolder: String; AniJob: TAniJob): TBitmap;
 
 Function CheckCDRootFolder(aFolder: String): boolean;
 Function CheckFPCAtomicFolder(aFolder: String): boolean;
 
-Procedure ExtractAtomicImages(CDFolder, AtomicFolder: String); // in Work
+Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String); // in Work
 Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String); // Fertig, getestet.
 Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String); // Fertig, getestet.
 
 Implementation
 
 Uses
-  FileUtil
+  FileUtil, math
   , uwave
   , uanifile
+  , ugraphics
   , Unit1 // Bäh invalid dependency!
   ;
 
@@ -149,6 +166,9 @@ Const
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'zen2.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'zen2.wav') // Fertig, getestet
     );
 
+Var
+  AniJobs: Array Of TAniJob; // All the .ani jobs will be set in the initialization part of the unit.
+
 Function CheckCDRootFolder(aFolder: String): boolean;
 Var
   sl: TStringList;
@@ -199,12 +219,17 @@ Begin
   sl.free;
 End;
 
+(*
+ * Sucht in Folder nach Match
+ *)
+
 Function GetFileByMatch(Folder, Match: String): String;
 Var
   sl: TStringList;
   i: Integer;
 Begin
   result := '';
+  // TODO: Wenn Folder nicht existiert, dann muss geschaut werden ob es nur an der Schreibweise liegt und ggf auch hier ein passendes gewählt werden.!
   sl := FindAllFiles(Folder, '*', false);
   For i := 0 To sl.Count - 1 Do Begin
     If pos(lowercase(match), lowercase(sl[i])) <> 0 Then Begin
@@ -215,9 +240,107 @@ Begin
   sl.free;
 End;
 
-Procedure ExtractAtomicImages(CDFolder, AtomicFolder: String);
+Function DoAniJob(CDFolder: String; AniJob: TAniJob): TBitmap;
+Var
+  ani: TAniFile;
+  AniFilename: String;
+  cnt, w, h, fpr, i, x, y: integer;
+  elements: TStringArray;
+  s: String;
+  index: LongInt;
+  SubImage: TBitmap;
 Begin
-  hier gehts weiter definieren eines "Jobs" und dann den auch Ausführen ;-)
+  result := Nil;
+  w := AniJob.Width;
+  h := AniJob.Height;
+  fpr := AniJob.FramesPerRow;
+  If fpr = 0 Then Begin
+    exit;
+  End;
+  AniFilename := GetFileByMatch(ExtractFilePath(CDFolder + AniJob.SourceAni), AniJob.SourceAni);
+  If AniFilename = '' Then Begin
+    AddLog('  Error: could not find: ' + AniJob.SourceAni);
+    exit;
+  End;
+  ani := TAniFile.Create();
+  If Not ani.LoadFromFile(AniFilename) Then Begin
+    ani.free;
+    exit;
+  End;
+  s := AniJob.ImageSequence;
+  elements := s.Split(',');
+  cnt := Length(elements);
+  Result := TBitmap.Create;
+  Result.Width := w * fpr;
+  Result.Height := h * ceil(cnt / fpr);
+  Result.Canvas.Brush.Color := clFuchsia;
+  Result.Canvas.Brush.Style := bsSolid;
+  Result.Canvas.Rectangle(-1, -1, Result.Width + 1, Result.Height + 1);
+  For i := 0 To high(elements) Do Begin
+    index := strtointdef(elements[i], -1);
+    If (index >= ani.ImageCount) Or (index < 0) Then Begin
+      ani.free;
+      result.free;
+      result := Nil;
+      exit;
+    End;
+    SubImage := TBitmap.Create;
+    Subimage.Width := w;
+    SubImage.Height := h;
+    Case AniJob.Alignment Of
+      taLeftJustify: x := 0;
+      taCenter: x := (w - Ani.Image[index].Bitmap.Width) Div 2;
+      taRightJustify: x := (w - Ani.Image[index].Bitmap.Width);
+    End;
+    Case AniJob.Layout Of
+      tlTop: y := 0;
+      tlCenter: y := (h - Ani.Image[index].Bitmap.Height) Div 2;
+      tlBottom: y := (h - Ani.Image[index].Bitmap.Height);
+    End;
+    SubImage.Canvas.Draw(x, y, Ani.Image[index].Bitmap);
+    SwapColor(SubImage, clBlack, clFuchsia);
+    Result.Canvas.Draw(w * (i Mod fpr), h * (i Div fpr), SubImage);
+    subimage.free;
+  End;
+  ani.free;
+End;
+
+Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String);
+Var
+  i: Integer;
+  b: TBitmap;
+  p: TPortableNetworkGraphic;
+  cnt: integer;
+  dn: String;
+Begin
+  CDFolder := IncludeTrailingPathDelimiter(CDFolder);
+  AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
+  cnt := 0;
+  For i := 0 To high(AniJobs) Do Begin
+    b := DoAniJob(CDFolder, AniJobs[i]);
+    If assigned(b) Then Begin
+      p := TPortableNetworkGraphic.Create;
+      p.assign(b);
+      dn := AtomicFolder + AniJobs[i].DestPng;
+      If Not ForceDirectories(ExtractFilePath(dn)) Then Begin
+        AddLog('  Error: could not create folder: ' + ExtractFilePath(dn));
+      End
+      Else Begin
+        Try
+          p.SaveToFile(dn);
+          inc(cnt);
+        Except
+          AddLog('  Error: could not save: ' + dn);
+        End;
+      End;
+      p.free;
+      b.free;
+    End
+    Else Begin
+      AddLog(format('  Error: %s could not be done.', [AniJobs[i].SourceAni]));
+    End;
+  End;
+  AddLog(format('  %d files created', [cnt]));
 End;
 
 Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String);
@@ -310,5 +433,26 @@ Begin
   sl.free;
 End;
 
+Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String);
+Begin
+  setlength(AniJobs, high(AniJobs) + 2);
+  AniJobs[high(AniJobs)].SourceAni := SourceAni;
+  AniJobs[high(AniJobs)].Width := Width;
+  AniJobs[high(AniJobs)].Height := Height;
+  AniJobs[high(AniJobs)].FramesPerRow := FPR;
+  AniJobs[high(AniJobs)].Alignment := Alignment;
+  AniJobs[high(AniJobs)].Layout := Layout;
+  AniJobs[high(AniJobs)].ImageSequence := ImageSequence;
+  AniJobs[high(AniJobs)].DestPng := DestPng;
+End;
+
+Initialization
+
+  AniJobs := Nil;
+
+  (*
+   * Paste here the content from "Copy job to clipboard" button.
+   *)
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb.png');
 End.
 

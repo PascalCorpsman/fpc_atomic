@@ -32,6 +32,7 @@ Type
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
+    Button6: TButton;
     IniPropStorage1: TIniPropStorage;
     Label1: TLabel;
     Label2: TLabel;
@@ -43,6 +44,7 @@ Type
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
+    Procedure Button6Click(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
   private
@@ -60,7 +62,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses ucdextractor;
+Uses Unit2, ucdextractor;
 
 Procedure AddLog(aLog: String);
 Begin
@@ -80,6 +82,10 @@ Begin
   memo1.clear;
   Constraints.MinWidth := Width;
   Constraints.MinHeight := Height;
+  (*
+   * Disable the ani job generator, it is only used for developping
+   *)
+  button6.Visible := false;
 End;
 
 Procedure TForm1.Button2Click(Sender: TObject);
@@ -127,8 +133,10 @@ Begin
     addlog('Error, could not create data folder.');
     exit;
   End;
-  AddLog('Images');
-  ExtractAtomicImages(Label1.caption, label2.caption);
+  //  AddLog('PCXs');
+  //  ExtractAtomicPCXs(Label1.caption, label2.caption);
+  AddLog('ANIs');
+  ExtractAtomicAnis(Label1.caption, label2.caption);
   //AddLog('Sounds');
   //ExtractAtomicSounds(Label1.caption, label2.caption);
   //AddLog('Shemes'); // Fertig, getestet
@@ -136,6 +144,16 @@ Begin
   n := GetTickCount64() - n;
   Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
   AddLog('Done, please check results.');
+End;
+
+Procedure TForm1.Button6Click(Sender: TObject);
+Begin
+  If label1.Caption = '' Then Begin
+    showmessage('First set atomic cd root folder!.');
+    exit;
+  End;
+  form2.AtomicRootFolder := IncludeTrailingPathDelimiter(Label1.Caption);
+  form2.ShowModal;
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
