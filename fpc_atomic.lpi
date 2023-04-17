@@ -63,7 +63,6 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-        <IsVisibleTab Value="True"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -389,7 +388,10 @@
       <Unit32>
         <Filename Value="globaldefines.inc"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
+        <TopLine Value="4"/>
+        <CursorPos X="2" Y="29"/>
         <UsageCount Value="36"/>
         <Loaded Value="True"/>
       </Unit32>

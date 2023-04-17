@@ -137,14 +137,14 @@ Begin
     exit;
   End;
   AddLog('PCXs');
-  //  ExtractAtomicPCXs(Label1.caption, label2.caption);
+  ExtractAtomicPCXs(Label1.caption, label2.caption);
   AddLog('ANIs');
   ExtractAtomicAnis(Label1.caption, label2.caption);
   ExtractAtomicAniToAnis(Label1.caption, label2.caption);
   AddLog('Sounds');
-  //  ExtractAtomicSounds(Label1.caption, label2.caption);
+  ExtractAtomicSounds(Label1.caption, label2.caption);
   AddLog('Shemes');
-  //  ExtractAtomicShemes(Label1.caption, label2.caption);
+  ExtractAtomicShemes(Label1.caption, label2.caption);
   n := GetTickCount64() - n;
   Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
   AddLog('Done, please check results.');
@@ -180,4 +180,5 @@ Begin
 End;
 
 End.
+
 

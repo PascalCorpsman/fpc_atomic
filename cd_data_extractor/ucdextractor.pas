@@ -37,6 +37,21 @@ Type
 
   TCascadeJob = Array Of TAniJob;
 
+  TSpriteData = Record
+    FrameOffset: Integer;
+    FrameCount: integer;
+  End;
+
+  TAniToAniJob = Record
+    AniJob: TAniJob;
+    AngleOffset: Single;
+    FramesPerRow: integer;
+    FramesPerCol: integer;
+    TimePerFrame: integer;
+    SpriteData: Array Of TSpriteData;
+  End;
+
+
   (*
    * Partly separated to be able to use it in the ani job creator ;)
    *)
@@ -46,7 +61,7 @@ Function CheckCDRootFolder(aFolder: String): boolean;
 Function CheckFPCAtomicFolder(aFolder: String): boolean;
 
 Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String); // Fertig, getestet.
-Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String); // TODO: ..
+Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String); // in Work
 Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String); // Fertig, getestet.
 Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String); // Fertig, getestet.
 Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String); // Fertig, getestet.
@@ -59,6 +74,7 @@ Uses
   , uwave
   , uanifile
   , ugraphics
+  , uopengl_animation
   , Unit1 // Bäh invalid dependency!
   ;
 
@@ -233,6 +249,7 @@ Const
 Var
   AniJobs: Array Of TAniJob; // All the .ani jobs will be set in the initialization part of the unit.
   CascadeJobs: Array Of TCascadeJob; // All jobs that where merged into one image.
+  AniToAniJobs: Array Of TAniToAniJob; // All the jobs where a Atomic Bomberman Ani directly is converted into a FPC_Atomic.ani file
 
 {$IFDEF Linux}
   (*
@@ -469,6 +486,9 @@ Begin
   // The Normal Jobs
   For i := 0 To high(AniJobs) Do Begin
     b := DoAniJob(CDFolder, AniJobs[i]);
+    If Not assigned(b) Then Begin
+      Continue;
+    End;
     (*
      * Unfortunatunelly this special texture needs a little "Fix", which is here
      * hardcoded ;)
@@ -517,9 +537,63 @@ Begin
 End;
 
 Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String);
+Var
+  cnt, i, j: integer;
+  b: TBitmap;
+  ani: TOpenGL_Animation;
+  s: TAniSprite;
+  targetAniFile: String;
 Begin
-  //hier gehts weiter, der Rest steht schon ;)
-  AddLog('  Need to be implemented.');
+  cnt := 0;
+  CDFolder := IncludeTrailingPathDelimiter(CDFolder);
+  AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
+  For i := 0 To high(AniToAniJobs) Do Begin
+    b := DoAniJob(CDFolder, AniToAniJobs[i].AniJob);
+    If Not assigned(b) Then Begin
+      Continue;
+    End;
+    ani := TOpenGL_Animation.Create;
+    ani.AngleOffset := AniToAniJobs[i].AngleOffset;
+    For j := 0 To high(AniToAniJobs[i].SpriteData) Do Begin
+      If j <> 0 Then ani.AddRange(true); // the first range already exists -> create one less ;)
+      s := ani.Sprite[j];
+      If j = 0 Then Begin // The first sprite gets the Image, all others derive from it.
+        s.Bitmap := b;
+        s.Derived := false;
+      End
+      Else Begin
+        s.Bitmap := Nil;
+        s.Derived := true;
+      End;
+      s.AlphaImage := true;
+      s.AlphaMask := Nil;
+      s.TimePerFrame := AniToAniJobs[i].TimePerFrame;
+      s.rect := rect(0, 0, b.Width, b.Height);
+      // s.Name := targetAniFile; -- Wird automatisch gesetzt
+      s.Width := b.Width Div AniToAniJobs[i].FramesPerRow;
+      s.Height := b.height Div AniToAniJobs[i].FramesPerCol;
+      s.FramesPerRow := AniToAniJobs[i].FramesPerRow;
+      s.FramesPerCol := AniToAniJobs[i].FramesPerCol;
+      s.FrameOffset := AniToAniJobs[i].SpriteData[j].FrameOffset;
+      s.FrameCount := AniToAniJobs[i].SpriteData[j].FrameCount;
+      ani.Sprite[j] := s;
+    End;
+    targetAniFile := AtomicFolder + AniToAniJobs[i].AniJob.DestPng;
+    If Not ForceDirectories(ExtractFilePath(targetAniFile)) Then Begin
+      addlog('  Error unable to create dir: ' + ExtractFilePath(targetAniFile));
+      ani.free;
+      Continue;
+    End;
+    Try
+      ani.SaveToFile(targetAniFile);
+      inc(cnt);
+    Except
+      addlog('  Error unable to save: ' + targetAniFile);
+    End;
+    // b.free; -- the sprite handles the Bitmap now !
+    ani.free;
+  End;
+  AddLog(format('  %d files created', [cnt]));
 End;
 
 Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String);
@@ -695,10 +769,38 @@ Begin
   CascadeJobs[High(CascadeJobs)] := cj;
 End;
 
+(*
+ * 2 Datapoints give 1 Dataset
+ *  \- first  = FrameOffset
+ *  \- second = FrameCount
+ *)
+
+Procedure PopAniJob(FramesPerRow, FramesPerCol, TimePerFrame: integer; AngleOffset: Single; DataPoints: Array Of Integer);
+Var
+  i: Integer;
+Begin
+  If length(DataPoints) Mod 2 <> 0 Then Begin
+    Raise exception.create('Error, invalid settings.');
+  End;
+  setlength(AniToAniJobs, high(AniToAniJobs) + 2);
+  AniToAniJobs[high(AniToAniJobs)].AniJob := AniJobs[high(AniJobs)];
+  setlength(AniJobs, high(AniJobs));
+  AniToAniJobs[high(AniToAniJobs)].FramesPerRow := FramesPerRow;
+  AniToAniJobs[high(AniToAniJobs)].FramesPerCol := FramesPerCol;
+  AniToAniJobs[high(AniToAniJobs)].TimePerFrame := TimePerFrame;
+  AniToAniJobs[high(AniToAniJobs)].AngleOffset := AngleOffset;
+  setlength(AniToAniJobs[high(AniToAniJobs)].SpriteData, length(DataPoints) Div 2);
+  For i := 0 To high(AniToAniJobs[high(AniToAniJobs)].SpriteData) Do Begin
+    AniToAniJobs[high(AniToAniJobs)].SpriteData[i].FrameOffset := DataPoints[i * 2];
+    AniToAniJobs[high(AniToAniJobs)].SpriteData[i].FrameCount := DataPoints[i * 2 + 1];
+  End;
+End;
+
 Initialization
 
   AniJobs := Nil;
   CascadeJobs := Nil;
+  AniToAniJobs := Nil;
 
   (*
    * Paste here the content from "Copy job to clipboard" button.
@@ -767,30 +869,58 @@ Initialization
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES0.ANI', 40, 36, 1, taLeftJustify, tlTop, '2', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field00' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES1.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field01' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES1.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field01' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES2.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field02' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES2.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field02' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES2.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field02' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES2.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field02' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES3.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field03' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES3.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field03' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES4.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field04' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES4.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field04' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES5.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field05' + Pathdelim + 'brick.png', tmFirstPixelPerFrame); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES5.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field05' + Pathdelim + 'solid.png', tmFirstPixelPerFrame); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES6.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field06' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES6.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field06' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES7.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field07' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES7.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field07' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES8.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field08' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES8.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field08' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES9.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field09' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES9.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field09' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES6.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field06' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES6.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field06' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES7.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field07' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES7.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field07' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES8.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field08' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES8.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field08' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES9.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field09' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES9.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field09' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES10.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field10' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES10.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field10' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK0.ANI', 40, 36, 3, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field00' + Pathdelim + 'xbrick.ani', tmFirstPixelPerFrame);
+  PopAniJob(3, 3, 100, 0, [0, 9]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK1.ANI', 40, 36, 3, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field01' + Pathdelim + 'xbrick.ani', tmFirstPixelPerFrame);
+  PopAniJob(3, 3, 100, 0, [0, 9]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK2.ANI', 40, 36, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field02' + Pathdelim + 'xbrick.ani', tmFirstPixel);
+  PopAniJob(2, 4, 100, 0, [0, 8]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK3.ANI', 40, 36, 3, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field03' + Pathdelim + 'xbrick.ani', tmFirstPixelPerFrame);
+  PopAniJob(3, 3, 100, 0, [0, 9]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK4.ANI', 40, 36, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field04' + Pathdelim + 'xbrick.ani', tmFirstPixel);
+  PopAniJob(2, 5, 100, 0, [0, 10]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK5.ANI', 40, 36, 3, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field05' + Pathdelim + 'xbrick.ani', tmFirstPixelPerFrame);
+  PopAniJob(3, 3, 100, 0, [0, 9]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK6.ANI', 40, 36, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field06' + Pathdelim + 'xbrick.ani', tmFirstPixelPerFrame);
+  PopAniJob(2, 5, 100, 0, [0, 10]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK7.ANI', 40, 36, 3, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field07' + Pathdelim + 'xbrick.ani', tmFirstPixel);
+  PopAniJob(3, 3, 100, 0, [0, 9]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK8.ANI', 40, 36, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field08' + Pathdelim + 'xbrick.ani', tmFirstPixel);
+  PopAniJob(2, 5, 100, 0, [0, 10]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK9.ANI', 40, 36, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field09' + Pathdelim + 'xbrick.ani', tmFirstPixel);
+  PopAniJob(2, 5, 100, 0, [0, 10]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XBRICK10.ANI', 40, 36, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field10' + Pathdelim + 'xbrick.ani', tmFirstPixel);
+  PopAniJob(2, 5, 100, 0, [0, 10]);
   // data/res/*
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KFONT.ANI', 18, 27, 4, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'data' + Pathdelim + 'res' + Pathdelim + 'bigfont.png', tmBlack);
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'HURRY.ANI', 278, 91, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'res' + Pathdelim + 'hurry.png', tmBlack);
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KFONT.ANI', 48, 17, 1, taCenter, tlCenter, '11', 'data' + Pathdelim + 'res' + Pathdelim + 'infinity.png', tmBlack);
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MISC.ANI', 32, 32, 1, taLeftJustify, tlTop, '11', 'data' + Pathdelim + 'res' + Pathdelim + 'options_cursor.png', tmFirstPixel);
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MISC.ANI', 77, 20, 1, taLeftJustify, tlTop, '10', 'data' + Pathdelim + 'res' + Pathdelim + 'playerdead.png', tmBlack);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'EXTRAS.ANI', 21, 21, 4, taLeftJustify, tlTop, '1, 0, 3, 2', 'data' + Pathdelim + 'res' + Pathdelim + 'arrows.ani', tmBlack);
+  PopAniJob(4, 1, 100, 45.0, [0, 1, 1, 1, 2, 1, 3, 1]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CONVEYOR.ANI', 40, 36, 5, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17', 'data' + Pathdelim + 'res' + Pathdelim + 'conveyor.ani', tmFirstPixelPerFrame);
+  PopAniJob(5, 4, 100, 45.0, [5, 5, 10, 4, 0, 5, 14, 4]);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'res' + Pathdelim + 'mainmenu_cursor.ani', tmFirstPixel);
+  PopAniJob(5, 4, 40, 0.0, [0, 18]);
 
 End.
 
