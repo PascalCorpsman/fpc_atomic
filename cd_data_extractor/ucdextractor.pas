@@ -45,7 +45,9 @@ Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
 Function CheckCDRootFolder(aFolder: String): boolean;
 Function CheckFPCAtomicFolder(aFolder: String): boolean;
 
-Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String); // in Work
+Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String); // Fertig, getestet.
+Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String); // TODO: ..
+Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String); // Fertig, getestet.
 Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String); // Fertig, getestet.
 Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String); // Fertig, getestet.
 
@@ -53,6 +55,7 @@ Implementation
 
 Uses
   FileUtil, math
+  , upcx
   , uwave
   , uanifile
   , ugraphics
@@ -60,12 +63,68 @@ Uses
   ;
 
 Type
+
+  TPCXJob = Record
+    Sourcefile: String; // Filename on Atomic Disc
+    Destname: String; // Filename in FPC_Atomic
+  End;
+
   TSoundJob = Record
     Sourcefile: String; // Filename on Atomic Disc
     Destname: String; // Filename in FPC_Atomic
   End;
 
 Const
+
+  PCXJobs: Array[0..43] Of TPCXJob =
+  (
+    // data/maps/Field** [11]
+    (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD0.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field00' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD1.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field01' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD2.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field02' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD3.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field03' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD4.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field04' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD5.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field05' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD6.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field06' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD7.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field07' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD8.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field08' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD9.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field09' + PathDelim + 'field.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'FIELD10.PCX'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field10' + PathDelim + 'field.png')
+    // data/res [33]
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'DRAW.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'draw.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'GLUE1.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'fieldsetup.png') // -- This is the special case (handled hardcoded in the "ExtractAtomicPCXs" routine)
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'GLUE5.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'join.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'WINZ.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'MAINMENU.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'mainmenu.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'GLUE2.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'options.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWBOMB.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWDISEA.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powdisea.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWEBOLA.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powebola.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWFLAME.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powflame.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWGOLD.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powgold.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWGRAB.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWJELLY.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWKICK.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powkick.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWPUNCH.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWRAND.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powrand.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWSKATE.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powskate.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWSLOW.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powslow.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWSPOOG.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'POWTRIG.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'RESULTS.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'results.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'TEAM0.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'team0.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'TEAM1.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'team1.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY0.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory0.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY1.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory1.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY2.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory2.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY3.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory3.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY4.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory4.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY5.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory5.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY6.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory6.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY7.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory7.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY8.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory8.png')
+    , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY9.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory9.png')
+    );
 
   SoundJobs: Array[0..96] Of TSoundJob =
   (
@@ -175,6 +234,44 @@ Var
   AniJobs: Array Of TAniJob; // All the .ani jobs will be set in the initialization part of the unit.
   CascadeJobs: Array Of TCascadeJob; // All jobs that where merged into one image.
 
+{$IFDEF Linux}
+  (*
+   * Searches Recursive trough folder and corrects all Subfolder directories according to der caseing
+   *)
+
+Function FindCaseInsensitiveFolder(Folder: String): String;
+Var
+  sl: TStringList;
+  i: Integer;
+  subfolder: String;
+Begin
+  If Folder = '' Then Begin
+    result := '';
+  End
+  Else Begin
+    If DirectoryExists(Folder) Then Begin
+      result := Folder;
+    End
+    Else Begin
+      subfolder := ExtractFileName(ExcludeTrailingPathDelimiter(Folder));
+      Folder := FindCaseInsensitiveFolder(ExtractFilePath(ExcludeTrailingPathDelimiter(Folder)));
+      If Folder <> '' Then Begin
+        sl := FindAllDirectories(Folder, false);
+        For i := 0 To sl.Count - 1 Do Begin
+          If lowercase(sl[i]) = lowercase(folder + subfolder) Then Begin
+            result := sl[i] + PathDelim;
+            sl.free;
+            exit;
+          End;
+        End;
+        sl.free;
+        result := '';
+      End;
+    End;
+  End;
+End;
+{$ENDIF}
+
 Function CheckCDRootFolder(aFolder: String): boolean;
 Var
   sl: TStringList;
@@ -233,9 +330,25 @@ Function GetFileByMatch(Folder, Match: String): String;
 Var
   sl: TStringList;
   i: Integer;
+  NewFolder: String;
 Begin
   result := '';
-  // TODO: Wenn Folder nicht existiert, dann muss geschaut werden ob es nur an der Schreibweise liegt und ggf auch hier ein passendes gewählt werden.!
+{$IFDEF Linux}
+  (*
+   * Linux is case sensitive, if the folder "Casing" does not match
+   * -> fix that!
+   *)
+  If Not DirectoryExists(Folder) Then Begin
+    NewFolder := FindCaseInsensitiveFolder(Folder);
+    If lowercase(folder) <> lowercase(NewFolder) Then Begin
+      result := '';
+      exit;
+    End
+    Else Begin
+      Folder := newFolder;
+    End;
+  End;
+{$ENDIF}
   sl := FindAllFiles(Folder, '*', false);
   For i := 0 To sl.Count - 1 Do Begin
     If pos(lowercase(match), lowercase(sl[i])) <> 0 Then Begin
@@ -356,6 +469,13 @@ Begin
   // The Normal Jobs
   For i := 0 To high(AniJobs) Do Begin
     b := DoAniJob(CDFolder, AniJobs[i]);
+    (*
+     * Unfortunatunelly this special texture needs a little "Fix", which is here
+     * hardcoded ;)
+     *)
+    If pos('flame.png', lowercase(AniJobs[i].DestPng)) <> 0 Then Begin
+      SwapColor(b, $00F800F8, clFuchsia);
+    End;
     If assigned(b) Then Begin
       If StoreBmp(b, AtomicFolder + AniJobs[i].DestPng) Then inc(cnt);
       b.free;
@@ -396,6 +516,65 @@ Begin
   AddLog(format('  %d files created', [cnt]));
 End;
 
+Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String);
+Begin
+  //hier gehts weiter, der Rest steht schon ;)
+  AddLog('  Need to be implemented.');
+End;
+
+Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String);
+Var
+  cnt, i: integer;
+  pcx: TPCX;
+  sPCXFile, tPCXFile: String;
+  b: TBitmap;
+  p: TPortableNetworkGraphic;
+Begin
+  cnt := 0;
+  CDFolder := IncludeTrailingPathDelimiter(CDFolder);
+  AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
+  For i := 0 To high(PCXJobs) Do Begin
+    sPCXFile := GetFileByMatch(ExtractFilePath(CDFolder + PCXJobs[i].Sourcefile), PCXJobs[i].Sourcefile);
+    If sPCXFile = '' Then Begin
+      AddLog('  Error could not locate: ' + PCXJobs[i].Sourcefile);
+      Continue;
+    End;
+    pcx := TPCX.Create();
+    pcx.LoadFromFile(sPCXFile);
+    b := pcx.AsTBitmap();
+    pcx.free;
+    p := TPortableNetworkGraphic.Create;
+    (*
+     * This Image has to be "hacked" a window in, which is not part of the "orig" files
+     *)
+    If pos('fieldsetup.png', PCXJobs[i].Destname) <> 0 Then Begin
+      b.Canvas.Pen.Color := clwhite;
+      b.Canvas.Pen.Width := 2;
+      b.Canvas.Brush.Color := clFuchsia;
+      b.Canvas.Rectangle(379, 81, 601, 282);
+      b.Canvas.Pixels[378, 80] := clWhite;
+      b.Canvas.Pixels[600, 80] := clWhite;
+    End;
+    p.assign(b);
+    b.free;
+    // Store the thing ;)
+    tPCXFile := AtomicFolder + PCXJobs[i].Destname;
+    If Not ForceDirectories(ExtractFilePath(tPCXFile)) Then Begin
+      addlog('  Error unable to create dir: ' + ExtractFilePath(tPCXFile));
+      p.free;
+      Continue;
+    End;
+    Try
+      p.SaveToFile(tPCXFile);
+      inc(cnt);
+    Except
+      addlog('  Error unable to save: ' + tPCXFile);
+    End;
+    p.free;
+  End;
+  AddLog(format('  %d files created', [cnt]));
+End;
+
 Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String);
 Var
   samplecnt, cnt, i, j: integer;
@@ -423,6 +602,7 @@ Begin
     If sSoundFile = '' Then Begin
       AddLog('  Error could not locate: ' + SoundJobs[i].Sourcefile);
       SoundWarning := true;
+      inc(i);
       Continue;
     End;
     // Load the source file stream and convert into a .wav file
@@ -500,7 +680,7 @@ Begin
   AniJobs[high(AniJobs)].TransparentMode := TransparentMode;
 End;
 
-Procedure PopCasCade(JobCount: Integer);
+Procedure PopCascade(JobCount: Integer);
 Var
   cj: TCascadeJob;
   i: Integer;
@@ -547,14 +727,22 @@ Initialization
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE20.ANI', 34, 89, 7, taLeftJustify, tlCenter, '0, 1, 2, 3, 4, 5, 6', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die20.png', tmBlack); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE21.ANI', 79, 68, 4, taCenter, tlCenter, '8, 9, 10, 11, 12, 13, 14, 15, 16, 2, 0, 1, 3', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die21.png', tmBlack); // Fertig, getestet
   // data/atomic/idle/*
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'APPLBITE.ANI', 73, 73, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120', 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'applbite.png', tmFirstPixelPerFrame);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'APPLBITE.ANI', 73, 73, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120', 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'applbite.png', tmFirstPixelPerFrame); // Fertig, getestet
   // Code formater crashes when lines are longer than 1000 Chars ;), therefore this one is separated into 3 lines.
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'HEADWIPE.ANI', 73, 73, 14, taLeftJustify, tlTop,
     '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210'
-    , 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'headwipe.png', tmFirstPixelPerFrame);
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'NUCKBLOW.ANI', 73, 73, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120', 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'nuckblow.png', tmFirstPixelPerFrame);
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'ZEN.ANI', 73, 73, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120', 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'zen.png', tmFirstPixelPerFrame);
+    , 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'headwipe.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'NUCKBLOW.ANI', 73, 73, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120', 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'nuckblow.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'ZEN.ANI', 73, 73, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120', 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'zen.png', tmFirstPixelPerFrame); // Fertig, getestet
   // data/atomic/locked_in/*
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER0.ANI', 110, 110, 7, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner0.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER1.ANI', 110, 110, 7, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner1.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER2.ANI', 110, 110, 8, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner2.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER3.ANI', 110, 110, 8, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner3.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER4.ANI', 110, 110, 5, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner4.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER5.ANI', 110, 110, 2, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner5.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER6.ANI', 110, 110, 6, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner6.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'CORNER7.ANI', 110, 110, 5, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19', 'data' + Pathdelim + 'atomic' + Pathdelim + 'locked_in' + Pathdelim + 'corner7.png', tmFirstPixel); // Fertig, getestet
   // data/atomic/*
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'BOMBS.ANI', 40, 37, 5, taCenter, tlBottom, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb.png', tmBlack); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'DUDS.ANI', 40, 40, 1, taLeftJustify, tlTop, '0, 1', 'data' + Pathdelim + 'atomic' + Pathdelim + 'bomb_dud.png', tmBlack); // Fertig, getestet
@@ -566,14 +754,43 @@ Initialization
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB2.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB3.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'unused', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUNBOMB4.ANI', 110, 110, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9', 'data' + Pathdelim + 'atomic' + Pathdelim + 'punbomb.png', tmFirstPixel); // Fertig, getestet
-  PopCasCade(4);
+  PopCascade(4);
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP1.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP2.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP3.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'unused', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'PUP4.ANI', 110, 110, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'data' + Pathdelim + 'atomic' + Pathdelim + 'pupbomb.png', tmFirstPixel); // Fertig, getestet
-  PopCasCade(4);
+  PopCascade(4);
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'STAND.ANI', 110, 110, 2, taLeftJustify, tlTop, '0, 1, 2, 3', 'data' + Pathdelim + 'atomic' + Pathdelim + 'stand.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'WALK.ANI', 110, 110, 15, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59', 'data' + Pathdelim + 'atomic' + Pathdelim + 'walk.png', tmFirstPixel); // Fertig, getestet
   // data/maps/Field**
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES0.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field00' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES0.ANI', 40, 36, 1, taLeftJustify, tlTop, '2', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field00' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES1.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field01' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES1.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field01' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES2.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field02' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES2.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field02' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES3.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field03' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES3.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field03' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES4.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field04' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES4.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field04' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES5.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field05' + Pathdelim + 'brick.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES5.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field05' + Pathdelim + 'solid.png', tmFirstPixelPerFrame); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES6.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field06' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES6.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field06' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES7.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field07' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES7.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field07' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES8.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field08' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES8.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field08' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES9.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field09' + Pathdelim + 'brick.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES9.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field09' + Pathdelim + 'solid.png', tmBlack); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES10.ANI', 40, 36, 1, taLeftJustify, tlTop, '1', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field10' + Pathdelim + 'brick.png', tmFirstPixel); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TILES10.ANI', 40, 36, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'maps' + Pathdelim + 'Field10' + Pathdelim + 'solid.png', tmFirstPixel); // Fertig, getestet
+  // data/res/*
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KFONT.ANI', 18, 27, 4, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10', 'data' + Pathdelim + 'res' + Pathdelim + 'bigfont.png', tmBlack);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'HURRY.ANI', 278, 91, 1, taLeftJustify, tlTop, '0', 'data' + Pathdelim + 'res' + Pathdelim + 'hurry.png', tmBlack);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'KFONT.ANI', 48, 17, 1, taCenter, tlCenter, '11', 'data' + Pathdelim + 'res' + Pathdelim + 'infinity.png', tmBlack);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MISC.ANI', 32, 32, 1, taLeftJustify, tlTop, '11', 'data' + Pathdelim + 'res' + Pathdelim + 'options_cursor.png', tmFirstPixel);
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'MISC.ANI', 77, 20, 1, taLeftJustify, tlTop, '10', 'data' + Pathdelim + 'res' + Pathdelim + 'playerdead.png', tmBlack);
+
 End.
 

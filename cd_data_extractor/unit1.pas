@@ -88,7 +88,7 @@ Begin
   (*
    * Disable the ani job generator, it is only used for developping
    *)
- // button6.Visible := false;
+  button6.Visible := false;
 End;
 
 Procedure TForm1.Button2Click(Sender: TObject);
@@ -122,7 +122,7 @@ Begin
   n := GetTickCount64();
   // Start Extraction
   AddLog('Start');
-  Addlog('  be aware the process will take some time, ...');
+  Addlog('  be aware the process will take some time (approx. 60s), ...');
   // Start extraction
   If Not CheckCDRootFolder(label1.Caption) Then Begin
     AddLog('Error: invalid atomic bomberman CD-Image folder');
@@ -136,15 +136,15 @@ Begin
     addlog('Error, could not create data folder.');
     exit;
   End;
-  //  AddLog('PCXs');
-  //  ExtractAtomicPCXs(Label1.caption, label2.caption);
+  AddLog('PCXs');
+//  ExtractAtomicPCXs(Label1.caption, label2.caption);
   AddLog('ANIs');
   ExtractAtomicAnis(Label1.caption, label2.caption);
-  // TODO: Es gibt noch die .ani -> .ani convertierung
-  //AddLog('Sounds'); // Fertig, getestet
-  //ExtractAtomicSounds(Label1.caption, label2.caption);
-  //AddLog('Shemes'); // Fertig, getestet
-  //ExtractAtomicShemes(Label1.caption, label2.caption);
+  ExtractAtomicAniToAnis(Label1.caption, label2.caption);
+  AddLog('Sounds');
+//  ExtractAtomicSounds(Label1.caption, label2.caption);
+  AddLog('Shemes');
+//  ExtractAtomicShemes(Label1.caption, label2.caption);
   n := GetTickCount64() - n;
   Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
   AddLog('Done, please check results.');
@@ -180,4 +180,12 @@ Begin
 End;
 
 End.
+
+
+
+
+
+
+
+
 

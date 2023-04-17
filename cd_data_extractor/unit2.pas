@@ -139,7 +139,7 @@ Begin
   Image2.Picture.Clear;
   edit1.text := '';
   edit2.text := '';
-  edit3.text := '';
+  edit3.text := '1';
   edit4.text := '';
   edit5.text := '';
   RadioGroup1.ItemIndex := 0;

@@ -378,7 +378,7 @@ Begin
   //
   If (has_palette_header) Then Begin
     (*
-     * We ignore the pallete anyway, so just skip ist.
+     * We ignore the pallete anyway, so just skip it.
      *)
     stream.Position := stream.Position + additional_size;
   End;
