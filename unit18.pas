@@ -2,7 +2,7 @@
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
-(* This file is part of config_td                                             *)
+(* This file is part of FPC_Atomic                                            *)
 (*                                                                            *)
 (*  See the file license.md, located under:                                   *)
 (*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
