@@ -26,7 +26,7 @@
 (*
  * Auf die Schnelle alles in Release Mode umstellen, kann auch via -dRelease
  *)
-{$define Release}
+{.$define Release}
 
 (*
  * Wenn dieser Switch gesetzt ist, dann werden Hochfrequente Nachrichten nicht im Trace geloggt.
@@ -51,16 +51,22 @@
 {$DEFINE AUTOMODE}
 
 (*
- * Wenn Aktiviert, dann gibt es nur 2 anstatt der typischerweise 10 Spieler
+ * Wenn Aktiviert, dann gibt es nur 3 anstatt der typischerweise 10 Spieler
  * -> Zum Entwickeln schneller
  *)
-{$DEFINE Only2Player}
+{$DEFINE Only3Player}
 
 (*
  * Wenn Aktiviert, dann wird nur die 1. Karte geladen und nicht alle
  * -> Zum Entwickeln schneller
  *)
 {$DEFINE Only1Map}
+
+(*
+ * Wenn Aktiviert, dann wird nur die 1. Animation aus den Direktories geladen
+ * -> Zum Entwickeln schneller
+ *)
+{$DEFINE Only1Directory}
 
 (*
  * Wenn Aktiviert, dann sieht man nach dem Laden aller Graphiken, wie Lange das ganze gedauert hat

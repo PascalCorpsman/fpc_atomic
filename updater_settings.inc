@@ -24,12 +24,7 @@ Const
   updater_StarterName = 'fpc_atomic';
   updater_UpdaterName = 'updater';
 
-  (*
-   * if you get a error in the line below
-   * replace the line with the following content:
-   *
-   *  URL_CheckForUpdate = '';
-   *)
 {$I updater_link.inc}
+
   updater_Additional = ''; // Liste der Potenziellen weiteren Datenfelder alle durch , getrennt.
 
