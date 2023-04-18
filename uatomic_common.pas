@@ -55,9 +55,11 @@ Const
    *                      Key 1-7 in Main Menu (as shortcut)
    *                      Disconnect during Vircoty Screen (this gives the ability to reconnect to a new game, while "other" players still in the "old" game)
    *                      Respawn collected powerups of dead player
-   *            0.07005 = Fix, invalid errormessage during loading on windows plattforms
+   * -release-  0.07005 = Fix, invalid errormessage during loading on windows plattforms
    *                      Fix, improve bomb triggering, with ability to punch bombs (but not punching)
-   *
+   * -release-  0.07006 = Disable musik if user want to exit the game
+   *                      First version that is actual capable of doing the automated version update without errors (testen only under Linux)
+   *            0.07007 =
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

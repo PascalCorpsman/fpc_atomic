@@ -13,8 +13,9 @@ The steps shown here are only needed to be done once.
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!)
 2. download and uncompress the .zip file of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin) on your harddisc
 3. run the "cd_data_extractor" and follow the instructions
-4. read the [manual](MANUAL.md)
-5. start the game by executing "fpc_atomic" binary and enjoy
+4. read the [manual](MANUAL.md)  
+4.5 if you are a Linux user run the "Linux_sound_install_script.sh"
+6. start the game by executing "fpc_atomic" binary and enjoy
 
 ## Differences to the original
 Here are the differences between FPC Atomic and the original Atomic Bomberman:

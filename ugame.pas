@@ -345,6 +345,7 @@ Begin
       End;
     sExitBomberman: Begin
         NeedFormClose := true;
+        StartPlayingSong(''); // Disable the Background musik if playing, that speeds up the shutdown process or at least stop making noises
         PlaySoundEffect('data' + pathdelim + 'res' + PathDelim + 'quitgame.wav');
       End;
     sHost: Begin
@@ -454,7 +455,7 @@ Begin
     fBassSong := 0;
   End;
   // ggf. neu starten des Songs
-  If Settings.PlaySounds And (FileExists(Filename)) Then Begin
+  If Settings.PlaySounds And (FileExists(Filename)) And (Filename <> '') Then Begin
     // Start des Liedes in Endlosschleife
     fBassSong := BASS_StreamCreateFile(false, Pchar(filename), 0, 0, BASS_SAMPLE_LOOP);
     If fBassSong = 0 Then Begin
