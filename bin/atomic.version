@@ -3,9 +3,9 @@
   <program>
     <name>FPC Atomic</name>
     <version>0.07005</version>
-    <downloadlink>https://github.com/PascalCorpsman/fpc_atomic/bin/atomic.zip</downloadlink>
+    <downloadlink>https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin/atomic.zip</downloadlink>
     <startername>fpc_atomic</startername>
     <updatername>updater</updatername>
-    <release_text>+ First Version available for GIT</release_text>
+    <release_text>- First automated file upload to git.</release_text>
   </program>
 </programs>
