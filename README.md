@@ -17,6 +17,9 @@ The steps shown here are only needed to be done once.
 4.5 if you are a Linux user run the "Linux_sound_install_script.sh"
 6. start the game by executing "fpc_atomic" binary and enjoy
 
+## How do i get updates ?
+If there are updates of the engine available, the game will inform through a popup on startup. Click yes and your version will be updated automatically.
+
 ## Differences to the original
 Here are the differences between FPC Atomic and the original Atomic Bomberman:
 - Implementation in TCP (instead of slow IPX)
