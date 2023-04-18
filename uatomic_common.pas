@@ -103,7 +103,7 @@ Const
   AtomicSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange); // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
 
   (*
-   * Es gibt Starpunkte die direkt auf den Bändern liegen, da muss der Spieler auf jeden Fall
+   * Es gibt Startpunkte die direkt auf den Bändern liegen, da muss der Spieler auf jeden Fall
    * Schneller laufen können, alls die Schnellsten bänder !
    *)
   ConveyorSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);

@@ -413,9 +413,11 @@ Procedure TServer.ResetFieldAvailabe;
 Var
   i: integer;
 Begin
+  log('TServer.ResetFieldAvailabe', lltrace);
   For i := 0 To high(fFields) Do Begin
     fFields[i].Available := true;
   End;
+  LogLeave;
 End;
 
 Function TServer.SendChunk(UserDefinedID: Integer; Data: TStream; UID: integer
@@ -1499,9 +1501,6 @@ Var
   i, j: Integer;
   found: Boolean;
 Begin
-
-  Warum auch immer hier welche weg gestrichen werden, dass gilt es zu suchen und zu finden !
-
   (*
    * Gleicht List mit der Eigenen Fieldliste ab, und streicht aus der Fieldliste
    * alle die raus die nicht in List sind
@@ -1526,6 +1525,7 @@ Begin
       m.write(fFields[i].hash, sizeof(fFields[i].hash));
     End
     Else Begin
+      log(fFields[i].Name + ' will be disabled as it is not present on all game instances.', llWarning);
       fFields[i].Available := false;
     End;
   End;

@@ -28,6 +28,15 @@ Testing : Uwe Schächterle
 ## Manual
 See the [manual](MANUAL.md) for detailed information.
 
+## What needs to be done to to be able to play the game?
+The steps shown here are only needed to be done once.
+
+1. get the Atomic Bomberman CD-content (buy the game it is worth it!)
+2. download all content of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/bin) and store it on your harddisc
+3. run the "cd_data_extractor" from subfolder and follow the instructions
+4. read the [manual](MANUAL.md)
+5. start the game by executing "fpc_atomic"
+
 ## What needs to be done to get the code compiled?
 To compile the FPC Atomic code, follow these steps:
 1. Download dglopengl.pas from https://github.com/saschawillems/dglopengl .
@@ -36,11 +45,3 @@ To compile the FPC Atomic code, follow these steps:
 4. Install the following packages into the Lazarus IDE:
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
-
-## What needs to be done to get the missing content of data subfolder?
-The steps shown here are only needed to be done once.
-
-1. get the Atomic Bomberman CD-content (buy the game it is worth it!)
-2. compile the "cd_data_extractor.lpi" from subfolder "cd_data_extractor"
-3. start the cd_data_extractor and follow the steps
-4. enjoy the game :-)
