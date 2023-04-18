@@ -48,6 +48,7 @@ Type
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
   private
+    Procedure AddLog(aLog: String);
 
   public
 
@@ -56,20 +57,12 @@ Type
 Var
   Form1: TForm1;
 
-Procedure AddLog(aLog: String);
 
 Implementation
 
 {$R *.lfm}
 
 Uses Unit2, ucdextractor;
-
-Procedure AddLog(aLog: String);
-Begin
-  form1.Memo1.Lines.Add(aLog);
-  form1.Memo1.SelStart := length(Form1.Memo1.Text); // Scroll down to see newest entry
-  Application.ProcessMessages;
-End;
 
 { TForm1 }
 
@@ -79,7 +72,7 @@ Begin
   (*
    * History: 0.01 = Initial version
    *)
-  caption := 'FPC Atomic data extractor ver. 0.01';
+  caption := DefCaption;
   label1.caption := IniPropStorage1.ReadString('CD-Root', '');
   label2.caption := IniPropStorage1.ReadString('FPC-Atomic', '');
   memo1.clear;
@@ -89,6 +82,19 @@ Begin
    * Disable the ani job generator, it is only used for developping
    *)
   button6.Visible := false;
+End;
+
+Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
+Begin
+  IniPropStorage1.WriteString('CD-Root', label1.caption);
+  IniPropStorage1.WriteString('FPC-Atomic', label2.caption);
+End;
+
+Procedure TForm1.AddLog(aLog: String);
+Begin
+  Memo1.Lines.Add(aLog);
+  Memo1.SelStart := length(Form1.Memo1.Text); // Scroll down to see newest entry
+  Application.ProcessMessages;
 End;
 
 Procedure TForm1.Button2Click(Sender: TObject);
@@ -115,39 +121,9 @@ Begin
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
-Var
-  n: QWord;
 Begin
-  // TODO: reactivate disabled code, was disabled during development
-  n := GetTickCount64();
   // Start Extraction
-  AddLog('Start');
-  Addlog('  be aware the process will take some time (approx. 60s), ...');
-  // Start extraction
-  If Not CheckCDRootFolder(label1.Caption) Then Begin
-    AddLog('Error: invalid atomic bomberman CD-Image folder');
-    exit;
-  End;
-  If Not CheckFPCAtomicFolder(label2.Caption) Then Begin
-    AddLog('Error: invalid fpc-atomic folder');
-    exit;
-  End;
-  If Not ForceDirectories(IncludeTrailingPathDelimiter(label2.Caption) + 'data') Then Begin
-    addlog('Error, could not create data folder.');
-    exit;
-  End;
-  AddLog('PCXs');
-  ExtractAtomicPCXs(Label1.caption, label2.caption);
-  AddLog('ANIs');
-  ExtractAtomicAnis(Label1.caption, label2.caption);
-  ExtractAtomicAniToAnis(Label1.caption, label2.caption);
-  AddLog('Sounds');
-  ExtractAtomicSounds(Label1.caption, label2.caption);
-  AddLog('Shemes');
-  ExtractAtomicShemes(Label1.caption, label2.caption);
-  n := GetTickCount64() - n;
-  Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
-  AddLog('Done, please check results.');
+  DoExtraction(Label1.caption, label2.caption, @AddLog);
 End;
 
 Procedure TForm1.Button6Click(Sender: TObject);
@@ -158,12 +134,6 @@ Begin
   End;
   form2.AtomicRootFolder := IncludeTrailingPathDelimiter(Label1.Caption);
   form2.ShowModal;
-End;
-
-Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
-Begin
-  IniPropStorage1.WriteString('CD-Root', label1.caption);
-  IniPropStorage1.WriteString('FPC-Atomic', label2.caption);
 End;
 
 Procedure TForm1.Button1Click(Sender: TObject);
@@ -180,5 +150,4 @@ Begin
 End;
 
 End.
-
 

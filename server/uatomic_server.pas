@@ -1499,6 +1499,9 @@ Var
   i, j: Integer;
   found: Boolean;
 Begin
+
+  Warum auch immer hier welche weg gestrichen werden, dass gilt es zu suchen und zu finden !
+
   (*
    * Gleicht List mit der Eigenen Fieldliste ab, und streicht aus der Fieldliste
    * alle die raus die nicht in List sind

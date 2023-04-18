@@ -21,50 +21,49 @@ Interface
 Uses
   Classes, SysUtils, Graphics;
 
+(*
+ * History: 0.01 = Initial version
+ *) 
+const DefCaption = 'FPC Atomic data extractor ver. 0.01';
+
 Type
-  TTransparentMode = (tmBlack, tmFirstPixel, tmFirstPixelPerFrame);
+  TTransparentMode = (
+    tmBlack, // Replace clBlack by clFuchsia
+    tmFirstPixel, // Replace the color of pixel[0,0] by clFuchsia
+    tmFirstPixelPerFrame // Replace the color of pixel[0,0] by clFuchsia (on each subimage)
+    );
 
   TAniJob = Record
-    SourceAni: String;
-    Width, Height: integer;
-    FramesPerRow: integer;
-    Alignment: TAlignment;
-    Layout: ttextlayout;
-    ImageSequence: String;
-    DestPng: String;
-    TransparentMode: TTransparentMode;
+    SourceAni: String; // Source File from Atomic Bomberman CD
+    Width, Height: integer; // Width and Height of each Subimage
+    FramesPerRow: integer; // Number of Subimages Per Row
+    Alignment: TAlignment; // Alignment of Subimages in width (only relevant if subimage width <> width)
+    Layout: ttextlayout; // Layout of Subimages in height (only relevant if subimage height <> height)
+    ImageSequence: String; // The sequence of subimages taken from .Ani and packet into the resulting image
+    DestPng: String; // Filename to store the result to
+    TransparentMode: TTransparentMode; // Transparent color creation mode
   End;
 
-  TCascadeJob = Array Of TAniJob;
-
-  TSpriteData = Record
-    FrameOffset: Integer;
-    FrameCount: integer;
-  End;
-
-  TAniToAniJob = Record
-    AniJob: TAniJob;
-    AngleOffset: Single;
-    FramesPerRow: integer;
-    FramesPerCol: integer;
-    TimePerFrame: integer;
-    SpriteData: Array Of TSpriteData;
-  End;
-
+  (*
+   * Callback for user informations
+   *)
+  TLogCallback = Procedure(Logtext: String) Of Object;
 
   (*
    * Partly separated to be able to use it in the ani job creator ;)
    *)
 Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
 
-Function CheckCDRootFolder(aFolder: String): boolean;
-Function CheckFPCAtomicFolder(aFolder: String): boolean;
+(*
+ * Helper Routines, use on own will.
+ *)
+Function CheckCDRootFolder(aFolder: String): boolean; // True, if aFolder seems to be a correct Atomic Bomberman CD Root folder
+Function CheckFPCAtomicFolder(aFolder: String): boolean; // True, if fpc_atomic binary is part of
 
-Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String); // Fertig, getestet.
-Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String); // in Work
-Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String); // Fertig, getestet.
-Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String); // Fertig, getestet.
-Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String); // Fertig, getestet.
+(*
+ * This is the routine that does all the work, it handles everyting what needs to be done
+ *)
+Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback);
 
 Implementation
 
@@ -75,10 +74,37 @@ Uses
   , uanifile
   , ugraphics
   , uopengl_animation
-  , Unit1 // Bäh invalid dependency!
   ;
 
 Type
+
+  (*
+   * Multiple TAniJobs thats result will be merged into one resulting image
+   *)
+  TCascadeJob = Array Of TAniJob;
+
+  (*
+   * Container to hold the detailed Sprite informations during Sprite creation
+   *)
+  TSpriteData = Record
+    FrameOffset: Integer;
+    FrameCount: integer;
+  End;
+
+  (*
+   * Converts a Atomic Bomberman .ani into a FPC_Atomic .ani file
+   *)
+  TAniToAniJob = Record
+    AniJob: TAniJob; // Atomic Bomberman .ani -> Bitmap
+    (*
+     * Additional Settings for FPC_Atomic .ani
+     *)
+    AngleOffset: Single; // Angle offset for Rendering
+    FramesPerRow: integer; // Redundant to AniJob.FramesPerRow
+    FramesPerCol: integer; // Number of Rows in the Bitmap from AniJob
+    TimePerFrame: integer; // Time in ms to show a single frame
+    SpriteData: Array Of TSpriteData; // Per Range informations
+  End;
 
   TPCXJob = Record
     Sourcefile: String; // Filename on Atomic Disc
@@ -91,7 +117,9 @@ Type
   End;
 
 Const
-
+  (*
+   * All Jobs that need to be done to convert Atomic Bomberman .pcx files into FPC_Atomic .png files
+   *)
   PCXJobs: Array[0..43] Of TPCXJob =
   (
     // data/maps/Field** [11]
@@ -142,6 +170,9 @@ Const
     , (Sourcefile: 'data' + PathDelim + 'res' + PathDelim + 'VICTORY9.PCX'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'victory9.png')
     );
 
+  (*
+   * All Jobs that need to be done to convert Atomic Bomberman .rss files into FPC_Atomic .wav files
+   *)
   SoundJobs: Array[0..96] Of TSoundJob =
   (
     // data/maps/Field** [11]
@@ -250,6 +281,7 @@ Var
   AniJobs: Array Of TAniJob; // All the .ani jobs will be set in the initialization part of the unit.
   CascadeJobs: Array Of TCascadeJob; // All jobs that where merged into one image.
   AniToAniJobs: Array Of TAniToAniJob; // All the jobs where a Atomic Bomberman Ani directly is converted into a FPC_Atomic.ani file
+  AddLog: TLogCallback = Nil; // unit global callback for logging ;)
 
 {$IFDEF Linux}
   (*
@@ -323,6 +355,11 @@ Begin
   result := FileExists(IncludeTrailingPathDelimiter(aFolder) + s);
 End;
 
+(*
+ * Searches all folders and subfolders of RootFolder for "Match" String and returns
+ * this one (This is more or less only needed on Linux (Case sensitive) systems.
+ *)
+
 Function GetFolderByMatch(RootFolder, Match: String): String;
 Var
   sl: TStringList;
@@ -340,14 +377,18 @@ Begin
 End;
 
 (*
- * Sucht in Folder nach Match
+ * Converts the "Match" Filename into a correct (Case sensitive) filename
+ * this is more or less only needed on Linux (Case sensitive) systems.
+ * if match is not found result will be ''
  *)
 
 Function GetFileByMatch(Folder, Match: String): String;
 Var
   sl: TStringList;
   i: Integer;
+{$IFDEF Linux}
   NewFolder: String;
+{$ENDIF}
 Begin
   result := '';
 {$IFDEF Linux}
@@ -375,6 +416,10 @@ Begin
   End;
   sl.free;
 End;
+
+(*
+ * Does one TAniJob, returns the resulting image if succeed, otherwise NIL
+ *)
 
 Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
 Var
@@ -451,6 +496,12 @@ Begin
     tmBlack: SwapColor(result, clblack, clFuchsia);
   End;
 End;
+
+(*
+ * Runs all jobs who's source is a Atomic Bomberman .ani file and the result is a single .png image
+ * -> TAniJob
+ * -> TCascadeJob
+ *)
 
 Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String);
   Function StoreBmp(b: TBitmap; Filename: String): Boolean;
@@ -536,6 +587,11 @@ Begin
   AddLog(format('  %d files created', [cnt]));
 End;
 
+(*
+ * Runs all jobs who's source is a Atomic Bomberman .ani file and the result is a FPC_Atomic .ani file
+ * -> TAniToAniJob
+ *)
+
 Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String);
 Var
   cnt, i, j: integer;
@@ -596,6 +652,11 @@ Begin
   AddLog(format('  %d files created', [cnt]));
 End;
 
+(*
+ * Runs all jobs who's source is a Atomic Bomberman .pcx file and the result is a FPC_Atomic .png file
+ * -> TPCXJob
+ *)
+
 Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String);
 Var
   cnt, i: integer;
@@ -648,6 +709,11 @@ Begin
   End;
   AddLog(format('  %d files created', [cnt]));
 End;
+
+(*
+ * Runs all jobs who's source is a Atomic Bomberman .rss file and the result is a FPC_Atomic .wav file
+ * -> TSoundJob
+ *)
 
 Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String);
 Var
@@ -712,6 +778,10 @@ Begin
   End;
 End;
 
+(*
+ * Copy's all .sch files from the Atomic Bomberman CD into the corresponding scheme folder of FPC_Atomic, no conversion needed.
+ *)
+
 Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String);
 Var
   sSchemeFolder, tSchemeFolder: String;
@@ -740,6 +810,54 @@ Begin
   sl.free;
 End;
 
+(*
+ * This is the routine that does all the work, it handles everyting what needs to be done
+ *)
+
+Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback);
+Var
+  n: QWord;
+Begin
+  If Not assigned(LogCallBack) Then Begin
+    Raise Exception.Create('Error, missing LogCallback!');
+  End;
+  AddLog := LogCallBack;
+  // TODO: reactivate disabled code, was disabled during development
+  n := GetTickCount64();
+  // Start Extraction
+  AddLog('Start');
+  Addlog('  be aware the process will take some time (approx. 60s), ...');
+  // Start extraction
+  If Not CheckCDRootFolder(CDFolder) Then Begin
+    AddLog('Error: invalid atomic bomberman CD-Image folder');
+    exit;
+  End;
+  If Not CheckFPCAtomicFolder(AtomicFolder) Then Begin
+    AddLog('Error: invalid fpc-atomic folder');
+    exit;
+  End;
+  If Not ForceDirectories(IncludeTrailingPathDelimiter(AtomicFolder) + 'data') Then Begin
+    addlog('Error, could not create data folder.');
+    exit;
+  End;
+  AddLog('PCXs');
+  ExtractAtomicPCXs(CDFolder, AtomicFolder);
+  AddLog('ANIs');
+  ExtractAtomicAnis(CDFolder, AtomicFolder);
+  ExtractAtomicAniToAnis(CDFolder, AtomicFolder);
+  AddLog('Sounds');
+  ExtractAtomicSounds(CDFolder, AtomicFolder);
+  AddLog('Shemes');
+  ExtractAtomicShemes(CDFolder, AtomicFolder);
+  n := GetTickCount64() - n;
+  Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
+  AddLog('Done, please check results.');
+End;
+
+(*
+ * Helper during initialization section
+ *)
+
 Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentMode: TTransparentMode);
 Begin
   setlength(AniJobs, high(AniJobs) + 2);
@@ -753,6 +871,12 @@ Begin
   AniJobs[high(AniJobs)].DestPng := DestPng;
   AniJobs[high(AniJobs)].TransparentMode := TransparentMode;
 End;
+
+(*
+ * Helper during initialization section
+ *
+ * JobCount = number of Jobs to be merged into one Cascade Job
+ *)
 
 Procedure PopCascade(JobCount: Integer);
 Var
@@ -770,6 +894,8 @@ Begin
 End;
 
 (*
+ * Helper during initialization section
+ *
  * 2 Datapoints give 1 Dataset
  *  \- first  = FrameOffset
  *  \- second = FrameCount
