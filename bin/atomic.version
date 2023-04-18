@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<programs>
+  <program>
+    <name>FPC Atomic</name>
+    <version>0.07005</version>
+    <downloadlink>https://github.com/PascalCorpsman/fpc_atomic/bin/atomic.zip</downloadlink>
+    <startername>fpc_atomic</startername>
+    <updatername>updater</updatername>
+    <release_text>+ First Version available for GIT</release_text>
+  </program>
+</programs>
