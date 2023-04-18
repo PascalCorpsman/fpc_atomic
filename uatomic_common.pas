@@ -59,7 +59,8 @@ Const
    *                      Fix, improve bomb triggering, with ability to punch bombs (but not punching)
    * -release-  0.07006 = Disable musik if user want to exit the game
    *                      First version that is actual capable of doing the automated version update without errors (testen only under Linux)
-   *            0.07007 =
+   * -release-  0.07007 =
+   *
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
