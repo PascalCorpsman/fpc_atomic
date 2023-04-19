@@ -67,14 +67,9 @@ Begin
           - Random Powerup ??
 
     Known Bugs:
-          - Der Spieler kann ohne PowerUps nicht gegen ein Conveyor anlaufen
+          !- Der Spieler kann ohne PowerUps nicht gegen ein Conveyor anlaufen, selbst mit Powerups geht es nicht ordentlich !
           - Wenn eine Bombe in ein Brennendes Feld "Rollt" muss sie instant explodieren
             \-> Implementiert, aber noch nicht getestet.
-
-          - Bisher 1 mal aufgetreten noch nicht rekonstruierbar:
-            1 Client spielt mit 2 Spielern (key0, key1) mehrere Matches immer mit Fieldsetup "Random"
-            -> Dann neues Spiel "durchblättern" der karten und dann sind nicht alle vorhanden
-               Nach neustart des Servers scheint es wieder zu gehen.
 
     Maybe Implementierungen:
           - Kollisionserkennung zwischen Atomic und Bomben via Distanzmessung und nicht via "Koordinaten" ?

@@ -73,8 +73,8 @@ Begin
    * History: 0.01 = Initial version
    *)
   caption := DefCaption;
-  label1.caption := IniPropStorage1.ReadString('CD-Root', '');
-  label2.caption := IniPropStorage1.ReadString('FPC-Atomic', '');
+  label1.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('CD-Root', ''));
+  label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('FPC-Atomic', ''));
   memo1.clear;
   Constraints.MinWidth := Width;
   Constraints.MinHeight := Height;
@@ -86,8 +86,8 @@ End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
-  IniPropStorage1.WriteString('CD-Root', label1.caption);
-  IniPropStorage1.WriteString('FPC-Atomic', label2.caption);
+  IniPropStorage1.WriteString('CD-Root', ExtractRelativePath(ExtractFilePath(ParamStr(0)), label1.caption));
+  IniPropStorage1.WriteString('FPC-Atomic', ExtractRelativePath(ExtractFilePath(ParamStr(0)), label2.caption));
 End;
 
 Procedure TForm1.AddLog(aLog: String);
@@ -123,7 +123,7 @@ End;
 Procedure TForm1.Button5Click(Sender: TObject);
 Begin
   // Start Extraction
-  DoExtraction(Label1.caption, label2.caption, @AddLog);
+  DoExtraction(ExtractRelativePath(ExtractFilePath(ParamStr(0)), Label1.caption), ExtractRelativePath(ExtractFilePath(ParamStr(0)), label2.caption), @AddLog);
 End;
 
 Procedure TForm1.Button6Click(Sender: TObject);

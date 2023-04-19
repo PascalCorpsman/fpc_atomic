@@ -23,8 +23,11 @@ Uses
 
 (*
  * History: 0.01 = Initial version
- *) 
-const DefCaption = 'FPC Atomic data extractor ver. 0.01';
+ *          0.02 = Switch to relative paths
+ *                 Add Addon Pack warning
+ *)
+Const
+  DefCaption = 'FPC Atomic data extractor ver. 0.02';
 
 Type
   TTransparentMode = (
@@ -64,6 +67,8 @@ Function CheckFPCAtomicFolder(aFolder: String): boolean; // True, if fpc_atomic 
  * This is the routine that does all the work, it handles everyting what needs to be done
  *)
 Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback);
+
+Function ConcatRelativePath(Const BaseName: String; Const RelativeName: String): String;
 
 Implementation
 
@@ -321,6 +326,46 @@ Begin
 End;
 {$ENDIF}
 
+
+(*
+ Example:
+   var
+     rootf, df, relf: String;
+   Begin
+     relf := ExtractRelativePath(rootf, df);
+     assert(ConcatRelativePath(rootf, relf) = df, 'Error, invert did not match);
+   end;
+ *)
+
+Function ConcatRelativePath(Const BaseName: String; Const RelativeName: String): String;
+Var
+  pre, suf: String;
+  i: integer;
+Begin
+  (*
+   * BaseName = d:\asdasd\asdas\
+   * RelativeName = ..\..\temp
+   * Erg: d:\Temp
+   *)
+  result := IncludeTrailingPathDelimiter(BaseName) + RelativeName;
+  i := pos('..', result);
+  (*
+   * Die Idee wir suchen immer nach "..\" blöcken und ersetzen diese Inplace
+   * Dies ermöglicht verschieden "Krüppelige" Verzeichnisse Korrekt auf zu lösen
+   *)
+  While i <> 0 Do Begin
+    Pre := copy(result, 1, i - 1); // d:\asdasd\asdas\
+    Suf := copy(result, i + 2, length(result)); //\..\temp
+    If (Length(suf) = 0) Or (length(pre) = 0) Then exit; // Irgendwas ist hier Falsch !
+    If (Not (pre[length(pre)] In AllowDirectorySeparators)) Then exit; // Irgendwas ist hier Falsch !
+    If (Not (Suf[1] In AllowDirectorySeparators)) Then exit; // Irgendwas ist hier Falsch !
+    Pre := ExcludeTrailingPathDelimiter(pre);
+    pre := ExtractFilePath(pre);
+    result := pre + copy(suf, 2, length(suf));
+    i := pos('..', result);
+  End;
+End;
+
 Function CheckCDRootFolder(aFolder: String): boolean;
 Var
   sl: TStringList;
@@ -530,14 +575,17 @@ Var
   b: TBitmap;
   cnt, j, k: integer;
   bmps: Array Of TBitmap;
+  AniWarning: Boolean;
 Begin
   CDFolder := IncludeTrailingPathDelimiter(CDFolder);
   AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
   cnt := 0;
+  AniWarning := false;
   // The Normal Jobs
   For i := 0 To high(AniJobs) Do Begin
     b := DoAniJob(CDFolder, AniJobs[i]);
     If Not assigned(b) Then Begin
+      AniWarning := true;
       Continue;
     End;
     (*
@@ -583,6 +631,10 @@ Begin
     setlength(bmps, 0);
     If StoreBmp(b, AtomicFolder + CascadeJobs[i, high(CascadeJobs[i])].DestPng) Then inc(cnt);
     b.free;
+  End;
+  If AniWarning Then Begin
+    AddLog('  Did you merge the Atomic Bomberman expansion pack from:');
+    AddLog('    https://www.oocities.org/timessquare/tower/4056/ani.html ?');
   End;
   AddLog(format('  %d files created', [cnt]));
 End;
@@ -822,7 +874,8 @@ Begin
     Raise Exception.Create('Error, missing LogCallback!');
   End;
   AddLog := LogCallBack;
-  // TODO: reactivate disabled code, was disabled during development
+  CDFolder := ConcatRelativePath(ExtractFilePath(ParamStr(0)), CDFolder);
+  AtomicFolder := ConcatRelativePath(ExtractFilePath(ParamStr(0)), AtomicFolder);
   n := GetTickCount64();
   // Start Extraction
   AddLog('Start');

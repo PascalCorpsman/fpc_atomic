@@ -7,15 +7,16 @@ Source   : https://github.com/PascalCorpsman/fpc_atomic
 ## Description
 FPC Atomic is a complete reimplementation of the original Atomic Bomberman game (from 1995). This repository hosts only the source code, as the graphics and sounds are copyrighted by Interplay Productions. To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
 
-## What needs to be done to to be able to play the game?
+## What needs to be done to be able to play the game?
 The steps shown here are only needed to be done once.
 
-1. get the Atomic Bomberman CD-content (buy the game it is worth it!)
+1. get the Atomic Bomberman CD-content (buy the game it is worth it!)  
+   1.5 if you want all animations download and merge the expansion pack from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) into the CD-Content folder
 2. download and uncompress the .zip file of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin) on your harddisc
 3. run the "cd_data_extractor" and follow the instructions
 4. read the [manual](MANUAL.md)  
 4.5 if you are a Linux user run the "Linux_sound_install_script.sh"
-6. start the game by executing "fpc_atomic" binary and enjoy
+1. start the game by executing "fpc_atomic" binary and enjoy
 
 ## How do i get updates ?
 If there are updates of the engine available, the game will inform through a popup on startup. Click yes and your version will be updated automatically.
@@ -26,7 +27,7 @@ Here are the differences between FPC Atomic and the original Atomic Bomberman:
 - Missing AI (and thus, single player mode)
 - Not all sounds are used
 - Missing online manual; use the [manual](MANUAL.md) provided in this repository instead.
-- Pro gamers may discover additional differences due to our guessing the original functionality.
+- Pro gamers may discover additional differences due to our guessing of the original functionality.
 
 ## Manual
 See the [manual](MANUAL.md) for detailed information.

@@ -2085,7 +2085,9 @@ Begin
     OpenGL_ASCII_Font.Color := clred;
     OpenGL_ASCII_Font.Textout(20, 50,
       'Not initialized!' + LineEnding +
-      'Error during loading, please restart application.');
+      'Error during loading, please restart application.' + LineEnding + LineEnding +
+      'If the problem persists try a re run of the cd_data_extractor'
+      );
     Exit2d();
     exit;
   End;

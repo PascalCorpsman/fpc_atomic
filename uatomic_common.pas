@@ -27,39 +27,42 @@ Uses
 
 Const
   (*
-   * Historie : 0.01    = Initialversion (Activate Updater, MainMenu, OptionsDialog)
-   * -release-  0.02    = Neue Schriftart zum Besseren Lesen
-   *                      Alles bis zum "StarGame" soweit fertig
-   * -release-  0.03    = Durchverbinden bis in die Karte möglich
-   * -release-  0.04    = Erste Spielbare Version
-   * -release-  0.05    = Bugfix bei mehrfachen ein / Ausloggen der Spieler konnte kein "Master" mehr bestimmt werden
-   * -release-  0.06    = 2 Player on 1 PC
-   *                      Bugfix, Bomb "roll" stopped unexpected
-   * -release-  0.07000 = Locked_In Animation
-   *                      Anzeige SoundInfo bei "M", "+", "-", Speichern des Sound Volumes über den neustart
-   *                      Fix: Memleak when closing during SFX-Play
-   *                      Grab Bombs
-   *                      Punch Bombs
-   *                      More Diseases !
-   *                      Arrows for field 3
-   *            0.07001 = Fix AV on Return when not first player
-   *                      Fix Crash, when First player skip game after showing Field Setup dialog
-   *                      Add Settings.Randomstart implemented
-   *                      Fix prevent optical Z-fighting of bombs laying on a arrow
-   * -release-  0.07002 = FIX Missing Free on Play Sound
-   * -release-  0.07003 = Fix Brick explosion animation, when server needs sync pausing.
-   *                      Enable Conveyor
-   *                      FIX Animation in Mainmenu broken if game was left during pause
-   *                      FIX not all Zenanimations have been used in release build
-   * -release-  0.07004 = Adjust conveyor speeds to more realistic values
-   *                      Key 1-7 in Main Menu (as shortcut)
-   *                      Disconnect during Vircoty Screen (this gives the ability to reconnect to a new game, while "other" players still in the "old" game)
-   *                      Respawn collected powerups of dead player
-   * -release-  0.07005 = Fix, invalid errormessage during loading on windows plattforms
-   *                      Fix, improve bomb triggering, with ability to punch bombs (but not punching)
-   * -release-  0.07006 = Disable musik if user want to exit the game
-   *                      First version that is actual capable of doing the automated version update without errors (testen only under Linux)
-   * -release-  0.07007 =
+   * Historie :  0.01    = Initialversion (Activate Updater, MainMenu, OptionsDialog)
+   * -releaseP-  0.02    = Neue Schriftart zum Besseren Lesen
+   *                       Alles bis zum "StarGame" soweit fertig
+   * -releaseP-  0.03    = Durchverbinden bis in die Karte möglich
+   * -releaseP-  0.04    = Erste Spielbare Version
+   * -releaseP-  0.05    = Bugfix bei mehrfachen ein / Ausloggen der Spieler konnte kein "Master" mehr bestimmt werden
+   * -releaseP-  0.06    = 2 Player on 1 PC
+   *                       Bugfix, Bomb "roll" stopped unexpected
+   * -releaseP-  0.07000 = Locked_In Animation
+   *                       Anzeige SoundInfo bei "M", "+", "-", Speichern des Sound Volumes über den neustart
+   *                       Fix: Memleak when closing during SFX-Play
+   *                       Grab Bombs
+   *                       Punch Bombs
+   *                       More Diseases !
+   *                       Arrows for field 3
+   *             0.07001 = Fix AV on Return when not first player
+   *                       Fix Crash, when First player skip game after showing Field Setup dialog
+   *                       Add Settings.Randomstart implemented
+   *                       Fix prevent optical Z-fighting of bombs laying on a arrow
+   * -releaseP-  0.07002 = FIX Missing Free on Play Sound
+   * -releaseP-  0.07003 = Fix Brick explosion animation, when server needs sync pausing.
+   *                       Enable Conveyor
+   *                       FIX Animation in Mainmenu broken if game was left during pause
+   *                       FIX not all Zenanimations have been used in release build
+   * -releaseP-  0.07004 = Adjust conveyor speeds to more realistic values
+   *                       Key 1-7 in Main Menu (as shortcut)
+   *                       Disconnect during Vircoty Screen (this gives the ability to reconnect to a new game, while "other" players still in the "old" game)
+   *                       Respawn collected powerups of dead player
+   * -releaseGP- 0.07005 = Fix, invalid errormessage during loading on windows plattforms
+   *                       Fix, improve bomb triggering, with ability to punch bombs (but not punching)
+   * -releaseGP- 0.07006 = Disable musik if user want to exit the game
+   *                       First version that is actual capable of doing the automated version update without errors (testen only under Linux)
+   *             0.07007 = Bombs thrown over a already burning koordinate will not ignite
+   *                       Do not cancel loading the game, when some animations are missing.
+   *                       cd_data_extractor switch to to relative paths
+   *                       improve error Message if game loading fails
    *
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
