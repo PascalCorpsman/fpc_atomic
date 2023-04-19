@@ -21,7 +21,7 @@ Uses
   cthreads,
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Classes, imagesforlazarus, ucdextractor, IniFiles
+  Classes, imagesforlazarus, ucdextractor, IniFiles, sysutils
   { you can add units after this };
 
 Procedure PrintHelp();
@@ -78,7 +78,7 @@ Begin
     PrintHelp();
   End;
   dummy := TDummy.Create;
-  DoExtraction(CDFolder, AtomicFolder, @dummy.Log);
+  DoExtraction(ExtractRelativePath(ExtractFilePath(ParamStr(0)), CDFolder), ExtractRelativePath(ExtractFilePath(ParamStr(0)), AtomicFolder), @dummy.Log);
   dummy.free;
 
 End.
