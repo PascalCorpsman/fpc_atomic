@@ -413,9 +413,11 @@ Procedure TServer.ResetFieldAvailabe;
 Var
   i: integer;
 Begin
+  log('TServer.ResetFieldAvailabe', lltrace);
   For i := 0 To high(fFields) Do Begin
     fFields[i].Available := true;
   End;
+  LogLeave;
 End;
 
 Function TServer.SendChunk(UserDefinedID: Integer; Data: TStream; UID: integer
@@ -1523,6 +1525,7 @@ Begin
       m.write(fFields[i].hash, sizeof(fFields[i].hash));
     End
     Else Begin
+      log(fFields[i].Name + ' will be disabled as it is not present on all game instances.', llWarning);
       fFields[i].Available := false;
     End;
   End;

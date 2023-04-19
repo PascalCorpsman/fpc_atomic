@@ -816,7 +816,7 @@ Var
   nn: String;
 Begin
   // Zurück ins Hauptmenü
-  If key = VK_ESCAPE Then Begin
+  If (key = VK_ESCAPE) Or (key = VK_BACK) Then Begin
     Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
     Tgame(fOwner).SwitchToScreen(sMainScreen);
   End;

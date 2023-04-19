@@ -518,6 +518,7 @@ Var
   ReleaseText, Dir: String;
   Ver: TVersion;
   i: Integer;
+  PlaySound: Boolean;
 Begin
   If Not assigned(OnlineVersions) Then Begin
 {$IFDEF Linux}
@@ -549,7 +550,11 @@ Begin
       Else Begin
         self.Enabled := false;
         // Proaktiv schon mal so viel wie möglich abschalten
+        PlaySound := Game.Settings.PlaySounds;
+        Game.Settings.PlaySounds := false;
+        Game.PlaySoundEffect('');
         Game.DisConnect;
+        Application.ProcessMessages;
         timer1.Enabled := false;
         form18.timer1.enabled := true; // So tun wie wenn was passieren würde ..
         form18.Show; // Dem User Anzeigen dass wir nun Downloaden
@@ -563,7 +568,9 @@ Begin
             '%s' + LineEnding + LineEnding +
             'Please retry by hand (or retry with admin rights).', [fUpdater.LastError]);
           self.Enabled := true;
+          exit;
         End;
+        Game.Settings.PlaySounds := PlaySound;
         // Egal ob mit oder ohne Fehler wir gehen aus !
         close; // Wenn das auch nicht geht, dann hilft hier nur noch ein Halt :/
       End;

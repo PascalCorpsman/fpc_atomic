@@ -305,25 +305,25 @@ End;
 
 Function TWave.ReadSample(Const Stream: TStream): Single;
 Var
-  b: uInt8;
-  w: Int16;
+  i8: uInt8;
+  i16: Int16;
 Begin
   (*
-   * Laden entsprechend der Bitrate und Konvertieren nach -1 .. 1
+   * Laden entsprechend der Bitrate und Konvertieren nach [-1 .. 1]
    *)
   result := 0;
   Case ffmt.BitsPerSample Of
     8: Begin
-        b := 128;
-        stream.Read(b, sizeof(b));
-        result := b;
-        result := (result - 128) / 127;
+        i8 := 0;
+        stream.Read(i8, sizeof(i8));
+        result := i8;
+        result := result / 127;
       End;
     16: Begin
-        w := 0;
-        Stream.Read(w, sizeof(w));
-        result := w;
-        result := result / 32768;
+        i16 := 0;
+        Stream.Read(i16, sizeof(i16));
+        result := i16;
+        result := result / 32767;
       End;
   Else Begin
       Raise Exception.create('BitPerSample value ' + inttostr(ffmt.BitsPerSample) + ' not implemented.');
@@ -335,17 +335,17 @@ End;
 
 Procedure TWave.WriteSample(Const Stream: TStream; Value: Single);
 Var
-  b: uInt8;
-  w: Int16;
+  i8: Int8;
+  i16: Int16;
 Begin
   Case ffmt.BitsPerSample Of
     8: Begin
-        b := trunc(Value * 127 + 128) And $FF;
-        stream.Write(b, sizeof(b));
+        i8 := trunc(Value * 127);
+        stream.Write(i8, sizeof(i8));
       End;
     16: Begin
-        w := trunc(Value * 32768) And $FFFF;
-        stream.Write(w, sizeof(w));
+        i16 := trunc(Value * 32767);
+        stream.Write(i16, sizeof(i16));
       End;
   Else Begin
       Raise Exception.create('BitPerSample value ' + inttostr(ffmt.BitsPerSample) + ' not implemented.');
@@ -454,7 +454,7 @@ Begin
   // Die Chunksize der RIFF Datei ( = Filesize - 8 Byte) muss noch berechnet werden, der Rest wurde mit InitNewBuffer bereits gemacht.
   fRIFF.ChunkSize :=
     // RIFF - Header
-  // Die Fehlenden 8-byte zur Filesize sind der Text 'RIFF' und die RiffChunksize
+// Die Fehlenden 8-byte zur Filesize sind der Text 'RIFF' und die RiffChunksize
   4 + // 'WAVE'
   // Format - Chunk
   8 + // 'fmt ' + fmtChunksize (4-Byte)

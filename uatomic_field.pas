@@ -1439,8 +1439,8 @@ Begin
     // (dass kann nur bei sich bewegenden Bomben passieren, da die Liegenden in Detonate schon berücksichtigt werden.)
     x := trunc(fBombs[i].Position.x);
     y := trunc(fBombs[i].Position.y);
-    If y > 0 Then Begin // Eine Fliegende Bombe kann Negative Koordinaten kriegen
-      If (fField[x, y].Flame <> []) Then Begin // Kann auch Fliegende Bomben entzünden !
+    If (y > 0) And (fBombs[i].MoveDir <> bmFly) Then Begin // Eine Fliegende Bombe kann Negative Koordinaten kriegen
+      If (fField[x, y].Flame <> []) Then Begin
         fBombs[i].Position.x := x + 0.5;
         fBombs[i].Position.y := y + 0.5;
         fBombDetonateFifo.Push(i);

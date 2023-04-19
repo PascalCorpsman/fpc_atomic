@@ -16,7 +16,12 @@ die14.png;50;9;7;110;110;58;55;82
 die15.png;50;9;5;110;110;38;55;82
 die16.png;50;4;4;110;110;16;55;82
 die17.png;50;9;7;110;110;60;55;82
-#die18 does not exist
+#die18.png;50;9;3;110;110;22;55;82 -- This animation looks ugly so it is deactivated
+#
+# The following die animations are part of the 
+# expansion pack and can be load here:
+# https://www.oocities.org/timessquare/tower/4056/ani.html
+#
 die19.png;50;4;3;141;200;12;70;100
 die20.png;50;7;1;34;89;7;17;70
 die21.png;50;4;4;79;68;13;40;58

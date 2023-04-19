@@ -2,7 +2,7 @@
 
 ## Starting the Game/Server
 
-To play FPC Atomic in a local area network, simply start the FPC Atomic client on each machine. If desired, it is also possible to start the server in dedicated mode using the [Server control](#Server-Control-commands).
+To play FPC Atomic in a local area network, simply start the FPC Atomic client on each machine (run fpc_atomic executable). If desired, it is also possible to start the server in dedicated mode using the [Server control](#Server-Control-commands), if done so all clients need to "join" as the server is already startet. The first client who connects to a dedicated server will be treated as if he has startet the game.
 
 ## How to start a "game"
 The first player will act as the "host" of the game, while all other players will join the game.  
@@ -13,6 +13,7 @@ After this, one more "return" will start the round. The round can end for two re
 
 ## In-Game Commands
 Here are the commands you can use while playing FPC Atomic:
+- "ESC" : Return to mainmenu (or quit game, when in mainmenu)
 - "+" : Increases the sound volume during play. 
 - "-" : Decreases the sound volume during play.
 - "m" : Toggles the music on and off during play. You can also set this option in the game's options menu.
@@ -38,41 +39,46 @@ Here are the powerups available in the game:
 The key binding can be changed in the options dialog
 
 ### Direction keys
-move the player in then desired direction.
+- move the player in then desired direction.
+- move the player against a bomb, will kick the bomb (if powerup was collected)
 
 ### First action
 - place bomb
   
 ### First action (double pressed)
-- Grab and throw bomb (if available)
-- Spooge all available bombs (if available)
+- Grab and throw bomb (if powerup was collected)
+- Spooge all available bombs (if powerup was collected)
   
 ### Second action
 - Trigger all own bombs that are triggerable (and not flying)
-- When pressed while walking towards a bomb "punch" a bomb in walk direction (if available)
+- When pressed while walking towards a bomb "punch" a bomb in walk direction (if powerup was collected)
 
-## Connecting a Client over the Internet
+## Connecting a Client over the Internet to a local server
 To connect a client to a server over the Internet, follow these steps: 
-1. Start the server with the following parameters:
+1. Configure a port forwarding on the router between the internet and the computer where the server should run
+2. Start the server on the target computer, this could be done by hosting a game on the target computer or by starting the server in dedicated mode see [Server Control Commands](#Server-Control-Commands)
+3. Start the client with the following command line parameters:
 - -ip \<server's IP address\>: This should be the IP address of the router that the server is connected to.
 - -port \<forwarded port number\>: This should be the port number that is forwarded to the server's port.
-2. If the IP address and port number are correctly specified, the game will always try to connect to the specified server when you restart the game or host a new game. Note that these settings will be cleared if you restart the game or host a new game.
+4. If the IP address and port number are correct, the client will automatically connect to the specified server. When you restart the client or host a new game the given parameters will be resetted and the game will work as "normal".
 
 ## Server Control Commands
-You can start the server in dedicated mode, where the first player who connects becomes the host.
+Normally it is not necessary to take care of the server, it is automatically started by fpc_atomic when a game is hosted. If desired the server can also be used in dedicated mode. The first client that connects to a dedicated server is treated as host.
 
 To start the server in dedicated mode, use the following parameters:
+- -h: online help for server (see to get more informations)
 - -p \<port\>: the port to listen on
 - -t \<time\>: the timeout in seconds to automatically close the server if no users are connected. Use 0 to disable the timeout.
 - -l \<level\>: the log level (default is 2)
 
-### Console commands:  
-You can type the following commands using your keyboard in the console window:
+### Console commands:
+During server execution it is possible to type the following commands in the console window:
 - "u": Unload the current AI (artificial intelligence).
 - "a": Load a new AI.
+- "ESC": instance close server
 
 ## Included AI
-The server will automatically load ai.so (or .dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development
+The server will automatically load ai.so (or ai.dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development.
 
 ### Ai development
-Start with the "ai_empty" template. The AI interface is compatible with C and other programming languages.
+Start with the "ai_empty" template. The AI interface is compatible with C and other programming languages. For further documentation see the in code documentation.

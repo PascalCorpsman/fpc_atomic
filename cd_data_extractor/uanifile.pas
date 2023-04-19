@@ -2,7 +2,7 @@
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
-(* This file is part of config_td                                             *)
+(* This file is part of FPC_Atomic                                            *)
 (*                                                                            *)
 (*  See the file license.md, located under:                                   *)
 (*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
@@ -277,7 +277,9 @@ Begin
   TempIntfImg.CreateBitmaps(ImgHandle, ImgMaskHandle, false);
   Bitmap.Handle := ImgHandle;
   Bitmap.MaskHandle := ImgMaskHandle;
+  Bitmap.Transparent := false;
   result := Bitmap;
+  TempIntfImg.free;
 End;
 
 { TFileItem }
@@ -324,14 +326,13 @@ Begin
   End;
   has_palette_header := false;
   palette_size := 0;
-  If (additional_size >= 32) Then Begin
-    has_palette_header := true;
-    If (additional_size > 32) Then Begin
-      palette_size := additional_size - 32;
-    End
-    Else Begin
-      Raise Exception.Create('CIMG palette missing!');
-    End;
+  If additional_size <> 0 Then Begin
+    additional_size := additional_size - 24;
+    has_palette_header := additional_size > 0;
+    palette_size := additional_size;
+  End
+  Else Begin
+    Raise exception.create('CIMG invalid additional_size');
   End;
   //
   // image meta (16B)
@@ -376,17 +377,10 @@ Begin
   // palette data (vary)
   //
   If (has_palette_header) Then Begin
-    Raise exception.create('Problem, wie groß ist nun size_t im vorliegenden Fall ??');
-    stream.Read(dummy32, sizeof(dummy32)); // unknown
-    stream.Read(dummy32, sizeof(dummy32)); // unknown
-
-    If (img.bpp < 16) Then Begin
-      // In.read_raw(tga_ptr - > palette_data, tga_ptr - > palette_size);
-    End;
-
-    // If (palette_size > tga_ptr->palette_size) Then Begin
-    //   In.skip_bytes(palette_size - tga_ptr->palette_size);
-    // End;
+    (*
+     * We ignore the pallete anyway, so just skip it.
+     *)
+    stream.Position := stream.Position + additional_size;
   End;
 
   //
@@ -536,7 +530,7 @@ Begin
 End;
 
 Function TAniFile.ImageIndexByName(ImageName: String): integer;
-var
+Var
   i: Integer;
 Begin
   result := -1;
