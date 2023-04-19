@@ -11,7 +11,7 @@ FPC Atomic is a complete reimplementation of the original Atomic Bomberman game 
 The steps shown here are only needed to be done once.
 
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!)  
-   1.1 if you want all animations download and merge the expansion pack from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip) into the CD-Content folder  
+   1.1 if you want all animations download and merge the expansion pack from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
 2. download and uncompress the .zip file of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin) on your harddisc
 3. run the "cd_data_extractor" and follow the instructions
