@@ -2,7 +2,7 @@
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
-(* This file is part of config_td                                             *)
+(* This file is part of FPC_Atomic                                            *)
 (*                                                                            *)
 (*  See the file license.md, located under:                                   *)
 (*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
@@ -51,6 +51,7 @@ Type
     OpenDialog1: TOpenDialog;
     RadioGroup1: TRadioGroup;
     RadioGroup2: TRadioGroup;
+    RadioGroup3: TRadioGroup;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
@@ -74,7 +75,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses FileUtil, LazFileUtils, math, ugraphics, Clipbrd;
+Uses FileUtil, LazFileUtils, math, Clipbrd;
 
 { TForm2 }
 
@@ -138,11 +139,12 @@ Begin
   Image2.Picture.Clear;
   edit1.text := '';
   edit2.text := '';
-  edit3.text := '';
+  edit3.text := '1';
   edit4.text := '';
   edit5.text := '';
   RadioGroup1.ItemIndex := 0;
   RadioGroup2.ItemIndex := 0;
+  RadioGroup3.ItemIndex := 1;
   label8.caption := '';
 End;
 
@@ -164,6 +166,11 @@ Begin
   End;
   result.ImageSequence := edit4.text;
   result.DestPng := edit5.text;
+  Case RadioGroup3.ItemIndex Of
+    0: result.TransparentMode := tmFirstPixel;
+    1: result.TransparentMode := tmBlack;
+    2: result.TransparentMode := tmFirstPixelPerFrame;
+  End;
 End;
 
 Procedure TForm2.Button1Click(Sender: TObject);
@@ -235,7 +242,6 @@ Procedure TForm2.Button3Click(Sender: TObject);
     result := aFilename;
     result := StringReplace(result, PathDelim, ''' + Pathdelim + ''', [rfReplaceAll]);
   End;
-
 Var
   job: TAniJob;
   s: String;
@@ -257,7 +263,12 @@ Begin
     tlBottom: s := s + 'tlBottom, ';
   End;
   s := s + '''' + job.ImageSequence + ''', ' +
-    '''' + FixPath(job.DestPng) + ''');';
+    '''' + FixPath(job.DestPng) + ''', ';
+  Case job.TransparentMode Of
+    tmBlack: s := s + 'tmBlack);' + LineEnding;
+    tmFirstPixel: s := s + 'tmFirstPixel);' + LineEnding;
+    tmFirstPixelPerFrame: s := s + 'tmFirstPixelPerFrame);' + LineEnding;
+  End;
   Clipboard.AsText := s;
 End;
 

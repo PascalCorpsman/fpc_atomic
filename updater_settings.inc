@@ -17,19 +17,14 @@ Const
   (*
    * Der Updater braucht die "int" version nicht, die ist nur für Config_td, klar dass beide immer gleich sein müssen !
    *)
-  updater_Version = '0.07005'; // Zum Unterscheiden im Updater kann man auch gern "unterversionen nehmen" die Zahl wird als Floatingpoint angenommen.
+  updater_Version = '0.07008'; // Zum Unterscheiden im Updater kann man auch gern "unterversionen nehmen" die Zahl wird als Floatingpoint angenommen.
   updater_int_Version = 007;
 
   updater_AppName = 'FPC Atomic';
   updater_StarterName = 'fpc_atomic';
   updater_UpdaterName = 'updater';
 
-  (*
-   * if you get a error in the line below
-   * replace the line with the following content:
-   *
-   *  URL_CheckForUpdate = '';
-   *)
 {$I updater_link.inc}
+
   updater_Additional = ''; // Liste der Potenziellen weiteren Datenfelder alle durch , getrennt.
 

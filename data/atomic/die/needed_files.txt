@@ -11,6 +11,7 @@ die7.png
 die16.png
 die5.png
 die12.png
+die18.png
 die9.png
 die15.png
 die6.png

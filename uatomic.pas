@@ -300,7 +300,10 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
       If pos('#', trim(sl[i])) = 1 Then Continue;
       sa := sl[i].Split(';');
       If length(sa) <> 9 Then exit(false);
-      If Not FileExists(dir + sa[0]) Then exit(false);
+      If Not FileExists(dir + sa[0]) Then Begin
+        Log(format('Warning, can not load animation, file: %s does not exist', [dir + sa[0]]), llWarning);
+        Continue; // Gibt es die eine Animation nicht, dann wird sie ignoriert
+      End;
       tpf := strtointdef(sa[1], -1);
       If tpf = -1 Then exit(false);
       fpr := strtointdef(sa[2], -1);
