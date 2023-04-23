@@ -11,10 +11,10 @@ RUN git clone https://github.com/PascalCorpsman/fpc_atomic.git /source/fpc_atomi
 # Pre-Requisites for FPC-Atomic
 RUN wget https://www.un4seen.com/files/bass24.zip && unzip -j bass24.zip x64/bass.dll -d /temp && unzip -j bass24.zip delphi/bass.pas -d /source/fpc_atomic
 RUN mkdir -p /source/fpc_atomic/lib/x86_64-linux && wget https://www.un4seen.com/files/bass24-linux.zip && unzip -j bass24-linux.zip libs/x86_64/libbass.so -d /source/fpc_atomic/
-RUN wget https://raw.githubusercontent.com/SaschaWillems/dglOpenGL/master/dglOpenGL.pas -O /source/fpc_atomic/dglOpenGL.pas
+RUN wget https://raw.githubusercontent.com/SaschaWillems/dglOpenGL/master/dglOpenGL.pas -O /source/fpc_atomic/dglOpenGL.pas && cp /source/fpc_atomic/dglOpenGL.pas /source/fpc_atomic/cd_data_extractor/
+
 RUN mkdir -p /source/synapse && cd /source/synapse && svn checkout https://svn.code.sf.net/p/synalist/code/trunk . && mv /source/synapse/* /source/fpc_atomic/
 RUN /install_corpsman_lnet.sh
-RUN echo "URL_CheckForUpdate = '';" > /source/fpc_atomic/updater_link.inc
 
 COPY runenv.sh /runenv.sh
 RUN chmod 777 /runenv.sh
