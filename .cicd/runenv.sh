@@ -29,9 +29,14 @@ then
 else
   echo Found AtomicGameRoot DATA. Copying to build/DATA folder
   
-  cd /source/fpc_atomic/cd_data_extractor && lazbuildl64 cd_data_extractor.lpi && mv cd_data_extractor /build
+  cd /source/fpc_atomic/cd_data_extractor && lazbuildl64 cd_data_extractor_nogui.lpi && lazbuildw64 cd_data_extractor_nogui.lpi
   # TODO: executing a CLI version of cd_data_extractor to convert data from /AtomicGameRoot/DATA/ to /build/DATA/
 
+  cp cd_data_extractor_nogui /build
+  cp cd_data_extractor_nogui.exe /build
+
+  # not working due to gtk error on linux
+  #./cd_data_extractor_nogui -cd /AtomicGameRoot -atomic /build
   # cp -r /AtomicGameRoot/DATA/* /build/DATA/
 
   if [ "$ATOMIC_EXTRA_ANI" == "true" ]

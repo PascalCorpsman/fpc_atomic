@@ -3,13 +3,15 @@ version: '3.4'
 services:
   atomic:
     image: atomic
+    container_name: atomic
     volumes:
-      - /d/Projekte/fpc_atomic/bomber/:/AtomicGameRoot
+      - /d/Projekte/fpc_atomic/bomber/:/AtomicGameRoot:ro
       - ${PWD}/build:/build
-    tty: true
-    stdin_open: true
     environment:
-      - ATOMIC_BUILD_WIN64=true
-      - ATOMIC_BUILD_WIN32=true
+      - ATOMIC_BUILD_WIN64=false
+      - ATOMIC_BUILD_WIN32=false
       - ATOMIC_BUILD_LINUX=true
       - ATOMIC_EXTRA_ANI=true
+    #tty: true
+    #stdin_open: true
+    #command: bash

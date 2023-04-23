@@ -6,7 +6,8 @@
   "scripts": {
     "make": "docker build . -t atomic",
     "run": "(docker container rm atomic || true) && docker run --name atomic atomic ",
-    "it": "docker run -it atomic /bin/bash"
+    "it": "docker run -it atomic /bin/bash",
+    "up": "docker compose up -d && docker exec -it cicd_atomic_1 bash ; docker compose down"
   },
   "author": ""
 }
