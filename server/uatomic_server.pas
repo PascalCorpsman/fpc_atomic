@@ -2063,8 +2063,10 @@ End;
 Procedure TServer.LoadStatistiks;
 Var
   ini: TIniFile;
+  p: String;
 Begin
-  ini := TIniFile.Create('stats.txt');
+  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  ini := TIniFile.Create(p + 'stats.txt');
   fStatistik.Total[sMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
   fStatistik.Total[sGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
   fStatistik.Total[sFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
@@ -2088,8 +2090,10 @@ End;
 Procedure TServer.SaveStatistiks;
 Var
   ini: TIniFile;
+  p: String;
 Begin
-  ini := TIniFile.Create('stats.txt');
+  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  ini := TIniFile.Create(p + 'stats.txt');
   Try
     ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[sMatchesStarted] + fStatistik.LastRun[sMatchesStarted]);
     ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[sGamesStarted] + fStatistik.LastRun[sGamesStarted]);

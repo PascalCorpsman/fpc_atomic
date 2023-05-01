@@ -698,7 +698,7 @@ Function TAtomicField.HandleMovePlayer(Var Players: TPlayers; PlayerIndex: integ
 Const
   Epsilon = 0.25; // Je Größer dieser Wert, desto mehr wird das Umlaufen der Ecken unterstützt (maximal wäre 0.5 möglich)
 Var
-  dx, dy, cSpeed, commaparty, commapartx, rSpeed: Single;
+  cSpeed, commaparty, commapartx, rSpeed: Single;
   dxi, dyi, nx, ny, x, y, index: Integer;
 Begin
   result := false;
