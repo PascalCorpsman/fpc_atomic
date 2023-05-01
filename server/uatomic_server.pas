@@ -182,7 +182,7 @@ Begin
     Raise exception.create('Error could not listen on port: ' + inttostr(port));
   End;
   // Laden aller Felder
-  sl := FindAllDirectories('data' + PathDelim + 'maps', false);
+  sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
   sl.Sorted := true;
   sl.Sort; // Ist beim Client wichtig, beim Server wäre es theoretisch egal, so ists aber leichter zum debuggen
   setlength(fFields, sl.Count);

@@ -13,7 +13,7 @@ After this, one more "return" will start the round. The round can end for two re
 
 ## In-Game Commands
 Here are the commands you can use while playing FPC Atomic:
-- "ESC" : Return to mainmenu (or quit game, when in mainmenu)
+- "ESC"/ Back : Return to mainmenu (or quit game, when in mainmenu)
 - "+" : Increases the sound volume during play. 
 - "-" : Decreases the sound volume during play.
 - "m" : Toggles the music on and off during play. You can also set this option in the game's options menu.

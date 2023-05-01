@@ -67,7 +67,6 @@ Begin
           - Random Powerup ??
 
     Known Bugs:
-          !- Der Spieler kann ohne PowerUps nicht gegen ein Conveyor anlaufen, selbst mit Powerups geht es nicht ordentlich !
           - Wenn eine Bombe in ein Brennendes Feld "Rollt" muss sie instant explodieren
             \-> Implementiert, aber noch nicht getestet.
 

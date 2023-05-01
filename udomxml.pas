@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uDomXML                                                         07.10.2016 *)
 (*                                                                            *)
-(* Version     : 0.09                                                         *)
+(* Version     : 0.10                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -32,6 +32,7 @@
 (*               0.07 - ExpandEmptyNodes                                      *)
 (*               0.08 - Erste implementierung zu "escaping"                   *)
 (*               0.09 - generisches AddChild für TDomnode                     *)
+(*               0.10 - FIX scan for invalid characters in Attributes         *)
 (*                                                                            *)
 (* Known Bugs  : -Unsinnige Fehlermeldung wenn gar keine gültige xml Datei    *)
 (*                geparst werden soll.                                        *)
@@ -169,6 +170,31 @@ Begin
   result := StringReplace(result, '&lt;', '<', [rfReplaceAll]);
   result := StringReplace(result, '&#60;', '<', [rfReplaceAll]);
   result := StringReplace(result, '&#38;', '&', [rfReplaceAll]);
+End;
+
+(*
+ * Konvertiert einen String in einen String der in einem XML-Attribut stehen darf
+ * & -> &amp; , ...
+ *)
+
+Function StringToXMLAttributeString(Value: String): String;
+Begin
+  result := value;
+  result := StringReplace(result, '&', '&amp;', [rfReplaceAll]);
+  result := StringReplace(result, '<', '&lt;', [rfReplaceAll]);
+  result := StringReplace(result, '"', '&quot;', [rfReplaceAll]);
+End;
+
+(*
+ * Umkehrfunktion zu StringToXMLAttributeString
+ *)
+
+Function XMLAttributeStringToString(Value: String): String;
+Begin
+  result := value;
+  result := StringReplace(result, '&quot;', '"', [rfReplaceAll, rfIgnoreCase]);
+  result := StringReplace(result, '&lt;', '<', [rfReplaceAll, rfIgnoreCase]);
+  result := StringReplace(result, '&amp;', '&', [rfReplaceAll, rfIgnoreCase]);
 End;
 
 { TDOMXML }
@@ -412,7 +438,7 @@ Begin
           If (Not inString) And ((ord(Buffer[Index]) <= 32) Or (Buffer[Index] = '>') Or (Buffer[Index] = '/') Or (isProcessingNode And (Buffer[Index] = '?'))) Then Begin
             setlength(result.fAttributes, High(result.fAttributes) + 2);
             result.fAttributes[High(result.fAttributes)].AttributeName := an;
-            result.fAttributes[High(result.fAttributes)].AttributeValue := StringReplace(t, '&quot;', '"', [rfReplaceAll, rfIgnoreCase]);
+            result.fAttributes[High(result.fAttributes)].AttributeValue := XMLAttributeStringToString(t);
             t := '';
             If (ord(Buffer[Index]) <= 32) Then Begin // Es folgt ein weiteres Attribut
               state := ReadNameAttr;
@@ -539,7 +565,7 @@ Begin
     s := '<' + Node.NodeName;
   End;
   For i := 0 To High(Node.fAttributes) Do Begin
-    s := s + ' ' + Node.fAttributes[i].AttributeName + '="' + StringReplace(Node.fAttributes[i].AttributeValue, '"', '&quot;', [rfReplaceAll, rfIgnoreCase]) + '"';
+    s := s + ' ' + Node.fAttributes[i].AttributeName + '="' + StringToXMLAttributeString(Node.fAttributes[i].AttributeValue) + '"';
   End;
   // Ein Node mit nur Attributen
   If (High(Node.fNodes) = -1) And (trim(Node.NodeValue) = '') Then Begin
@@ -843,4 +869,5 @@ Begin
 End;
 
 End.
+
 
