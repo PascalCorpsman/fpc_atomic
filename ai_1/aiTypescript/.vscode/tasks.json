@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Transpile AI",
+      "type": "shell",
+      "command": "tsc ${workspaceFolder}/src/ai.ts",
+      "isBackground": true,
+      "problemMatcher": [
+        "$tsc-watch"
+      ],
+      "group": "build"
+    }   
+  ]
+}
