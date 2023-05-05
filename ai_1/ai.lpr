@@ -73,6 +73,11 @@ var
 
   procedure AiDeInit(); cdecl;
   begin
+    // This code cannot be uninstalled. Typing u in FPC AB Server will caus a crash.
+    // The LCL framework (websockets) cannot be completely uninitialized.
+    // If the UnloadLibrary function of the FPC AB Server is used, it will remove the memory
+    // from under our feet, causing the server to crash.
+
   {
     // Uninstall is not possible
     if AiServer = nil then
