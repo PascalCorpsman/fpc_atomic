@@ -17,6 +17,7 @@ Here are the commands you can use while playing FPC Atomic:
 - "+" : Increases the sound volume during play. 
 - "-" : Decreases the sound volume during play.
 - "m" : Toggles the music on and off during play. You can also set this option in the game's options menu.
+- "j" : Open IP / Port question dialog to connect to internet server.
   
 ## Powerups and game control
 Here are the powerups available in the game:  
@@ -61,6 +62,10 @@ To connect a client to a server over the Internet, follow these steps:
 - -ip \<server's IP address\>: This should be the IP address of the router that the server is connected to.
 - -port \<forwarded port number\>: This should be the port number that is forwarded to the server's port.
 4. If the IP address and port number are correct, the client will automatically connect to the specified server. When you restart the client or host a new game the given parameters will be resetted and the game will work as "normal".
+
+or
+
+ Press "j" when in MainMenu and enter the IP / Port settings to join.
 
 ## Server Control Commands
 Normally it is not necessary to take care of the server, it is automatically started by fpc_atomic when a game is hosted. If desired the server can also be used in dedicated mode. The first client that connects to a dedicated server is treated as host.

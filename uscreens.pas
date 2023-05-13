@@ -244,7 +244,82 @@ Type
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
   End;
 
-  { TVictoryMenu }
+  { TJoinQuestionForm }
+
+  TJoinQuestionForm = Class(TForm)
+  private
+    Edit1: TEdit;
+    Edit2: TEdit;
+    Label1: TLabel;
+    Label2: TLabel;
+    Button1: TButton;
+    Button2: TButton;
+  public
+    Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
+  End;
+
+  { TJoinQuestionForm }
+
+Constructor TJoinQuestionForm.CreateNew(AOwner: TComponent; Num: Integer);
+Begin
+  Inherited CreateNew(AOwner, Num);
+  caption := 'Enter IP-Settings';
+  width := 312;
+  height := 163;
+  Position := poScreenCenter;
+  Constraints.MaxWidth := Width;
+  Constraints.MinWidth := Width;
+  Constraints.MaxHeight := Height;
+  Constraints.MinHeight := Height;
+
+  Edit1 := TEdit.Create(self);
+  edit1.name := 'Edit1';
+  edit1.Parent := self;
+  edit1.Top := 32;
+  edit1.Left := 16;
+  edit1.Width := 288;
+  edit1.Text := '127.0.0.1';
+
+  Edit2 := TEdit.Create(self);
+  edit2.name := 'Edit2';
+  edit2.Parent := self;
+  edit2.Top := 88;
+  edit2.Left := 16;
+  edit2.Width := 288;
+  edit2.Text := '9876';
+
+  label1 := TLabel.Create(self);
+  label1.Name := 'Label1';
+  label1.Parent := self;
+  label1.caption := 'IP';
+  label1.top := 8;
+  label1.Left := 8;
+
+  label2 := TLabel.Create(self);
+  label2.Name := 'Label2';
+  label2.Parent := self;
+  label2.caption := 'Port';
+  label2.top := 64;
+  label2.Left := 8;
+
+  Button1 := TButton.Create(self);
+  Button1.Name := 'Button1';
+  Button1.Parent := self;
+  Button1.caption := 'OK';
+  Button1.ModalResult := mrOK;
+  Button1.Top := 128;
+  Button1.Left := 229;
+
+  Button2 := TButton.Create(self);
+  Button2.Name := 'Button2';
+  Button2.Parent := self;
+  Button2.caption := 'Cancel';
+  Button2.ModalResult := mrCancel;
+  Button2.Top := 128;
+  Button2.Left := 16;
+End;
+
+{ TVictoryMenu }
 
 Procedure TVictoryMenu.OnKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
@@ -992,7 +1067,17 @@ End;
 
 Procedure TMainMenu.OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState
   );
+Var
+  f: TJoinQuestionForm;
 Begin
+  If key = VK_J Then Begin
+    // Frage IP und Port zum Game.JoinViaParams(ip, port);      ab !
+    f := TJoinQuestionForm.CreateNew(Nil, 0);
+    If f.ShowModal = mrOK Then Begin
+      TGame(fOwner).JoinViaParams(f.Edit1.Text, strtointdef(f.Edit2.Text, 9876));
+    End;
+    f.free;
+  End;
   If key = VK_DOWN Then Begin
     fCursorPos := min(fCursorPos + 1, 6);
   End;

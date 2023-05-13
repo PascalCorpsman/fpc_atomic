@@ -64,6 +64,7 @@ Const
    *                       cd_data_extractor switch to to relative paths
    *                       improve error Message if game loading fails
    *             0.07008 = Allow "Back" to exit options
+   *                       "j" command in Main Menu (connect to internet game)
    *
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
