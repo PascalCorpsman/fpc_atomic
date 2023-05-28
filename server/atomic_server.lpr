@@ -69,6 +69,7 @@ Begin
     Known Bugs:
           - Wenn eine Bombe in ein Brennendes Feld "Rollt" muss sie instant explodieren
             \-> Implementiert, aber noch nicht getestet.
+          - Die Laufbänder sind kacke !
 
     Maybe Implementierungen:
           - Kollisionserkennung zwischen Atomic und Bomben via Distanzmessung und nicht via "Koordinaten" ?

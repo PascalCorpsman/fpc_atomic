@@ -820,12 +820,19 @@ Procedure TGame.Connection_Connect(aSocket: TLSocket);
 Var
   m: TMemoryStream;
   i: Integer;
+  B: Byte;
 Begin
   // Der Client ist beim Server Registriert, nun gilt es um die Mitspielerlaubniss zu fragen.
   log('TGame.Connection_Connect', llTrace);
   fChunkManager.SetNoDelay(true);
   m := TMemoryStream.Create;
   m.Write(version, sizeof(version));
+{$IFDEF Release}
+  b := GameModeRelease;
+{$ELSE}
+  b := GameModeDebug;
+{$ENDIF}
+  m.write(b, sizeof(b));
   m.WriteAnsiString(Settings.NodeName);
   i := length(fFields);
   m.Write(i, sizeof(i));
@@ -963,6 +970,11 @@ Begin
             EC_game_full: s := 'Game already in progress. No additional connections are allowed.';
             EC_Invalid_Versions: s := 'Server and client have different versions. Please use the same version as server!';
             EC_Too_Much_Player: s := 'Only 10 player per server allowed, sorry this server is full!';
+{$IFDEF Release}
+            EC_Invalid_Mode_Versions: s := 'Server is in debug mode, while client in release mode -> not compatible.';
+{$ELSE}
+            EC_Invalid_Mode_Versions: s := 'Server is in release mode, while client in debug mode ->  not compatible.';
+{$ENDIF}
           End;
           SwitchToScreen(sMainScreen);
           LogShow('Could not join the server : ' + s, llInfo);

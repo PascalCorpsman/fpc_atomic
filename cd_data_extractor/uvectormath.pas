@@ -2181,6 +2181,7 @@ Begin
       End;
     End;
     // set q_next to some OTHER point
+    q_next := 0; // Kill the Compiler warning
     For i := 0 To high(Points) Do
       If i <> p_start Then Begin
         q_next := i;
@@ -2874,6 +2875,8 @@ Function IntersectLineEllipse(Const A, B, M: TVector2; Rx, Ry: TBaseType; Out
 Var
   x, det, d, h, g, f, b2, v, m_g, c_g: TBaseType;
 Begin
+  p1 := ZeroV2; // Kill the Compiler warning
+  p2 := ZeroV2; // Kill the Compiler warning
   If abs(a.x - b.x) <= Epsilon Then Begin // Schnitt mit einer Senkrechten
     result := 0;
     If (a.x < m.x - rx) Or (a.x > m.x + rx) Then Begin // Die Gerade liegt außerhalb der Ellipse

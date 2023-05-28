@@ -493,17 +493,30 @@ Var
   Username: String;
   ClientVersion: uint32;
   fieldlist: TFieldHashNameList;
+  ClientMode: Byte;
 Begin
   log('TServer.HandleUserLoginRequest', llTrace);
-
   ClientVersion := $FFFFFFFF;
   Stream.Read(ClientVersion, sizeof(ClientVersion));
+  ClientMode := 0;
+  Stream.Read(ClientMode, sizeof(ClientMode));
   Username := Stream.ReadAnsiString;
 
   m := TMemoryStream.Create;
   // 0. Check ob die beiden Versionen Compatibel sind
   If version <> ClientVersion Then Begin
     i := EC_Invalid_Versions;
+    m.Write(i, sizeof(i));
+    SendChunk(miRequestLoginResult, m, UID);
+    LogLeave;
+    exit;
+  End;
+{$IFDEF Release}
+  If ClientMode <> GameModeRelease Then
+{$ELSE}
+  If ClientMode <> GameModeDebug Then
+{$ENDIF}Begin
+    i := EC_Invalid_Mode_Versions;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);
     LogLeave;
