@@ -182,7 +182,7 @@ Begin
     Raise exception.create('Error could not listen on port: ' + inttostr(port));
   End;
   // Laden aller Felder
-  sl := FindAllDirectories('data' + PathDelim + 'maps', false);
+  sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
   sl.Sorted := true;
   sl.Sort; // Ist beim Client wichtig, beim Server wäre es theoretisch egal, so ists aber leichter zum debuggen
   setlength(fFields, sl.Count);
@@ -493,17 +493,30 @@ Var
   Username: String;
   ClientVersion: uint32;
   fieldlist: TFieldHashNameList;
+  ClientMode: Byte;
 Begin
   log('TServer.HandleUserLoginRequest', llTrace);
-
   ClientVersion := $FFFFFFFF;
   Stream.Read(ClientVersion, sizeof(ClientVersion));
+  ClientMode := 0;
+  Stream.Read(ClientMode, sizeof(ClientMode));
   Username := Stream.ReadAnsiString;
 
   m := TMemoryStream.Create;
   // 0. Check ob die beiden Versionen Compatibel sind
   If version <> ClientVersion Then Begin
     i := EC_Invalid_Versions;
+    m.Write(i, sizeof(i));
+    SendChunk(miRequestLoginResult, m, UID);
+    LogLeave;
+    exit;
+  End;
+{$IFDEF Release}
+  If ClientMode <> GameModeRelease Then
+{$ELSE}
+  If ClientMode <> GameModeDebug Then
+{$ENDIF}Begin
+    i := EC_Invalid_Mode_Versions;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);
     LogLeave;
@@ -2063,8 +2076,10 @@ End;
 Procedure TServer.LoadStatistiks;
 Var
   ini: TIniFile;
+  p: String;
 Begin
-  ini := TIniFile.Create('stats.txt');
+  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  ini := TIniFile.Create(p + 'stats.txt');
   fStatistik.Total[sMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
   fStatistik.Total[sGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
   fStatistik.Total[sFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
@@ -2088,8 +2103,10 @@ End;
 Procedure TServer.SaveStatistiks;
 Var
   ini: TIniFile;
+  p: String;
 Begin
-  ini := TIniFile.Create('stats.txt');
+  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  ini := TIniFile.Create(p + 'stats.txt');
   Try
     ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[sMatchesStarted] + fStatistik.LastRun[sMatchesStarted]);
     ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[sGamesStarted] + fStatistik.LastRun[sGamesStarted]);

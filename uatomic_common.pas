@@ -64,7 +64,8 @@ Const
    *                       cd_data_extractor switch to to relative paths
    *                       improve error Message if game loading fails
    *             0.07008 = Allow "Back" to exit options
-   *
+   *                       "j" command in Main Menu (connect to internet game)
+   * -releaseGP- 0.08000 = Prüfung Debug / Release version beim Verbinden
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -146,6 +147,7 @@ Const
   EC_Game_Full = 2; // Das Spiel ist bereits im Gange, keine weiteren Spieler mehr erlaubt
   EC_Invalid_Versions = 3; // Bezogen auf Vergleich Client Version vs. Server Version
   EC_Too_Much_Player = 4; // Es dürfen Maximal 10 Spieler beitreten !
+  EC_Invalid_Mode_Versions = 5; // Bezogen auf Vergleich Client Debug vs. Release
 
   (*
    * Damit der Tiefentest funktioniert müssen diverse Layer definiert werden
@@ -212,6 +214,13 @@ Const
     (R: 50; G: 0; B: 100) // purple
     );
 {$ENDIF}
+
+  (*
+   * Zur Unterscheidung, damit auf dem Server immer nur alle Debug oder Release haben..
+   * die beiden folgenden Konstanten müssen also unterschiedlich sein !!
+   *)
+  GameModeRelease = 1;
+  GameModeDebug = 2;
 
 Type
 

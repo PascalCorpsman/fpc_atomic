@@ -31,3 +31,7 @@ lib/
 # Application bundle for Mac OS
 *.app/
 
+# Atomic files
+server/stats.txt
+stats.txt
+
