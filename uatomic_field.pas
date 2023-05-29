@@ -719,33 +719,34 @@ Begin
     End;
     x := trunc(Players[PlayerIndex].info.Position.x);
     y := trunc(Players[PlayerIndex].info.Position.y);
-    commapartx := (Players[PlayerIndex].info.Position.x - trunc(Players[PlayerIndex].info.Position.x));
-    commaparty := (Players[PlayerIndex].info.Position.y - trunc(Players[PlayerIndex].info.Position.y));
-    // Die Bombe befindet sich "ungefähr" in der Mitte
-    dxi := 0;
-    dyi := 0;
-    Case fConveyorDirs[x, y] Of
-      0: dxi := 1;
-      90: dyi := -1;
-      180: dxi := -1;
-      270: dyi := 1;
-    End;
-    nx := x + dxi;
-    ny := y + dyi;
-    If Not FielWalkable(nx, ny, true) Then Begin
+    If fConveyorDirs[x, y] <> -1 Then Begin // -- Aber nur wenn wir auch tatsächlich auf einem Laufband stehen..
+      commapartx := (Players[PlayerIndex].info.Position.x - trunc(Players[PlayerIndex].info.Position.x));
+      commaparty := (Players[PlayerIndex].info.Position.y - trunc(Players[PlayerIndex].info.Position.y));
+      // Die Bombe befindet sich "ungefähr" in der Mitte
       dxi := 0;
       dyi := 0;
-    End;
-    Players[PlayerIndex].info.Position.x := Players[PlayerIndex].info.Position.x + dxi * cSpeed;
-    Players[PlayerIndex].info.Position.y := Players[PlayerIndex].info.Position.y + dyi * cSpeed;
-    // Reinziehen der Bomben auf Ordentliche Koordinaten !
-    If fConveyorDirs[x, y] <> -1 Then Begin // -- Aber nur wenn wir auch tatsächlich auf einem Laufband stehen..
+      Case fConveyorDirs[x, y] Of
+        0: dxi := 1;
+        90: dyi := -1;
+        180: dxi := -1;
+        270: dyi := 1;
+      End;
+      nx := x + dxi;
+      ny := y + dyi;
+      If Not FielWalkable(nx, ny, true) Then Begin
+        dxi := 0;
+        dyi := 0;
+      End;
+      Players[PlayerIndex].info.Position.x := Players[PlayerIndex].info.Position.x + dxi * cSpeed;
+      Players[PlayerIndex].info.Position.y := Players[PlayerIndex].info.Position.y + dyi * cSpeed;
+      // Reinziehen der Bomben auf Ordentliche Koordinaten !
       If (commaparty <> 0.5) Then Begin
         If (dxi <> 0) Then Begin
           Players[PlayerIndex].info.Position.y := Players[PlayerIndex].info.Position.y + (0.5 - commaparty) * abs(commapartx - 0.5);
         End
         Else Begin
-          Players[PlayerIndex].info.Position.y := Players[PlayerIndex].info.Position.y + (0.5 - commaparty) * cSpeed;
+          If Not (Players[PlayerIndex].MoveState In [msDown, msUp]) Then
+            Players[PlayerIndex].info.Position.y := Players[PlayerIndex].info.Position.y + (0.5 - commaparty) * cSpeed;
         End;
       End;
       If (commapartx <> 0.5) Then Begin
@@ -753,7 +754,8 @@ Begin
           Players[PlayerIndex].info.Position.x := Players[PlayerIndex].info.Position.x + (0.5 - commapartx) * abs(commaparty - 0.5);
         End
         Else Begin
-          Players[PlayerIndex].info.Position.x := Players[PlayerIndex].info.Position.x + (0.5 - commapartx) * cSpeed;
+          If Not (Players[PlayerIndex].MoveState In [msRight, msLeft]) Then
+            Players[PlayerIndex].info.Position.x := Players[PlayerIndex].info.Position.x + (0.5 - commapartx) * cSpeed;
         End;
       End;
     End;
