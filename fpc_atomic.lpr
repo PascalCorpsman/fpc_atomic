@@ -24,7 +24,7 @@ Uses
   Forms, Unit1, Unit18, uatomic;
 
 Begin
-  Application.Title := '';
+  Application.Title:='';
   Application.Initialize;
   Application.CreateForm(TForm1, Form1);
   Application.CreateForm(TForm18, Form18);

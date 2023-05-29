@@ -66,6 +66,7 @@ Const
    *             0.07008 = Allow "Back" to exit options
    *                       "j" command in Main Menu (connect to internet game)
    * -releaseGP- 0.08000 = Prüfung Debug / Release version beim Verbinden
+   *             0.08001 = Fix Crash when changing username
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

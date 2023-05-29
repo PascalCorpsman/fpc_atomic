@@ -26,7 +26,7 @@
 (*
  * Auf die Schnelle alles in Release Mode umstellen, kann auch via -dRelease
  *)
-{.$define Release}
+{$define Release}
 
 (*
  * Wenn dieser Switch gesetzt ist, dann werden Hochfrequente Nachrichten nicht im Trace geloggt.

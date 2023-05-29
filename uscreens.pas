@@ -907,6 +907,7 @@ Begin
       0: Tgame(fOwner).Settings.TeamPlay := Not Tgame(fOwner).Settings.TeamPlay;
       1: Tgame(fOwner).Settings.RandomStart := Not Tgame(fOwner).Settings.RandomStart;
       2: Begin
+          key := 0;
           nn := InputBox('Edit', 'Enter Nodename', Tgame(fOwner).Settings.NodeName);
           If trim(nn) <> '' Then Begin
             Tgame(fOwner).Settings.NodeName := nn;
@@ -958,6 +959,7 @@ Begin
       6: Tgame(fOwner).Settings.LostPlayersRevertToAI := Not Tgame(fOwner).Settings.LostPlayersRevertToAI;
       7: Tgame(fOwner).Settings.PlaySounds := Not Tgame(fOwner).Settings.PlaySounds;
       8: Begin
+          key := 0;
           kd := TKeyboardDialog.CreateNew(Nil);
           kd.LoadKeys(Tgame(fOwner).Settings.Keys[ks0], Tgame(fOwner).Settings.Keys[ks1]);
           If kd.Execute() Then Begin
