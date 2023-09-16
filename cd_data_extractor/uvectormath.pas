@@ -899,7 +899,6 @@ Var
 Begin
   For j := 0 To high(M) Do Begin
     For i := 0 To high(M[j]) Do Begin
-      // TODO: evtl gibt es
       M[j, i] := (Random()) * 2 - 1;
     End;
   End;
