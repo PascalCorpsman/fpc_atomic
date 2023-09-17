@@ -56,21 +56,28 @@ The key binding can be changed in the options dialog
 
 ## Connecting a Client over the Internet to a local server
 To connect a client to a server over the Internet, follow these steps: 
-1. Configure a port forwarding on the router between the internet and the computer where the server should run
-2. Start the server on the target computer, this could be done by hosting a game on the target computer or by starting the server in dedicated mode see [Server Control Commands](#Server-Control-Commands)
-3. Start the client with the following command line parameters:
-- -ip \<server's IP address\>: This should be the IP address of the router that the server is connected to.
-- -port \<forwarded port number\>: This should be the port number that is forwarded to the server's port.
-4. If the IP address and port number are correct, the client will automatically connect to the specified server. When you restart the client or host a new game the given parameters will be resetted and the game will work as "normal".
 
+#### Preperation on server side
+1. Configure a port forwarding on the router between the internet and the computer where the server should run
+2. Start the server on the target computer, this could be done by hosting a game on the target computer or by starting the server in dedicated mode see [Server Control Commands](#Server-Control-Commands) 
+
+#### Preperation on client side
+
+* Press "j" when in MainMenu and enter the IP / Port settings from the server to join 
+ 
 or
 
- Press "j" when in MainMenu and enter the IP / Port settings to join.
+* Start the client with the following command line parameters:<br>
+ -ip \<server's IP address\>: This should be the IP address of the router that the server is connected to.<br>
+ -port \<forwarded port number\>: This should be the port number that is forwarded to the server's port.
+  
+ If the IP address and port number are correct, the client will automatically connect to the specified server. When you restart the client or host a new game the given parameters will be resetted and the game will work as "normal".
+
 
 ## Server Control Commands
-Normally it is not necessary to take care of the server, it is automatically started by fpc_atomic when a game is hosted. If desired the server can also be used in dedicated mode. The first client that connects to a dedicated server is treated as host.
+Normally it is not necessary to take care of the server. The server is automatically started by fpc_atomic when a game is hosted. If desired the server can also be used in dedicated mode. The first client that connects to a dedicated server is treated as host.
 
-To start the server in dedicated mode, use the following parameters:
+To start the server in dedicated mode, use the following command line parameters:
 - -h: online help for server (see to get more informations)
 - -p \<port\>: the port to listen on
 - -t \<time\>: the timeout in seconds to automatically close the server if no users are connected. Use 0 to disable the timeout.
@@ -78,7 +85,7 @@ To start the server in dedicated mode, use the following parameters:
 
 ### Console commands:
 During server execution it is possible to type the following commands in the console window:
-- "u": Unload the current AI (artificial intelligence).
+- "u": Unload the current AI (artificial intelligence) library.
 - "a": Load a new AI.
 - "ESC": instance close server
 
@@ -86,4 +93,4 @@ During server execution it is possible to type the following commands in the con
 The server will automatically load ai.so (or ai.dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development.
 
 ### Ai development
-Start with the "ai_empty" template. The AI interface is compatible with C and other programming languages. For further documentation see the in code documentation.
+Start with the "ai_empty" template. The AI interface is compatible with the C programming language. For further documentation see the in code documentation of the ai_empty template.
