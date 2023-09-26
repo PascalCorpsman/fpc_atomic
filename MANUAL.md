@@ -5,7 +5,7 @@
 To play FPC Atomic in a local area network, simply start the FPC Atomic client on each machine (run fpc_atomic executable). If desired, it is also possible to start the server in dedicated mode using the [Server control](#Server-Control-commands), if done so all clients need to "join" as the server is already startet. The first client who connects to a dedicated server will be treated as if he has startet the game.
 
 ## How to start a "game"
-The first player will act as the "host" of the game, while all other players will join the game.  
+The first player will act as the "host" of the game, while all other players will join the game.
 
 The "host" player should wait until all players have connected to the game, then press "return" to switch to the player setup. Depending on the teamplay settings (which can be configured in the options), each player will select their player color. Once everyone has finished selecting their color, the "host" player can press "return" to configure the map setup as needed.
 

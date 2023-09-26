@@ -66,8 +66,11 @@ Const
    *             0.07008 = Allow "Back" to exit options
    *                       "j" command in Main Menu (connect to internet game)
    * -releaseGP- 0.08000 = Prüfung Debug / Release version beim Verbinden
-   *             0.08001 = Fix Crash when changing username
+   *             0.08001 = Fix, crash when changing username
    *                       das "herunterlaufen" von Laufbändern geht nun "besser"
+   * -releaseGP- 0.09000 = Fix, render glitch on brick destroy (only on slow computers and high transmit delays) -> TFieldBrick geändert, deswegen 0.08 auf 0.09
+   *                       Fix, crash of server if player is running into a exploding brick
+   *             0.09001 = 
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -373,7 +376,8 @@ Type
 
   TFieldBrick = Record
     BrickData: TBrickData; // 1. Rendern Solid / Brick
-    Exploding: Boolean;
+    Exploding: Boolean; // Intern für alles mögliche
+    ExplodingRenderFlag: Boolean; // Zum Triggern der "Exploding" animation
     // Wenn Brickdata = bdBlank
     PowerUp: TPowerUps;
     // Wenn PowerUp = puNone

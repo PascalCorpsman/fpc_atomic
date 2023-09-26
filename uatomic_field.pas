@@ -523,6 +523,7 @@ Begin
           StatisticCallback(sBricksDestroyed);
         End;
         fField[x, y].Exploding := true;
+        fField[x, y].ExplodingRenderFlag := true;
         // fField[x, y].BrickData := bdBlank; // der darf nicht Gleich weg genommen werden, da sonst  2 Bomben auch 2 Steine auf einmal wegsprengen !
         fField[x, y].Counter := 0;
         result := False;
@@ -590,6 +591,7 @@ Begin
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
       fField[i, j].Exploding := false;
+      fField[i, j].ExplodingRenderFlag := false;
       fField[i, j].Counter := 0;
       fField[i, j].PowerUp := puNone;
       fField[i, j].Flame := [];
@@ -658,12 +660,18 @@ End;
 
 Procedure TAtomicField.AppendGamingData(Const Stream: TStream);
 Var
-  i: integer;
+  i, j: integer;
 Begin
   (*
    * Da auf jedem Feld immer nur 1 Ding Gerendert werden kann ist das hier recht Easy ;)
    *)
   stream.Write(fField, SizeOf(fField));
+  // Sicherstellen, dass das ExplodingRenderFlag nur als Flanke raus geht (Also genau 1 mal gesetzt ist !)
+  For i := 0 To high(fField) Do Begin
+    For j := 0 To high(fField[i]) Do Begin
+      fField[i, j].ExplodingRenderFlag := false;
+    End;
+  End;
 {$IFDEF Server}
   (*
    * Wir Kopieren nur die Gültigen Bomben raus
@@ -1179,6 +1187,18 @@ Type
     End;
   End;
 
+  Procedure AddEndFlame(x, y, PlayerIndex: integer);
+  Begin
+    (*
+     * So überschreibt jeder Spieler ggf. einen Anderen, es sieht so aus als
+     * ob TAtomicField.Detonate das auch so macht, wenn nicht, muss das If mit rein !
+     *)
+    //If fField[x, y].Flame = [] Then Begin
+    fField[x, y].FlamePlayer := PlayerIndex;
+    //End;
+    fField[x, y].Flame := fField[x, y].Flame + [fend];
+  End;
+
 Var
   dxi, dyi, nx, ny, x, y, i: Integer;
   index, j, dir: Integer;
@@ -1461,8 +1481,8 @@ Begin
         End;
       End;
     End;
-
   End;
+
   // Alle Bombem die Hochgehen sollen ab arbeiten
   While Not fBombDetonateFifo.isempty Do Begin
     index := fBombDetonateFifo.Pop;
@@ -1487,37 +1507,37 @@ Begin
       If DirUp In dirs Then Begin
         If (Not Detonate(x, y - i, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fup)) Then Begin
           dirs := dirs - [DirUp];
-          fField[x, y - i + 1].Flame := fField[x, y - i + 1].Flame + [fend];
+          AddEndFlame(x, y - i + 1, fBombs[index].PlayerIndex);
         End;
         If (i = fBombs[index].FireLen) And (y - i >= 0) Then Begin
-          fField[x, y - i].Flame := fField[x, y - i].Flame + [fend];
+          AddEndFlame(x, y - i, fBombs[index].PlayerIndex);
         End;
       End;
       If Dirdown In dirs Then Begin
         If (Not Detonate(x, y + i, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fdown)) Then Begin
           dirs := dirs - [Dirdown];
-          fField[x, y + i - 1].Flame := fField[x, y + i - 1].Flame + [fend];
+          AddEndFlame(x, y + i - 1, fBombs[index].PlayerIndex);
         End;
         If (i = fBombs[index].FireLen) And (y + i < FieldHeight) Then Begin
-          fField[x, y + i].Flame := fField[x, y + i].Flame + [fend];
+          AddEndFlame(x, y + i, fBombs[index].PlayerIndex);
         End;
       End;
       If DirLeft In dirs Then Begin
         If (Not Detonate(x - i, y, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fleft)) Then Begin
           dirs := dirs - [DirLeft];
-          fField[x - i + 1, y].Flame := fField[x - i + 1, y].Flame + [fend];
+          AddEndFlame(x - i + 1, y, fBombs[index].PlayerIndex);
         End;
         If (i = fBombs[index].FireLen) And (x - i > 0) Then Begin
-          fField[x - i, y].Flame := fField[x - i, y].Flame + [fend];
+          AddEndFlame(x - i, y, fBombs[index].PlayerIndex);
         End;
       End;
       If DirRight In dirs Then Begin
         If (Not Detonate(x + i, y, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fright)) Then Begin
           dirs := dirs - [DirRight];
-          fField[x + i - 1, y].Flame := fField[x + i - 1, y].Flame + [fend];
+          AddEndFlame(x + i - 1, y, fBombs[index].PlayerIndex);
         End;
         If (i = fBombs[index].FireLen) And (x + i < FieldWidth) Then Begin
-          fField[x + i, y].Flame := fField[x + i, y].Flame + [fend];
+          AddEndFlame(x + i, y, fBombs[index].PlayerIndex);
         End;
       End;
     End;
@@ -1603,7 +1623,7 @@ Begin
       fField[i, j].Counter := (fField[i, j].Counter + FrameRate) Mod 60000;
       If fField[i, j].Exploding Then Begin
         (*
-         * Dauert es zu lange, bis Brickdate auf bdBlank gesetzt wirde
+         * Dauert es zu lange, bis Brickdate auf bdBlank gesetzt wird
          * dann sieht das Optisch doof aus (nur bei Synchronisationsthemen
          * Geht es zu schnell (oder eben so schnell wie jetzt, dann kann der Spieler)
          * viel zu Früh auf die Felder laufen, das macht er aber auf eigenes Risiko, da
@@ -1613,7 +1633,7 @@ Begin
           fField[i, j].BrickData := bdBlank;
         End;
         If fField[i, j].Counter >= BrickExplodeTime Then Begin
-          // Die Explusionsanimation gibt es in nur 2 Fällen
+          // Die Explosionsanimation gibt es in nur 2 Fällen
           fField[i, j].Exploding := false;
         End;
       End;
@@ -1979,7 +1999,7 @@ Begin
        * nur die Information dass die Explosionsanimation laufen soll
        * und einen Counter wie Lange sie schon läuft..
        *)
-      If fField[i, j].Exploding And (fField[i, j].Counter < fxBrickAniTime) And (Not fxBricks[i, j].Active) Then Begin
+      If fField[i, j].ExplodingRenderFlag Then Begin
         fxBricks[i, j].ani.ResetAnimation();
         fxBricks[i, j].Active := true;
       End;
