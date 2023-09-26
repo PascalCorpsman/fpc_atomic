@@ -17,7 +17,7 @@ Const
   (*
    * Der Updater braucht die "int" version nicht, die ist nur für Config_td, klar dass beide immer gleich sein müssen !
    *)
-  updater_Version = '0.09000'; // Zum Unterscheiden im Updater kann man auch gern "unterversionen nehmen" die Zahl wird als Floatingpoint angenommen.
+  updater_Version = '0.09001'; // Zum Unterscheiden im Updater kann man auch gern "unterversionen nehmen" die Zahl wird als Floatingpoint angenommen.
   updater_int_Version = 009;
 
   updater_AppName = 'FPC Atomic';
