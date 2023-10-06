@@ -2,10 +2,12 @@
 <programs>
   <program>
     <name>FPC Atomic</name>
-    <version>0.08000</version>
+    <version>0.09000</version>
     <downloadlink>https://github.com/PascalCorpsman/fpc_atomic/blob/main/bin/fpc_atomic.zip?raw=true</downloadlink>
     <startername>fpc_atomic</startername>
     <updatername>updater</updatername>
-    <release_text>+ Allow &quot;Back&quot; in options&#13;+ &quot;J&quot; command in Main Menu (only needed for internet games)&#13;+ Proof if client / server Mode is compatible</release_text>
+    <release_text>
+- Fix, crash when changing username - Improve walking on conveyour - Fix, render glitch on brick destroy (only on slow computers and high transmit delays) -> TFieldBrick changed, switch from 0.08 auf 0.09 - Fix, crash of server if player is running into a exploding brick
+</release_text>
   </program>
 </programs>
