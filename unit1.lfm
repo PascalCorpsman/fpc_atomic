@@ -35,7 +35,7 @@ object Form1: TForm1
   object LTCPComponent1: TLTCPComponent
     Port = 0
     Timeout = 0
-    ReuseAddress = False
+    ReuseAddress = True
     Left = 72
     Top = 32
   end
