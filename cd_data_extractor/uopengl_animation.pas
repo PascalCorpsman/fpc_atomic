@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uopengl_animation.pas                                           15.09.2021 *)
 (*                                                                            *)
-(* Version     : 0.09                                                         *)
+(* Version     : 0.10                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -34,6 +34,7 @@
 (*               0.07 - Support für OnAnimationOverflowEvent Callback         *)
 (*               0.08 - Tag, ResetSprite                                      *)
 (*               0.09 - OnAnimationOverflowEvent for user decisions           *)
+(*               0.10 - FIX: changing only sprite name was not stored         *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -177,8 +178,9 @@ Begin
     And (a.FrameCount = b.FrameCount)
     And (a.FramesPerRow = b.FramesPerRow)
     And (a.FramesPerCol = b.FramesPerCol)
+    // TODO: Warum ist .name hier ausgeschlossen ? (Siehe Bugfix in "SetAniSprite")
     // And (a.Fname = b.Fname) -- Dynamisch erstellte Daten werden nicht verglichen
-// And (a.SpriteIndex = b.SpriteIndex) -- Dynamisch erstellte Daten werden nicht verglichen
+    // And (a.SpriteIndex = b.SpriteIndex) -- Dynamisch erstellte Daten werden nicht verglichen
   ;
 End;
 
@@ -256,7 +258,7 @@ End;
 
 Procedure TOpenGL_Animation.SetAniSprite(Index: integer; AValue: TAniSprite);
 Begin
-  If fSprites[index] = AValue Then exit;
+  If (fSprites[index] = AValue) And (fSprites[index].Name = AValue.Name) Then exit;
   fchanged := true;
   fSprites[index] := AValue;
 End;
