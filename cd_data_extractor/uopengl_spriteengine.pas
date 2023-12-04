@@ -125,7 +125,7 @@ Type
      * Rendert das Sprite in das Rechteck (0,0,width,height)
      * AnimationOffset kann beliebig sein, sollte aber pro Object nicht verändert werden, da es sich direkt auf die Angezeigte Animation auswirkt!
      *)
-    Procedure RenderSprite(Value: Integer; AnimationOffset: integer = 0);
+    Procedure RenderSprite(Value: Integer; AnimationOffset_ms: integer = 0);
 
     Procedure ResetSprite(Value: Integer); // Setzt LastRenderTime = Gettickcount und AktualFrame = 0 => Restart der Animation
 
@@ -221,7 +221,7 @@ Begin
 End;
 
 Procedure TOpenGL_SpriteEngine.RenderSprite(Value: Integer;
-  AnimationOffset: integer);
+  AnimationOffset_ms: integer);
 Var
   aTime: qWord;
   ddw, ddh, dw, dh: double;
@@ -253,9 +253,9 @@ Begin
   End;
   // Aus AktualFrame Berechnen wir nun den Teil der angesehen werden mus.
   Frame := Fsprites[value].AktualFrame;
-  If AnimationOffset <> 0 Then Begin
+  If AnimationOffset_ms <> 0 Then Begin
     frame := frame - Fsprites[Value].FrameStart;
-    Frame := (Frame + (AnimationOffset Div Fsprites[value].dtTime)) Mod Fsprites[Value].FrameCount;
+    Frame := (Frame + (AnimationOffset_ms Div Fsprites[value].dtTime)) Mod Fsprites[Value].FrameCount;
     frame := frame + Fsprites[Value].FrameStart;
   End;
   ddw := Fsprites[value].ddw;

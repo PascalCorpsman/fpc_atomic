@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* TChunkmanager                                                   03.06.2015 *)
 (*                                                                            *)
-(* Version     : 0.14                                                         *)
+(* Version     : 0.15                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -40,6 +40,7 @@
 (*               0.13 - Fix Nilpointer nach disconnect während receive Event  *)
 (*               0.14 - Fix Memleak if server is killed with more than 1      *)
 (*                      client connected.                                     *)
+(*               0.15 - Fix AV on client disconnect                           *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uChunkmanager;
@@ -754,8 +755,8 @@ Begin
       fconnection.IterReset;
       If assigned(fconnection.Iterator) Then Begin
         OnDisconnect(fconnection.Iterator);
+        UnRegisterSocket(fconnection.Iterator);
       End;
-      UnRegisterSocket(fconnection.Iterator);
     End;
     fconnection.Disconnect(Forced);
   End;

@@ -89,8 +89,8 @@ Type
    *
    *(4)   Error = [llError, llCritical, llFatal]
    *              Ein Error Log, ist ein Fehler, welcher die Ausführung negativ
-   *              beeinflusst aber nicht zum Absturz führt. Z.B. Fehlen einer
-   *              kompletten Konfigurationsdatei, das Programm kann eingeschränkt weiter genutzt werden.
+   *              beeinflusst aber nicht zum Absturz führt. 
+   *              z.B.: Fehlen einer kompletten Konfigurationsdatei, das Programm kann eingeschränkt weiter genutzt werden.
    *
    *(5)Critical = [llCritical, llFatal]
    *              Ein Kritischer Log, ist ein Fataler Fehler, welcher aber eine
@@ -127,7 +127,7 @@ Type
    * begin
    *   Log('Dummy', llTrace);
    *   ..
-   *   { Vor jedem "Halt", muss auch LogLeave stehen }
+   *   { Vor jedem "Halt"/ "Exit", muss auch LogLeave stehen }
    *
    *   LogLeave;
    * end;
@@ -280,7 +280,7 @@ End;
  * Die Implementierung ist nicht vollständig, Erkennt aber ob die Konvertierung
  * Fehlgeschlagen ist, wenn dem so ist, dann result := -1
  *)
-
+// TODO: Diese Funktion hier könnte auch durch die "ScanDateTime" routine aus dateutil ersetzt werden.
 Function StrToDateTimeFormat(Input, Format: String): TDateTime;
 Var
   y, m, d, h, n, s, z: String;
