@@ -70,9 +70,10 @@ Const
    *                       das "herunterlaufen" von Laufbändern geht nun "besser"
    * -releaseGP- 0.09000 = Fix, render glitch on brick destroy (only on slow computers and high transmit delays) -> TFieldBrick geändert, deswegen 0.08 auf 0.09
    *                       Fix, crash of server if player is running into a exploding brick
-   *             0.09001 = Anpassen Geschwindigkeiten Conveyor und Schildkröte
+   * -releaseGP- 0.09001 = Anpassen Geschwindigkeiten Conveyor und Schildkröte
    *                       Fix, im Teamplay wurden die Bomben nicht abgeschaltet, wenn das erste Team keine Spieler mehr hat
    *                       Fix, extract Soundhandling into own class to hopefully fix crashes on Linux systems
+   *             0.09002 =
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

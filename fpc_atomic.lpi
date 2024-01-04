@@ -8,7 +8,6 @@
       </Flags>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
-      <ActiveWindowIndexAtStart Value="1"/>
     </General>
     <VersionInfo>
       <Language Value=""/>
@@ -129,9 +128,10 @@
       <Unit9>
         <Filename Value="units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
-        <TopLine Value="64"/>
-        <CursorPos X="111" Y="75"/>
+        <TopLine Value="43"/>
+        <CursorPos X="28" Y="76"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -183,10 +183,10 @@
       <Unit15>
         <Filename Value="updater_settings.inc"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <CursorPos X="29" Y="20"/>
+        <EditorIndex Value="4"/>
+        <CursorPos X="6" Y="19"/>
         <UsageCount Value="165"/>
+        <Loaded Value="True"/>
       </Unit15>
       <Unit16>
         <Filename Value="ulogger.inc"/>
@@ -337,14 +337,12 @@
       <Unit29>
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="1501"/>
-        <CursorPos X="93" Y="1524"/>
+        <WindowIndex Value="1"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
-          <WindowIndex Value="1"/>
-          <TopLine Value="103"/>
-          <CursorPos X="7" Y="49"/>
+          <EditorIndex Value="1"/>
+          <TopLine Value="1324"/>
+          <CursorPos X="32" Y="1325"/>
         </ExtraEditor1>
         <UsageCount Value="112"/>
         <Bookmarks Count="2">
@@ -406,7 +404,6 @@
       <Unit35>
         <Filename Value="usounds.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
         <WindowIndex Value="1"/>
         <TopLine Value="23"/>
@@ -507,123 +504,121 @@
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="usounds.pas"/>
-        <Caret Line="62" Column="51" TopLine="62"/>
+        <Caret Line="88" Column="7" TopLine="56"/>
       </Position1>
       <Position2>
         <Filename Value="usounds.pas"/>
-        <Caret Line="190" Column="3" TopLine="184"/>
+        <Caret Line="227" Column="50" TopLine="67"/>
       </Position2>
       <Position3>
         <Filename Value="usounds.pas"/>
-        <Caret Line="216" Column="67" TopLine="170"/>
+        <Caret Line="87" Column="11" TopLine="67"/>
       </Position3>
       <Position4>
         <Filename Value="usounds.pas"/>
-        <Caret Line="86" Column="14" TopLine="62"/>
+        <Caret Line="88" TopLine="67"/>
       </Position4>
       <Position5>
         <Filename Value="usounds.pas"/>
-        <Caret Line="88" Column="41" TopLine="42"/>
+        <Caret Line="89" TopLine="67"/>
       </Position5>
       <Position6>
         <Filename Value="usounds.pas"/>
-        <Caret Line="89" Column="39" TopLine="61"/>
+        <Caret Line="88" TopLine="67"/>
       </Position6>
       <Position7>
         <Filename Value="usounds.pas"/>
-        <Caret Line="88" Column="7" TopLine="56"/>
+        <Caret Line="239" Column="24" TopLine="183"/>
       </Position7>
       <Position8>
         <Filename Value="usounds.pas"/>
-        <Caret Line="227" Column="50" TopLine="67"/>
+        <Caret Line="238" Column="23" TopLine="75"/>
       </Position8>
       <Position9>
         <Filename Value="usounds.pas"/>
-        <Caret Line="87" Column="11" TopLine="67"/>
+        <Caret Line="96" TopLine="75"/>
       </Position9>
       <Position10>
         <Filename Value="usounds.pas"/>
-        <Caret Line="88" TopLine="67"/>
+        <Caret Line="97" TopLine="75"/>
       </Position10>
       <Position11>
         <Filename Value="usounds.pas"/>
-        <Caret Line="89" TopLine="67"/>
+        <Caret Line="98" TopLine="75"/>
       </Position11>
       <Position12>
         <Filename Value="usounds.pas"/>
-        <Caret Line="88" TopLine="67"/>
+        <Caret Line="99" TopLine="75"/>
       </Position12>
       <Position13>
         <Filename Value="usounds.pas"/>
-        <Caret Line="239" Column="24" TopLine="183"/>
+        <Caret Line="218" TopLine="84"/>
       </Position13>
       <Position14>
         <Filename Value="usounds.pas"/>
-        <Caret Line="238" Column="23" TopLine="75"/>
+        <Caret Line="95" TopLine="84"/>
       </Position14>
       <Position15>
         <Filename Value="usounds.pas"/>
-        <Caret Line="96" TopLine="75"/>
+        <Caret Line="96" TopLine="84"/>
       </Position15>
       <Position16>
         <Filename Value="usounds.pas"/>
-        <Caret Line="97" TopLine="75"/>
+        <Caret Line="97" TopLine="84"/>
       </Position16>
       <Position17>
         <Filename Value="usounds.pas"/>
-        <Caret Line="98" TopLine="75"/>
+        <Caret Line="98" TopLine="84"/>
       </Position17>
       <Position18>
         <Filename Value="usounds.pas"/>
-        <Caret Line="99" TopLine="75"/>
+        <Caret Line="99" TopLine="84"/>
       </Position18>
       <Position19>
         <Filename Value="usounds.pas"/>
-        <Caret Line="218" TopLine="84"/>
+        <Caret Line="102" TopLine="84"/>
       </Position19>
       <Position20>
-        <Filename Value="usounds.pas"/>
-        <Caret Line="95" TopLine="84"/>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1540" TopLine="1507"/>
       </Position20>
       <Position21>
-        <Filename Value="usounds.pas"/>
-        <Caret Line="96" TopLine="84"/>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1541" TopLine="1507"/>
       </Position21>
       <Position22>
-        <Filename Value="usounds.pas"/>
-        <Caret Line="97" TopLine="84"/>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1543" TopLine="1507"/>
       </Position22>
       <Position23>
         <Filename Value="usounds.pas"/>
-        <Caret Line="98" TopLine="84"/>
+        <Caret Line="103" TopLine="84"/>
       </Position23>
       <Position24>
         <Filename Value="usounds.pas"/>
-        <Caret Line="99" TopLine="84"/>
+        <Caret Line="119" TopLine="84"/>
       </Position24>
       <Position25>
-        <Filename Value="usounds.pas"/>
-        <Caret Line="102" TopLine="84"/>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1505" Column="49" TopLine="1501"/>
       </Position25>
       <Position26>
         <Filename Value="ugame.pas"/>
-        <Caret Line="1540" TopLine="1507"/>
       </Position26>
       <Position27>
         <Filename Value="ugame.pas"/>
-        <Caret Line="1541" TopLine="1507"/>
+        <Caret Line="137" Column="28" TopLine="78"/>
       </Position27>
       <Position28>
         <Filename Value="ugame.pas"/>
-        <Caret Line="1543" TopLine="1507"/>
+        <Caret Line="68" Column="28" TopLine="49"/>
       </Position28>
       <Position29>
-        <Filename Value="usounds.pas"/>
-        <Caret Line="103" TopLine="84"/>
+        <Filename Value="ugame.pas"/>
       </Position29>
       <Position30>
-        <Filename Value="usounds.pas"/>
-        <Caret Line="119" TopLine="84"/>
+        <Filename Value="units/uatomic_common.pas"/>
+        <Caret Line="76" Column="28" TopLine="43"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
