@@ -72,6 +72,7 @@ Const
    *                       Fix, crash of server if player is running into a exploding brick
    *             0.09001 = Anpassen Geschwindigkeiten Conveyor und Schildkröte
    *                       Fix, im Teamplay wurden die Bomben nicht abgeschaltet, wenn das erste Team keine Spieler mehr hat
+   *                       Fix, extract Soundhandling into own class to hopefully fix crashes on Linux systems
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

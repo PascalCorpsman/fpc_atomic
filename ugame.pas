@@ -22,19 +22,13 @@ Interface
 
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
-  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, BASS
-  ;
+  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds;
 
 Type
   TUDPPingData = Record
     Active: Boolean;
     LastTickValue: UInt64;
     Connection: TLUDPComponent; // Die UDP Componente, mit welcher wir via Boradcast nach offenen Servern fragen
-  End;
-
-  TBassSoundEffekt = Record
-    Active: BOolean;
-    Handle: DWord;
   End;
 
   { TSoundInfo }
@@ -66,7 +60,7 @@ Type
   private
     fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
-    fActiveSounds: Array Of ^HSTREAM;
+    fSoundManager: TSoundManager;
     fSoundInfo: TSoundInfo;
     fLastIdleTick: QWord;
     fLastKeyDown: Array[akFirstAction..akSecondAction] Of QWORD;
@@ -93,7 +87,6 @@ Type
     fgameState: TGameState;
     fScreens: Array[TScreenEnum] Of TScreen;
     fActualScreen: TScreen;
-    fBassSong: DWORD;
 
     FOnMouseMoveCapture: TMouseMoveEvent;
     FOnMouseDownCapture, FOnMouseupCapture: TMouseEvent;
@@ -112,6 +105,7 @@ Type
     Procedure FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
+    Procedure OnQuitGameSoundFinished(Sender: TObject);
 
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
     Procedure RenderFieldHeader();
@@ -187,7 +181,7 @@ Type
     Procedure UpdateSelectedField(Delta: Integer);
     Procedure StartGame();
     Procedure StartPlayingSong(Filename: String);
-    Procedure PlaySoundEffect(Filename: String);
+    Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
   End;
 
 Var
@@ -213,43 +207,14 @@ Uses dglopengl
   , uatomic_messages
   , uatomicfont
   , uopengl_spriteengine
-  , usounds
   ;
 
 Var
   NeedFormClose: Boolean = false;
 
   (*
-   * Tutorial von https://www.gausi.de/memp.html, Seite 16
+   * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
    *)
-
-Procedure EndFileProc(handle: HSYNC; channel, data: DWORD; user: Pointer){$IFDEF MSWINDOWS} stdcall{$ELSE} cdecl{$ENDIF};
-Var
-  ph: ^HSTREAM;
-  i, j: Integer;
-Begin
-  ph := User;
-  For i := 0 To high(game.fActiveSounds) Do Begin
-    If Game.fActiveSounds[i] = ph Then Begin
-      For j := i To high(Game.fActiveSounds) - 1 Do Begin
-        Game.fActiveSounds[j] := Game.fActiveSounds[j + 1];
-      End;
-      setlength(Game.fActiveSounds, high(Game.fActiveSounds));
-      break;
-    End;
-  End;
-  BASS_ChannelStop(ph^);
-  BASS_StreamFree(ph^);
-  ph^ := $DEADBEAF;
-  Dispose(ph);
-  If NeedFormClose Then Begin
-    Form1.Close;
-  End;
-End;
-
-(*
- * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
- *)
 
 Function IndexOf(Value: Integer; Const aArray: Array Of Integer): integer;
 Var
@@ -346,7 +311,7 @@ Begin
     sExitBomberman: Begin
         NeedFormClose := true;
         StartPlayingSong(''); // Disable the Background musik if playing, that speeds up the shutdown process or at least stop making noises
-        PlaySoundEffect('data' + pathdelim + 'res' + PathDelim + 'quitgame.wav');
+        PlaySoundEffect('data' + pathdelim + 'res' + PathDelim + 'quitgame.wav', @OnQuitGameSoundFinished);
       End;
     sHost: Begin
         fParamJoinIP := '';
@@ -433,73 +398,18 @@ Begin
 End;
 
 Procedure TGame.StartPlayingSong(Filename: String);
-Var
-  Info: BASS_CHANNELINFO;
-  s: String;
 Begin
   log('TGame.StartPlayingSong', llTrace);
-  // ggf zuerst den Alten Frei geben
-  // Alle Bass Channels Stoppen
-  If fBassSong <> 0 Then Begin
-    // Wir sollen den Gerade Spielenden Song noch mal Spielen, da der aber schon läuft -> Raus
-    If BASS_ChannelGetInfo(fBassSong, Info) And Settings.PlaySounds Then Begin
-      s := Info.filename;
-      If s = Filename Then exit;
-    End;
-    If Not BASS_ChannelStop(fBassSong) Then Begin
-      LogShow('Error could not Stop player, Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
-    End;
-    If Not BASS_StreamFree(fBassSong) Then Begin
-      LogShow('Error could not Free the Stream, Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
-    End;
-    fBassSong := 0;
-  End;
-  // ggf. neu starten des Songs
-  If Settings.PlaySounds And (FileExists(Filename)) And (Filename <> '') Then Begin
-    // Start des Liedes in Endlosschleife
-    fBassSong := BASS_StreamCreateFile(false, Pchar(filename), 0, 0, BASS_SAMPLE_LOOP);
-    If fBassSong = 0 Then Begin
-      LogShow('Error unable to load :' + LineEnding + filename + LineEnding + 'Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
-      exit;
-    End;
-    If Not BASS_ChannelPlay(fBassSong, true) Then Begin
-      LogShow('Error could not play in channel, Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
-    End;
-  End;
+  fSoundManager.PlaySound(Filename);
   LogLeave;
 End;
 
-Procedure TGame.PlaySoundEffect(Filename: String);
-Var
-  Song: HSTREAM;
-  ph: ^HSTREAM;
+Procedure TGame.PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent);
 Begin
   log('TGame.PlaySoundEffect', llTrace);
-  If Not FileExists(Filename) Then Begin
-    log('Error could not find soundeffect:' + Filename, llWarning);
-    If NeedFormClose Then Begin
-      Form1.Close;
-    End;
-    LogLeave;
-    exit;
-  End;
-  Song := BASS_StreamCreateFile(false, Pchar(filename), 0, 0, 0);
-  If Song = 0 Then Begin
-    LogShow('Error unable to load :' + LineEnding + filename + LineEnding + 'Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
-    If NeedFormClose Then Begin
-      Form1.Close;
-    End;
-    exit;
-  End;
-  new(ph);
-  ph^ := Song;
-  setlength(fActiveSounds, high(fActiveSounds) + 2);
-  fActiveSounds[high(fActiveSounds)] := ph;
-  Bass_ChannelSetSync(Song, BASS_SYNC_END, 0, @EndFileProc, ph);
-  If Not BASS_ChannelPlay(Song, true) Then Begin
-    LogShow('Error could not play in channel, Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
-    If NeedFormClose Then Begin
-      Form1.Close;
+  If Not fSoundManager.PlaySoundEffekt(Filename, EndCallback) Then Begin
+    If assigned(EndCallback) Then Begin
+      EndCallback(Nil);
     End;
   End;
   LogLeave;
@@ -604,21 +514,13 @@ Begin
   End;
   If Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin // Sonst wird das VK_Return ggf unsinnig ausgewertet
     If key = VK_ADD Then Begin
-      aVolume := BASS_GetConfig(BASS_CONFIG_GVOL_STREAM);
-      aVolume := min(10000, aVolume + 500);
-      If Not BASS_SetConfig(BASS_CONFIG_GVOL_STREAM, aVolume) Then Begin
-        log('Could not adjust sound volume.', llError);
-      End;
+      aVolume := fSoundManager.IncVolume;
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
       fSoundInfo.Volume := aVolume;
     End;
     If key = VK_SUBTRACT Then Begin
-      aVolume := BASS_GetConfig(BASS_CONFIG_GVOL_STREAM);
-      aVolume := max(0, aVolume - 500);
-      If Not BASS_SetConfig(BASS_CONFIG_GVOL_STREAM, aVolume) Then Begin
-        log('Could not adjust sound volume.', llError);
-      End;
+      aVolume := fSoundManager.DecVolume();
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
       fSoundInfo.Volume := aVolume;
@@ -1633,6 +1535,13 @@ Begin
   LogLeave;
 End;
 
+Procedure TGame.OnQuitGameSoundFinished(Sender: TObject);
+Begin
+  If NeedFormClose Then Begin
+    form1.Close;
+  End;
+End;
+
 Procedure TGame.RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
 Begin
   fAtomics[info.ColorIndex].Render(Info, Edge);
@@ -1803,7 +1712,7 @@ End;
 Constructor TGame.Create;
 Begin
   Inherited Create;
-  fActiveSounds := Nil;
+  fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
   fPause := false;
@@ -1813,7 +1722,6 @@ Begin
   fInitialized := false;
   VersionInfoString := '';
   fActualScreen := Nil;
-  fBassSong := 0;
   fChunkManager := TChunkManager.create;
   fUDPPingData.Connection := Nil;
   fUDPPingData.Active := false;
@@ -1824,17 +1732,11 @@ Destructor TGame.Destroy;
 Var
   i: TScreenEnum;
   j: Integer;
-  ph: ^HSTREAM;
 Begin
+  fSoundManager.free;
+  fSoundManager := Nil;
   fArrows.free;
   fConveyors.free;
-  For j := 0 To high(fActiveSounds) Do Begin
-    ph := fActiveSounds[j];
-    BASS_ChannelStop(ph^);
-    BASS_StreamFree(ph^);
-    Dispose(ph);
-  End;
-  setlength(fActiveSounds, 0);
   fSoundInfo.free;
   fSoundInfo := Nil;
   fActualScreen := Nil;
@@ -1906,7 +1808,7 @@ Begin
 
   fSoundInfo.Musik := Settings.PlaySounds;
   fSoundInfo.Volume := Settings.VolumeValue;
-  If Not BASS_SetConfig(BASS_CONFIG_GVOL_STREAM, Settings.VolumeValue) Then Begin
+  If Not fSoundManager.SetVolumeValue(Settings.VolumeValue) Then Begin
     log('Could not adjust sound volume.', llError);
     logleave;
     exit;

@@ -8,6 +8,7 @@
       </Flags>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
+      <ActiveWindowIndexAtStart Value="1"/>
     </General>
     <VersionInfo>
       <Language Value=""/>
@@ -52,7 +53,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="43" Y="31"/>
-        <UsageCount Value="186"/>
+        <UsageCount Value="188"/>
       </Unit0>
       <Unit1>
         <Filename Value="unit1.pas"/>
@@ -69,7 +70,7 @@
           <TopLine Value="20"/>
           <CursorPos X="43" Y="35"/>
         </ExtraEditor1>
-        <UsageCount Value="186"/>
+        <UsageCount Value="188"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit1>
@@ -90,7 +91,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="22"/>
-        <UsageCount Value="171"/>
+        <UsageCount Value="173"/>
       </Unit4>
       <Unit5>
         <Filename Value="../Sample/Graphik/ugraphics.pas"/>
@@ -99,7 +100,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="49"/>
         <CursorPos X="20" Y="98"/>
-        <UsageCount Value="171"/>
+        <UsageCount Value="173"/>
       </Unit5>
       <Unit6>
         <Filename Value="../Sample/DatenSteuerung/uvectormath.pas"/>
@@ -108,14 +109,14 @@
         <WindowIndex Value="1"/>
         <TopLine Value="528"/>
         <CursorPos Y="566"/>
-        <UsageCount Value="171"/>
+        <UsageCount Value="173"/>
       </Unit6>
       <Unit7>
         <Filename Value="uvectormath.inc"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <UsageCount Value="171"/>
+        <UsageCount Value="173"/>
       </Unit7>
       <Unit8>
         <Filename Value="uloaderdialog.pas"/>
@@ -123,14 +124,14 @@
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="48" Y="33"/>
-        <UsageCount Value="171"/>
+        <UsageCount Value="173"/>
       </Unit8>
       <Unit9>
         <Filename Value="units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="19"/>
-        <CursorPos X="92" Y="63"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="64"/>
+        <CursorPos X="111" Y="75"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -138,7 +139,8 @@
           <TopLine Value="72"/>
           <CursorPos X="38" Y="85"/>
         </ExtraEditor1>
-        <UsageCount Value="171"/>
+        <UsageCount Value="173"/>
+        <Loaded Value="True"/>
       </Unit9>
       <Unit10>
         <Filename Value="../Sample/OpenGL/uopengl_ascii_font.pas"/>
@@ -147,7 +149,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="177"/>
         <CursorPos X="25" Y="210"/>
-        <UsageCount Value="167"/>
+        <UsageCount Value="169"/>
       </Unit10>
       <Unit11>
         <Filename Value="apptype.inc"/>
@@ -162,7 +164,7 @@
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="20" Y="13"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
       </Unit12>
       <Unit13>
         <Filename Value="../Sample/TCP_IP/uupdate.pas"/>
@@ -170,7 +172,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="742"/>
         <CursorPos X="56" Y="771"/>
-        <UsageCount Value="165"/>
+        <UsageCount Value="167"/>
       </Unit13>
       <Unit14>
         <Filename Value="../Sample/synapse/httpsend.pas"/>
@@ -184,14 +186,14 @@
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="29" Y="20"/>
-        <UsageCount Value="163"/>
+        <UsageCount Value="165"/>
       </Unit15>
       <Unit16>
         <Filename Value="ulogger.inc"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <UsageCount Value="163"/>
+        <UsageCount Value="165"/>
       </Unit16>
       <Unit17>
         <Filename Value="unit18.pas"/>
@@ -201,14 +203,15 @@
         <UnitName Value="Unit18"/>
         <EditorIndex Value="-1"/>
         <CursorPos Y="15"/>
-        <UsageCount Value="162"/>
+        <UsageCount Value="164"/>
       </Unit17>
       <Unit18>
         <Filename Value="../Sample/Sound/Bass/bass.pas"/>
         <UnitName Value="BASS"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="448"/>
-        <CursorPos X="3" Y="478"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="449"/>
+        <CursorPos X="39" Y="465"/>
         <UsageCount Value="140"/>
       </Unit18>
       <Unit19>
@@ -217,7 +220,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="525"/>
         <CursorPos X="142" Y="591"/>
-        <UsageCount Value="157"/>
+        <UsageCount Value="159"/>
       </Unit19>
       <Unit20>
         <Filename Value="uscreens.pas"/>
@@ -232,7 +235,7 @@
           <TopLine Value="245"/>
           <CursorPos X="90" Y="272"/>
         </ExtraEditor1>
-        <UsageCount Value="157"/>
+        <UsageCount Value="159"/>
       </Unit20>
       <Unit21>
         <Filename Value="units/uatomic_messages.pas"/>
@@ -247,7 +250,7 @@
           <TopLine Value="28"/>
           <CursorPos X="16" Y="59"/>
         </ExtraEditor1>
-        <UsageCount Value="144"/>
+        <UsageCount Value="146"/>
       </Unit21>
       <Unit22>
         <Filename Value="uatomicfont.pas"/>
@@ -262,13 +265,13 @@
           <TopLine Value="192"/>
           <CursorPos Y="245"/>
         </ExtraEditor1>
-        <UsageCount Value="149"/>
+        <UsageCount Value="151"/>
       </Unit22>
       <Unit23>
         <Filename Value="../Sample/OpenGL/uopengl_ascii_font.ressource"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit23>
       <Unit24>
@@ -277,7 +280,7 @@
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="22" Y="15"/>
-        <UsageCount Value="147"/>
+        <UsageCount Value="149"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit24>
       <Unit25>
@@ -298,7 +301,7 @@
           <TopLine Value="84"/>
           <CursorPos X="43" Y="95"/>
         </ExtraEditor2>
-        <UsageCount Value="125"/>
+        <UsageCount Value="127"/>
       </Unit25>
       <Unit26>
         <Filename Value="../Sample/TCP_IP/uchunkmanager.pas"/>
@@ -314,7 +317,7 @@
           <TopLine Value="722"/>
           <CursorPos Y="765"/>
         </ExtraEditor1>
-        <UsageCount Value="146"/>
+        <UsageCount Value="148"/>
       </Unit26>
       <Unit27>
         <Filename Value="uchunkmanager.inc"/>
@@ -322,32 +325,31 @@
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <CursorPos X="3" Y="16"/>
-        <UsageCount Value="146"/>
+        <UsageCount Value="148"/>
       </Unit27>
       <Unit28>
         <Filename Value="../Sample/TCP_IP/uip.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
-        <UsageCount Value="146"/>
+        <UsageCount Value="148"/>
       </Unit28>
       <Unit29>
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <CursorPos X="3" Y="38"/>
+        <TopLine Value="1501"/>
+        <CursorPos X="93" Y="1524"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <WindowIndex Value="1"/>
-          <TopLine Value="4"/>
-          <CursorPos X="19" Y="35"/>
+          <TopLine Value="103"/>
+          <CursorPos X="7" Y="49"/>
         </ExtraEditor1>
-        <UsageCount Value="110"/>
-        <Bookmarks Count="3">
-          <Item0 Y="970" ID="1"/>
-          <Item1 Y="898" ID="4"/>
-          <Item2 Y="1189" ID="5"/>
+        <UsageCount Value="112"/>
+        <Bookmarks Count="2">
+          <Item0 Y="800" ID="4"/>
+          <Item1 Y="1091" ID="5"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit29>
@@ -363,7 +365,7 @@
           <TopLine Value="275"/>
           <CursorPos X="113" Y="306"/>
         </ExtraEditor1>
-        <UsageCount Value="108"/>
+        <UsageCount Value="110"/>
         <Bookmarks Count="1">
           <Item0 Y="222" ID="8"/>
         </Bookmarks>
@@ -375,7 +377,7 @@
         <WindowIndex Value="1"/>
         <TopLine Value="205"/>
         <CursorPos X="34" Y="217"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
       </Unit31>
       <Unit32>
         <Filename Value="globaldefines.inc"/>
@@ -384,13 +386,13 @@
         <WindowIndex Value="1"/>
         <TopLine Value="6"/>
         <CursorPos X="17" Y="42"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
       </Unit32>
       <Unit33>
         <Filename Value="ukeyboarddialog.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="64"/>
+        <UsageCount Value="66"/>
       </Unit33>
       <Unit34>
         <Filename Value="ukeygrabber.pas"/>
@@ -399,14 +401,24 @@
         <WindowIndex Value="1"/>
         <TopLine Value="28"/>
         <CursorPos Y="15"/>
-        <UsageCount Value="64"/>
+        <UsageCount Value="66"/>
       </Unit34>
       <Unit35>
         <Filename Value="usounds.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="3" Y="37"/>
-        <UsageCount Value="54"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="23"/>
+        <CursorPos Y="70"/>
+        <ExtraEditorCount Value="1"/>
+        <ExtraEditor1>
+          <EditorIndex Value="2"/>
+          <TopLine Value="115"/>
+          <CursorPos Y="145"/>
+        </ExtraEditor1>
+        <UsageCount Value="56"/>
+        <Loaded Value="True"/>
       </Unit35>
       <Unit36>
         <Filename Value="_2_Presentation_brainstorm.txt"/>
@@ -415,7 +427,7 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="50"/>
+        <UsageCount Value="52"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit36>
       <Unit37>
@@ -432,7 +444,7 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
       </Unit38>
       <Unit39>
         <Filename Value="../Sample/DatenSteuerung/ufifo.pas"/>
@@ -441,7 +453,7 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="41"/>
+        <UsageCount Value="43"/>
       </Unit39>
       <Unit40>
         <Filename Value="/home/corpsman/lazarus/lcl/include/application.inc"/>
@@ -465,7 +477,7 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="25"/>
+        <UsageCount Value="27"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit42>
       <Unit43>
@@ -475,7 +487,7 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="25"/>
+        <UsageCount Value="27"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit43>
       <Unit44>
@@ -492,82 +504,127 @@
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
     </OtherDefines>
-    <JumpHistory Count="20" HistoryIndex="19">
+    <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="16" Column="37" TopLine="16"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="62" Column="51" TopLine="62"/>
       </Position1>
       <Position2>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="374" Column="49" TopLine="353"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="190" Column="3" TopLine="184"/>
       </Position2>
       <Position3>
-        <Filename Value="unit1.pas"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="216" Column="67" TopLine="170"/>
       </Position3>
       <Position4>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="420" Column="82" TopLine="415"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="86" Column="14" TopLine="62"/>
       </Position4>
       <Position5>
-        <Filename Value="unit1.pas"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="88" Column="41" TopLine="42"/>
       </Position5>
       <Position6>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="117" Column="66" TopLine="66"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="89" Column="39" TopLine="61"/>
       </Position6>
       <Position7>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="468" Column="85" TopLine="417"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="88" Column="7" TopLine="56"/>
       </Position7>
       <Position8>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="490" Column="42" TopLine="446"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="227" Column="50" TopLine="67"/>
       </Position8>
       <Position9>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="667" Column="32" TopLine="647"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="87" Column="11" TopLine="67"/>
       </Position9>
       <Position10>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="120" Column="24" TopLine="94"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="88" TopLine="67"/>
       </Position10>
       <Position11>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="844" Column="46" TopLine="819"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="89" TopLine="67"/>
       </Position11>
       <Position12>
-        <Filename Value="ugame.pas"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="88" TopLine="67"/>
       </Position12>
       <Position13>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="830" Column="53" TopLine="819"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="239" Column="24" TopLine="183"/>
       </Position13>
       <Position14>
-        <Filename Value="ugame.pas"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="238" Column="23" TopLine="75"/>
       </Position14>
       <Position15>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="970" Column="23" TopLine="933"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="96" TopLine="75"/>
       </Position15>
       <Position16>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="958" Column="28" TopLine="933"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="97" TopLine="75"/>
       </Position16>
       <Position17>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="190" Column="22" TopLine="124"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="98" TopLine="75"/>
       </Position17>
       <Position18>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="484" Column="51" TopLine="472"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="99" TopLine="75"/>
       </Position18>
       <Position19>
-        <Filename Value="ugame.pas"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="218" TopLine="84"/>
       </Position19>
       <Position20>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="35" Column="19"/>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="95" TopLine="84"/>
       </Position20>
+      <Position21>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="96" TopLine="84"/>
+      </Position21>
+      <Position22>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="97" TopLine="84"/>
+      </Position22>
+      <Position23>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="98" TopLine="84"/>
+      </Position23>
+      <Position24>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="99" TopLine="84"/>
+      </Position24>
+      <Position25>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="102" TopLine="84"/>
+      </Position25>
+      <Position26>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1540" TopLine="1507"/>
+      </Position26>
+      <Position27>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1541" TopLine="1507"/>
+      </Position27>
+      <Position28>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1543" TopLine="1507"/>
+      </Position28>
+      <Position29>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="103" TopLine="84"/>
+      </Position29>
+      <Position30>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="119" TopLine="84"/>
+      </Position30>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
