@@ -70,7 +70,8 @@ Const
    *                       das "herunterlaufen" von Laufbändern geht nun "besser"
    * -releaseGP- 0.09000 = Fix, render glitch on brick destroy (only on slow computers and high transmit delays) -> TFieldBrick geändert, deswegen 0.08 auf 0.09
    *                       Fix, crash of server if player is running into a exploding brick
-   *             0.09001 = 
+   *             0.09001 = Anpassen Geschwindigkeiten Conveyor und Schildkröte
+   *                       Fix, im Teamplay wurden die Bomben nicht abgeschaltet, wenn das erste Team keine Spieler mehr hat
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -113,15 +114,15 @@ Const
   AtomicDefaultSpeed = 0.5; // Die "Grundgeschwindigkeit" in Kacheln Pro Sekunde
   AtomicSpeedChange = 1.1; // Geschwindigkeitsänderung beim aufsammeln eines Rollschuh Items 1.1 = 10% Schneller
   AtomicMaxSpeed = AtomicDefaultSpeed * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange; // Maximale Geschwindigkeit Eines Atomic in Kacheln Pro Sekunde
-  AtomicSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange); // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
+  AtomicSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange); // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
 
   (*
    * Es gibt Startpunkte die direkt auf den Bändern liegen, da muss der Spieler auf jeden Fall
    * Schneller laufen können, alls die Schnellsten bänder !
    *)
-  ConveyorSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
-  ConveyorMiddleSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange);
-  ConveyorFastSpeed = AtomicDefaultSpeed / (AtomicSpeedChange);
+  ConveyorSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
+  ConveyorMiddleSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
+  ConveyorFastSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange);
 
   AtomicShowSoundInfoTime = 1000; // Zeit in ms wie lange die Soundinfo angezeigt wird.
 
@@ -658,7 +659,7 @@ Function GetDefaultScheme: TScheme;
   Begin
     result.x := x;
     result.y := y;
-    result.Team := t;
+    result.Team := min(1, max(0, t)); // Sicherstellen das Team auch wirklich nur 0 oder 1 sein kann !
   End;
 
   Function empty(): TPowerUp;

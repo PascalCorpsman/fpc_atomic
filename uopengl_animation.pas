@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uopengl_animation.pas                                           15.09.2021 *)
 (*                                                                            *)
-(* Version     : 0.10                                                         *)
+(* Version     : 0.11                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -35,6 +35,7 @@
 (*               0.08 - Tag, ResetSprite                                      *)
 (*               0.09 - OnAnimationOverflowEvent for user decisions           *)
 (*               0.10 - FIX: changing only sprite name was not stored         *)
+(*               0.11 - RemoveUnusedSubImagex                                 *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -153,13 +154,15 @@ Type
 
     Function GetBitmapOf(Index: integer): TBitmap;
     Function GetDerivedIndexOf(Index: integer): Integer;
+
+    Function RemoveUnusedSubImagex(): Boolean; // True if some data was removed, otherwise false
   End;
 
 Operator = (a, b: TAniSprite): Boolean;
 
 Implementation
 
-Uses ugraphics;
+Uses ugraphics, math;
 
 Operator = (a, b: TAniSprite): Boolean;
 Begin
@@ -356,6 +359,8 @@ Begin
   // Stretch auf "Zielgröße"
   result.Width := fSprites[0].Width;
   result.Height := fSprites[0].Height;
+  result.Canvas.Brush.Color := clWhite;
+  result.canvas.Rectangle(-1, -1, Result.Width + 1, result.Height + 1);
   Stretchdraw(result, rect(0, 0, fSprites[0].Width, fSprites[0].Height), b, imNearestNeighbour); // Bicubisch sieht zwar besser aus ruiniert aber die Transparenz
   // Aufräumen
   b.free;
@@ -452,6 +457,7 @@ Begin
     stream.Write(fSprites[i].FramesPerCol, sizeof(fSprites[i].FramesPerCol));
   End;
   result := true;
+  fchanged := false;
 End;
 
 Function TOpenGL_Animation.LoadFromStream(Const Stream: TStream): Boolean;
@@ -537,7 +543,7 @@ Begin
 End;
 
 Function TOpenGL_Animation.OnSpriteOverflow(Sender: TObject; MetaData: Pointer
-  ): boolean;
+  ): Boolean;
 Begin
   (*
    * Default do not interrupt rendering
@@ -705,6 +711,133 @@ Begin
   While (Sprite[Result].Derived) Do Begin
     dec(Result);
   End;
+End;
+
+Function TOpenGL_Animation.RemoveUnusedSubImagex(): Boolean;
+Var
+  nFPR, // New Frame Per Row
+  nFPC, // New Frame Per Coll
+  icnt, // Image Count
+  fcnt, // Frame Counter
+  SpriteIndex, j, k, cnt: Integer;
+  Frames: Array Of Record
+    used: boolean;
+    newIndex: integer;
+  End;
+  frame, resImg, resAlphaImg: TBitmap;
+  NeedContinue: Boolean;
+Begin
+  result := false;
+  SpriteIndex := 0;
+  While SpriteIndex <= high(fSprites) Do Begin
+    If fSprites[SpriteIndex].Derived Then Begin // Abgeleitete Frames wurden ja schon behandelt und werden hier einfach übersprungen
+      inc(SpriteIndex);
+      Continue;
+    End;
+    // Wir Betrachten das Bild SpriteIndex, bzw alle seine Ableitungen
+    // 1. Sammeln aller Indexe die es gibt, und die Verwendet werden
+    frames := Nil;
+    setlength(frames, fSprites[SpriteIndex].FramesPerCol * fSprites[SpriteIndex].FramesPerRow);
+    For j := 0 To high(Frames) Do Begin
+      Frames[j].used := false;
+      Frames[j].newIndex := -1;
+    End;
+    icnt := 0; // Zähler auf wie viele Bilder sich das "bild" verteilt
+    NeedContinue := false;
+    For j := SpriteIndex To high(fSprites) Do Begin
+      If (Not fSprites[j].Derived) And (SpriteIndex <> j) Then break; // Nur tatsächliche Ableitungen werden berücksichtigt
+      For k := fSprites[j].FrameOffset To fSprites[j].FrameOffset + fSprites[j].FrameCount - 1 Do Begin
+        Frames[k].used := true;
+      End;
+      // Die Subimages dürfen sich in Abgeleiteten Bildern nicht Unterscheiden !
+      If fSprites[SpriteIndex].Rect <> fSprites[j].Rect Then Begin
+        // Es bleibt uns nichts anderes Übrig als die Optimierung aus zu lassen, weil die verschiedenen Teilrects es nicht auswertbar macht..
+        NeedContinue := true;
+        break;
+      End;
+      inc(icnt);
+    End;
+    // 2. Zählen ob Überhaupt eine Optimierung notwendig ist.
+    cnt := 0;
+    For j := 0 To high(Frames) Do Begin
+      If Frames[j].used Then inc(cnt);
+    End;
+    If NeedContinue Or (cnt = fSprites[SpriteIndex].FramesPerCol * fSprites[SpriteIndex].FramesPerRow) Then Begin
+      inc(SpriteIndex); // Dieses Frame braucht nicht weiter betrachtet zu werden
+      Continue;
+    End;
+    // Es gibt tatsächlich "Einspar" Potential, wir generieren nun das Zielbild
+    frame := TBitmap.Create;
+    frame.Width := fSprites[SpriteIndex].Width;
+    Frame.Height := fSprites[SpriteIndex].Height;
+    resimg := TBitmap.Create;
+    resAlphaImg := Nil;
+    If assigned(fSprites[SpriteIndex].AlphaMask) Then Begin
+      resAlphaImg := TBitmap.Create;
+    End;
+    // Wir versuchen das Zielbild so "Rechteckig" wie möglich zu machen
+    // machen es aber nicht Breiter wie das Alte Bild
+    nFPR := min(cnt Div icnt, fSprites[SpriteIndex].FramesPerRow);
+    If cnt Mod nFPR = 0 Then Begin
+      nFPC := cnt Div nFPR;
+    End
+    Else Begin
+      nFPC := cnt Div nFPR + 1;
+    End;
+    resImg.Width := nFPR * fSprites[SpriteIndex].Width;
+    resImg.Height := nFPc * fSprites[SpriteIndex].Height;
+    If assigned(resAlphaImg) Then Begin
+      resAlphaImg.Width := nFPR * fSprites[SpriteIndex].Width;
+      resAlphaImg.Height := nFPc * fSprites[SpriteIndex].Height;
+    End;
+    // Nun kopieren wir alle Indexe in das Zielbild um und berechnen die neuen Frame Indexe
+    fcnt := 0;
+    For j := 0 To high(Frames) Do Begin
+      If Frames[j].used Then Begin // index j wird zu index fcnt
+        // das passende Frame aus dem Quellbild kopieren
+        frame.Canvas.Draw(
+          -(j Mod fSprites[SpriteIndex].FramesPerRow) * fSprites[SpriteIndex].Width + fSprites[SpriteIndex].Rect.Left,
+          -(j Div fSprites[SpriteIndex].FramesPerRow) * fSprites[SpriteIndex].Height + fSprites[SpriteIndex].Rect.Top,
+          fSprites[SpriteIndex].Bitmap);
+        // Und passend ins neue Bild einfügen
+        resImg.Canvas.Draw(
+          (fcnt Mod nFPR) * fSprites[SpriteIndex].Width,
+          (fcnt Div nFPR) * fSprites[SpriteIndex].Height,
+          Frame);
+        If assigned(fSprites[SpriteIndex].AlphaMask) Then Begin
+          frame.Canvas.Draw(
+            -(j Mod fSprites[SpriteIndex].FramesPerRow) * fSprites[SpriteIndex].Width + fSprites[SpriteIndex].Rect.Left,
+            -(j Div fSprites[SpriteIndex].FramesPerRow) * fSprites[SpriteIndex].Height + fSprites[SpriteIndex].Rect.Top,
+            fSprites[SpriteIndex].AlphaMask);
+          // Und passend ins neue Bild einfügen
+          resAlphaImg.Canvas.Draw(
+            (fcnt Mod nFPR) * fSprites[SpriteIndex].Width,
+            (fcnt Div nFPR) * fSprites[SpriteIndex].Height,
+            Frame);
+        End;
+        Frames[j].newIndex := fcnt;
+        inc(fcnt);
+      End;
+    End;
+    // Übernehmen der neuen FrameOffsets und Frame Per Row / Col Indexe
+    For j := SpriteIndex To high(fSprites) Do Begin
+      If (Not fSprites[j].Derived) And (SpriteIndex <> j) Then break; // Nur tatsächliche Ableitungen werden berücksichtigt
+      fSprites[j].FrameOffset := Frames[fSprites[j].FrameOffset].newIndex;
+      fSprites[j].FramesPerRow := nFPR;
+      fSprites[j].FramesPerCol := nFPC;
+      fSprites[j].Rect := Rect(0, 0, resImg.Width, resImg.Height);
+    End;
+    // Zum schluss übernehmen wir die Berechneten Bilder und nehmen das Nächste Sprite
+    fSprites[SpriteIndex].Bitmap.Free;
+    fSprites[SpriteIndex].Bitmap := resImg;
+    If assigned(fSprites[SpriteIndex].AlphaMask) Then Begin
+      fSprites[SpriteIndex].AlphaMask.Free;
+      fSprites[SpriteIndex].AlphaMask := resAlphaImg;
+    End;
+    inc(SpriteIndex);
+    result := true;
+  End;
+  If result Then fchanged := true;
 End;
 
 Function TOpenGL_Animation.SaveToFile(Const Filename: String): Boolean;

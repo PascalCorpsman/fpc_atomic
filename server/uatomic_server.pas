@@ -1632,7 +1632,8 @@ End;
 
 Procedure TServer.CreateNewFrame;
 Var
-  i, Alive, j: Integer;
+  Alive: Array[0..1] Of Integer;
+  i, j: Integer;
   aiInfo: TaiInfo;
   AiCommand: TAiCommand;
 Begin
@@ -1740,7 +1741,8 @@ Begin
   fActualField.HandleFieldAnims;
 
   (* Das Sterben der Spieler Einleiten *)
-  Alive := 0;
+  Alive[0] := 0;
+  Alive[1] := 0;
   For i := 0 To high(fPLayer) Do Begin
     If fPLayer[i].Info.Alive Then Begin // Hier darf Dieing nicht stehen, da es ja genau darum geht unten die Todeszeit ab zu prüfen !
       (*
@@ -1755,12 +1757,19 @@ Begin
         End;
       End
       Else Begin
-        inc(alive);
+        inc(alive[fPLayer[i].Team]);
       End;
     End;
   End;
-  If Alive <= 1 Then Begin // Abschalten Aller Bomben sobald nur noch einer am Leben ist bzw noch nicht am Sterben ;)
-    fActualField.DisableAllBombs;
+  If fSettings.TeamPlay Then Begin
+    If (Alive[0] < 1) Or (Alive[1] < 1) Then Begin // Abschalten sobald das andere Team Platt gemacht wurde !
+      fActualField.DisableAllBombs;
+    End;
+  End
+  Else Begin
+    If Alive[0] + Alive[1] <= 1 Then Begin // Abschalten Aller Bomben sobald nur noch einer am Leben ist bzw noch nicht am Sterben ;)
+      fActualField.DisableAllBombs;
+    End;
   End;
   HurryHandling;
   EndGameCheck();

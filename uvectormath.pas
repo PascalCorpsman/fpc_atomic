@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uvectormat.pas                                                  12.11.2014 *)
 (*                                                                            *)
-(* Version     : 0.16                                                         *)
+(* Version     : 0.17                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -55,6 +55,10 @@
 (*                     dynamische Strukturen, da nicht mehr eindeutig         *)
 (*                     Dafür einführen Type helper                            *)
 (*               0.16 CalculateOrthoganlProjection                            *)
+(*               0.17 Map function                                            *)
+(*                    TMatrix4x4.Raw, TMatrix4x4.getInverse,                  *)
+(*                     TMatrix3x3.getInverse, TMatrix2x2.getInverse           *)
+(*                    InvertMatrix2 for TMatrix4x4, TMatrix2x2                *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uvectormath;
@@ -123,25 +127,29 @@ Type
 
   TVectorNArray = Array Of TVectorN;
 
-  //(00 10)
-  //(01 11)
+  //                 Raw (in memory)
+  //(00 10)          ( 0 2)
+  //(01 11)        = ( 1 3)
   TMatrix2x2 = Array[0..1, 0..1] Of TBaseType;
 
-  //(00 10 20)
-  //(01 11 21)
-  //(02 12 22)
+  //                 Raw (in memory)
+  //(00 10 20)       ( 0 3 6)
+  //(01 11 21)     = ( 1 4 7)
+  //(02 12 22)       ( 2 5 8)
   TMatrix3x3 = Array[0..2, 0..2] Of TBaseType;
 
-  //(00 10 20 30)
-  //(01 11 21 31)
-  //(02 12 22 32)
-  //(03 13 23 33)
+  //                 Raw (in memory)
+  //(00 10 20 30)    ( 0  4  8 12)
+  //(01 11 21 31)    ( 1  5  9 13)
+  //(02 12 22 32)  = ( 2  6 10 14)
+  //(03 13 23 33)    ( 3  7 11 15)
   TMatrix4x4 = Array[0..3, 0..3] Of TBaseType;
 
-  //(0 0      .. Col-1 0    )
-  //( .       .             )
-  //( .        .            )
-  //(0 Row -1 .. Col-1 Row-1)
+  //                             Raw (in memory)
+  //(0 0      .. Col-1 0    )   ( 0  Row     .. Col*(Row-1))
+  //( .       .             )   ( 1  Row+1   .             )
+  //( .        .            ) = ( 2   .       .            )
+  //(0 Row -1 .. Col-1 Row-1)   ( 3  2*Row-1 .. Col*Row -1 )
   TMatrixNxM = Array Of Array Of TBaseType; // Allgemein
 
   (*
@@ -198,18 +206,26 @@ Type
 
   TMatrix2x2helper = Type Helper For TMatrix2x2
     Function Equal(Other: TMatrix2x2): Boolean;
+    Function getInverse(): TMatrix2x2; // Zero if there is no invertable Matrix
   End;
 
   { TMatrix3x3helper }
 
   TMatrix3x3helper = Type Helper For TMatrix3x3
     Function Equal(Other: TMatrix3x3): Boolean;
+    Function getInverse(): TMatrix3x3; // Zero if there is no invertable Matrix
   End;
 
   { TMatrix4x4helper }
 
   TMatrix4x4helper = Type Helper For TMatrix4x4
+  private
+    Function getRaw(index: integer): TBaseType;
+    Procedure setRaw(index: integer; AValue: TBaseType);
+  public
     Function Equal(Other: TMatrix4x4): Boolean;
+    Function getInverse(): TMatrix4x4; // Zero if there is no invertable Matrix
+    Property Raw[index: integer]: TBaseType read getRaw write setRaw; // Give access as if Matrix where a 1-Dim array
   End;
 
   { TMatrixNxMhelper }
@@ -299,9 +315,13 @@ Operator / (v: TVector4; s: TBaseType): TVector4;
 Function ZeroV2(): TVector2;
 Function ZeroV3(): TVector3;
 Function ZeroV4(): TVector4;
+
+Function Zero2x2(): TMatrix2x2;
 Function Zero3x3(): TMatrix3x3;
+Function Zero4x4(): TMatrix4x4;
 Function ZeroNxM(Cols, Rows: integer): TMatrixNxM;
 
+Function IdentityMatrix2x2: TMatrix2x2;
 Function IdentityMatrix3x3: TMatrix3x3;
 Function IdentityMatrix4x4: TMatrix4x4;
 
@@ -399,9 +419,12 @@ Function Determinant(M: TMatrix2x2): TBaseType; overload; // Berechnet die Deter
 Function Determinant(M: TMatrix3x3): TBaseType; overload; // Berechnet die Determinante einer 3x3 Matrix
 Function Determinant(M: TMatrixNxM): TBaseType; overload; // Berechnet die Determinante einer NxN Matrix
 
+Function InvertMatrix(M: TMatrix2x2): TMatrix2x2; overload; // Mittels Gauß-Jordan-Algorithmus
 Function InvertMatrix(M: TMatrix3x3): TMatrix3x3; overload; // Mittels Gauß-Jordan-Algorithmus
 Function InvertMatrix(M: TMatrix4x4): TMatrix4x4; overload; // Mittels Gauß-Jordan-Algorithmus
-Function InvertMatrix2(M: TMatrix3x3): TMatrix3x3; // Berechnung über die Adjunkte, 0 wenn nicht Invertierbar
+Function InvertMatrix2(M: TMatrix2x2): TMatrix2x2; overload; // Berechnung über die Adjunkte, 0 wenn nicht Invertierbar
+Function InvertMatrix2(M: TMatrix3x3): TMatrix3x3; overload; // Berechnung über die Adjunkte, 0 wenn nicht Invertierbar
+Function InvertMatrix2(M: TMatrix4x4): TMatrix4x4; overload; // Berechnung über die Adjunkte, 0 wenn nicht Invertierbar
 
 Function TransposeVector(Const V: TVectorN): TMatrixNxM; // Transponiert einen Vektor und gibt das Ergebnis als Matrix der Breite N und Höhe 1 zurück
 Function TransposeMatrix(Const M: TMatrix3x3): TMatrix3x3; overload;
@@ -462,6 +485,7 @@ Function RandomRange(a, b: integer): integer; // Erzeugt eine Zufallszahl im Ber
 
 // Konvertierungsfunktionen
 Function ConvertDimension(vmin, vmax, v: TBaseType; rmin, rmax: TBaseType): TBaseType; // Rechnet einen Wert v in der Scala Vmin-Vmax in die passende Scala rmin-Rmax um. Details siehe unten
+Function Map(Value, fromLow, fromHigh: TBaseType; toLow, toHigh: TBaseType): TBaseType; // Basically the same as ConvertDimension, but parameter compatible with the Arduino version from: https://www.arduino.cc/reference/de/language/functions/math/map/
 
 // True wenn das Objekt das durch die Punkte Angegeben ist ein Konvexes Polygon
 // Wichtig, die Reihenfolge der Punkte muss korrekt sein
@@ -854,27 +878,55 @@ Begin
   End;
 End;
 
-Function ZeroV2(): TVector2;
+Function Map(Value, fromLow, fromHigh: TBaseType; toLow, toHigh: TBaseType
+  ): TBaseType;
+Begin
+  result := ConvertDimension(fromLow, fromHigh, Value, toLow, toHigh);
+End;
+
+Function ZeroV2: TVector2;
 Begin
   result := v2(0, 0);
 End;
 
-Function ZeroV3(): TVector3;
+Function ZeroV3: TVector3;
 Begin
   result := v3(0, 0, 0);
 End;
 
-Function ZeroV4(): TVector4;
+Function ZeroV4: TVector4;
 Begin
   result := v4(0, 0, 0, 0);
 End;
 
-Function Zero3x3(): TMatrix3x3;
+Function Zero2x2(): TMatrix2x2;
+Var
+  i, j: Integer;
+Begin
+  For i := 0 To 1 Do Begin
+    For j := 0 To 1 Do Begin
+      result[i, j] := 0;
+    End;
+  End;
+End;
+
+Function Zero3x3: TMatrix3x3;
 Var
   i, j: Integer;
 Begin
   For i := 0 To 2 Do Begin
     For j := 0 To 2 Do Begin
+      result[i, j] := 0;
+    End;
+  End;
+End;
+
+Function Zero4x4(): TMatrix4x4;
+Var
+  i, j: Integer;
+Begin
+  For i := 0 To 3 Do Begin
+    For j := 0 To 3 Do Begin
       result[i, j] := 0;
     End;
   End;
@@ -967,7 +1019,8 @@ Begin
   Result[1, 1] := x22;
 End;
 
-Function M3x3(x11, x12, x13, x21, x22, x23, x31, x32, x33: TBaseType): TMatrix3x3;
+Function M3x3(x11, x12, x13, x21, x22, x23, x31, x32, x33: TBaseType
+  ): TMatrix3x3;
 Begin
   Result[0, 0] := x11;
   Result[0, 1] := x12;
@@ -980,7 +1033,8 @@ Begin
   Result[2, 2] := x33;
 End;
 
-Function M4x4(x11, x12, x13, x14, x21, x22, x23, x24, x31, x32, x33, x34, x41, x42, x43, x44: TBaseType): TMatrix4x4;
+Function M4x4(x11, x12, x13, x14, x21, x22, x23, x24, x31, x32, x33, x34, x41,
+  x42, x43, x44: TBaseType): TMatrix4x4;
 Begin
   Result[0, 0] := x11;
   Result[0, 1] := x12;
@@ -1394,6 +1448,14 @@ Begin
     );
 End;
 
+Function IdentityMatrix2x2: TMatrix2x2;
+Begin
+  result[0, 0] := 1;
+  result[1, 0] := 0;
+  result[0, 1] := 0;
+  result[1, 1] := 1;
+End;
+
 Function IdentityMatrix3x3: TMatrix3x3;
 Begin
   result[0, 0] := 1;
@@ -1611,6 +1673,86 @@ Wenn dies nicht möglich ist, weil z.b. die Determinante = 0, wird eine Exceptio
 
 *)
 
+Function InvertMatrix(M: TMatrix2x2): TMatrix2x2;
+Const
+  dim = 2 - 1;
+  (*
+  Addiert auf Zeile x die Zeile y
+  *)
+  Procedure Line_X_Add_Line_Y(x, y: Integer);
+  Var
+    i: Integer;
+  Begin
+    For i := 0 To dim Do Begin
+      result[i, x] := result[i, x] + result[i, y];
+      m[i, x] := m[i, x] + m[i, y];
+    End;
+  End;
+
+  (*
+  Zieht von Zeile x die Zeile y ab.
+  *)
+  Procedure Line_X_Sub_V_Mul_Line_Y(x: integer; v: TBaseType; y: Integer);
+  Var
+    i: Integer;
+  Begin
+    For i := 0 To dim Do Begin
+      result[i, x] := result[i, x] - v * result[i, y];
+      m[i, x] := m[i, x] - v * m[i, y];
+    End;
+  End;
+
+  (*
+  Multipliziert die Zeile Line mit dem Wert Value durch
+  *)
+  Procedure Mul_Line(Value: TBaseType; Line: Integer);
+  Var
+    i: Integer;
+  Begin
+    For i := 0 To dim Do Begin
+      result[i, Line] := result[i, Line] * Value;
+      m[i, Line] := m[i, Line] * Value;
+    End;
+  End;
+
+Var
+  i, j: Integer;
+  b: Boolean;
+Begin
+  // Init Ergebniss mit 1 Matrix
+  For i := 0 To dim Do
+    For j := 0 To dim Do
+      If i = j Then
+        result[i, j] := 1
+      Else
+        Result[i, j] := 0;
+  // Wir Lösen Spaltenweise
+  For i := 0 To dim Do Begin
+    // Auf den Diagonal Elementen Erzeugen wir die 1, also darf hier keine 0 stehen.
+    If M[i, i] = 0 Then Begin
+      b := false;
+      For j := i + 1 To dim Do Begin
+        If m[i, j] <> 0 Then Begin
+          Line_X_Add_Line_Y(i, j);
+          b := True;
+          break;
+        End;
+      End;
+      If Not b Then Begin
+        Raise Exception.create('uvectormath.InvertMatrix: Error unable to invert the Matrix.');
+      End;
+    End;
+    // Nun Lösen wir die Spalte
+    // Zuerst erzeugen wir die 1
+    Mul_Line(1 / m[i, i], i);
+    // Dann Erzeugen wir die 0 en
+    For j := 0 To dim Do
+      If i <> j Then
+        Line_X_Sub_V_Mul_Line_Y(j, m[i, j], i);
+  End;
+
+End;
+
 Function InvertMatrix(M: TMatrix3x3): TMatrix3x3;
 Const
   dim = 3 - 1;
@@ -1785,6 +1927,22 @@ Begin
   End;
 End;
 
+Function InvertMatrix2(M: TMatrix2x2): TMatrix2x2;
+Var
+  det: TBaseType;
+Begin
+  det := m[0, 0] * m[1, 1] - m[0, 1] * m[1, 0];
+  If det = 0 Then Begin
+    result := Zero2x2();
+  End
+  Else Begin
+    Result[0, 0] := m[1, 1] / det;
+    Result[0, 1] := -m[0, 1] / det;
+    Result[1, 0] := -m[1, 0] / det;
+    Result[1, 1] := m[0, 0] / det;
+  End;
+End;
+
 Function InvertMatrix2(M: TMatrix3x3): TMatrix3x3;
 Var
   det: TBaseType;
@@ -1808,6 +1966,61 @@ Begin
     Result[2, 0] := (m[1, 0] * m[2, 1] - m[1, 1] * m[2, 0]) / det;
     Result[2, 1] := (-m[0, 0] * m[2, 1] + m[0, 1] * m[2, 0]) / det;
     Result[2, 2] := (m[0, 0] * m[1, 1] - m[0, 1] * m[1, 0]) / det;
+  End;
+End;
+
+Function InvertMatrix2(M: TMatrix4x4): TMatrix4x4;
+Var
+  det: TBaseType;
+Begin
+  det := m[0, 0] * m[1, 1] * m[2, 2] * m[3, 3] -
+    m[0, 0] * m[1, 1] * m[2, 3] * m[3, 2] -
+    m[0, 0] * m[1, 2] * m[2, 1] * m[3, 3] +
+    m[0, 0] * m[1, 2] * m[2, 3] * m[3, 1] +
+    m[0, 0] * m[1, 3] * m[2, 1] * m[3, 2] -
+    m[0, 0] * m[1, 3] * m[2, 2] * m[3, 1] -
+    m[0, 1] * m[1, 0] * m[2, 2] * m[3, 3] +
+    m[0, 1] * m[1, 0] * m[2, 3] * m[3, 2] +
+    m[0, 1] * m[1, 2] * m[2, 0] * m[3, 3] -
+    m[0, 1] * m[1, 2] * m[2, 3] * m[3, 0] -
+    m[0, 1] * m[1, 3] * m[2, 0] * m[3, 2] +
+    m[0, 1] * m[1, 3] * m[2, 2] * m[3, 0] +
+    m[0, 2] * m[1, 0] * m[2, 1] * m[3, 3] -
+    m[0, 2] * m[1, 0] * m[2, 3] * m[3, 1] -
+    m[0, 2] * m[1, 1] * m[2, 0] * m[3, 3] +
+    m[0, 2] * m[1, 1] * m[2, 3] * m[3, 0] +
+    m[0, 2] * m[1, 3] * m[2, 0] * m[3, 1] -
+    m[0, 2] * m[1, 3] * m[2, 1] * m[3, 0] -
+    m[0, 3] * m[1, 0] * m[2, 1] * m[3, 2] +
+    m[0, 3] * m[1, 0] * m[2, 2] * m[3, 1] +
+    m[0, 3] * m[1, 1] * m[2, 0] * m[3, 2] -
+    m[0, 3] * m[1, 1] * m[2, 2] * m[3, 0] -
+    m[0, 3] * m[1, 2] * m[2, 0] * m[3, 1] +
+    m[0, 3] * m[1, 2] * m[2, 1] * m[3, 0];
+  If det = 0 Then Begin
+    result := Zero4x4();
+  End
+  Else Begin
+    Result[0, 0] := (m[1, 1] * (m[2, 2] * m[3, 3] - m[2, 3] * m[3, 2]) - m[1, 2] * (m[2, 1] * m[3, 3] - m[2, 3] * m[3, 1]) + m[1, 3] * (m[2, 1] * m[3, 2] - m[2, 2] * m[3, 1])) / det;
+    Result[0, 1] := (-m[0, 1] * (m[2, 2] * m[3, 3] - m[2, 3] * m[3, 2]) + m[0, 2] * (m[2, 1] * m[3, 3] - m[2, 3] * m[3, 1]) - m[0, 3] * (m[2, 1] * m[3, 2] - m[2, 2] * m[3, 1])) / det;
+    Result[0, 2] := (m[0, 1] * (m[1, 2] * m[3, 3] - m[1, 3] * m[3, 2]) - m[0, 2] * (m[1, 1] * m[3, 3] - m[1, 3] * m[3, 1]) + m[0, 3] * (m[1, 1] * m[3, 2] - m[1, 2] * m[3, 1])) / det;
+    Result[0, 3] := (-m[0, 1] * (m[1, 2] * m[2, 3] - m[1, 3] * m[2, 2]) + m[0, 2] * (m[1, 1] * m[2, 3] - m[1, 3] * m[2, 1]) - m[0, 3] * (m[1, 1] * m[2, 2] - m[1, 2] * m[2, 1])) / det;
+
+    Result[1, 0] := (-m[1, 0] * (m[2, 2] * m[3, 3] - m[2, 3] * m[3, 2]) + m[1, 2] * (m[2, 0] * m[3, 3] - m[2, 3] * m[3, 0]) - m[1, 3] * (m[2, 0] * m[3, 2] - m[2, 2] * m[3, 0])) / det;
+    Result[1, 1] := (m[0, 0] * (m[2, 2] * m[3, 3] - m[2, 3] * m[3, 2]) - m[0, 2] * (m[2, 0] * m[3, 3] - m[2, 3] * m[3, 0]) + m[0, 3] * (m[2, 0] * m[3, 2] - m[2, 2] * m[3, 0])) / det;
+    Result[1, 2] := (-m[0, 0] * (m[1, 2] * m[3, 3] - m[1, 3] * m[3, 2]) + m[0, 2] * (m[1, 0] * m[3, 3] - m[1, 3] * m[3, 0]) - m[0, 3] * (m[1, 0] * m[3, 2] - m[1, 2] * m[3, 0])) / det;
+    Result[1, 3] := (m[0, 0] * (m[1, 2] * m[2, 3] - m[1, 3] * m[2, 2]) - m[0, 2] * (m[1, 0] * m[2, 3] - m[1, 3] * m[2, 0]) + m[0, 3] * (m[1, 0] * m[2, 2] - m[1, 2] * m[2, 0])) / det;
+
+    Result[2, 0] := (m[1, 0] * (m[2, 1] * m[3, 3] - m[2, 3] * m[3, 1]) - m[1, 1] * (m[2, 0] * m[3, 3] - m[2, 3] * m[3, 0]) + m[1, 3] * (m[2, 0] * m[3, 1] - m[2, 1] * m[3, 0])) / det;
+    Result[2, 1] := (-m[0, 0] * (m[2, 1] * m[3, 3] - m[2, 3] * m[3, 1]) + m[0, 1] * (m[2, 0] * m[3, 3] - m[2, 3] * m[3, 0]) - m[0, 3] * (m[2, 0] * m[3, 1] - m[2, 1] * m[3, 0])) / det;
+    Result[2, 2] := (m[0, 0] * (m[1, 1] * m[3, 3] - m[1, 3] * m[3, 1]) - m[0, 1] * (m[1, 0] * m[3, 3] - m[1, 3] * m[3, 0]) + m[0, 3] * (m[1, 0] * m[3, 1] - m[1, 1] * m[3, 0])) / det;
+    Result[2, 3] := (-m[0, 0] * (m[1, 1] * m[2, 3] - m[1, 3] * m[2, 1]) + m[0, 1] * (m[1, 0] * m[2, 3] - m[1, 3] * m[2, 0]) - m[0, 3] * (m[1, 0] * m[2, 1] - m[1, 1] * m[2, 0])) / det;
+
+    Result[3, 0] := (-m[1, 0] * (m[2, 1] * m[3, 2] - m[2, 2] * m[3, 1]) + m[1, 1] * (m[2, 0] * m[3, 2] - m[2, 2] * m[3, 0]) - m[1, 2] * (m[2, 0] * m[3, 1] - m[2, 1] * m[3, 0])) / det;
+    Result[3, 1] := (m[0, 0] * (m[2, 1] * m[3, 2] - m[2, 2] * m[3, 1]) - m[0, 1] * (m[2, 0] * m[3, 2] - m[2, 2] * m[3, 0]) + m[0, 2] * (m[2, 0] * m[3, 1] - m[2, 1] * m[3, 0])) / det;
+    Result[3, 2] := (-m[0, 0] * (m[1, 1] * m[3, 2] - m[1, 2] * m[3, 1]) + m[0, 1] * (m[1, 0] * m[3, 2] - m[1, 2] * m[3, 0]) - m[0, 2] * (m[1, 0] * m[3, 1] - m[1, 1] * m[3, 0])) / det;
+    Result[3, 3] := (m[0, 0] * (m[1, 1] * m[2, 2] - m[1, 2] * m[2, 1]) - m[0, 1] * (m[1, 0] * m[2, 2] - m[1, 2] * m[2, 0]) + m[0, 2] * (m[1, 0] * m[2, 1] - m[1, 1] * m[2, 0])) / det;
+
   End;
 End;
 
@@ -2060,7 +2273,8 @@ Begin
   result[1, 1] := c;
 End;
 
-Function CalculateRotationMatrix(Angle: TBaseType; RotationVector: TVector3): TMatrix4x4;
+Function CalculateRotationMatrix(Angle: TBaseType; RotationVector: TVector3
+  ): TMatrix4x4;
 Var
   OneSubC, s, c: float;
 Begin
@@ -2780,7 +2994,8 @@ Begin
     (p.z >= min(tl.z, br.z));
 End;
 
-Function PointInPolygon(Const p: TVector2; Const Polygon: TVector2Array): Boolean;
+Function PointInPolygon(Const p: TVector2; Const Polygon: TVector2Array
+  ): Boolean;
 // Quelle : https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html
 Var
   i, j: integer;
@@ -2820,7 +3035,8 @@ Begin
   result := True;
 End;
 
-Function IntersectLine_segments(Const A, B, C, D: TVector2; Out P: TVector2): Boolean;
+Function IntersectLine_segments(Const A, B, C, D: TVector2; Out P: TVector2
+  ): Boolean;
 Var
   r, s, dett, det, a00, a01, a10, a11, a20, a21: TBaseType;
 Begin
@@ -2847,7 +3063,8 @@ Begin
   End;
 End;
 
-Function IntersectLines(Const A, m_A, B, m_B: TVector2; Out P: TVector2): Boolean;
+Function IntersectLines(Const A, m_A, B, m_B: TVector2; Out P: TVector2
+  ): Boolean;
 Var
   r, dett, det, a00, a01, a10, a11, a20, a21: TBaseType;
 Begin
@@ -3284,6 +3501,11 @@ Begin
   End;
 End;
 
+Function TMatrix2x2helper.getInverse(): TMatrix2x2;
+Begin
+  result := InvertMatrix2(self);
+End;
+
 { TMatrix3x3helper }
 
 Function TMatrix3x3helper.Equal(Other: TMatrix3x3): Boolean;
@@ -3301,7 +3523,36 @@ Begin
   End;
 End;
 
+Function TMatrix3x3helper.getInverse(): TMatrix3x3;
+Begin
+  result := InvertMatrix2(self);
+End;
+
 { TMatrix4x4helper }
+
+Function TMatrix4x4helper.getRaw(index: integer): TBaseType;
+Type
+  PBaseType = ^TBaseType;
+Var
+  p: PBaseType;
+Begin
+  p := @self[0, 0];
+  inc(p, index);
+  result := p^;
+  // result := Self[index Div 4, index Mod 4];
+End;
+
+Procedure TMatrix4x4helper.setRaw(index: integer; AValue: TBaseType);
+Type
+  PBaseType = ^TBaseType;
+Var
+  p: PBaseType;
+Begin
+  p := @self[0, 0];
+  inc(p, index);
+  p^ := AValue;
+  // Self[index Div 4, index Mod 4] := AValue;
+End;
 
 Function TMatrix4x4helper.Equal(Other: TMatrix4x4): Boolean;
 Var
@@ -3316,6 +3567,11 @@ Begin
       End;
     End;
   End;
+End;
+
+Function TMatrix4x4helper.getInverse(): TMatrix4x4;
+Begin
+  result := InvertMatrix2(self);
 End;
 
 { TMatrixNxMhelper }
