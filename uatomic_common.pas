@@ -77,7 +77,7 @@ Const
    *                       ADD: Rollierendes MainMenu (Feature request by community)
    *                       Fix, Laufbänder schieben Atomic auf Powerups
    *                       Fix, Locked in animation got crazy on some machines
-   *             0.10001 =
+   *             0.10001 = ADD: Visualize if a player has a disease
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -149,6 +149,8 @@ Const
   AtomicBombSmallFlyTime = 250;
 
   AtomicDiseaseTime = 10000; // Zeit in ms wie Lange man Krank ist
+  AtomicDiseaseColorChangeTime = 100; // Zeit in ms, nach derer ein Kranker Atomic seine Farbe wechselt
+
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..
 

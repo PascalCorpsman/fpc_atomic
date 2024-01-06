@@ -1788,6 +1788,7 @@ Procedure TServer.UpdateAllClients;
 Var
   m: TMemoryStream;
   i: Integer;
+  DiseasedInfo: TAtomicInfo;
 Begin
   // Gesendet werden immer 3 Datensätze
   m := TMemoryStream.Create;
@@ -1806,8 +1807,15 @@ Begin
       fPLayer[i].Info.Value := random(65536); // Eine Zufällige Zen Animation auswählen ;)
       If fPLayer[i].UID > 0 Then HandlePlaySoundEffect(i, seZen); // Nur "echte" spieler kriegen den Ton
     End;
-
-    m.Write(fPLayer[i].Info, sizeof(fPLayer[i].Info));
+    // Wenn der Spieler eine Krankheit hat, dann wechselt seine Farbe alle AtomicDiseaseColorChangeTime
+    If fPLayer[i].Disease <> [] Then Begin
+      DiseasedInfo := fPLayer[i].Info;
+      DiseasedInfo.ColorIndex := (fPLayer[i].DiseaseCounter Div AtomicDiseaseColorChangeTime) Mod length(PlayerColors);
+      m.Write(DiseasedInfo, sizeof(DiseasedInfo));
+    End
+    Else Begin
+      m.Write(fPLayer[i].Info, sizeof(fPLayer[i].Info));
+    End;
     // Der Client Wertet die Flanke der animation aus und hällt diese Selbst so lange wie er sie braucht
     // d.h. Die Animation wird hier direkt wieder Platt gemacht.
     If fPLayer[i].Info.Animation In OneTimeAnimations Then Begin
