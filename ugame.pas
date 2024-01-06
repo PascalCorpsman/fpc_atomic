@@ -1787,6 +1787,7 @@ Var
   sl: TStringList;
   j: integer;
   field: TAtomicRandomField;
+  hohletex: TGraphikItem;
 {$IFDEF ShowInitTime}
   t: UInt64;
 {$ENDIF}
@@ -1885,6 +1886,8 @@ Begin
   If fPlayerdeadTex.Image = 0 Then exit;
   fhurry.Texture := OpenGL_GraphikEngine.LoadAlphaGraphikItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', smClamp);
   If fhurry.Texture.Image = 0 Then exit;
+  hohletex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', smStretchHard);
+  If hohletex.Image = 0 Then exit;
 
   // Laden der Felder
   fArrows := TOpenGL_Animation.Create;
@@ -1912,7 +1915,7 @@ Begin
   End;
   For j := 0 To sl.count - 1 Do Begin
     fFields[j] := TAtomicField.Create();
-    If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors) Then Begin
+    If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, hohletex.Image) Then Begin
       LogShow('Error, unable to load field:' + sl[j], llFatal);
       LogLeave;
       exit;

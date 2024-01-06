@@ -399,7 +399,9 @@ Const // TODO: Redundant zu uatomic_field !
   yOff = 66;
 Var
   fAnimation: TAnimation;
+  aDirection: Single;
 Begin
+  aDirection := Info.Direction;
   glColor4f(1, 1, 1, 1);
   glPushMatrix;
   glAlphaFunc(GL_LESS, 0.5);
@@ -433,6 +435,12 @@ Begin
       raDie: fAnimation := fDieAnimations[Info.Value Mod length(fDieAnimations)]; // Eigentlich müsste es diesen Fall gar nicht geben da info.Dieing ja gesetzt ist dabei ..
       raZen: fAnimation := fZenAnimations[Info.Value Mod length(fZenAnimations)];
       raLockedIn: fAnimation := fLockedInAnimations[Info.Value Mod length(fLockedInAnimations)];
+      raTeleport: Begin
+          // Die Idee, dass die Animation alle 50 ms um 90 Grad weiter dreht, denn dem Atomic soll schwindelig werden !
+          fAnimation := fAnimations[aaWalk];
+          aDirection := ((Info.Counter Mod 200) Div 50) * 90;
+          Edge := True; // Der User soll immer das 1. Frame sehen, denn der Atomic steht ja wenn er sich dreht
+        End;
     End;
   End;
   If assigned(fAnimation.Ani) Then Begin
@@ -440,13 +448,12 @@ Begin
       fAnimation.Ani.ResetAnimation();
     End;
     glTranslatef(-fAnimation.OffsetX, -fAnimation.OffsetY, atomic_EPSILON);
-    fAnimation.ani.Render(Info.Direction);
+    fAnimation.ani.Render(aDirection);
   End;
   glPopMatrix;
 
   gldisable(GL_ALPHA_TEST);
   glPopMatrix;
-
 
   (*
    * Zum Debuggen ein Punkt exakt da wo finfo.Position ist !

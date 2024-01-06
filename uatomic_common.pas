@@ -73,7 +73,10 @@ Const
    * -releaseGP- 0.09001 = Anpassen Geschwindigkeiten Conveyor und Schildkröte
    *                       Fix, im Teamplay wurden die Bomben nicht abgeschaltet, wenn das erste Team keine Spieler mehr hat
    *                       Fix, extract Soundhandling into own class to hopefully fix crashes on Linux systems
-   *             0.09002 =
+   *             0.10000 = ADD: Löcher für Field 04
+   *                       ADD: Rollierendes MainMenu (Feature request by community)
+   *                       Fix, Laufbänder schieben Atomic auf Powerups
+   *                       Fix, Locked in animation got crazy on some machines
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -134,6 +137,7 @@ Const
   AtomicAnimationTimeKick = 500;
   AtomicAnimationTimePup = 550;
   AtomicAnimationTimePunch = 500;
+  AtomicAnimationTimeTeleport = 1000; // 500ms auf dem alten Loch, dann Teleport dann 500ms auf dem neuen Loch
 
   AtomicTeamSwitchTime = 2000; // Zeit in ms die es dauert bis der Server die Farben der Spieler auf die Teamfarbe umstellt
   AtomicBombDetonateTime = 2000; // Zeit in ms die es dauert bis eine Normale Bombe explodiert
@@ -400,6 +404,7 @@ Type
     , raPunch
     , raPup // -- Fertig
     , raDie // -- Fertig
+    , raTeleport // Teleport von Loch zu Loch
     , raZen
     , raLockedIn // -- Fertig
     );
@@ -475,6 +480,7 @@ Type
     KeysPressed: Array[TAtomicKey] Of Boolean;
 {$ENDIF}
 {$IFDEF Server}
+    IsInHohle: Boolean; // True, when player is on a hohle
     Flying: Boolean; // is the player flying ? Not physically on the map
     IdleTimer: UInt32; // Der Zähler der sich Merkt wie viele ms lang der Spieler keine "Eingaben" gemacht hat !! ist nicht exakt mehr so grob
     Disease: Set Of TDisease;

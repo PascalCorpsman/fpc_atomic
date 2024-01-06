@@ -17,8 +17,10 @@ powflame.png
 powdisea.png
 victory7.png
 mainmenu_sound.wav
+tramp.ani
 powtrig.png
 playerdead.png
+hole.png
 powgold.png
 victory8.png
 mainmenu.png

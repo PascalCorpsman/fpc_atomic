@@ -1009,6 +1009,7 @@ Begin
     fPLayer[i].MoveState := msStill;
     fPLayer[i].Action := aaNone;
     fPLayer[i].Flying := false;
+    fPLayer[i].IsInHohle := false;
     fPLayer[i].Disease := [];
     fPLayer[i].DiseaseCounter := 0;
     fPLayer[i].IdleTimer := 0;
@@ -1636,6 +1637,7 @@ Var
   i, j: Integer;
   aiInfo: TaiInfo;
   AiCommand: TAiCommand;
+  OldCounter: UInt16;
 Begin
   HandleStatisticCallback(sFramesRendered);
   If fPlayingTimedesc <> -1000 Then Begin
@@ -1749,7 +1751,14 @@ Begin
        * Den Zähler lassen wir mal immer Zählen und damit nichts schief geht alle 1 min überlaufen, sollte er grad nicht gebraucht werden ...
        * Jede Animation die den Counter Braucht setzt ihn beim Start auf 0 zurück, damit ist dann alles Save ;)
        *)
+      OldCounter := fPLayer[i].Info.Counter;
       fPLayer[i].Info.Counter := (fPLayer[i].Info.Counter + FrameRate) Mod 60000;
+      // Der Teleporter versetzt den Spieler genau 1 mal und zwar bei der Hälfte der Animationszeit
+      If (fPLayer[i].Info.Animation = raTeleport) And
+        (OldCounter < AtomicAnimationTimeTeleport Div 2) And
+        (fPLayer[i].Info.Counter >= AtomicAnimationTimeTeleport Div 2) Then Begin
+        fActualField.TelePortPlayer(fPLayer[i]);
+      End;
       If fPLayer[i].Info.Dieing Then Begin
         If fPLayer[i].Info.Counter > AtomicDietimeout Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..

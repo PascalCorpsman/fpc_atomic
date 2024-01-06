@@ -6,24 +6,24 @@ object Form2: TForm2
   Caption = 'Form2'
   ClientHeight = 628
   ClientWidth = 880
+  Position = poScreenCenter
+  LCLVersion = '3.99.0.0'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  Position = poScreenCenter
-  LCLVersion = '2.3.0.0'
   object Button1: TButton
     Left = 8
     Height = 25
     Top = 8
     Width = 112
     Caption = 'load ani file'
-    OnClick = Button1Click
     TabOrder = 0
+    OnClick = Button1Click
   end
   object Label1: TLabel
     Left = 128
-    Height = 15
+    Height = 16
     Top = 17
-    Width = 34
+    Width = 41
     Caption = 'Label1'
   end
   object ListBox1: TListBox
@@ -33,14 +33,15 @@ object Form2: TForm2
     Width = 120
     Anchors = [akTop, akLeft, akBottom]
     ItemHeight = 0
-    OnClick = ListBox1Click
     TabOrder = 1
+    TopIndex = -1
+    OnClick = ListBox1Click
   end
   object Label2: TLabel
     Left = 8
-    Height = 15
+    Height = 16
     Top = 44
-    Width = 38
+    Width = 43
     Caption = 'Images'
   end
   object Image1: TImage
@@ -52,9 +53,9 @@ object Form2: TForm2
   end
   object Label3: TLabel
     Left = 136
-    Height = 15
+    Height = 16
     Top = 64
-    Width = 34
+    Width = 41
     Caption = 'Label3'
   end
   object GroupBox1: TGroupBox
@@ -64,26 +65,26 @@ object Form2: TForm2
     Width = 576
     Anchors = [akTop, akLeft, akRight]
     Caption = ' Merge settings '
-    ClientHeight = 260
-    ClientWidth = 572
+    ClientHeight = 263
+    ClientWidth = 574
     TabOrder = 2
     object Label4: TLabel
       Left = 8
-      Height = 15
+      Height = 16
       Top = 18
-      Width = 32
+      Width = 36
       Caption = 'Width'
     end
     object Label5: TLabel
       Left = 8
-      Height = 15
+      Height = 16
       Top = 50
-      Width = 36
+      Width = 40
       Caption = 'Height'
     end
     object Edit1: TEdit
       Left = 56
-      Height = 23
+      Height = 26
       Top = 8
       Width = 80
       TabOrder = 0
@@ -91,7 +92,7 @@ object Form2: TForm2
     end
     object Edit2: TEdit
       Left = 56
-      Height = 23
+      Height = 26
       Top = 40
       Width = 80
       TabOrder = 2
@@ -111,8 +112,8 @@ object Form2: TForm2
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 3
-      ClientHeight = 29
-      ClientWidth = 236
+      ClientHeight = 32
+      ClientWidth = 238
       Columns = 3
       Items.Strings = (
         'Left'
@@ -135,8 +136,8 @@ object Form2: TForm2
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 3
-      ClientHeight = 29
-      ClientWidth = 236
+      ClientHeight = 32
+      ClientWidth = 238
       Columns = 3
       Items.Strings = (
         'Top'
@@ -147,14 +148,14 @@ object Form2: TForm2
     end
     object Label6: TLabel
       Left = 8
-      Height = 30
+      Height = 32
       Top = 82
-      Width = 41
+      Width = 46
       Caption = 'Frames '#10'per row'
     end
     object Edit3: TEdit
       Left = 56
-      Height = 23
+      Height = 26
       Top = 88
       Width = 80
       TabOrder = 3
@@ -162,16 +163,16 @@ object Form2: TForm2
     end
     object Label7: TLabel
       Left = 8
-      Height = 15
+      Height = 16
       Top = 128
-      Width = 86
+      Width = 97
       Caption = 'Image sequence'
     end
     object Edit4: TEdit
       Left = 56
-      Height = 23
+      Height = 26
       Top = 144
-      Width = 510
+      Width = 512
       Anchors = [akTop, akLeft, akRight]
       TabOrder = 6
       Text = 'Edit4'
@@ -182,14 +183,14 @@ object Form2: TForm2
       Top = 208
       Width = 168
       Caption = 'Create preview'
-      OnClick = Button2Click
       TabOrder = 8
+      OnClick = Button2Click
     end
     object Label8: TLabel
       Left = 8
-      Height = 15
+      Height = 16
       Top = 240
-      Width = 34
+      Width = 41
       Caption = 'Label8'
     end
     object Button3: TButton
@@ -198,21 +199,21 @@ object Form2: TForm2
       Top = 208
       Width = 168
       Caption = 'Copy job to clipboard'
-      OnClick = Button3Click
       TabOrder = 9
+      OnClick = Button3Click
     end
     object Label9: TLabel
       Left = 8
-      Height = 15
+      Height = 16
       Top = 184
-      Width = 32
+      Width = 39
       Caption = 'Target'
     end
     object Edit5: TEdit
       Left = 56
-      Height = 23
+      Height = 26
       Top = 176
-      Width = 510
+      Width = 512
       Anchors = [akTop, akLeft, akRight]
       TabOrder = 7
       Text = 'Edit5'
@@ -231,8 +232,8 @@ object Form2: TForm2
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
-      ClientHeight = 86
-      ClientWidth = 164
+      ClientHeight = 89
+      ClientWidth = 166
       Items.Strings = (
         'first pixel'
         'clblack'

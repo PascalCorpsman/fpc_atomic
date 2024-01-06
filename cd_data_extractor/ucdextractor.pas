@@ -25,9 +25,11 @@ Uses
  * History: 0.01 = Initial version
  *          0.02 = Switch to relative paths
  *                 Add Addon Pack warning
+ *          0.03 = Add Hohle and Jump animation
+ *                 FIX crash, when creating a new job
  *)
 Const
-  DefCaption = 'FPC Atomic data extractor ver. 0.02';
+  DefCaption = 'FPC Atomic data extractor ver. 0.03';
 
 Type
   TTransparentMode = (
@@ -56,6 +58,7 @@ Type
    * Partly separated to be able to use it in the ani job creator ;)
    *)
 Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
+Procedure SetLogCallback(LogCallBack: TLogCallback);
 
 (*
  * Helper Routines, use on own will.
@@ -542,6 +545,11 @@ Begin
   End;
 End;
 
+Procedure SetLogCallback(LogCallBack: TLogCallback);
+Begin
+  AddLog := LogCallBack;
+End;
+
 (*
  * Runs all jobs who's source is a Atomic Bomberman .ani file and the result is a single .png image
  * -> TAniJob
@@ -873,7 +881,7 @@ Begin
   If Not assigned(LogCallBack) Then Begin
     Raise Exception.Create('Error, missing LogCallback!');
   End;
-  AddLog := LogCallBack;
+  SetLogCallback(LogCallBack);
   CDFolder := ConcatRelativePath(ExtractFilePath(ParamStr(0)), CDFolder);
   AtomicFolder := ConcatRelativePath(ExtractFilePath(ParamStr(0)), AtomicFolder);
   n := GetTickCount64();
@@ -982,7 +990,12 @@ Initialization
   AniToAniJobs := Nil;
 
   (*
-   * Paste here the content from "Copy job to clipboard" button.
+   * Paste here the content from "Copy job to clipboard" button (from unit2.pos [enable button6, see TForm1.FormCreate])
+   *
+   * AddAniJob: extracts frames from a .ani file into one output image
+   * PopAniJob: converts the last AddAniJob into a new .ani file compatible to uopengl_animation
+   * PopCascade: merges arbiture amount of AddAniJobs into one single file
+   *
    *)
   // data/atomic/die/*
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE1.ANI', 73, 73, 10, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die1.png', tmFirstPixelPerFrame); // Fertig, getestet
@@ -1100,6 +1113,8 @@ Initialization
   PopAniJob(5, 4, 100, 45.0, [5, 5, 10, 4, 0, 5, 14, 4]);
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'TRIGANIM.ANI', 40, 40, 5, taCenter, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1', 'data' + Pathdelim + 'res' + Pathdelim + 'mainmenu_cursor.ani', tmFirstPixel);
   PopAniJob(5, 4, 40, 0.0, [0, 18]);
-
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'EXTRAS.ANI', 40, 36, 1, taLeftJustify, tlTop, '4', 'data' + Pathdelim + 'res' + Pathdelim + 'hole.png', tmFirstPixel); // Fertig getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'EXTRAS.ANI', 40, 36, 3, taCenter, tlBottom, '5, 6, 7, 8, 7, 6', 'data' + Pathdelim + 'res' + Pathdelim + 'tramp.ani', tmBlack);
+  PopAniJob(3, 2, 100, 0.0, [0, 5]);
 End.
 

@@ -64,8 +64,10 @@ Type
     fArrowDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
     fHasConveyors: Boolean; // Wenn True, dann hat die Karte diese Blauen Fließbänder auf denen Spieler und Bomben automatisch bewegt werden (geschwindigkeit via Settings einstellbar)
     fConveyorDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
+    fHasHohles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
+    fHohles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
 {$IFDEF Client}
-    fFieldTex, fBrickTex, fSolidTex: integer;
+    fHoleTex, fFieldTex, fBrickTex, fSolidTex: integer;
     fxBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TBrickAnimation;
     fxBrickAniTime: integer;
     fPreviewLines: Array[0..4] Of String;
@@ -104,7 +106,7 @@ Type
     Destructor Destroy(); override;
     Function loadFromDirectory(Dir: String
 {$IFDEF Client}
-      ; aArrows: TOpenGL_Animation; aConveyors: TOpenGL_Animation
+      ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aHohle: Integer
 {$ENDIF}
       ): Boolean;
 {$IFDEF Client}
@@ -119,14 +121,14 @@ Type
     Function HandleMovePlayer(Var Players: TPlayers; PlayerIndex: integer; ConveyorSpeed: TConveyorSpeed): Boolean; // True, wenn der Spieler gestorben ist.
     Procedure HandleActionPlayer(Var Player: TPlayer; PlayerIndex: integer);
     Procedure HandleBombs(Var Players: TPlayers; PreHurry: Boolean; ConveyorSpeed: TConveyorSpeed);
-    Procedure HandlePlayerVsMap(Var Players: TPlayers;
-      PlayerGetsPowerUp: TPlayerGetsPowerUpEvent);
+    Procedure HandlePlayerVsMap(Var Players: TPlayers; PlayerGetsPowerUp: TPlayerGetsPowerUpEvent);
     Procedure HandleFieldAnims;
     Procedure DisableAllBombs();
     Function GetAiInfo(Const Players: TPlayers; TeamPlay: Boolean): TaiInfo;
     Procedure IncHurry();
     Procedure KillPlayer(Var Players: TPlayers; Index: integer); // Ohne Punktewertung
     Procedure RepopulatePlayersCollectedPowerUps(Const Players: TPlayers; PlayerIndex: Integer);
+    Procedure TelePortPlayer(Var Player: TPlayer);
 {$ENDIF}
   End;
 
@@ -276,8 +278,14 @@ Begin
     For j := 0 To FieldHeight - 1 Do Begin
       fArrowDirs[i, j] := -1;
       fConveyorDirs[i, j] := -1;
+      fHohles[i, j] := false;
     End;
   End;
+  // Die 4 Löscher
+  fHohles[2, 2] := true;
+  fHohles[12, 2] := true;
+  fHohles[12, 8] := true;
+  fHohles[2, 8] := true;
   // Alle nach Rechts
   fArrowDirs[2, 0] := 0;
   fArrowDirs[6, 0] := 0;
@@ -371,18 +379,16 @@ Begin
   Inherited Destroy;
 End;
 
-
-
 // Die IDE Code vervollständigung killt manchmal den Korrekten Header, deswegen hier die "Kopiervorlage"
 //Function TAtomicField.loadFromDirectory(Dir: String
 //{$IFDEF Client}
-//  ; aArrows: TOpenGL_Animation; aConveyors: TOpenGL_Animation
+//  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aHohle: Integer
 //{$ENDIF}
 //  ): Boolean;
 
 Function TAtomicField.loadFromDirectory(Dir: String
 {$IFDEF Client}
-  ; aArrows: TOpenGL_Animation; aConveyors: TOpenGL_Animation
+  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aHohle: Integer
 {$ENDIF}
   ): Boolean;
 Var
@@ -442,6 +448,8 @@ Begin
   name := ini.ReadString('General', 'Name', '');
   fHasArrows := ini.ReadBool('General', 'HasArrows', false);
   fHasConveyors := ini.ReadBool('General', 'HasConveyors', false);
+  fHasHohles := ini.ReadBool('General', 'HasHohles', false);
+
   // T
 {$IFDEF Client}
   For i := 0 To 4 Do Begin
@@ -456,6 +464,7 @@ Begin
   If Not FileExists(dir + 'solid.png') Then exit;
 {$IFDEF Client}
   fSolidTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(dir + 'solid.png', ColorToRGB(clfuchsia), smStretchHard);
+  fHoleTex := aHohle;
 {$ENDIF}
   tmphash := MD5File(dir + 'solid.png');
   AppendHash;
@@ -571,15 +580,26 @@ End;
 
 Procedure TAtomicField.Initialize(Const Players: TPlayers; Const Scheme: TScheme
   );
-  Procedure SetBlank(x, y: integer);
+  Function SetBlank(x, y: integer): Boolean;
   Begin
+    result := false;
     If (x >= 0) And (x < FieldWidth) And (y >= 0) And (y < FieldHeight) Then Begin
       fField[x, y].BrickData := bdBlank;
+      result := true;
+    End;
+  End;
+
+  Function IsBlank(x, y: integer): boolean;
+  Begin
+    result := false;
+    If (x >= 0) And (x < FieldWidth) And (y >= 0) And (y < FieldHeight) Then Begin
+      result := fField[x, y].BrickData = bdBlank;
     End;
   End;
 
 Var
   i, j, maxpow: Integer;
+  b: Boolean;
 Begin
 {$IFDEF Server}
   fBombCount := 0; // Sollte es je noch Bomben gegeben haben nu sind sie Platt ;)
@@ -619,6 +639,28 @@ Begin
       SetBlank(trunc(Players[i].Info.Position.x) + 1, trunc(Players[i].Info.Position.y));
       SetBlank(trunc(Players[i].Info.Position.x), trunc(Players[i].Info.Position.y - 1));
       SetBlank(trunc(Players[i].Info.Position.x), trunc(Players[i].Info.Position.y + 1));
+    End;
+  End;
+  // 2.5 Wenn die Karte "löcher" hat, dann müssen die immer Frei bleiben, und mindestens 1 adjazentes Feld auch !
+  If fHasHohles Then Begin
+    For i := 0 To FieldWidth - 1 Do Begin
+      For j := 0 To FieldHeight - 1 Do Begin
+        If fHohles[i, j] Then Begin
+          SetBlank(i, j);
+          If (Not IsBlank(i - 1, j)) And (Not IsBlank(i + 1, j))
+            And (Not IsBlank(i, j - 1)) And (Not IsBlank(i, j + 1)) Then Begin
+            b := false;
+            While Not b Do Begin
+              Case Random(4) Of
+                0: b := SetBlank(i - 1, j);
+                1: b := SetBlank(i + 1, j);
+                2: b := SetBlank(i, j - 1);
+                3: b := SetBlank(i, j + 1);
+              End;
+            End;
+          End;
+        End;
+      End;
     End;
   End;
   // 3. Die PowerUps die Hinter den "Bricks" liegen
@@ -714,6 +756,7 @@ Begin
   // Die Kick Animation -> da bewegen wir uns erst mal nicht ;)
   If (Players[PlayerIndex].Info.Animation = raKick) And (Players[PlayerIndex].Info.Counter < AtomicAnimationTimeKick - 2 * UpdateRate) Then exit; // A Bissle schneller wieder "Frei" geben als geplant
   If (Players[PlayerIndex].Info.Animation = raPup) And (Players[PlayerIndex].Info.Counter < AtomicAnimationTimePup - 2 * UpdateRate) Then exit; // A Bissle schneller wieder "Frei" geben als geplant
+  If (Players[PlayerIndex].Info.Animation = raTeleport) And (Players[PlayerIndex].Info.Counter < AtomicAnimationTimeTeleport - 2 * UpdateRate) Then exit; // A Bissle schneller wieder "Frei" geben als geplant
 
   (*
    * Kickt der Spieler eine Bombe auf einem Laufband addieren sich die Geschwindigkeiten !
@@ -741,7 +784,7 @@ Begin
       End;
       nx := x + dxi;
       ny := y + dyi;
-      If Not FielWalkable(nx, ny, true) Then Begin
+      If Not FielWalkable(nx, ny, false) Then Begin // Das Laufband kann uns theoretisch auf ein Powerup drauf schieben, ob wir das nun wollen oder nicht ;)
         dxi := 0;
         dyi := 0;
       End;
@@ -990,9 +1033,11 @@ Begin
   If (Not FielWalkable(x - 1, y, false)) And
     (Not FielWalkable(x + 1, y, false)) And
     (Not FielWalkable(x, y - 1, false)) And
-    (Not FielWalkable(x, y + 1, false)) Then Begin
+    (Not FielWalkable(x, y + 1, false)) And
+    (Players[PlayerIndex].info.Animation <> raLockedIn) Then Begin
     Players[PlayerIndex].info.Animation := raLockedIn;
     Players[PlayerIndex].info.Value := random(65536);
+    Players[PlayerIndex].info.Counter := 0;
   End;
   result := fField[x, y].BrickData = bdSolid;
 End;
@@ -1012,6 +1057,8 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
       If (trunc(fBombs[i].Position.x) = trunc(ax)) And
         (trunc(fBombs[i].Position.y) = trunc(ay)) Then exit;
     End;
+    // Es darf keine Bombe auf ein Loch gelegt werden !
+    If fHasHohles And fHohles[trunc(ax), trunc(ay)] Then exit;
     fBombs[fBombCount].ColorIndex := player.info.ColorIndex;
     fBombs[fBombCount].Position.x := trunc(ax) + 0.5;
     fBombs[fBombCount].Position.y := trunc(ay) + 0.5;
@@ -1159,6 +1206,16 @@ End;
 Procedure TAtomicField.HandleBombs(Var Players: TPlayers; PreHurry: Boolean; ConveyorSpeed: TConveyorSpeed);
 Type
   TDir = (DirUp, DirDown, DirLeft, DirRight);
+
+  Function BlockedByHole(x, y: integer): Boolean; // Gillt nur für Bomben, wenn diese sich bewegen, deswegen extra
+  Begin
+    If fHasHohles Then Begin
+      result := fHohles[x, y];
+    End
+    Else Begin
+      result := false;
+    End;
+  End;
 
   Function BlockedByPlayer(x, y: integer): Boolean;
   Var
@@ -1313,7 +1370,7 @@ Begin
             If fBombs[i].Position.y >= FieldHeight Then fBombs[i].Position.y := fBombs[i].Position.y - FieldHeight;
             x := trunc(fBombs[i].Position.x);
             y := trunc(fBombs[i].Position.y);
-            If FielWalkable(x, y, true) Then Begin
+            If FielWalkable(x, y, true) And (Not BlockedByHole(x, y)) Then Begin
               // 1. Das Feld darf belegt werden -> Fertig
               fBombs[i].MoveDir := bmNone;
             End
@@ -1347,7 +1404,7 @@ Begin
           If commapartx > 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x) + 1;
             y := trunc(fBombs[i].Position.y);
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
               fBombs[i].Position.x := trunc(fBombs[i].Position.x) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);
@@ -1372,7 +1429,7 @@ Begin
           If commapartx < 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x) - 1;
             y := trunc(fBombs[i].Position.y);
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
               fBombs[i].Position.x := trunc(fBombs[i].Position.x) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);
@@ -1397,7 +1454,7 @@ Begin
           If commaparty < 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x);
             y := trunc(fBombs[i].Position.y) - 1;
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
               fBombs[i].Position.y := trunc(fBombs[i].Position.y) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);
@@ -1422,7 +1479,7 @@ Begin
           If commaparty > 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x);
             y := trunc(fBombs[i].Position.y) + 1;
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
               fBombs[i].Position.y := trunc(fBombs[i].Position.y) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);
@@ -1590,6 +1647,19 @@ Begin
     If fField[x, y].PowerUp <> puNone Then Begin
       PlayerGetsPowerUp(Players[i], i, fField[x, y].PowerUp);
       fField[x, y].PowerUp := puNone;
+    End;
+    // Die Kollision gegen ein Loch
+    If fHasHohles And fHohles[x, y] Then Begin
+      If (Not Players[i].IsInHohle) Then Begin // Flanke generieren ;)
+        Players[i].IsInHohle := true;
+        Players[i].Info.Animation := raTeleport;
+        Players[i].Info.Counter := 0;
+        Players[i].Info.Position.x := x + 0.5;
+        Players[i].Info.Position.y := y + 0.5;
+      End;
+    End
+    Else Begin
+      Players[i].IsInHohle := false;
     End;
     // Die Kollision Spieler gegen eine Flamme
     If fField[x, y].Flame <> [] Then Begin
@@ -1831,6 +1901,33 @@ Begin
   LogLeave;
 End;
 
+Procedure TAtomicField.TelePortPlayer(Var Player: TPlayer);
+Var
+  x, y: Integer;
+Begin
+  (*
+   * Den Spieler im Gegenuhrzegeigersinn auf der Karte drehen
+   *)
+  x := trunc(Player.Info.Position.x);
+  y := trunc(Player.Info.Position.y);
+  If x = 2 Then Begin
+    If y = 2 Then Begin
+      Player.Info.Position.y := 8.5;
+    End
+    Else Begin
+      Player.Info.Position.x := 12.5;
+    End;
+  End
+  Else Begin
+    If y = 2 Then Begin
+      Player.Info.Position.x := 2.5;
+    End
+    Else Begin
+      Player.Info.Position.y := 2.5;
+    End;
+  End;
+End;
+
 {$ENDIF}
 
 {$IFDEF Client}
@@ -1907,6 +2004,16 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     End;
   End;
 
+  Procedure RenderHohle(x, y: integer);
+  Begin
+    If fhohles[x, y] Then Begin
+      glPushMatrix;
+      glTranslatef(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_EPSILON);
+      RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fHoleTex);
+      glPopMatrix;
+    End;
+  End;
+
 Var
   i, j: Integer;
   FlameAni: TOpenGL_Animation;
@@ -1971,6 +2078,9 @@ Begin
               End;
               If fHasConveyors Then Begin
                 RenderConveyor(i, j);
+              End;
+              If fHasHohles Then Begin
+                RenderHohle(i, j);
               End;
             End;
           End;

@@ -1073,7 +1073,7 @@ Var
   f: TJoinQuestionForm;
 Begin
   If key = VK_J Then Begin
-    // Frage IP und Port zum Game.JoinViaParams(ip, port);      ab !
+    // Frage IP und Port zum Game.JoinViaParams(ip, port);  ab !
     f := TJoinQuestionForm.CreateNew(Nil, 0);
     If f.ShowModal = mrOK Then Begin
       TGame(fOwner).JoinViaParams(f.Edit1.Text, strtointdef(f.Edit2.Text, 9876));
@@ -1081,10 +1081,12 @@ Begin
     f.free;
   End;
   If key = VK_DOWN Then Begin
-    fCursorPos := min(fCursorPos + 1, 6);
+    // fCursorPos := min(fCursorPos + 1, 6);
+    fCursorPos := (fCursorPos + 1) Mod 7; // Feature Request by Community, rotating navigation
   End;
   If key = VK_UP Then Begin
-    fCursorPos := max(fCursorPos - 1, 0);
+    // fCursorPos := max(fCursorPos - 1, 0);
+    fCursorPos := (fCursorPos + 6) Mod 7; // Feature Request by Community, rotating navigation
   End;
   If (key >= VK_1) And (key <= VK_7) Then Begin
     fCursorPos := key - VK_1;
