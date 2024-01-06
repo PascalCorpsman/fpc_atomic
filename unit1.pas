@@ -46,7 +46,7 @@ Interface
 Uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, IniPropStorage,
-  OpenGlcontext, lNetComponents,
+  OpenGlcontext, lNetComponents, lNet,
   (*
    * Kommt ein Linkerfehler wegen OpenGL dann: sudo apt-get install freeglut3-dev
    *)
@@ -187,21 +187,6 @@ Begin
     Initialized := True;
     OpenGLControl1Resize(Nil);
     Game.initialize(OpenGLControl1);
-
-    //Game.OnConnectToServer := @OnConnectToServer;
-    //Game.OnDisconnectFromServer := @OnDisconnectFromServer;
-    //Game.OnLoadMap := @OnLoadMap;
-    //Game.OnUpdateMapProperty := @OnUpdateMapProperty;
-    //Game.OnStartRound := @OnStartRound;
-    //Game.OnEndRound := @OnEndRound;
-    //Game.OnForceEditMode := @OnForceEditMode;
-    //Game.OnHandleLoadGameingData := @OnHandleLoadGameingData;
-    //Game.OnRefreshPlayerStats := @OnRefreshPlayerStats;
-    //Game.OnShowGameStatistics := @OnShowGameStatistics;
-    //Game.OnWaveCloneEvent := @form4.OnCTDWaveClone;
-
-    Game.RegisterTCPConnection(LTCPComponent1);
-    Game.RegisterUDPConnection(LUDPComponent1);
     Timer1.Enabled := true;
   End;
   Form1.Invalidate;
@@ -370,6 +355,8 @@ Var
 Begin
   If Form1ShowOnce Then Begin
     Form1ShowOnce := false;
+    Game.RegisterTCPConnection(LTCPComponent1);
+    Game.RegisterUDPConnection(LUDPComponent1);
 {$IFDEF AUTOMODE}
     If Paramcount <> 0 Then Begin
       For i := 1 To Paramcount Do Begin
@@ -385,6 +372,10 @@ Begin
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
+{$IFDEF Windows}
+Var
+  socket: TLSocket;
+{$ENDIF}
 Begin
   log('TForm1.FormCloseQuery', llTrace);
   // Todo: Speichern der Map, oder wenigstens Nachfragen ob gespeichert werden soll
@@ -398,6 +389,18 @@ Begin
   Initialized := false;
   // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
   Game.Disconnect;
+{$IFDEF Windows}
+  Game.RegisterUDPConnection(Nil);
+  (*
+   * The windows Version of L-Net has a Memleak, it does not free the RootSocket of the UDP-Connection
+   * so we do this by hand ;)
+   *)
+  LUDPComponent1.IterReset;
+  socket := LUDPComponent1.Iterator;
+  If assigned(socket) Then socket.free;
+  LUDPComponent1.Disconnect(true);
+{$ENDIF}
+  Game.OnIdle;
   fUpdater.free;
   fUpdater := Nil;
   LogLeave;

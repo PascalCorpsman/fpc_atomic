@@ -1630,6 +1630,7 @@ Var
   i: Integer;
   s: String;
 Begin
+  If fNeedDisconnect Then exit;
   If Not fUDPPingData.Active Then exit;
   If GetTickCount64 - fUDPPingData.LastTickValue >= 500 Then Begin
     fUDPPingData.LastTickValue := GetTickCount64;
@@ -1771,10 +1772,12 @@ Procedure TGame.RegisterUDPConnection(Const Connection: TLUDPComponent);
 Begin
   log('TGame.RegisterUDPConnection', llTrace);
   fUDPPingData.Connection := Connection;
-  If fUDPPingData.Connection.Connected Then fUDPPingData.Connection.Disconnect();
-  fUDPPingData.Connection.OnReceive := @OnUDPConnection_Receive;
-  If Not fUDPPingData.Connection.Connect('', UDPPingPort) Then Begin
-    LogShow('Error, could not start UDP Server.', llError);
+  If assigned(Connection) Then Begin
+    If fUDPPingData.Connection.Connected Then fUDPPingData.Connection.Disconnect();
+    fUDPPingData.Connection.OnReceive := @OnUDPConnection_Receive;
+    If Not fUDPPingData.Connection.Connect('', UDPPingPort) Then Begin
+      LogShow('Error, could not start UDP Server.', llError);
+    End;
   End;
   LogLeave;
 End;

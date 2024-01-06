@@ -24,6 +24,10 @@ Uses
   Forms, Unit1, Unit18, uatomic;
 
 Begin
+  // Do not Report if there is no error, that only confuses player..
+{$IF declared(UseHeapTrace)}
+  GlobalSkipIfNoLeaks := True;
+{$ENDIF}
   Application.Title := '';
   Application.Initialize;
   Application.CreateForm(TForm1, Form1);
