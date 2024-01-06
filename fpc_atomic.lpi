@@ -129,10 +129,10 @@
       <Unit9>
         <Filename Value="units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="72"/>
-        <CursorPos X="38" Y="85"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="43"/>
+        <CursorPos X="27" Y="80"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -140,6 +140,7 @@
           <CursorPos X="3" Y="352"/>
         </ExtraEditor1>
         <UsageCount Value="177"/>
+        <Loaded Value="True"/>
       </Unit9>
       <Unit10>
         <Filename Value="../Sample/OpenGL/uopengl_ascii_font.pas"/>
@@ -182,9 +183,10 @@
       <Unit15>
         <Filename Value="updater_settings.inc"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="21" Y="28"/>
+        <EditorIndex Value="2"/>
+        <CursorPos X="3" Y="22"/>
         <UsageCount Value="169"/>
+        <Loaded Value="True"/>
       </Unit15>
       <Unit16>
         <Filename Value="ulogger.inc"/>
@@ -223,15 +225,14 @@
       <Unit20>
         <Filename Value="uscreens.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="1064"/>
-        <CursorPos X="16" Y="1073"/>
+        <EditorIndex Value="-1"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
+          <TopLine Value="1064"/>
+          <CursorPos X="16" Y="1073"/>
         </ExtraEditor1>
         <UsageCount Value="163"/>
-        <Loaded Value="True"/>
       </Unit20>
       <Unit21>
         <Filename Value="units/uatomic_messages.pas"/>
@@ -337,37 +338,32 @@
       <Unit29>
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="1"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
-          <WindowIndex Value="1"/>
         </ExtraEditor1>
         <UsageCount Value="116"/>
         <Bookmarks Count="2">
           <Item0 Y="800" ID="4"/>
           <Item1 Y="1091" ID="5"/>
         </Bookmarks>
-        <Loaded Value="True"/>
       </Unit29>
       <Unit30>
         <Filename Value="uatomic.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="408"/>
-        <CursorPos X="39" Y="425"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="424"/>
+        <CursorPos X="108" Y="447"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
-          <TopLine Value="424"/>
-          <CursorPos X="108" Y="447"/>
         </ExtraEditor1>
         <UsageCount Value="114"/>
         <Bookmarks Count="1">
           <Item0 Y="222" ID="8"/>
         </Bookmarks>
-        <Loaded Value="True"/>
       </Unit30>
       <Unit31>
         <Filename Value="../Sample/OpenGL/uopengl_spriteengine.pas"/>
@@ -500,46 +496,15 @@
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
     </OtherDefines>
-    <JumpHistory Count="10" HistoryIndex="9">
+    <JumpHistory Count="2" HistoryIndex="1">
       <Position1>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="1889" TopLine="1854"/>
+        <Filename Value="units/uatomic_common.pas"/>
+        <Caret TopLine="43"/>
       </Position1>
       <Position2>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="1873" Column="158" TopLine="1863"/>
+        <Filename Value="units/uatomic_common.pas"/>
+        <Caret Line="80" Column="27" TopLine="43"/>
       </Position2>
-      <Position3>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="104" Column="23" TopLine="73"/>
-      </Position3>
-      <Position4>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="507" Column="3" TopLine="506"/>
-      </Position4>
-      <Position5>
-        <Filename Value="uscreens.pas"/>
-        <Caret Line="82" Column="17" TopLine="31"/>
-      </Position5>
-      <Position6>
-        <Filename Value="uscreens.pas"/>
-        <Caret Line="1089" Column="40" TopLine="1064"/>
-      </Position6>
-      <Position7>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="513" Column="20" TopLine="500"/>
-      </Position7>
-      <Position8>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="104" Column="15" TopLine="73"/>
-      </Position8>
-      <Position9>
-        <Filename Value="ugame.pas"/>
-      </Position9>
-      <Position10>
-        <Filename Value="uatomic.pas"/>
-        <Caret Line="75" Column="19" TopLine="46"/>
-      </Position10>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>

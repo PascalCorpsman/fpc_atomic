@@ -73,10 +73,11 @@ Const
    * -releaseGP- 0.09001 = Anpassen Geschwindigkeiten Conveyor und Schildkröte
    *                       Fix, im Teamplay wurden die Bomben nicht abgeschaltet, wenn das erste Team keine Spieler mehr hat
    *                       Fix, extract Soundhandling into own class to hopefully fix crashes on Linux systems
-   *             0.10000 = ADD: Löcher für Field 04
+   * -releaseGP- 0.10000 = ADD: Löcher für Field 04
    *                       ADD: Rollierendes MainMenu (Feature request by community)
    *                       Fix, Laufbänder schieben Atomic auf Powerups
    *                       Fix, Locked in animation got crazy on some machines
+   *             0.10001 =
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
