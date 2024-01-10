@@ -1656,6 +1656,7 @@ Begin
         Players[i].Info.Counter := 0;
         Players[i].Info.Position.x := x + 0.5;
         Players[i].Info.Position.y := y + 0.5;
+        fPlaySoundEffect(i, seWrapHohle);
       End;
     End
     Else Begin

@@ -34,16 +34,19 @@ clikplat.wav
 kicker10.wav
 sqrdrop4.wav
 bomb_24.wav
+transin.wav
 bomb_01.wav
 disease2.wav
 kbomb2.wav
 toeasy.wav
+transout.wav
 bomb_07b.wav
 woohoo1.wav
 bomb_06.wav
 cribrown.wav
 bmdrop2.wav
 bomb_17.wav
+warp1.wav
 disease1.wav
 bomb_07.wav
 zen1.wav
@@ -53,6 +56,7 @@ bomb_02.wav
 get1.wav
 bomb_04.wav
 bmdrop3.wav
+1045.wav
 die1.wav
 bmbthrw3.wav
 explode2.wav
@@ -68,6 +72,7 @@ tastpai2.wav
 get2.wav
 bmbthrw4.wav
 gotahurt.wav
+trampo.wav
 bomb_09.wav
 explo1.wav
 grab1.wav

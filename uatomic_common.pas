@@ -79,6 +79,7 @@ Const
    *                       Fix, Locked in animation got crazy on some machines
    *             0.10001 = ADD: Visualize if a player has a disease
    *                       Fix, memleak on Windows systems
+   *                       ADD: Sound for Hole Transfer
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -307,6 +308,8 @@ Type
     , seOtherPlayerDied
     , seHurryBrick
     , seHurry
+    , seWrapHohle
+    , seTrampoline // Not yet implemented
     );
 
   TConveyorSpeed = (csSlow, csMiddle, csFast);

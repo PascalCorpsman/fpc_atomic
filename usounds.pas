@@ -22,19 +22,25 @@ Const
     'bomb_01.wav', 'bomb_02.wav', 'bomb_04.wav', 'bomb_04b.wav', 'bomb_05.wav',
     'bomb_06.wav', 'bomb_07.wav', 'bomb_07b.wav', 'bomb_09.wav', 'bomb_11.wav',
     'bomb_12.wav', 'bomb_12b.wav', 'bomb_17.wav', 'bomb_19.wav', 'bomb_24.wav');
+
   AtomicDie: Array[0..1] Of String = ('scream1.wav', 'die1.wav');
-  Winner: Array[0..3] Of String = ('proud.wav', 'theman.wav', 'youwin1.wav', '1000.wav');
-  GetGoodPowerUp: Array[0..5] Of String = ('woohoo1.wav', 'get1.wav', 'get2.wav', 'coolpop.wav', 'allrite.wav', 'schwing.wav');
-  GetBadPowerUp: Array[0..3] Of String = ('ohno1.wav', 'disease1.wav', 'disease2.wav', 'disease3.wav');
+  AtomicJump: Array[0..3] Of String = ('1017.wav', '1036.wav', '1045.wav', 'trampo.wav');
   AtomicZen: Array[0..1] Of String = ('zen1.wav', 'zen2.wav');
+  AtomicWrapHole: Array[0..2] Of String = ('transin.wav', 'transout.wav', 'warp1.wav');
+
   OtherPlayerDie: Array[0..14] Of String = (
     'cribrown.wav', 'cul8r.wav', 'gotahurt.wav', 'gotcha.wav', 'later.wav',
     'roasted.wav', 'toeasy.wav', 'youblow.wav', 'eatdust.wav', 'smelsmok.wav',
     'stupidio.wav', 'suckitdn.wav', 'tastpain.wav', 'tastpai2.wav', 'cribrown.wav');
+
+  GetGoodPowerUp: Array[0..5] Of String = ('woohoo1.wav', 'get1.wav', 'get2.wav', 'coolpop.wav', 'allrite.wav', 'schwing.wav');
+  GetBadPowerUp: Array[0..3] Of String = ('ohno1.wav', 'disease1.wav', 'disease2.wav', 'disease3.wav');
+
   HurryBrick: Array[0..6] Of String = (
     'clikplat.wav', 'sqrdrop2.wav', 'sqrdrop4.wav', 'sqrdrop5.wav', 'sqrdrop6.wav',
     'sqrdrop7.wav', 'sqrdrop8.wav');
   Hurry: Array[0..1] Of String = ('hurry.wav', 'hurytuf.wav');
+  Winner: Array[0..3] Of String = ('proud.wav', 'theman.wav', 'youwin1.wav', '1000.wav');
 
 Type
 

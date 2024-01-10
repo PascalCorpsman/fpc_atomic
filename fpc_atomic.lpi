@@ -61,7 +61,6 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-        <TopLine Value="22"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -129,10 +128,9 @@
       <Unit9>
         <Filename Value="units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="43"/>
-        <CursorPos X="27" Y="80"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="268"/>
+        <CursorPos X="3" Y="310"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -183,7 +181,7 @@
       <Unit15>
         <Filename Value="updater_settings.inc"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="4"/>
         <CursorPos X="3" Y="22"/>
         <UsageCount Value="169"/>
         <Loaded Value="True"/>
@@ -338,17 +336,20 @@
       <Unit29>
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="407"/>
+        <CursorPos X="3" Y="409"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
         </ExtraEditor1>
         <UsageCount Value="116"/>
-        <Bookmarks Count="2">
+        <Bookmarks Count="3">
           <Item0 Y="800" ID="4"/>
           <Item1 Y="1091" ID="5"/>
+          <Item2 Y="1312" ID="1"/>
         </Bookmarks>
+        <Loaded Value="True"/>
       </Unit29>
       <Unit30>
         <Filename Value="uatomic.pas"/>
@@ -400,10 +401,10 @@
       <Unit35>
         <Filename Value="usounds.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="1"/>
-        <TopLine Value="23"/>
-        <CursorPos Y="70"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="185"/>
+        <CursorPos X="3" Y="192"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -411,6 +412,7 @@
           <CursorPos Y="145"/>
         </ExtraEditor1>
         <UsageCount Value="60"/>
+        <Loaded Value="True"/>
       </Unit35>
       <Unit36>
         <Filename Value="_2_Presentation_brainstorm.txt"/>
@@ -496,15 +498,45 @@
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
     </OtherDefines>
-    <JumpHistory Count="2" HistoryIndex="1">
+    <JumpHistory Count="10" HistoryIndex="9">
       <Position1>
         <Filename Value="units/uatomic_common.pas"/>
-        <Caret TopLine="43"/>
+        <Caret Line="80" Column="27" TopLine="43"/>
       </Position1>
       <Position2>
-        <Filename Value="units/uatomic_common.pas"/>
-        <Caret Line="80" Column="27" TopLine="43"/>
+        <Filename Value="unit1.pas"/>
       </Position2>
+      <Position3>
+        <Filename Value="ugame.pas"/>
+      </Position3>
+      <Position4>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="11" Column="12"/>
+      </Position4>
+      <Position5>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1294" Column="9" TopLine="1268"/>
+      </Position5>
+      <Position6>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1313" TopLine="1268"/>
+      </Position6>
+      <Position7>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="1291" Column="12" TopLine="1268"/>
+      </Position7>
+      <Position8>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="184" Column="16" TopLine="153"/>
+      </Position8>
+      <Position9>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="409" Column="3" TopLine="407"/>
+      </Position9>
+      <Position10>
+        <Filename Value="usounds.pas"/>
+        <Caret Line="71" Column="15" TopLine="40"/>
+      </Position10>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>

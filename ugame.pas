@@ -1307,6 +1307,8 @@ Begin
     seOtherPlayerDied: s := SelectRandomSound(OtherPlayerDie);
     seHurryBrick: s := SelectRandomSound(HurryBrick);
     seHurry: s := SelectRandomSound(Hurry);
+    seWrapHohle: s := SelectRandomSound(AtomicWrapHole);
+    seTrampoline: s := SelectRandomSound(AtomicJump);
   End;
   If s <> '' Then s := 'data' + PathDelim + 'sounds' + PathDelim + s;
   PlaySoundEffect(s);

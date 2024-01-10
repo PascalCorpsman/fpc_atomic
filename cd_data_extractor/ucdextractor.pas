@@ -181,7 +181,7 @@ Const
   (*
    * All Jobs that need to be done to convert Atomic Bomberman .rss files into FPC_Atomic .wav files
    *)
-  SoundJobs: Array[0..96] Of TSoundJob =
+  SoundJobs: Array[0..101] Of TSoundJob =
   (
     // data/maps/Field** [11]
     (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'GRNACRES.RSS'; Destname: 'data' + PathDelim + 'maps' + PathDelim + 'Field00' + PathDelim + 'sound.wav') // Fertig, getestet
@@ -202,10 +202,11 @@ Const
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'MENUEXIT.RSS'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'menuexit.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'WIN.RSS'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'player_setup_sound.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'QUITGAME.RSS'; Destname: 'data' + PathDelim + 'res' + PathDelim + 'quitgame.wav') // Fertig, getestet
-    // data/sounds [80]
+    // data/sounds [85]
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + '1000.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + '1000.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + '1017.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + '1017.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + '1036.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + '1036.wav') // Fertig, getestet
+    , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + '1045.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + '1045.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'allrite.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'allrite.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'bmbstop1.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'bmbstop1.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'bmbstop2.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'bmbstop2.wav') // Fertig, getestet
@@ -277,7 +278,11 @@ Const
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'tastpai2.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'tastpai2.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'tastpain.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'tastpain.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'theman.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'theman.wav') // Fertig, getestet
+    , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'trampo.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'trampo.wav') // Fertig, getestet
+    , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'transin.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'transin.wav') // Fertig, getestet
+    , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'transout.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'transout.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'toeasy.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'toeasy.wav') // Fertig, getestet
+    , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'warp1.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'warp1.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'woohoo1.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'woohoo1.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'youblow.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'youblow.wav') // Fertig, getestet
     , (Sourcefile: 'data' + PathDelim + 'sound' + PathDelim + 'youwin1.RSS'; Destname: 'data' + PathDelim + 'sounds' + PathDelim + 'youwin1.wav') // Fertig, getestet
