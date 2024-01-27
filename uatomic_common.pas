@@ -80,7 +80,8 @@ Const
    *             0.10001 = ADD: Visualize if a player has a disease
    *                       Fix, memleak on Windows systems
    *                       ADD: Sound for Hole Transfer
-   *             0.11000 = ADD: Trampolines
+   * -releaseGP- 0.11000 = ADD: Trampolines
+   *             0.11001 = 
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

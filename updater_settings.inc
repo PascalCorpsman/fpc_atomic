@@ -18,7 +18,7 @@ Const
    * Der Updater braucht die "int" version nicht, die ist nur für FPC_Atomic (und legt die Protokollversion zwischen Server und Client fest)
    * klar dass beide immer gleich sein müssen !
    *)
-  updater_Version = '0.11000'; // Zum Unterscheiden im Updater kann man auch gern "unterversionen nehmen" die Zahl wird als Floatingpoint angenommen.
+  updater_Version = '0.11001'; // Zum Unterscheiden im Updater kann man auch gern "unterversionen nehmen" die Zahl wird als Floatingpoint angenommen.
   updater_int_Version = 011;
 
   updater_AppName = 'FPC Atomic';
