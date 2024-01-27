@@ -1179,7 +1179,6 @@ Begin
           b2.PixelFormat := pf24bit;
           b2.width := nw;
           b2.height := nh;
-          // b2.canvas.StretchDraw(rect(0, 0, nw, nh), b);
           If Stretch = smStretch Then Begin
             Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imBilinear);
           End
@@ -1270,160 +1269,47 @@ End;
 
 Function TOpenGL_GraphikEngine.LoadAlphaColorGraphik(Filename: String; Color: TRGB; Stretch: TStretchmode): Integer; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
 Var
-  OpenGLData: Array Of Array[0..3] Of Byte;
   Data: String;
-  b2, b: Tbitmap;
-  IntfImg1: TLazIntfImage;
-  CurColor: TFPColor;
-  ow, oh, nw, nh, c, j, i: Integer;
-  bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
+  b: TBitmap;
   jp: TJPEGImage;
   png: TPortableNetworkGraphic;
+  i: Integer;
 Begin
-  If FileExists(Filename) Then Begin
-    Data := LowerCase(Filename);
-    // Graphik bereits geladen
-    For i := 0 To high(Fimages) Do
-      If Fimages[i].Name = Data Then Begin
-        result := Fimages[i].Image;
+  result := 0;
+  If Not FileExists(Filename) Then exit;
+  Data := LowerCase(Filename);
+  // Graphik bereits geladen
+  For i := 0 To high(Fimages) Do
+    If Fimages[i].Name = Data Then Begin
+      result := Fimages[i].Image;
 {$IFDEF DEBUGGOUTPUT}
-        writeln('TGraphikEngine.LoadAlphaColorgraphik(' + Filename + ')');
-        writeln('OpenGL Buffer : ' + FileSizetoString(OpenGLBufCount));
-        writeln('TextureCount : ' + inttostr(high(Fimages) + 1));
-{$ENDIF}
-        exit;
-      End;
-    // Graphik mus geladen werden
-    b := TBitmap.create;
-    // create the raw image
-    IntfImg1 := TLazIntfImage.Create(0, 0);
-    // Graphik mus geladen werden
-    If lowercase(ExtractFileExt(Filename)) = '.jpg' Then Begin
-      jp := TJPEGImage.create;
-      jp.LoadFromFile(Filename);
-      b.assign(jp);
-      jp.free;
-    End
-    Else If lowercase(ExtractFileExt(Filename)) = '.png' Then Begin
-      png := TPortableNetworkGraphic.create;
-      png.LoadFromFile(Filename);
-      b.assign(png);
-      png.free;
-    End
-    Else Begin
-      b.LoadFromFile(Filename);
-    End;
-    //If b.PixelFormat <> pf24bit Then Begin
-    //  b.PixelFormat := pf24bit;
-    //End;
-
-    ow := b.width;
-    oh := b.height;
-    nw := b.width;
-    nh := b.height;
-{$IFDEF DEBUGGOUTPUT}
-    writeln('TGraphikEngine.LoadAlphaColorgraphik(' + Filename + ')');
-    writeln('Orig size : ' + inttostr(b.width) + 'x' + inttostr(b.height));
-{$ENDIF}
-    Case Stretch Of
-      smNone: Begin
-        End;
-      smStretchHard, smStretch: Begin
-          nw := GetNextPowerOfTwo(b.width);
-          nh := GetNextPowerOfTwo(b.height);
-          If (nw <> b.width) Or (nh <> b.height) Then Begin
-            b2 := TBitmap.create;
-            b2.PixelFormat := pf24bit;
-            b2.width := nw;
-            b2.height := nh;
-            // b2.canvas.StretchDraw(rect(0, 0, nw, nh), b);
-            If Stretch = smStretch Then Begin
-              Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imBilinear);
-            End
-            Else Begin
-              Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imNearestNeighbour);
-            End;
-            b.Width := nw;
-            b.height := nh;
-            b.canvas.draw(0, 0, b2);
-            b2.free;
-          End;
-        End;
-      smClamp: Begin
-          nw := GetNextPowerOfTwo(b.width);
-          nh := GetNextPowerOfTwo(b.height);
-          If (nw <> b.width) Or (nh <> b.height) Then Begin
-            b2 := TBitmap.create;
-            b2.PixelFormat := pf24bit;
-            b2.width := nw;
-            b2.height := nh;
-            b2.canvas.Draw(0, 0, b);
-            b.Width := nw;
-            b.height := nh;
-            b.canvas.draw(0, 0, b2);
-            b2.free;
-          End;
-        End;
-    End;
-    // load the raw image from the bitmap handles
-    IntfImg1.LoadFromBitmap(B.Handle, B.MaskHandle);
-{$IFDEF DEBUGGOUTPUT}
-    writeln('OpenGL size : ' + inttostr(b.width) + 'x' + inttostr(b.height));
-    OpenGLBufCount := OpenGLBufCount + (b.width * b.height * 4);
-    writeln('OpenGL Buffer : ' + FileSizetoString(OpenGLBufCount));
-{$ENDIF}
-    If IsPowerOfTwo(b.width) And IsPowerOfTwo(b.Height) Then Begin
-      // Laden der Graphikdaten
-      opengldata := Nil;
-      setlength(opengldata, b.width * b.height);
-      c := 0;
-      For j := 0 To b.height - 1 Do Begin
-        For i := 0 To b.width - 1 Do Begin
-          CurColor := IntfImg1.Colors[i, j];
-          OpenGLData[c, 0] := CurColor.Red Div 256;
-          OpenGLData[c, 1] := CurColor.green Div 256;
-          OpenGLData[c, 2] := CurColor.blue Div 256;
-          If (OpenGLData[c, 0] = Color.r) And
-            (OpenGLData[c, 1] = Color.g) And
-            (OpenGLData[c, 2] = Color.b) Then
-            OpenGLData[c, 3] := 255
-          Else
-            OpenGLData[c, 3] := 0;
-          inc(c);
-        End;
-      End;
-      // Übergeben an OpenGL
-      glGenTextures(1, @Result);
-      bool := glIsEnabled(GL_TEXTURE_2D);
-      If Not (Bool{$IFDEF USE_GL} = 1{$ENDIF}) Then
-        glEnable(GL_TEXTURE_2D);
-      glBindTexture(GL_TEXTURE_2D, result);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexImage2D(GL_TEXTURE_2D, 0, gl_RGBA, b.width, b.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, @OpenGLData[0]);
-      If Not (Bool{$IFDEF USE_GL} = 1{$ENDIF}) Then
-        gldisable(GL_TEXTURE_2D);
-      IntfImg1.free;
-      b.free;
-      // Übernehmen in die Engine
-      setlength(Fimages, high(Fimages) + 2);
-      Fimages[high(Fimages)].Image := Result;
-      Fimages[high(Fimages)].Name := data;
-      Fimages[high(Fimages)].Stretched := stretch;
-      Fimages[high(Fimages)].OrigHeight := oh;
-      Fimages[high(Fimages)].OrigWidth := ow;
-      Fimages[high(Fimages)].StretchedHeight := nh;
-      Fimages[high(Fimages)].StretchedWidth := nw;
-      Fimages[high(Fimages)].IsAlphaImage := true;
-{$IFDEF DEBUGGOUTPUT}
+      writeln('TGraphikEngine.LoadAlphaColorgraphik(' + Filename + ')');
+      writeln('OpenGL Buffer : ' + FileSizetoString(OpenGLBufCount));
       writeln('TextureCount : ' + inttostr(high(Fimages) + 1));
 {$ENDIF}
-    End
-    Else
-      Raise Exception.create('Error Image ' + extractfilename(Filename) + ' has invalid Width / Height, has to be 2^x.');
+      exit;
+    End;
+  // Graphik mus geladen werden
+  b := TBitmap.create;
+  // create the raw image
+  // Graphik mus geladen werden
+  If lowercase(ExtractFileExt(Filename)) = '.jpg' Then Begin
+    jp := TJPEGImage.create;
+    jp.LoadFromFile(Filename);
+    b.assign(jp);
+    jp.free;
   End
-  Else
-    result := 0;
+  Else If lowercase(ExtractFileExt(Filename)) = '.png' Then Begin
+    png := TPortableNetworkGraphic.create;
+    png.LoadFromFile(Filename);
+    b.assign(png);
+    png.free;
+  End
+  Else Begin
+    b.LoadFromFile(Filename);
+  End;
+  result := LoadAlphaColorGraphik(b, Filename, Color, Stretch);
+  b.free;
 End;
 
 Function TOpenGL_GraphikEngine.LoadAlphaGraphik(Filename: String; Stretch: TStretchmode): Integer;

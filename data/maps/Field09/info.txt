@@ -1,5 +1,6 @@
 [General]
 Name=Deep Forest Green
+Hastrampolins=1
 
 [Preview]
 Row1=..:::

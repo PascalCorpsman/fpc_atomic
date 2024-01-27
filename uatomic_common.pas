@@ -80,6 +80,7 @@ Const
    *             0.10001 = ADD: Visualize if a player has a disease
    *                       Fix, memleak on Windows systems
    *                       ADD: Sound for Hole Transfer
+   *             0.11000 = ADD: Trampolines
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -103,6 +104,7 @@ Const
   FieldyOff = 66; // Das Offset in Pixel zum Anfahren der Linken Oberen Karten Ecke
   FieldBlockWidth = 40; // Breite einer Kachel in Pixel
   FieldBlockHeight = 36; // Höhe einer Kachel in Pixel
+  FieldTrampCount = 8; // Anzahl an Trampolinen, welche auf einer Karte generiert werden, wenn diese das fHastrampolins flag gesetzt hat ( Laut: https://www.youtube.com/watch?v=fO9HhzhEloE bei 5:47 sind das 8 )
 
   ServerAutoTimeout = 3000; // Zeit in ms bis der Server sich autoamtisch beendet, wenn keine Spieler verbunden sind.
   UDPPingPort = 8005; // Der Port auf welchem Client und Server Lauschen um heraus zu finden ob offene Spiele da sind.
@@ -118,6 +120,7 @@ Const
   AtomicActionDoubleTime = 200; // Zeit in ms die zwischen 2 Tastendrücken liegen muss damit sie als "Doppelte" erkannt werden.
   AtomicDieTimeout = 5000; // Die Zeit in ms die gewartet wird bis das Spiel nach dem Letzten "Sterbenden" Beendet wird.
   AtomicIdleTimeout = 10000; // Zeit ab derer der Atomic anfängt sich zu langweilen muss >> 6050 ms sein, weil allein die Zen Animation schon so lange braucht
+  AtomicTrampFlyTime = 1500; // Zeit in ms die es dauert bis ein Spieler der durch ein Trampolin rumfliegt wieder gelandet ist und weiter Spielen kann
 
   AtomicDefaultSpeed = 0.5; // Die "Grundgeschwindigkeit" in Kacheln Pro Sekunde
   AtomicSpeedChange = 1.1; // Geschwindigkeitsänderung beim aufsammeln eines Rollschuh Items 1.1 = 10% Schneller
@@ -242,7 +245,7 @@ Const
 Type
 
   (*
-   * Alles würuber der Server so Statistiken führt ;)
+   * Alles worüber der Server so Statistiken führt ;)
    *)
   TStatSelector = (
     sMatchesStarted
@@ -309,7 +312,7 @@ Type
     , seHurryBrick
     , seHurry
     , seWrapHohle
-    , seTrampoline // Not yet implemented
+    , seTrampoline
     );
 
   TConveyorSpeed = (csSlow, csMiddle, csFast);
@@ -398,8 +401,10 @@ Type
     Flame: TFlames;
     FlameColor: integer;
     FlamePlayer: integer; // Der PlayerIndex der Flame (zwecks der Kill Anrechnung)
-
-    Counter: uint16; // Der Zähler, der Zählt wie Lange die Aktuelle animation schon läuft (Entweder Flamme oder Explosion)
+    Tramp: Boolean; // Wenn True, dann ist auf diesem Feld ein Trampolin
+    TrampRunning: Boolean; // Wenn True, dann "wackelt" die Tramp Animation
+    TrampOffset: Byte; // Das Tramp Running Offset, sonst sehen die alle Gleich aus..
+    Counter: uint16; // Der Zähler, der Zählt wie Lange die Aktuelle animation schon läuft (Entweder Flamme oder Explosion oder Trampolin)
   End;
 
   TFieldBricks = Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TFieldBrick;
@@ -489,6 +494,7 @@ Type
 {$IFDEF Server}
     IsInHohle: Boolean; // True, when player is on a hohle
     Flying: Boolean; // is the player flying ? Not physically on the map
+    FlyStart, FlyTarget: TVector2; // Start und Zielposition, wenn ein Spieler gerade "Fliegt"
     IdleTimer: UInt32; // Der Zähler der sich Merkt wie viele ms lang der Spieler keine "Eingaben" gemacht hat !! ist nicht exakt mehr so grob
     Disease: Set Of TDisease;
     BeforeSlowDiseaseSpeed: Single;

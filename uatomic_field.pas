@@ -65,13 +65,14 @@ Type
     fHasConveyors: Boolean; // Wenn True, dann hat die Karte diese Blauen Fließbänder auf denen Spieler und Bomben automatisch bewegt werden (geschwindigkeit via Settings einstellbar)
     fConveyorDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
     fHasHohles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
+    fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
     fHohles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
 {$IFDEF Client}
-    fHoleTex, fFieldTex, fBrickTex, fSolidTex: integer;
+    fTrampStaticSprite, fHoleTex, fFieldTex, fBrickTex, fSolidTex: integer;
     fxBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TBrickAnimation;
     fxBrickAniTime: integer;
     fPreviewLines: Array[0..4] Of String;
-    fArrows, fConveyors: TOpenGL_Animation;
+    fTramp, fArrows, fConveyors: TOpenGL_Animation;
 {$ENDIF}
     fSoundFile: String;
     fHash: Uint64; // Wird beim laden der Karte berechnet, dient zur Identifizierung auf "Gleichheit"
@@ -106,7 +107,7 @@ Type
     Destructor Destroy(); override;
     Function loadFromDirectory(Dir: String
 {$IFDEF Client}
-      ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aHohle: Integer
+      ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle, aTrampStatic: Integer
 {$ENDIF}
       ): Boolean;
 {$IFDEF Client}
@@ -157,6 +158,7 @@ Uses
   , uvectormath
   , dglOpenGL
   , uopengl_graphikengine
+  , uopengl_spriteengine
   , ugraphics
 {$ENDIF}
   ;
@@ -382,13 +384,13 @@ End;
 // Die IDE Code vervollständigung killt manchmal den Korrekten Header, deswegen hier die "Kopiervorlage"
 //Function TAtomicField.loadFromDirectory(Dir: String
 //{$IFDEF Client}
-//  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aHohle: Integer
+//  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle, aTrampStatic: Integer
 //{$ENDIF}
 //  ): Boolean;
 
 Function TAtomicField.loadFromDirectory(Dir: String
 {$IFDEF Client}
-  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aHohle: Integer
+  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle, aTrampStatic: Integer
 {$ENDIF}
   ): Boolean;
 Var
@@ -425,6 +427,8 @@ Begin
 {$IFDEF Client}
   fArrows := aArrows;
   fConveyors := aConveyors;
+  fTramp := aTramp;
+  fTrampStaticSprite := aTrampStatic;
 {$ENDIF}
   fHash := 0;
   dir := IncludeTrailingPathDelimiter(dir);
@@ -449,6 +453,7 @@ Begin
   fHasArrows := ini.ReadBool('General', 'HasArrows', false);
   fHasConveyors := ini.ReadBool('General', 'HasConveyors', false);
   fHasHohles := ini.ReadBool('General', 'HasHohles', false);
+  fHastrampolins := ini.ReadBool('General', 'Hastrampolins', false);
 
   // T
 {$IFDEF Client}
@@ -598,7 +603,7 @@ Procedure TAtomicField.Initialize(Const Players: TPlayers; Const Scheme: TScheme
   End;
 
 Var
-  i, j, maxpow: Integer;
+  px, py, i, j, maxpow: Integer;
   b: Boolean;
 Begin
 {$IFDEF Server}
@@ -617,6 +622,9 @@ Begin
       fField[i, j].Flame := [];
       fField[i, j].FlameColor := 0;
       fField[i, j].FlamePlayer := -1;
+      fField[i, j].Tramp := false;
+      fField[i, j].TrampRunning := false;
+      fField[i, j].TrampOffset := random(256);
       Case Scheme.BrickData[i, j] Of
         bdSolid: fField[i, j].BrickData := bdSolid;
         bdBlank: fField[i, j].BrickData := bdBlank;
@@ -639,6 +647,28 @@ Begin
       SetBlank(trunc(Players[i].Info.Position.x) + 1, trunc(Players[i].Info.Position.y));
       SetBlank(trunc(Players[i].Info.Position.x), trunc(Players[i].Info.Position.y - 1));
       SetBlank(trunc(Players[i].Info.Position.x), trunc(Players[i].Info.Position.y + 1));
+    End;
+  End;
+  // 2.5 Wenn die Karte Trampoline hat, dann verteilen wir diese nun
+  If fHastrampolins Then Begin
+    For i := 0 To FieldTrampCount - 1 Do Begin
+      px := -1;
+      While px = -1 Do Begin
+        px := random(FieldWidth);
+        py := random(FieldHeight);
+        // Verhindern, dass Trampoline an Aktiven Spieler Positionen erstellt werden
+        For j := 0 To high(Players) Do Begin
+          If Players[j].Info.Alive Then Begin
+            If (trunc(Players[j].Info.Position.x) = px) And
+              (trunc(Players[j].Info.Position.x) = px) Then Begin
+              px := -1;
+              break;
+            End;
+          End;
+        End;
+        if fField[px, py].Tramp then px := -1; // Sicherstellen, dass es auch wirklich FieldTrampCount werden !
+      End;
+      fField[px, py].Tramp := true;
     End;
   End;
   // 2.5 Wenn die Karte "löcher" hat, dann müssen die immer Frei bleiben, und mindestens 1 adjazentes Feld auch !
@@ -748,10 +778,25 @@ Function TAtomicField.HandleMovePlayer(Var Players: TPlayers; PlayerIndex: integ
 Const
   Epsilon = 0.25; // Je Größer dieser Wert, desto mehr wird das Umlaufen der Ecken unterstützt (maximal wäre 0.5 möglich)
 Var
-  cSpeed, commaparty, commapartx, rSpeed: Single;
+  s, dx, dy, cSpeed, commaparty, commapartx, rSpeed: Single;
   dxi, dyi, nx, ny, x, y, index: Integer;
+
 Begin
   result := false;
+
+  If Players[PlayerIndex].Flying Then Begin
+    s := Players[PlayerIndex].Info.Counter / AtomicTrampFlyTime;
+    dx := Players[PlayerIndex].FlyTarget.x - Players[PlayerIndex].FlyStart.x;
+    dy := Players[PlayerIndex].FlyTarget.y - Players[PlayerIndex].FlyStart.y;
+    Players[PlayerIndex].Info.Position.x := Players[PlayerIndex].FlyStart.x + dx * s;
+    Players[PlayerIndex].Info.Position.y := Players[PlayerIndex].FlyStart.y + dy * s - (FieldHeight * 3) * sin(pi * s); // Die Bogenhöhe beim Trampolin
+    // Der Flug ist Beendet, sicherstellen, dass wir auf jeden Fall am Ziel angekommen sind.
+    If Players[PlayerIndex].Info.Counter > AtomicTrampFlyTime Then Begin
+      Players[PlayerIndex].Info.Position := Players[PlayerIndex].FlyTarget;
+      Players[PlayerIndex].Flying := false;
+    End;
+    exit; // Während des Fluges hat der Spieler natürlich keine Kontrolle über sich ;)
+  End;
 
   // Die Kick Animation -> da bewegen wir uns erst mal nicht ;)
   If (Players[PlayerIndex].Info.Animation = raKick) And (Players[PlayerIndex].Info.Counter < AtomicAnimationTimeKick - 2 * UpdateRate) Then exit; // A Bissle schneller wieder "Frei" geben als geplant
@@ -1095,6 +1140,7 @@ Var
   bx, by, x, y, dx, dy, i: Integer;
   handled: Boolean;
 Begin
+  If Player.Flying Then exit; // Im Flug darf der Spieler natürlich nichts machen ;)
   Case player.Action Of
     aaFirstDouble: Begin
         (* Jeder Doppelt action geht eine Einfach Aktion vorraus ! *)
@@ -1636,11 +1682,16 @@ End;
 
 Procedure TAtomicField.HandlePlayerVsMap(Var Players: TPlayers;
   PlayerGetsPowerUp: TPlayerGetsPowerUpEvent);
+
+// Gemäß: https://www.youtube.com/watch?v=fO9HhzhEloE (bei 6:00) sieht es aber so aus, 
+//        das die Atomics in einem "Range" von +-2 wieder Runter kommen
+Const
+  TrampRange = 2;
 Var
-  x, y, i: integer;
+  nx, ny, x, y, i: integer;
 Begin
   For i := 0 To high(Players) Do Begin
-    If (Not Players[i].Info.Alive) Or (Players[i].Info.Dieing) Then Continue;
+    If (Not Players[i].Info.Alive) Or (Players[i].Info.Dieing) Or (Players[i].Flying) Then Continue;
     x := trunc(Players[i].Info.Position.x);
     y := trunc(Players[i].Info.Position.y);
     // Die Kollision Spieler gegen PowerUp
@@ -1661,6 +1712,36 @@ Begin
     End
     Else Begin
       Players[i].IsInHohle := false;
+    End;
+    If fHastrampolins And fField[x, y].Tramp Then Begin
+      fPlaySoundEffect(i, seTrampoline);
+      // Triggern der Animation der Karte
+      fField[x, y].TrampRunning := true;
+      fField[x, y].Counter := 0;
+      // Triggern des "Fliegens" des Spielers
+      // 1. Neue ZielKoordinate bestimmen
+      nx := -1;
+      While nx = -1 Do Begin
+        // So können die Atomics einfach "irgendwo" wieder landen
+        // nx := random(FieldWidth);
+        // ny := Random(FieldHeight);
+        nx := min(FieldWidth - 1, max(0, x + random(TrampRange * 2 + 1) - TrampRange));
+        ny := min(FieldHeight - 1, max(0, y + random(TrampRange * 2 + 1) - TrampRange));
+        // Das Ziel Feld muss Leer sein = Kein Stein oder Tramp
+        If (fField[nx, ny].BrickData <> bdBlank)
+          Or (fField[nx, ny].Tramp) Then Begin
+          nx := -1;
+        End;
+        // Das gibt es eigentlich nicht, aber auf Löchern landen ist auch verboten!
+        If fHasHohles Then Begin
+          If fHohles[nx, ny] Then
+            nx := -1;
+        End;
+      End;
+      Players[i].Flying := true;
+      Players[i].Info.Counter := 0;
+      Players[i].FlyStart := Players[i].Info.Position;
+      Players[i].FlyTarget := v2(nx + 0.5, ny + 0.5);
     End;
     // Die Kollision Spieler gegen eine Flamme
     If fField[x, y].Flame <> [] Then Begin
@@ -1712,6 +1793,11 @@ Begin
         If fField[i, j].Counter >= FlameTime Then Begin
           // Die Explusionsanimation gibt es in nur 2 Fällen
           fField[i, j].Flame := [];
+        End;
+      End;
+      If fField[i, j].TrampRunning Then Begin
+        If fField[i, j].Counter >= AtomicTrampFlyTime Then Begin
+          fField[i, j].TrampRunning := false;
         End;
       End;
     End;
@@ -2015,6 +2101,22 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     End;
   End;
 
+  Procedure RenderTramp(x, y: integer);
+  Begin
+    If fField[x, y].Tramp Then Begin
+      glPushMatrix;
+      glTranslatef(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_EPSILON);
+      If fField[x, y].TrampRunning Then Begin
+        fTramp.AnimationOffset := fField[x, y].TrampOffset;
+        fTramp.Render(fConveyorDirs[x, y]);
+      End
+      Else Begin
+        OpenGL_SpriteEngine.RenderSprite(fTrampStaticSprite);
+      End;
+      glPopMatrix;
+    End;
+  End;
+
 Var
   i, j: Integer;
   FlameAni: TOpenGL_Animation;
@@ -2082,6 +2184,9 @@ Begin
               End;
               If fHasHohles Then Begin
                 RenderHohle(i, j);
+              End;
+              If fHastrampolins Then Begin
+                RenderTramp(i, j);
               End;
             End;
           End;

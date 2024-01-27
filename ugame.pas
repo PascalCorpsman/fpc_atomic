@@ -58,7 +58,7 @@ Type
 
   TGame = Class
   private
-    fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
+    fTramp, fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
     fSoundManager: TSoundManager;
     fSoundInfo: TSoundInfo;
@@ -1740,6 +1740,7 @@ Begin
   fSoundManager := Nil;
   fArrows.free;
   fConveyors.free;
+  fTramp.Free;
   fSoundInfo.free;
   fSoundInfo := Nil;
   fActualScreen := Nil;
@@ -1793,6 +1794,7 @@ Var
   j: integer;
   field: TAtomicRandomField;
   hohletex: TGraphikItem;
+  fTrampStatic: Integer; // Wenn das Trampolin gerade nicht "an wackelt"
 {$IFDEF ShowInitTime}
   t: UInt64;
 {$ENDIF}
@@ -1903,7 +1905,29 @@ Begin
   If Not fConveyors.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
     Exit;
   End;
-
+  fTramp := TOpenGL_Animation.Create;
+  If Not fTramp.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', true) Then Begin
+    Exit;
+  End;
+  (*
+   * Da es Sich bewegende Trampoline gibt, und "Statische" müssen wir ein extra Sprite mit einem "Statischen" anlegen,
+   * das nachher gerendert werden kann, via fTramp.GetFirstBitmap() geht es nicht, da da sonst Rundungsfehler entstehen die man sieht :/
+   *)
+  fTrampStatic := OpenGL_SpriteEngine.AddSprite(
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Image,
+    'TrampStaticSprite',
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].AlphaImage,
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Rect,
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Width,
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Height,
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FramesPerRow,
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FramesPerCol,
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FrameStart,
+    1,
+    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].dtTime,
+    Nil,
+    Nil
+    );
   sl := FindAllDirectories(p + 'data' + PathDelim + 'maps', false);
   sl.Sorted := true;
   sl.Sort;
@@ -1920,7 +1944,7 @@ Begin
   End;
   For j := 0 To sl.count - 1 Do Begin
     fFields[j] := TAtomicField.Create();
-    If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, hohletex.Image) Then Begin
+    If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, fTramp, hohletex.Image, fTrampStatic) Then Begin
       LogShow('Error, unable to load field:' + sl[j], llFatal);
       LogLeave;
       exit;

@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uopengl_animation.pas                                           15.09.2021 *)
 (*                                                                            *)
-(* Version     : 0.11                                                         *)
+(* Version     : 0.12                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -36,6 +36,7 @@
 (*               0.09 - OnAnimationOverflowEvent for user decisions           *)
 (*               0.10 - FIX: changing only sprite name was not stored         *)
 (*               0.11 - RemoveUnusedSubImagex                                 *)
+(*               0.12 - FIX: GetFirstBitmap was not correct scaled            *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -361,7 +362,7 @@ Begin
   result.Height := fSprites[0].Height;
   result.Canvas.Brush.Color := clWhite;
   result.canvas.Rectangle(-1, -1, Result.Width + 1, result.Height + 1);
-  Stretchdraw(result, rect(0, 0, fSprites[0].Width, fSprites[0].Height), b, imNearestNeighbour); // Bicubisch sieht zwar besser aus ruiniert aber die Transparenz
+  Stretchdraw(result, rect(0, 0, fSprites[0].Width, fSprites[0].Height), b, imNone);
   // Aufräumen
   b.free;
   img.free;

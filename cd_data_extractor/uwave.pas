@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uwave.pas                                                       ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.01                                                         *)
+(* Version     : 0.02                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -25,6 +25,7 @@
 (* Known Issues: none                                                         *)
 (*                                                                            *)
 (* History     : 0.01 - Initial version                                       *)
+(*               0.02 - Support "LIST", "id3 " Chunk                          *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -44,6 +45,7 @@ Type
    * Quelle :
    *          http://soundfile.sapp.org/doc/WaveFormat/
    *          https://de.wikipedia.org/wiki/RIFF_WAVE
+   *          https://www.recordingblogs.com/wiki/list-chunk-of-a-wave-file
    *)
   TRIFF = Record
     ChunkSize: uInt32; // Filesize - 8
@@ -58,6 +60,31 @@ Type
     ByteRate: uInt32; // = SampleRate * NumChannels * BitsPerSample/8
     BlockAlign: uInt16; // = NumChannels * BitsPerSample/8
     BitsPerSample: uInt16; // Auflösung der Daten in Bit (16 oder 8)
+  End;
+
+  TInfo = Record
+    IARL: String; //	The location where the subject of the file is archived
+    IART: String; //	The artist of the original subject of the file
+    ICMS: String; //	The name of the person or organization that commissioned the original subject of the file
+    ICMT: String; //	General comments about the file or its subject
+    ICOP: String; //	Copyright information about the file (e.g., "Copyright Some Company 2011")
+    ICRD: String; //	The date the subject of the file was created (creation date) (e.g., "2022-12-31")
+    ICRP: String; //	Whether and how an image was cropped
+    IDIM: String; //	The dimensions of the original subject of the file
+    IDPI: String; //	Dots per inch settings used to digitize the file
+    IENG: String; //	The name of the engineer who worked on the file
+    IGNR: String; //	The genre of the subject
+    IKEY: String; //	A list of keywords for the file or its subject
+    ILGT: String; //	Lightness settings used to digitize the file
+    IMED: String; //	Medium for the original subject of the file
+    INAM: String; //	Title of the subject of the file (name)
+    IPLT: String; //	The number of colors in the color palette used to digitize the file
+    IPRD: String; //	Name of the title the subject was originally intended for
+    ISBJ: String; //	Description of the contents of the file (subject)
+    ISFT: String; //	Name of the software package used to create the file
+    ISRC: String; //	The name of the person or organization that supplied the original subject of the file
+    ISRF: String; //	The original form of the material that was digitized (source form)
+    ITCH: String; //	The name of the technician who digitized the subject file
   End;
 
   (*
@@ -81,6 +108,7 @@ Type
   private
     fRIFF: TRIFF;
     ffmt: TFMT;
+    fInfo: TInfo;
     (*
      * 1- Dimension = Kanal
      * 2- Dimension = X
@@ -97,8 +125,10 @@ Type
 
     Function ReadChunk(Const Stream: TStream; Var Suceed: Boolean): uint32;
     Function LoadRIFFChunk(Const Stream: TStream): Boolean;
-    Function ReadFmtChunk(Const Stream: TStream; Var Suceed: Boolean): uint32; // Liest einen FormatChunk, unter der Annahme das die Prüfung aug 'fmt ' bereits erfolgreich war und gelesen wurde.
-    Function ReadDataChunk(Const Stream: TStream; Var Suceed: Boolean): uint32; // Liest einen DataChunk, unter der Annahme das die Prüfung aug 'data' bereits erfolgreich war und gelesen wurde, die gelesenen Daten werden an fRawData hinten an gehängt.
+    Function ReadFmtChunk(Const Stream: TStream; Var Suceed: Boolean): uint32; // Liest einen FormatChunk, unter der Annahme das die Prüfung auf 'fmt ' bereits erfolgreich war und gelesen wurde.
+    Function ReadDataChunk(Const Stream: TStream; Var Suceed: Boolean): uint32; // Liest einen DataChunk, unter der Annahme das die Prüfung auf 'data' bereits erfolgreich war und gelesen wurde, die gelesenen Daten werden an fRawData hinten an gehängt.
+    Function ReadListChunk(Const Stream: TStream; Var Suceed: Boolean): uint32; // Liest einen ListChunk, unter der Annahme das die Prüfung auf 'LIST' bereits erfolgreich war und gelesen wurde
+    Function Readid3Chunk(Const Stream: TStream; Var Suceed: Boolean): uint32; // Liest einen ID3Chunk, unter der Annahme das die Prüfung auf 'id3' bereits erfolgreich war und gelesen wurde
 
     Procedure SaveRiFFChunk(Const Stream: TStream);
     Procedure SaveFmtChunk(Const Stream: TStream);
@@ -108,6 +138,7 @@ Type
     Procedure WriteSample(Const Stream: TStream; Value: Single);
 
     Procedure ClearRawData;
+    Procedure ClearInfo;
   public
     Property ChannelCount: uint32 read GetChannelCount; // Anzahl der Kanäle (1 = Mono, 2 = Stereo, .. )
     Property SampleRate: uInt32 read GetSampleRate; // Frequenz in derer das Wave Vorliegt (= Samples Pro Sekunde)
@@ -156,6 +187,7 @@ Begin
   fRawData := Nil;
   ffmt.ID := '';
   ffmt.SampleRate := 0;
+  ClearInfo;
 End;
 
 Destructor TWave.Destroy;
@@ -201,6 +233,12 @@ Begin
     'data': Begin
         If ffmt.ID <> 'fmt ' Then exit; // Fehler Format wurde noch nicht gelesen
         result := ReadDataChunk(Stream, Suceed) + 4; // Plus die Länge von 'data'
+      End;
+    'LIST': Begin
+        result := ReadListChunk(Stream, Suceed) + 4;
+      End;
+    'id3 ': Begin
+        result := Readid3Chunk(Stream, Suceed) + 4;
       End
   Else Begin
       // Fehlerfall unbekannte Chunk id
@@ -303,6 +341,59 @@ Begin
   result := ChunkSize + 4; // es wurden ChunkSize + 4(=Chunksize) Byte gelesen
 End;
 
+Function TWave.ReadListChunk(Const Stream: TStream; Var Suceed: Boolean
+  ): uint32;
+Var
+  aInfoId, aTypeID: String;
+  aInfoIDSize, aSize: UInt32;
+Begin
+  result := 8;
+  aSize := 0;
+  Stream.Read(aSize, SizeOf(aSize));
+  aTypeID := '';
+  setlength(aTypeID, 4);
+  Stream.Read(aTypeID[1], 4);
+  Case aTypeID Of
+    'INFO': Begin
+        aInfoId := '';
+        setlength(aInfoId, 4);
+        stream.Read(aInfoId[1], 4);
+        aInfoIDSize := 0;
+        stream.Read(aInfoIDSize, sizeof(aInfoIDSize));
+        result := result + 8;
+        Case aInfoId Of
+          'IGNR': Begin
+              setlength(fInfo.IGNR, aInfoIDSize);
+              Stream.Read(fInfo.IGNR[1], aInfoIDSize);
+            End
+        Else Begin
+            Raise exception.Create('TWave.ReadListChunk, Error: unknown aInfoId: ' + aInfoId);
+          End;
+        End;
+      End;
+  Else Begin
+      Raise exception.Create('TWave.ReadListChunk, Error: unknown type id: ' + aTypeID);
+    End;
+  End;
+  Suceed := true;
+End;
+
+Function TWave.Readid3Chunk(Const Stream: TStream; Var Suceed: Boolean): uint32;
+Var
+  aSize: UInt32;
+  dummy: String;
+Begin
+  result := 0;
+  aSize := 0;
+  Stream.Read(aSize, sizeof(aSize));
+  result := aSize + 8; // +4 sind klar (wegen aSize), aber woher kommen die anderen 4 ?
+  // TODO: Das hier liest den Chunk einfach nur weg, cool wäre natürlich, wenn verstanden wäre was der Inhalt ist und dieser Zugreifbar wäre (siehe auch: https://de.wikipedia.org/wiki/ID3-Tag), wird also von .wav Dateien eigentlich nicht unterstützt
+  dummy := '';
+  setlength(dummy, aSize);
+  Stream.Read(dummy[1], aSize);
+  Suceed := true;
+End;
+
 Function TWave.ReadSample(Const Stream: TStream): Single;
 Var
   i8: uInt8;
@@ -361,6 +452,32 @@ Begin
     setlength(fRawData[i], 0);
   End;
   setlength(fRawData, 0);
+End;
+
+Procedure TWave.ClearInfo;
+Begin
+  finfo.IARL := '';
+  finfo.IART := '';
+  finfo.ICMS := '';
+  finfo.ICMT := '';
+  finfo.ICOP := '';
+  finfo.ICRD := '';
+  finfo.ICRP := '';
+  finfo.IDIM := '';
+  finfo.IDPI := '';
+  finfo.IENG := '';
+  finfo.IGNR := '';
+  finfo.IKEY := '';
+  finfo.ILGT := '';
+  finfo.IMED := '';
+  finfo.INAM := '';
+  finfo.IPLT := '';
+  finfo.IPRD := '';
+  finfo.ISBJ := '';
+  finfo.ISFT := '';
+  finfo.ISRC := '';
+  finfo.ISRF := '';
+  finfo.ITCH := '';
 End;
 
 Procedure TWave.SetSample(Channel, Index: integer; AValue: Single);
@@ -426,6 +543,7 @@ Function TWave.LoadFromStream(Const Stream: TStream): Boolean;
 Var
   BytesToRead: Int64;
 Begin
+  ClearInfo();
   result := LoadRIFFChunk(Stream);
   If Not result Then exit; // RIFF header nicht erkannt.
   // Lesen der Subchunks so lange bis alle Daten eingelesen wurden.
