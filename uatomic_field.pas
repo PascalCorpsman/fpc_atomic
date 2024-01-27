@@ -666,7 +666,7 @@ Begin
             End;
           End;
         End;
-        if fField[px, py].Tramp then px := -1; // Sicherstellen, dass es auch wirklich FieldTrampCount werden !
+        If (px <> -1) And fField[px, py].Tramp Then px := -1; // Sicherstellen, dass es auch wirklich FieldTrampCount werden !
       End;
       fField[px, py].Tramp := true;
     End;
@@ -1683,7 +1683,7 @@ End;
 Procedure TAtomicField.HandlePlayerVsMap(Var Players: TPlayers;
   PlayerGetsPowerUp: TPlayerGetsPowerUpEvent);
 
-// Gemäß: https://www.youtube.com/watch?v=fO9HhzhEloE (bei 6:00) sieht es aber so aus, 
+// Gemäß: https://www.youtube.com/watch?v=fO9HhzhEloE (bei 6:00) sieht es aber so aus,
 //        das die Atomics in einem "Range" von +-2 wieder Runter kommen
 Const
   TrampRange = 2;
