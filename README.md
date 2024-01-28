@@ -2,10 +2,11 @@
 
 Author   : Uwe Schächterle (Corpsman)  
 Homepage : https://www.Corpsman.de  
-Source   : https://github.com/PascalCorpsman/fpc_atomic
+Source   : https://github.com/PascalCorpsman/fpc_atomic  
+Wiki     : https://en.wikipedia.org/wiki/Atomic_Bomberman
 
 ## Description
-FPC Atomic is a complete reimplementation of the original Atomic Bomberman game (from 1995). This repository hosts only the source code, as the graphics and sounds are copyrighted by Interplay Productions. To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
+FPC Atomic is a complete reimplementation of the original Atomic Bomberman game (from 1997). This repository hosts only the source code, as the graphics and sounds are copyrighted by Interplay Productions. To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
 
 ## What needs to be done to play the game?
 The steps shown here are only needed to be done once (for installation).
