@@ -16,7 +16,7 @@ Unit uatomic_server;
 
 {$MODE ObjFPC}{$H+}
 
-{$I globaldefines.inc}
+{$I ../client/globaldefines.inc}
 
 Interface
 

@@ -18,12 +18,12 @@ Unit uatomic_common;
 
 Interface
 
-{$I globaldefines.inc}
+{$I ../client/globaldefines.inc}
 
 Uses
   Classes, SysUtils, ulogger, Graphics, ugraphics, uvectormath;
 
-{$I updater_settings.inc}
+{$I ../client/updater_settings.inc}
 
 Const
   (*

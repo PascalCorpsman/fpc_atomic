@@ -125,16 +125,6 @@
       <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <CodeGeneration>
-      <Checks>
-        <RangeChecks Value="True"/>
-      </Checks>
-    </CodeGeneration>
-    <Linking>
-      <Debugging>
-        <UseHeaptrc Value="True"/>
-      </Debugging>
-    </Linking>
     <Other>
       <CompilerMessages>
         <IgnoredMessages idx5024="True"/>

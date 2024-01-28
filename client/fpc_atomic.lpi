@@ -73,19 +73,19 @@
         <LoadedDesigner Value="True"/>
       </Unit1>
       <Unit2>
-        <Filename Value="../opengl_graphikengine.pas"/>
+        <Filename Value="../../opengl_graphikengine.pas"/>
         <CursorPos X="6" Y="25"/>
         <UsageCount Value="23"/>
       </Unit2>
       <Unit3>
-        <Filename Value="../Sample/OpenGL/dglopengl.pas"/>
+        <Filename Value="../../Sample/OpenGL/dglopengl.pas"/>
         <UnitName Value="dglOpenGL"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <UsageCount Value="150"/>
       </Unit3>
       <Unit4>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
+        <Filename Value="../../Sample/OpenGL/uopengl_graphikengine.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="2"/>
         <TopLine Value="1155"/>
@@ -101,7 +101,7 @@
         <Loaded Value="True"/>
       </Unit4>
       <Unit5>
-        <Filename Value="../Sample/Graphik/ugraphics.pas"/>
+        <Filename Value="../../Sample/Graphik/ugraphics.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="583"/>
@@ -109,7 +109,7 @@
         <UsageCount Value="182"/>
       </Unit5>
       <Unit6>
-        <Filename Value="../Sample/DatenSteuerung/uvectormath.pas"/>
+        <Filename Value="../../Sample/DatenSteuerung/uvectormath.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
@@ -133,7 +133,7 @@
         <UsageCount Value="182"/>
       </Unit8>
       <Unit9>
-        <Filename Value="units/uatomic_common.pas"/>
+        <Filename Value="../units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="3"/>
         <TopLine Value="43"/>
@@ -147,7 +147,7 @@
         <Loaded Value="True"/>
       </Unit9>
       <Unit10>
-        <Filename Value="../Sample/OpenGL/uopengl_ascii_font.pas"/>
+        <Filename Value="../../Sample/OpenGL/uopengl_ascii_font.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uOpenGL_ASCII_Font"/>
         <EditorIndex Value="-1"/>
@@ -163,7 +163,7 @@
         <UsageCount Value="104"/>
       </Unit11>
       <Unit12>
-        <Filename Value="../Sample/DatenSteuerung/ulogger.pas"/>
+        <Filename Value="../../Sample/DatenSteuerung/ulogger.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
@@ -171,7 +171,7 @@
         <UsageCount Value="52"/>
       </Unit12>
       <Unit13>
-        <Filename Value="../Sample/TCP_IP/uupdate.pas"/>
+        <Filename Value="../../Sample/TCP_IP/uupdate.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="742"/>
@@ -179,7 +179,7 @@
         <UsageCount Value="176"/>
       </Unit13>
       <Unit14>
-        <Filename Value="../Sample/synapse/httpsend.pas"/>
+        <Filename Value="../../Sample/synapse/httpsend.pas"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
         <UsageCount Value="144"/>
@@ -189,7 +189,7 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="4"/>
-        <CursorPos X="29" Y="21"/>
+        <CursorPos X="40" Y="31"/>
         <UsageCount Value="174"/>
         <Loaded Value="True"/>
       </Unit15>
@@ -211,7 +211,7 @@
         <UsageCount Value="173"/>
       </Unit17>
       <Unit18>
-        <Filename Value="../Sample/Sound/Bass/bass.pas"/>
+        <Filename Value="../../Sample/Sound/Bass/bass.pas"/>
         <UnitName Value="BASS"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
@@ -220,7 +220,7 @@
         <UsageCount Value="140"/>
       </Unit18>
       <Unit19>
-        <Filename Value="../Sample/OpenGL/uopengl_animation.pas"/>
+        <Filename Value="../../Sample/OpenGL/uopengl_animation.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
@@ -241,7 +241,7 @@
         <UsageCount Value="168"/>
       </Unit20>
       <Unit21>
-        <Filename Value="units/uatomic_messages.pas"/>
+        <Filename Value="../units/uatomic_messages.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
@@ -271,7 +271,7 @@
         <UsageCount Value="160"/>
       </Unit22>
       <Unit23>
-        <Filename Value="../Sample/OpenGL/uopengl_ascii_font.ressource"/>
+        <Filename Value="../../Sample/OpenGL/uopengl_ascii_font.ressource"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <UsageCount Value="52"/>
@@ -287,7 +287,7 @@
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit24>
       <Unit25>
-        <Filename Value="units/uatomic_field.pas"/>
+        <Filename Value="../units/uatomic_field.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="1"/>
         <TopLine Value="136"/>
@@ -311,7 +311,7 @@
         <Loaded Value="True"/>
       </Unit25>
       <Unit26>
-        <Filename Value="../Sample/TCP_IP/uchunkmanager.pas"/>
+        <Filename Value="../../Sample/TCP_IP/uchunkmanager.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uChunkmanager"/>
         <EditorIndex Value="-1"/>
@@ -335,7 +335,7 @@
         <UsageCount Value="157"/>
       </Unit27>
       <Unit28>
-        <Filename Value="../Sample/TCP_IP/uip.pas"/>
+        <Filename Value="../../Sample/TCP_IP/uip.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="1"/>
@@ -373,7 +373,7 @@
         </Bookmarks>
       </Unit30>
       <Unit31>
-        <Filename Value="../Sample/OpenGL/uopengl_spriteengine.pas"/>
+        <Filename Value="../../Sample/OpenGL/uopengl_spriteengine.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="-1"/>
@@ -426,14 +426,14 @@
         <UsageCount Value="65"/>
       </Unit35>
       <Unit36>
-        <Filename Value="_2_Presentation_brainstorm.txt"/>
+        <Filename Value="../_2_Presentation_brainstorm.txt"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
         <UsageCount Value="61"/>
-        <DefaultSyntaxHighlighter Value="None"/>
+        <DefaultSyntaxHighlighter Value="Text"/>
       </Unit36>
       <Unit37>
         <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/sysutilh.inc"/>
@@ -442,7 +442,7 @@
         <UsageCount Value="10"/>
       </Unit37>
       <Unit38>
-        <Filename Value="../Sample/DatenSteuerung/udomxml.pas"/>
+        <Filename Value="../../Sample/DatenSteuerung/udomxml.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uDOMXML"/>
         <EditorIndex Value="-1"/>
@@ -452,7 +452,7 @@
         <UsageCount Value="52"/>
       </Unit38>
       <Unit39>
-        <Filename Value="../Sample/DatenSteuerung/ufifo.pas"/>
+        <Filename Value="../../Sample/DatenSteuerung/ufifo.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="-1"/>
@@ -486,7 +486,7 @@
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit42>
       <Unit43>
-        <Filename Value="MANUAL.md"/>
+        <Filename Value="../MANUAL.md"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <WindowIndex Value="-1"/>
@@ -509,119 +509,19 @@
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
     </OtherDefines>
-    <JumpHistory Count="23" HistoryIndex="22">
-      <Position1>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
-        <Caret Line="1283" Column="7" TopLine="1246"/>
-      </Position1>
-      <Position2>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
-        <Caret Line="1296" TopLine="1266"/>
-      </Position2>
-      <Position3>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
-        <Caret Line="1279" Column="40" TopLine="1266"/>
-      </Position3>
-      <Position4>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
-        <Caret Line="1134" Column="33" TopLine="1125"/>
-      </Position4>
-      <Position5>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
-        <Caret Line="137" Column="30" TopLine="106"/>
-      </Position5>
-      <Position6>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
-        <Caret Line="1182" TopLine="1155"/>
-      </Position6>
-      <Position7>
-        <Filename Value="../Sample/OpenGL/uopengl_graphikengine.pas"/>
-        <Caret Line="1270" Column="38" TopLine="1259"/>
-      </Position7>
-      <Position8>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="2061" Column="63" TopLine="2015"/>
-      </Position8>
-      <Position9>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="2044" Column="64" TopLine="2015"/>
-      </Position9>
-      <Position10>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="161" Column="2" TopLine="118"/>
-      </Position10>
-      <Position11>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="2034" Column="41" TopLine="2016"/>
-      </Position11>
-      <Position12>
-        <Filename Value="units/uatomic_field.pas"/>
-      </Position12>
-      <Position13>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="161" Column="21" TopLine="124"/>
-      </Position13>
-      <Position14>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="160" Column="26" TopLine="125"/>
-      </Position14>
-      <Position15>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="2068" TopLine="2028"/>
-      </Position15>
-      <Position16>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="115" Column="17" TopLine="76"/>
-      </Position16>
-      <Position17>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="2071" Column="55" TopLine="2028"/>
-      </Position17>
-      <Position18>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="71" Column="5" TopLine="59"/>
-      </Position18>
-      <Position19>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="431" Column="21" TopLine="395"/>
-      </Position19>
-      <Position20>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="2058" Column="73" TopLine="2035"/>
-      </Position20>
-      <Position21>
-        <Filename Value="units/uatomic_field.pas"/>
-        <Caret Line="2110" Column="9" TopLine="2077"/>
-      </Position21>
-      <Position22>
-        <Filename Value="units/uatomic_common.pas"/>
-        <Caret Line="108" Column="27" TopLine="94"/>
-      </Position22>
-      <Position23>
-        <Filename Value="units/uatomic_common.pas"/>
-        <Caret TopLine="43"/>
-      </Position23>
-    </JumpHistory>
+    <JumpHistory HistoryIndex="-1"/>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
     <Target>
-      <Filename Value="fpc_atomic"/>
+      <Filename Value="../fpc_atomic"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../Graphik;../../DatenSteuerung;../Sample/OpenGL;../Sample/Graphik;../Sample/DatenSteuerung;units;../Sample/TCP_IP;../Sample/synapse;../Sample/Sound/Bass"/>
+      <OtherUnitFiles Value="../../../Graphik;../../../DatenSteuerung;../../Sample/OpenGL;../../Sample/Graphik;../../Sample/DatenSteuerung;../units;../../Sample/TCP_IP;../../Sample/synapse;../../Sample/Sound/Bass"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <CodeGeneration>
-      <Checks>
-        <RangeChecks Value="True"/>
-      </Checks>
-    </CodeGeneration>
     <Linking>
-      <Debugging>
-        <UseHeaptrc Value="True"/>
-      </Debugging>
       <Options>
         <Win32>
           <GraphicApplication Value="True"/>
