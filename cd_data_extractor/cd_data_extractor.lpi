@@ -101,7 +101,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/DatenSteuerung;../../Sample/OpenGL"/>
+      <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/DatenSteuerung;../../Sample/OpenGL;../units"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

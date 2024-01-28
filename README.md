@@ -38,9 +38,9 @@ See the license.md file located at https://github.com/PascalCorpsman/Software_Li
 
 ## What needs to be done to get the code compiled?
 To compile the FPC Atomic code, follow these steps:
-1. Download dglopengl.pas from https://github.com/saschawillems/dglopengl .
-2. Download and install bass.pas from https://www.un4seen.com/ .
-3. Download and install synapse from http://www.ararat.cz/synapse/doku.php/download .
+1. Download dglopengl.pas from https://github.com/saschawillems/dglopengl and store it in the "units" folder
+2. Download and install bass.pas from https://www.un4seen.com/ and store it in the "units" folder
+3. Download and install synapse from http://www.ararat.cz/synapse/doku.php/download and store it in the "units" folder
 4. Install the following packages into the Lazarus IDE:
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
