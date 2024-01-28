@@ -96,7 +96,7 @@ Type
      ---------- End content of file ----------
    *)
 
-{$I uvectormath.inc}
+{$I ../client/uvectormath.inc}
 
   TVector2 = Record
     Case boolean Of
