@@ -81,7 +81,8 @@ Const
    *                       Fix, memleak on Windows systems
    *                       ADD: Sound for Hole Transfer
    * -releaseGP- 0.11000 = ADD: Trampolines
-   *             0.11001 = 
+   * -releaseG - 0.11001 = FIX: Server crash when loading Field09
+   *             0.11002 =
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
