@@ -1160,6 +1160,12 @@ Begin
           y := trunc(player.Info.Position.y);
           For i := 1 To player.Powers.AvailableBombs Do Begin
             If Not FielWalkable(x + i * dx, y + i * dy, true) {And (i <> 1)} Then exit;
+            If fHasHohles Then Begin // An Löchern ist auch schluss mit dem "Spoogen"
+              If fHohles[x + i * dx, y + i * dy] Then exit;
+            End;
+            If fHastrampolins Then Begin // Auf Trampoline kann ebenfalls keine Bombe gelegt werden
+              If fField[x + i * dx, y + i * dy].Tramp Then exit;
+            End;
             If PlaceBombOn(x + i * dx + 0.5, y + i * dy + 0.5) Then Begin
               fPlaySoundEffect(PlayerIndex, seBombDrop);
               StatisticCallback(sBombsDropped);
@@ -1257,6 +1263,16 @@ Type
   Begin
     If fHasHohles Then Begin
       result := fHohles[x, y];
+    End
+    Else Begin
+      result := false;
+    End;
+  End;
+
+  Function BlockedByTramp(x, y: integer): Boolean; // Gillt nur für Bomben, wenn diese sich bewegen, deswegen extra
+  Begin
+    If fHastrampolins Then Begin
+      result := fField[x, y].Tramp;
     End
     Else Begin
       result := false;
@@ -1416,7 +1432,7 @@ Begin
             If fBombs[i].Position.y >= FieldHeight Then fBombs[i].Position.y := fBombs[i].Position.y - FieldHeight;
             x := trunc(fBombs[i].Position.x);
             y := trunc(fBombs[i].Position.y);
-            If FielWalkable(x, y, true) And (Not BlockedByHole(x, y)) Then Begin
+            If FielWalkable(x, y, true) And (Not BlockedByHole(x, y)) And (Not BlockedBytramp(x, y)) Then Begin
               // 1. Das Feld darf belegt werden -> Fertig
               fBombs[i].MoveDir := bmNone;
             End
@@ -1450,7 +1466,7 @@ Begin
           If commapartx > 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x) + 1;
             y := trunc(fBombs[i].Position.y);
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y) Or BlockedBytramp(x, y)) Then Begin
               fBombs[i].Position.x := trunc(fBombs[i].Position.x) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);
@@ -1475,7 +1491,7 @@ Begin
           If commapartx < 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x) - 1;
             y := trunc(fBombs[i].Position.y);
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y) Or BlockedBytramp(x, y)) Then Begin
               fBombs[i].Position.x := trunc(fBombs[i].Position.x) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);
@@ -1500,7 +1516,7 @@ Begin
           If commaparty < 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x);
             y := trunc(fBombs[i].Position.y) - 1;
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y) Or BlockedBytramp(x, y)) Then Begin
               fBombs[i].Position.y := trunc(fBombs[i].Position.y) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);
@@ -1525,7 +1541,7 @@ Begin
           If commaparty > 0.5 Then Begin // Wir wollen Tatsächlich auf die Nächste Kachel Laufen
             x := trunc(fBombs[i].Position.x);
             y := trunc(fBombs[i].Position.y) + 1;
-            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y)) Then Begin
+            If (Not FielWalkable(x, y, true)) Or (BlockedByPlayer(x, y) Or BlockedByHole(x, y) Or BlockedBytramp(x, y)) Then Begin
               fBombs[i].Position.y := trunc(fBombs[i].Position.y) + 0.5;
               If fBombs[i].Jelly Then Begin
                 fPlaySoundEffect(fBombs[i].PlayerIndex, seBombJelly);

@@ -82,7 +82,8 @@ Const
    *                       ADD: Sound for Hole Transfer
    * -releaseGP- 0.11000 = ADD: Trampolines
    * -releaseG - 0.11001 = FIX: Server crash when loading Field09
-   *             0.11002 =
+   *             0.11002 = FIX: disable Kick, Throw onto trampolins
+   *                       FIX: do not spooge over hohles
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
