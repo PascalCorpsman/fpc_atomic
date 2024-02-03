@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uGraphiks.pas                                                   ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.10                                                         *)
+(* Version     : 0.11                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -37,6 +37,7 @@
 (*                      add Wrap Modes                                        *)
 (*               0.09 - added floodfill                                       *)
 (*               0.10 - FIX: revert 90* Rotation images back to old algorithm *)
+(*               0.11 - FIX: revert 90* Rotations to matrix multiplications   *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -766,7 +767,6 @@ Var
   b: Byte;
   i, j: Integer;
 Begin
-  //  Bitmap.pixelformat := pf24bit; -- Das Darf nicht drin sein, sonst sind evtl alle Werte 0 !!!
   TempIntfImg := TLazIntfImage.Create(0, 0);
   TempIntfImg.LoadFromBitmap(Bitmap.Handle, Bitmap.MaskHandle);
   For j := 0 To bitmap.height - 1 Do
@@ -786,118 +786,58 @@ End;
 
 Procedure UpSideDown(Const Bitmap: TBitmap);
 Var
-  Source_intf, Dest_intf: TLazIntfImage;
-  DestBM: TBitmap;
-  i, j: Integer;
-  DestHandle, DestMaskHandle: HBitmap;
+  m: TMatrix3x3;
 Begin
-  // Der MulImage Algorithmus, rundet manchmal komisch, dass sieht man
-  // Wenn es Exakt sein mus !
-  Source_intf := TLazIntfImage.Create(0, 0);
-  Source_intf.LoadFromBitmap(Bitmap.Handle, Bitmap.MaskHandle);
-  DestBM := TBitmap.Create;
-  DestBM.Width := Bitmap.Width;
-  DestBM.Height := Bitmap.Height;
-  Dest_intf := TLazIntfImage.Create(0, 0);
-  Dest_intf.LoadFromBitmap(DestBM.Handle, DestBM.MaskHandle);
-  For i := 0 To Bitmap.Width - 1 Do Begin
-    For j := 0 To Bitmap.Height - 1 Do Begin
-      Dest_intf[i, Bitmap.Height - 1 - j] := Source_intf[i, j];
-    End;
-  End;
-  Dest_intf.CreateBitmaps(DestHandle, DestMaskHandle, false);
-  Bitmap.Handle := DestHandle;
-  Bitmap.MaskHandle := DestMaskHandle;
-  Source_intf.free;
-  Dest_intf.free;
-  DestBM.free;
+  m := IdentityMatrix3x3;
+  m[0, 0] := 1;
+  m[1, 1] := -1;
+  // Revert Middlepoint shifting
+  m[0, 2] := 0.5;
+  m[1, 2] := 0.5;
+  MulImage(Bitmap, m, imNone, wmBlack);
 End;
 
 Procedure LeftToRight(Const Bitmap: TBitmap);
 Var
-  Source_intf, Dest_intf: TLazIntfImage;
-  DestBM: TBitmap;
-  i, j: Integer;
-  DestHandle, DestMaskHandle: HBitmap;
+  m: TMatrix3x3;
 Begin
-  // Der MulImage Algorithmus, rundet manchmal komisch, dass sieht man
-  // Wenn es Exakt sein mus !
-  Source_intf := TLazIntfImage.Create(0, 0);
-  Source_intf.LoadFromBitmap(Bitmap.Handle, Bitmap.MaskHandle);
-  DestBM := TBitmap.Create;
-  DestBM.Width := Bitmap.Width;
-  DestBM.Height := Bitmap.Height;
-  Dest_intf := TLazIntfImage.Create(0, 0);
-  Dest_intf.LoadFromBitmap(DestBM.Handle, DestBM.MaskHandle);
-  For i := 0 To Bitmap.Width - 1 Do Begin
-    For j := 0 To Bitmap.Height - 1 Do Begin
-      Dest_intf[Bitmap.Width - 1 - i, j] := Source_intf[i, j];
-    End;
-  End;
-  Dest_intf.CreateBitmaps(DestHandle, DestMaskHandle, false);
-  Bitmap.Handle := DestHandle;
-  Bitmap.MaskHandle := DestMaskHandle;
-  Source_intf.free;
-  Dest_intf.free;
-  DestBM.free;
+  m := IdentityMatrix3x3;
+  m[0, 0] := -1;
+  m[1, 1] := 1;
+  // Revert Middlepoint shifting
+  m[0, 2] := 0.5;
+  m[1, 2] := 0.5;
+  MulImage(Bitmap, m, imNone, wmBlack);
 End;
 
 Procedure RotateClockWise90Degrees(Const Bitmap: TBitmap);
 Var
-  Source_intf, Dest_intf: TLazIntfImage;
-  DestBM: TBitmap;
-  i, j: Integer;
-  DestHandle, DestMaskHandle: HBitmap;
+  m: TMatrix3x3;
 Begin
-  // Der MulImage Algorithmus, rundet manchmal komisch, dass sieht man
-  // Wenn es Exakt sein mus !
-  Source_intf := TLazIntfImage.Create(0, 0);
-  Source_intf.LoadFromBitmap(Bitmap.Handle, Bitmap.MaskHandle);
-  DestBM := TBitmap.Create;
-  DestBM.Width := Bitmap.Height;
-  DestBM.Height := Bitmap.Width;
-  Dest_intf := TLazIntfImage.Create(0, 0);
-  Dest_intf.LoadFromBitmap(DestBM.Handle, DestBM.MaskHandle);
-  For i := 0 To Bitmap.Width - 1 Do Begin
-    For j := 0 To Bitmap.Height - 1 Do Begin
-      Dest_intf[Bitmap.Height - 1 - j, i] := Source_intf[i, j];
-    End;
-  End;
-  Dest_intf.CreateBitmaps(DestHandle, DestMaskHandle, false);
-  Bitmap.Handle := DestHandle;
-  Bitmap.MaskHandle := DestMaskHandle;
-  Source_intf.free;
-  Dest_intf.free;
-  DestBM.free;
+  m := IdentityMatrix3x3;
+  m[0, 0] := 0;
+  m[1, 1] := 0;
+  m[0, 1] := -1;
+  m[1, 0] := 1;
+  // Revert Middlepoint shifting
+  m[0, 2] := 0.5;
+  m[1, 2] := 0.5;
+  MulImage(Bitmap, m, imNone, wmBlack);
 End;
 
 Procedure RotateCounterClockWise90Degrees(Const Bitmap: TBitmap);
 Var
-  Source_intf, Dest_intf: TLazIntfImage;
-  DestBM: TBitmap;
-  i, j: Integer;
-  DestHandle, DestMaskHandle: HBitmap;
+  m: TMatrix3x3;
 Begin
-  // Der MulImage Algorithmus, rundet manchmal komisch, dass sieht man
-  // Wenn es Exakt sein mus !
-  Source_intf := TLazIntfImage.Create(0, 0);
-  Source_intf.LoadFromBitmap(Bitmap.Handle, Bitmap.MaskHandle);
-  DestBM := TBitmap.Create;
-  DestBM.Width := Bitmap.Height;
-  DestBM.Height := Bitmap.Width;
-  Dest_intf := TLazIntfImage.Create(0, 0);
-  Dest_intf.LoadFromBitmap(DestBM.Handle, DestBM.MaskHandle);
-  For i := 0 To Bitmap.Width - 1 Do Begin
-    For j := 0 To Bitmap.Height - 1 Do Begin
-      Dest_intf[j, bitmap.Width - 1 - i] := Source_intf[i, j];
-    End;
-  End;
-  Dest_intf.CreateBitmaps(DestHandle, DestMaskHandle, false);
-  Bitmap.Handle := DestHandle;
-  Bitmap.MaskHandle := DestMaskHandle;
-  Source_intf.free;
-  Dest_intf.free;
-  DestBM.free;
+  m := IdentityMatrix3x3;
+  m[0, 0] := 0;
+  m[1, 1] := 0;
+  m[0, 1] := 1;
+  m[1, 0] := -1;
+  // Revert Middlepoint shifting
+  m[0, 2] := 0.5;
+  m[1, 2] := 0.5;
+  MulImage(Bitmap, m, imNone, wmBlack);
 End;
 
 Procedure Rotate180Degrees(Const Bitmap: TBitmap);
@@ -907,6 +847,9 @@ Begin
   m := IdentityMatrix3x3;
   m[0, 0] := -1;
   m[1, 1] := -1;
+  // Revert Middlepoint shifting
+  m[0, 2] := 0.5;
+  m[1, 2] := 0.5;
   MulImage(Bitmap, m, imNone, wmBlack);
 End;
 
