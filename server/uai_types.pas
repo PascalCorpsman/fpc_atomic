@@ -86,7 +86,7 @@ Type
 
   TAiPlayerInfo = Record
     Team: Uint32; // [0, 1] Only valid if the game mode is Teamplay.
-    Position: TAiVector2; // The position of the player in world coordinates [0..14, 0..10].
+    Position: TAiVector2; // The position of the player in world coordinates [0.5 .. 14.5, 0.5 .. 10.5].
     Alive: Boolean; // If True, the player is alive and relevant for the game. If false, the THandleAiPlayer function will not be called anymore.
     Flying: Boolean; // If True, the player's position can be outside the valid range.
     FlameLength: Integer; // The actual length of the flame of a placed bomb if it will explode.
