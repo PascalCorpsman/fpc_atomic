@@ -50,15 +50,28 @@ Type
     fAiInfo: PAiInfo; // Zeiger auf das Aktuell gültige Spiel
 
     (*
-     * Wird von InitHeightFieldFrom initialisert ->
+     *  Wird von IsSurvivable initialisiert (on Demand)
+     *)
+    fIsSurvivable: Array[0..14, 0..10] Of Boolean;
+    fIsSurvivable_initialized: Boolean;
+
+
+    (*
+     * Initialize the heightfield used for the A* algorithm to enable "Navigation"
      *   -1 = Nicht erreichbar von aX,aY,
-     *        sonst abstand in Kacheln zu aX, aY => 0 an aX, aY
+     *        sonst Abstand in Kacheln zu aX, aY => 0 an aX, aY
+     *  =>
      *)
     fHeightField: Array[0..14, 0..10] Of Integer;
     fHeigtFifo: THeigtFifo; // Die ist Object Global, dass derren Speicher nicht immer neu allokiert werden muss -> Spart Rechenzeit !
 
     Procedure InitHeightFieldFromPos(aX, aY: integer); // Initialisiert fHeightField
     Procedure ResetHeightField(); // Setzt alle felder in fHeightField = -1
+
+    (*
+     * True, if coord ax, ay can not be hit by any bomb
+     *)
+    Function IsSurvivable(aX, aY: integer): Boolean;
   public
     Constructor Create(index: integer); virtual;
     Destructor Destroy(); override;
@@ -76,6 +89,24 @@ Type
 
 Implementation
 
+ { // -- Begin Debug
+Uses
+  unit1;
+
+Procedure Debug(Const ai: TAtomicAi);
+Var
+  i, j: Integer;
+Begin
+  For i := 0 To 14 Do Begin
+    For j := 0 To 10 Do Begin
+      //form1.StringGrid2.Cells[i, j] := inttostr(ai.fHeightField[i, j]);
+      form1.StringGrid2.Cells[i, j] := IntToStr(ord(ai.fIsSurvivable[i, j]));
+    End;
+  End;
+End;
+
+// End Debug }
+
 { TAtomicAi }
 
 Constructor TAtomicAi.Create(index: integer);
@@ -89,6 +120,7 @@ End;
 Destructor TAtomicAi.Destroy;
 Begin
   fHeigtFifo.free;
+  fHeigtFifo := Nil;
 End;
 
 Procedure TAtomicAi.InitHeightFieldFromPos(aX, aY: integer);
@@ -105,6 +137,7 @@ Begin
   fHeigtFifo.Push(p);
   While fHeigtFifo.Count > 0 Do Begin
     p := fHeigtFifo.Pop;
+    If (p.x < 0) Or (p.y < 0) Or (p.x > 14) Or (p.y > 10) Then Continue;
     If (fHeightField[p.x, p.y] = -1) Or (fHeightField[p.x, p.y] > p.height) Then Begin
       If fAiInfo^.Field[p.x, p.y] In [fBlank, fFlame] + GoodPowerUps // + BadPowerUps -- Die KI Will nicht über Bad PowerUps laufen
       Then Begin
@@ -124,7 +157,7 @@ Begin
   End;
 End;
 
-Procedure TAtomicAi.ResetHeightField();
+Procedure TAtomicAi.ResetHeightField;
 Var
   i, j: integer;
 Begin
@@ -134,6 +167,63 @@ Begin
       fHeightField[i, j] := -1;
     End;
   End;
+End;
+
+Function TAtomicAi.IsSurvivable(aX, aY: integer): Boolean;
+
+  Procedure SimExplode(sX, sY, sLen, sDirX, sDirY: Integer);
+  Begin
+    // TODO: sLen <= 0 oder sLen < 0 ?
+    If (sLen < 0) Or (sx < 0) Or (sy < 0) Or (sx > 14) Or (sy > 10) Then exit;
+    If Not (fAiInfo^.Field[sx, sy] In [fBlank, fFlame]) Then exit; // Only
+    fIsSurvivable[sx, sy] := false;
+    sx := sx + sDirX;
+    sy := sy + sDirY;
+    SimExplode(sx, sy, slen - 1, sdirx, sdiry);
+  End;
+
+Var
+  i, j: Integer;
+Begin
+  If Not fIsSurvivable_initialized Then Begin
+    fIsSurvivable_initialized := true;
+    (*
+     * Wir Zünden
+     *)
+    For i := 0 To 14 Do Begin
+      For j := 0 To 10 Do Begin
+        fIsSurvivable[i, j] := true;
+      End;
+    End;
+    For i := 0 To fAiInfo^.BombsCount - 1 Do Begin
+      If fAiInfo^.Bombs[i].Flying Then Continue; // Flying bombs do not detonate !
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        -1, 0
+        );
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        1, 0
+        );
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        0, -1
+        );
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        0, 1
+        );
+    End;
+  End;
+  If (ax < 0) Or (ax > 14) Or (ay < 0) Or (ay > 10) Then Begin
+    result := false;
+    exit;
+  End;
+  result := fIsSurvivable[ax, ay];
 End;
 
 Procedure TAtomicAi.Reset(aStrength: integer);
@@ -147,9 +237,14 @@ Begin
   Result.MoveState := amNone;
   If Not AiInfo.PlayerInfos[fIndex].Alive Then exit; // This Ai is dead -> skip
   fAiInfo := @AiInfo;
+  fIsSurvivable_initialized := false;
   (*
    * Ab hier gehts los
    *)
+  //InitHeightFieldFromPos(trunc(fAiInfo^.PlayerInfos[0].Position.x), trunc(fAiInfo^.PlayerInfos[0].Position.y));
+
+  IsSurvivable(trunc(fAiInfo^.PlayerInfos[0].Position.x), trunc(fAiInfo^.PlayerInfos[0].Position.y));
+ // Debug(self);
 
 End;
 

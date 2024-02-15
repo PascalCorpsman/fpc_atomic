@@ -120,6 +120,7 @@ Type
     );
 
   TAiBombInfo = Record
+    // TODO: Maybe add the information how long this Bomb is already laying on the field
     Position: TAiVector2;
     FlameLength: integer; // Humans do not know this directly, extra for AI ;)
     Flying: Boolean; // Is the bomb flying? Not physically on the map, but can be triggered by other bombs.
