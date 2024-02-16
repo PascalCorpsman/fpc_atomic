@@ -218,7 +218,7 @@ Implementation
 
 Uses LCLType, Math, Graphics, Dialogs, forms, StdCtrls, fileutil, StrUtils
   , dglOpenGL
-  , Unit1
+  , Unit1 // WTF, why is this unit in here ?
   , uopengl_graphikengine
   , uatomicfont
   , uvectormath
@@ -894,6 +894,7 @@ Begin
   If (key = VK_ESCAPE) Or (key = VK_BACK) Then Begin
     Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
     Tgame(fOwner).SwitchToScreen(sMainScreen);
+    Form1.IniPropStorage1SavingProperties(nil);
   End;
   If key = VK_DOWN Then Begin
     fCursorPos := min(fCursorPos + 1, 11);

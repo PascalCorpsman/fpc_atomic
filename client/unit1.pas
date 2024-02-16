@@ -397,6 +397,9 @@ Begin
    *)
   LUDPComponent1.IterReset;
   socket := LUDPComponent1.Iterator;
+  (*
+   * If you get a Access violation here, this means you have a "old" L-Net version
+   *)
   If assigned(socket) Then socket.free;
   LUDPComponent1.Disconnect(true);
 {$ENDIF}
