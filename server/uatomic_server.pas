@@ -1807,8 +1807,10 @@ Begin
       fPLayer[i].Info.Value := random(65536); // Eine Zufällige Zen Animation auswählen ;)
       If fPLayer[i].UID > 0 Then HandlePlaySoundEffect(i, seZen); // Nur "echte" spieler kriegen den Ton
     End;
-    // Wenn der Spieler eine Krankheit hat, dann wechselt seine Farbe alle AtomicDiseaseColorChangeTime
-    If fPLayer[i].Disease <> [] Then Begin
+    (*
+     * Wenn der Spieler eine Krankheit hat, dann wechselt seine Farbe alle AtomicDiseaseColorChangeTime
+     *)
+    If (fPLayer[i].Disease <> []) And ((fPLayer[i].DiseaseCounter Mod AtomicDiseaseColorChangePeriodTime) < AtomicDiseaseColorChangePeriodTime - AtomicDiseaseColorChangePeriodRelaxTime) Then Begin
       DiseasedInfo := fPLayer[i].Info;
       DiseasedInfo.ColorIndex := (fPLayer[i].DiseaseCounter Div AtomicDiseaseColorChangeTime) Mod length(PlayerColors);
       m.Write(DiseasedInfo, sizeof(DiseasedInfo));

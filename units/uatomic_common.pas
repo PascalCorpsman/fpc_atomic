@@ -158,6 +158,12 @@ Const
 
   AtomicDiseaseTime = 10000; // Zeit in ms wie Lange man Krank ist
   AtomicDiseaseColorChangeTime = 100; // Zeit in ms, nach derer ein Kranker Atomic seine Farbe wechselt
+  (*
+   * Die folgenden Beiden bilden ein Paar
+   * Es wird alle AtomicDiseaseColorChangePeriodTime für AtomicDiseaseColorChangePeriodRelaxTime das Blinken "unterbrochen" und die Korrekte Farbe angezeigt.
+   *)
+  AtomicDiseaseColorChangePeriodTime = 1500; //
+  AtomicDiseaseColorChangePeriodRelaxTime = 500; // Zeit in derer der Atomic trotz Krankheit nicht Blinkt bezogen auf AtomicDiseaseColorChangePeriodTime
 
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..
