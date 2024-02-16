@@ -30,6 +30,7 @@ Const
 
   GoodPowerUps = [fExtraBomb, fLongerFlame, fGoldflame, fExtraSpeed, fKick, fSpooger, fPunch, fGrab, fTrigger, fJelly];
   BadPowerUps = [fRandom, fSlow, fDisease, fBadDisease];
+  NotAccessable = -1;
 
 Type
 
@@ -59,7 +60,7 @@ Type
     (*
      * Initialize the heightfield used for the A* algorithm to enable "Navigation"
      *   -1 = Nicht erreichbar von aX,aY,
-     *        sonst Abstand in Kacheln zu aX, aY => 0 an aX, aY
+     *        sonst abstand in Kacheln zu aX, aY => 0 an aX, aY
      *  =>
      *)
     fHeightField: Array[0..14, 0..10] Of Integer;
@@ -72,6 +73,15 @@ Type
      * True, if coord ax, ay can not be hit by any bomb
      *)
     Function IsSurvivable(aX, aY: integer): Boolean;
+
+    Function EscapeAi(): TAiMoveState; // Ai-Part that runs away from bombs !, amNone if no escape is needed
+
+    (*
+     * Returns the Move Commands to navigate the by the shortest path possible to
+     * the given tX, tY coordinates.
+     * amNone if reached.
+     *)
+    Function NavigateTo(tX, tY: Integer): TAiMoveState;
   public
     Constructor Create(index: integer); virtual;
     Destructor Destroy(); override;
@@ -89,23 +99,28 @@ Type
 
 Implementation
 
- { // -- Begin Debug
+{.$define _Debug_}
+
+{$ifdef _Debug_}
 Uses
   unit1;
+{$endif}
 
 Procedure Debug(Const ai: TAtomicAi);
+{$ifdef _Debug_}
 Var
   i, j: Integer;
+  {$endif}
 Begin
+  {$ifdef _Debug_}
   For i := 0 To 14 Do Begin
     For j := 0 To 10 Do Begin
-      //form1.StringGrid2.Cells[i, j] := inttostr(ai.fHeightField[i, j]);
-      form1.StringGrid2.Cells[i, j] := IntToStr(ord(ai.fIsSurvivable[i, j]));
+      form1.StringGrid2.Cells[i, j] := inttostr(ai.fHeightField[i, j]);
+      //form1.StringGrid2.Cells[i, j] := IntToStr(ord(ai.fIsSurvivable[i, j]));
     End;
   End;
+  {$endif}
 End;
-
-// End Debug }
 
 { TAtomicAi }
 
@@ -164,7 +179,7 @@ Begin
   fHeigtFifo.Clear;
   For i := low(fHeightField) To high(fHeightField) Do Begin
     For j := low(fHeightField[i]) To high(fHeightField[i]) Do Begin
-      fHeightField[i, j] := -1;
+      fHeightField[i, j] := NotAccessable;
     End;
   End;
 End;
@@ -226,12 +241,99 @@ Begin
   result := fIsSurvivable[ax, ay];
 End;
 
+Function TAtomicAi.EscapeAi: TAiMoveState;
+Var
+  i, j, mi: Integer;
+  nt: Tpoint;
+Begin
+  result := amNone;
+  (*
+   * Check, wether the actual coord is "dangerous" or not
+   *)
+  If Not IsSurvivable(trunc(fAiInfo^.PlayerInfos[fIndex].Position.x), trunc(fAiInfo^.PlayerInfos[fIndex].Position.y)) Then Begin
+    (*
+     * We are in Trouble, calculate the coordinate which is save and the nearest to our position
+     *)
+    InitHeightFieldFromPos(trunc(fAiInfo^.PlayerInfos[fIndex].Position.x), trunc(fAiInfo^.PlayerInfos[fIndex].Position.y));
+    nt := point(trunc(fAiInfo^.PlayerInfos[fIndex].Position.x), trunc(fAiInfo^.PlayerInfos[fIndex].Position.y));
+    mi := 15 * 11; // Max Distance
+    For i := 0 To 14 Do Begin
+      For j := 0 To 10 Do Begin
+        If IsSurvivable(i, j) And (mi > fHeightField[i, j]) Then Begin
+          mi := fHeightField[i, j];
+          nt := point(i, j);
+        End;
+      End;
+    End;
+    // we found a position that can save us
+    If nt <> point(trunc(fAiInfo^.PlayerInfos[fIndex].Position.x), trunc(fAiInfo^.PlayerInfos[fIndex].Position.y)) Then Begin
+      result := NavigateTo(nt.x, nt.y);
+    End;
+  End;
+End;
+
+Function TAtomicAi.NavigateTo(tX, tY: Integer): TAiMoveState;
+Var
+  shortest, ax, ay: integer;
+Begin
+  result := amNone;
+  ax := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
+  ay := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
+  If (tx = ax) And (ty = aY) Then Begin
+    // TODO: Maybe we should adjust to walkt to the .5 coordinates ..
+    exit; // We already reached our goal -> Exit
+  End;
+  (*
+   * Calculate Height Field in that way that Target is 0, so we only need to
+   * navigate to the lowest fHeightField value
+   *)
+  InitHeightFieldFromPos(tx, ty);
+  // There are 4 posibilities where to move to, check which is the "shortest" and walk there
+  Debug(self);
+  shortest := 15 * 11; // Max Distance
+  // First Loop define General direction
+  If (ax > 0) And (fHeightField[ax - 1, ay] <> NotAccessable) And (IsSurvivable(ax - 1, ay)) Then Begin
+    If shortest > fHeightField[ax - 1, ay] Then Begin
+      shortest := fHeightField[ax - 1, ay];
+      result := amLeft;
+    End;
+  End;
+  If (ax < 14) And (fHeightField[ax + 1, ay] <> NotAccessable) And (IsSurvivable(ax + 1, ay)) Then Begin
+    If shortest > fHeightField[ax + 1, ay] Then Begin
+      shortest := fHeightField[ax + 1, ay];
+      result := amRight;
+    End;
+  End;
+  If (ay > 0) And (fHeightField[ax, ay - 1] <> NotAccessable) And (IsSurvivable(ax, ay - 1)) Then Begin
+    If shortest > fHeightField[ax, ay - 1] Then Begin
+      shortest := fHeightField[ax, ay - 1];
+      result := amUp;
+    End;
+  End;
+  If (ay < 10) And (fHeightField[ax, ay + 1] <> NotAccessable) And (IsSurvivable(ax, ay + 1)) Then Begin
+    If shortest > fHeightField[ax, ay + 1] Then Begin
+      shortest := fHeightField[ax, ay + 1];
+      result := amDown;
+    End;
+  End;
+  (*
+   * Second Loop "strafe" -> As we know that the game pushes us to 0.5 coords
+                             we can use that and start navigating into the
+                             orthogonal direction using the "strafe" feature
+                             to run faster around corners :-)
+   *)
+  // TODO: Implement Strafe Feature
+
+End;
+
 Procedure TAtomicAi.Reset(aStrength: integer);
 Begin
   fStrength := aStrength;
 End;
 
 Function TAtomicAi.CalcAiCommand(Const AiInfo: TAiInfo): TAiCommand;
+Var
+  ms: TAiMoveState;
 Begin
   Result.Action := apNone;
   Result.MoveState := amNone;
@@ -239,12 +341,18 @@ Begin
   fAiInfo := @AiInfo;
   fIsSurvivable_initialized := false;
   (*
-   * Ab hier gehts los
+   * Everything is now initialized, let the magic happen
    *)
-  //InitHeightFieldFromPos(trunc(fAiInfo^.PlayerInfos[0].Position.x), trunc(fAiInfo^.PlayerInfos[0].Position.y));
 
-  IsSurvivable(trunc(fAiInfo^.PlayerInfos[0].Position.x), trunc(fAiInfo^.PlayerInfos[0].Position.y));
- // Debug(self);
+  // First prio is life saving -> check wether we should run for our life
+  ms := EscapeAi;
+  If ms <> amNone Then Begin
+    result.MoveState := ms;
+    // TODO: Maybe some should place a bomb here ?
+    exit;
+  End;
+
+
 
 End;
 

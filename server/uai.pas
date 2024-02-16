@@ -78,16 +78,12 @@ Function LoadAiLib(): Boolean;
 Var
   Filename: String;
 Begin
-
 {$IFDEF Windows}
   Filename := 'ai.dll';
 {$ELSE}
   Filename := 'libai.so';
-  (*
-   * ! ACHTUNG ! LoadLibrary verlangt unter Linux zwingend einen Absoluten Pfad, sonst gibt es echt merkwürdige Fehlermeldungen..
-   *)
-  Filename := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
 {$ENDIF}
+  Filename := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
   result := false;
   If lib <> 0 Then UnloadLibrary(lib);
   If Not FileExists(Filename) Then exit;
