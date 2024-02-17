@@ -80,7 +80,9 @@ Type
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
     fFields: Array Of TAtomicField;
     fScheme: TScheme;
+{$IFNDEF DebuggMode}
     fPlayer: TPlayers;
+{$ENDIF}
     fUserID: Integer; // Eine Kopie unserer Userid (Kopie, weil sie in TPlayer auch ist), wird beim Erfolgreichen Verbinden zum Server gesetzt.
     fMasterUserID: Integer; // Die Master User ID (Für das SpielerSetup)
     fOwner: TOpenGLControl;
@@ -155,6 +157,9 @@ Type
     Procedure PingForOpenGames;
     Procedure DoDisconnect();
   public
+{$IFDEF DebuggMode}
+    fPlayer: TPlayers;
+{$ENDIF}
     VersionInfoString: String; // Für den Updater ;)
     Settings: TAtomicSettings; // für uscreens
 

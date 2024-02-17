@@ -37,7 +37,6 @@
 Unit Unit1;
 
 {$MODE objfpc}{$H+}
-{$DEFINE DebuggMode}
 
 {$I globaldefines.inc}
 
@@ -217,6 +216,9 @@ Begin
     OpenGL_ASCII_Font.Color := clwhite;
     glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
     s := 'FPS : ' + inttostr(LastFPS_Counter);
+{$IFDEF DebuggMode}
+    s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
+{$ENDIF}
     OpenGL_ASCII_Font.Textout(5, 5, s);
     Exit2d();
   End;
