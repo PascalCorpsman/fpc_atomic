@@ -26,10 +26,11 @@ If there are updates of the engine available, the game will inform you through a
 ## Differences to the original
 
 - Implementation in TCP (instead of slow IPX)
-- Missing AI (and thus, single player mode)
+- Custom AI implementation
+- Single player mode
 - Not all sounds are used
 - Missing online manual; use the [manual](MANUAL.md) provided in this repository instead.
-- Pro gamers may discover additional differences due to our guessing of the original functionality.
+- Pro gamers may discover additional differences due to guessing of the original functionality.
 
 ## Manual
 See the [manual](MANUAL.md) for detailed information.
