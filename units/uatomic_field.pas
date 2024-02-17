@@ -283,7 +283,7 @@ Begin
       fHohles[i, j] := false;
     End;
   End;
-  // Die 4 Löscher
+  // Die 4 Löcher
   fHohles[2, 2] := true;
   fHohles[12, 2] := true;
   fHohles[12, 8] := true;
