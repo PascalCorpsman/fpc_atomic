@@ -55,12 +55,16 @@ Type
 
   TAtomicAi = Class
   private
+    fPanik: Boolean; // Will be set, if Escape AI realizes that we are stuck and not able to rescue ourself
     fActualTarget: Tpoint; // Aktual Target to Navigate to (-1,-1) = not set
     fIndex: integer; // Der Eigene Spieler Index [0..9]
     fStrength: integer; // Die "gewünschte" stärke des Agenten -> Aktuell nicht genutzt
     fAiInfo: PAiInfo; // Zeiger auf das Aktuell gültige Spiel
 
-    fHasBomb: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean; // True, wenn an dieser Stelle eine Bombe Liegt, redundant zu fAiInfo^.bombs
+    (*
+     * True, wenn an dieser Stelle eine Bombe Liegt, redundant zu fAiInfo^.bombs
+     *)
+    fHasBomb: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
     fHasBomb_initialized: Boolean;
 
     (*
@@ -69,18 +73,32 @@ Type
     fIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
     fIsSurvivable_initialized: Boolean;
 
+    (*
+     * Live fIsSurvivable, but with a additional bomb that the ai want to place
+     * \-> Does not need a initialized flag as it occures only once in code and this code directly initialize by itself
+     *)
     fSimIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
 
+    (*
+     * Like fIsSurvivable but takeing care of only own bombs
+     *)
     fTreatedByOwnBombs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
     fTreatedByOwnBombs_initialized: Boolean;
 
+    (*
+     * If a Bomb is placed on grid coord, this array tells how many bricks could be destroyed (according to the actual flame settings)
+     *)
     fDestroyableBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer;
+
+    (*
+     * Sorted List of Bomb Targets (sorted by distance to Player Position)
+     *)
     fDestroyableBrickCoordList: Array[0..FieldWidth * FieldHeight] Of TPoint;
 
     (*
      * Initialize the heightfield used for the A* algorithm to enable "Navigation"
      *   -1 = Nicht erreichbar von aX,aY,
-     *        sonst abstand in Kacheln zu aX, aY => 0 an aX, aY
+     *        sonst Abstand in Kacheln zu aX, aY => 0 an aX, aY
      *  =>
      *)
     fHeightField: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Integer;
@@ -99,11 +117,14 @@ Type
      *)
     Function TreatedByOwnBombs(aX, aY: integer): Boolean;
 
+    (*
+     * True, if coord ax, ay holds a Bomb
+     *)
     Function HasBomb(ax, ay: integer): Boolean;
 
     Function EscapeAi(): TPoint; // Ai-Part that runs away from bombs !
 
-    Function BrickDestroyAi(): TPoint;
+    Function BrickDestroyAi(): TPoint; // Ai-Part thats aim is to destroy as much bricks as possible
 
     (*
      * Returns the Move Commands to navigate the by the shortest path possible to
@@ -112,8 +133,13 @@ Type
      *)
     Function NavigateTo(tX, tY: Integer; BombsAreBlocking: Boolean = false): TAiMoveState;
 
+    (*
+     * Checks wether the Ai would loose its live if it walkes as Movestate wants to do
+     * True, if this would lead to death
+     *)
     Function SimMoveStateEscapeAi(Const MoveState: TAiMoveState): Boolean;
   public
+
     Constructor Create(index: integer); virtual;
     Destructor Destroy(); override;
 
@@ -313,11 +339,6 @@ Begin
         fTreatedByOwnBombs[i, j] := (fAiInfo^.Field[i, j] <> fFlame);
       End;
     End;
-    (*
-     * TODO: Viel Cooler wäre wenn man die "zündzeit" berücksichtigen würde.
-     * Dann müsste der unten stehende Allgorithmus aber angepasst werden, weil
-     * dann geprüft werden müsste ob eine Bombe eine andere Zündet.
-     *)
     For i := 0 To fAiInfo^.BombsCount - 1 Do Begin
       If fAiInfo^.Bombs[i].Flying Then Continue; // Flying bombs do not detonate !
       If fAiInfo^.Bombs[i].Owner <> fIndex Then Continue; // Only own bombs are considered
@@ -403,9 +424,10 @@ Begin
     End;
     (*
      * There is no more "save" place to walk to
-     * Retry ignoring the Bombs, in the hope that the AI has the kicker ability
+     * Retry ignoring the Bombs, in the hope that the AI can kick the bomb away
      *)
-    If nt = NoTarget Then Begin
+    If (nt = NoTarget) And (fAiInfo^.PlayerInfos[fIndex].Abilities And Ability_CanKick = Ability_CanKick) Then Begin
+      fPanik := true;
       InitHeightFieldFromPos(ax, ay, false);
       mi := NotAccessable;
       // Search for that coordinate, if it exists store it in nt
@@ -687,7 +709,6 @@ Begin
       result := amDown;
     End;
   End;
-  // TODO: Implement Strafing -> Faster Moving around corners ;)
 End;
 
 Function TAtomicAi.SimMoveStateEscapeAi(Const MoveState: TAiMoveState): Boolean;
@@ -731,10 +752,10 @@ Begin
    * Everything is now initialized, let the magic happen
    *)
   // First prio is life saving -> check wether we should run for our life
+  fPanik := false;
   eT := EscapeAi;
   If et <> NoTarget Then Begin
-    result.MoveState := NavigateTo(et.X, et.Y, true);
-    // TODO: Maybe some should place a bomb here ?
+    result.MoveState := NavigateTo(et.X, et.Y, Not fPanik);
     exit;
   End;
   // Second we try to destroy bricks and collect "goods"
@@ -757,6 +778,7 @@ Begin
     result.MoveState := amNone;
     fActualTarget := NoTarget;
   End;
+
   (*
    * If the Ai has triggerable bombs and is in save position -> Fire (except friendly fire ;))
    *)
@@ -786,7 +808,7 @@ Begin
       End;
     End;
   End;
-  Debug(self);
+  // Debug(self);
 End;
 
 End.
