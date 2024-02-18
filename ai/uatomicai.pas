@@ -67,8 +67,12 @@ Type
      *  Wird von IsSurvivable initialisiert (on Demand)
      *)
     fIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
-    fSimIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
     fIsSurvivable_initialized: Boolean;
+
+    fSimIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
+
+    fTreatedByOwnBombs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
+    fTreatedByOwnBombs_initialized: Boolean;
 
     fDestroyableBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer;
     fDestroyableBrickCoordList: Array[0..FieldWidth * FieldHeight] Of TPoint;
@@ -89,6 +93,11 @@ Type
      * True, if coord ax, ay can not be hit by any bomb
      *)
     Function IsSurvivable(aX, aY: integer): Boolean;
+
+    (*
+     * True, if coord ax, ay can not be hit by own bombs
+     *)
+    Function TreatedByOwnBombs(aX, aY: integer): Boolean;
 
     Function HasBomb(ax, ay: integer): Boolean;
 
@@ -280,6 +289,67 @@ Begin
   result := fIsSurvivable[ax, ay];
 End;
 
+Function TAtomicAi.TreatedByOwnBombs(aX, aY: integer): Boolean;
+
+  Procedure SimExplode(sX, sY, sLen, sDirX, sDirY: Integer);
+  Begin
+    If (sLen < 0) Or (sx < 0) Or (sy < 0) Or (sx >= FieldWidth) Or (sy >= FieldHeight) Then exit;
+    If Not (fAiInfo^.Field[sx, sy] In [fBlank, fFlame]) Then exit; // Only
+    fTreatedByOwnBombs[sx, sy] := false;
+    sx := sx + sDirX;
+    sy := sy + sDirY;
+    SimExplode(sx, sy, slen - 1, sdirx, sdiry);
+  End;
+Var
+  i, j: Integer;
+Begin
+  If Not fTreatedByOwnBombs_initialized Then Begin
+    fTreatedByOwnBombs_initialized := true;
+    (*
+     * Wir Zünden
+     *)
+    For i := 0 To FieldWidth - 1 Do Begin
+      For j := 0 To FieldHeight - 1 Do Begin
+        fTreatedByOwnBombs[i, j] := (fAiInfo^.Field[i, j] <> fFlame);
+      End;
+    End;
+    (*
+     * TODO: Viel Cooler wäre wenn man die "zündzeit" berücksichtigen würde.
+     * Dann müsste der unten stehende Allgorithmus aber angepasst werden, weil
+     * dann geprüft werden müsste ob eine Bombe eine andere Zündet.
+     *)
+    For i := 0 To fAiInfo^.BombsCount - 1 Do Begin
+      If fAiInfo^.Bombs[i].Flying Then Continue; // Flying bombs do not detonate !
+      If fAiInfo^.Bombs[i].Owner <> fIndex Then Continue; // Only own bombs are considered
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        -1, 0
+        );
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        1, 0
+        );
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        0, -1
+        );
+      SimExplode(
+        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
+        fAiInfo^.Bombs[i].FlameLength,
+        0, 1
+        );
+    End;
+  End;
+  If (ax < 0) Or (ax >= FieldWidth) Or (ay < 0) Or (ay >= FieldHeight) Then Begin
+    result := false;
+    exit;
+  End;
+  result := fTreatedByOwnBombs[ax, ay];
+End;
+
 Function TAtomicAi.HasBomb(ax, ay: integer): Boolean;
 Var
   i, j: Integer;
@@ -328,6 +398,23 @@ Begin
         If IsSurvivable(i, j) And (mi > fHeightField[i, j]) Then Begin
           mi := fHeightField[i, j];
           nt := point(i, j);
+        End;
+      End;
+    End;
+    (*
+     * There is no more "save" place to walk to
+     * Retry ignoring the Bombs, in the hope that the AI has the kicker ability
+     *)
+    If nt = NoTarget Then Begin
+      InitHeightFieldFromPos(ax, ay, false);
+      mi := NotAccessable;
+      // Search for that coordinate, if it exists store it in nt
+      For i := 0 To FieldWidth - 1 Do Begin
+        For j := 0 To FieldHeight - 1 Do Begin
+          If IsSurvivable(i, j) And (mi > fHeightField[i, j]) Then Begin
+            mi := fHeightField[i, j];
+            nt := point(i, j);
+          End;
         End;
       End;
     End;
@@ -582,7 +669,7 @@ Begin
       result := amLeft;
     End;
   End;
-  If (ax <= FieldWidth) And (fHeightField[ax + 1, ay] <> NotAccessable) Then Begin
+  If (ax + 1 < FieldWidth) And (fHeightField[ax + 1, ay] <> NotAccessable) Then Begin
     If shortest > fHeightField[ax + 1, ay] Then Begin
       shortest := fHeightField[ax + 1, ay];
       result := amRight;
@@ -594,7 +681,7 @@ Begin
       result := amUp;
     End;
   End;
-  If (ay <= FieldHeight) And (fHeightField[ax, ay + 1] <> NotAccessable) Then Begin
+  If (ay + 1 < FieldHeight) And (fHeightField[ax, ay + 1] <> NotAccessable) Then Begin
     If shortest > fHeightField[ax, ay + 1] Then Begin
       shortest := fHeightField[ax, ay + 1];
       result := amDown;
@@ -639,6 +726,7 @@ Begin
   fAiInfo := @AiInfo;
   fIsSurvivable_initialized := false;
   fHasBomb_initialized := false;
+  fTreatedByOwnBombs_initialized := false;
   (*
    * Everything is now initialized, let the magic happen
    *)
@@ -654,8 +742,8 @@ Begin
   // 4. Sind wir schon an der Stelle an der wir sein wollen, wenn Ja dann Bombe legen
   ax := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
   ay := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
-  // Wir sind wo wir hin wollen -> Bombe Legen
-  If fActualTarget = point(ax, ay) Then Begin
+  // Wir sind wo wir hin wollen, und haben noch bomben übrig -> Bombe Legen
+  If (fActualTarget = point(ax, ay)) And (fAiInfo^.PlayerInfos[fIndex].AvailableBombs > 0) Then Begin
     result.Action := apFirst;
     result.MoveState := amNone; // Stop moving to prevent overshoting
     exit;
@@ -682,7 +770,7 @@ Begin
             If fAiInfo^.PlayerInfos[iPlayer].Alive And (fAiInfo^.PlayerInfos[iPlayer].Team = fAiInfo^.PlayerInfos[fIndex].Team) Then Begin
               px := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.x);
               py := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.y);
-              If Not IsSurvivable(px, py) Then Begin
+              If Not TreatedByOwnBombs(px, py) Then Begin
                 skipSecondAction := true;
                 break;
               End;
@@ -698,7 +786,7 @@ Begin
       End;
     End;
   End;
-  // Debug(self);
+  Debug(self);
 End;
 
 End.
