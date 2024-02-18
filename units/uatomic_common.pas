@@ -87,7 +87,8 @@ Const
    *                       FIX: Settings where not instantly stored when leaving options dialog
    *                       ADD: start with ai
    *                       FIX: Disease animation
-   *             0.11003 =
+   * -releaseG - 0.11003 = ADD: First Ai version that beats humans
+   *             0.11004 =
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
