@@ -93,4 +93,4 @@ During server execution it is possible to type the following commands in the con
 The server will automatically load ai.so (or ai.dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development.
 
 ### Ai development
-Start with the "ai_empty" template. The AI interface is compatible with the C programming language. For further documentation see the in code documentation of the ai_empty template.
+Read section [What needs to be done to implement a own AI](README.md#what-needs-to-be-done-to-implement-a-own-ai) from the README.md

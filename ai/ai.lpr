@@ -18,7 +18,7 @@ Library ai;
 
 Uses
   Classes
-  , uai_types, uatomicai;
+  , uai_types, uatomicai, ctypes;
 
 Var
   ais: Array[0..9] Of TAtomicAi;
@@ -27,7 +27,7 @@ Var
    * Initialize the Lib
    *)
 
-Function AiInit(): Boolean; cdecl;
+Function AiInit(): cbool; cdecl;
 Var
   i: Integer;
 Begin
@@ -61,7 +61,7 @@ End;
  * Callback to get Interface version
  *)
 
-Function AiInterfaceVersion(): uint32; cdecl;
+Function AiInterfaceVersion(): cuint32; cdecl;
 Begin
   (*
    * Do not change !!
@@ -73,7 +73,7 @@ End;
  * Versionstring
  *)
 
-Function AiVersion(): PChar; cdecl;
+Function AiVersion(): pchar; cdecl;
 Begin
   (*
    * Put your implementation here...
@@ -86,7 +86,7 @@ End;
  * Strenght in [0% .. 100%] -> 100% means "Best / Strongest"
  *)
 
-Procedure AiNewRound(Strength: uint8); cdecl;
+Procedure AiNewRound(Strength: cuint8); cdecl;
 Var
   i: Integer;
 Begin
@@ -102,7 +102,7 @@ End;
  * Will be Called every 10ms, this is the main routine where the Ai should be implemented
  *)
 
-Function AiHandlePlayer(PlayerIndex: uint32; Const AiInfo: TAiInfo): TAiCommand; cdecl;
+Function AiHandlePlayer(PlayerIndex: cuint32; Var AiInfo: TAiInfo): TAiCommand; cdecl;
 Begin
   result := ais[PlayerIndex].CalcAiCommand(AiInfo);
 End;

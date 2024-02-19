@@ -21,7 +21,7 @@ Interface
 {$PACKRECORDS C}
 
 Uses
-  Classes, SysUtils;
+  Classes, SysUtils, ctypes;
 
 Const
 
@@ -31,7 +31,12 @@ Const
    *
    * Do not change this value, otherwise your AI can no longer be loaded.
    *)
-  AiLibInterfaceVersion = 1;
+  (*
+   * History: 0.01 = Initialversion
+   *          0.02 = switch to ctypes.pas for all types -> now the interface is C compatible !
+   *                 ADD: Lifetime info to bomb stuct
+   *)
+  AiLibInterfaceVersion: cint32 = 2;
 
   (*
    * The bit masks for the TAiPlayerInfo.Abilities value
@@ -57,7 +62,7 @@ Type
    *   y := trunc(position.y);
    *)
   TAiVector2 = Record
-    x, y: Single;
+    x, y: cfloat;
   End;
 
   TAiPlayerAction = (
@@ -85,14 +90,14 @@ Type
   End;
 
   TAiPlayerInfo = Record
-    Team: Uint32; // [0, 1] Only valid if the game mode is Teamplay.
+    Team: cUint32; // [0, 1] Only valid if the game mode is Teamplay.
     Position: TAiVector2; // The position of the player in world coordinates [0.5 .. 14.5, 0.5 .. 10.5].
-    Alive: Boolean; // If True, the player is alive and relevant for the game. If false, the THandleAiPlayer function will not be called anymore.
-    Flying: Boolean; // If True, the player's position can be outside the valid range.
-    FlameLength: Integer; // The actual length of the flame of a placed bomb if it will explode.
-    AvailableBombs: integer; // The number of bombs the AI is allowed to place at the moment. This will decrease when a bomb is placed and increase if the bomb explodes. It is 0 if the player has the "no bomb" disease.
-    Speed: Single; // The actual speed of the player in fields per second.
-    Abilities: Uint32; // A bitfield of abilities. If the bit is 1, then the ability is available.
+    Alive: cbool; // If True, the player is alive and relevant for the game. If false, the THandleAiPlayer function will not be called anymore.
+    Flying: cbool; // If True, the player's position can be outside the valid range.
+    FlameLength: cint; // The actual length of the flame of a placed bomb if it will explode.
+    AvailableBombs: cint; // The number of bombs the AI is allowed to place at the moment. This will decrease when a bomb is placed and increase if the bomb explodes. It is 0 if the player has the "no bomb" disease.
+    Speed: cfloat; // The actual speed of the player in fields per second.
+    Abilities: cUint32; // A bitfield of abilities. If the bit is 1, then the ability is available.
   End;
 
   TAiField = (
@@ -120,21 +125,21 @@ Type
     );
 
   TAiBombInfo = Record
-    // TODO: Maybe add the information how long this Bomb is already laying on the field
     Position: TAiVector2;
-    FlameLength: integer; // Humans do not know this directly, extra for AI ;)
-    Flying: Boolean; // Is the bomb flying? Not physically on the map, but can be triggered by other bombs.
-    Owner: Integer; // Player index of the owner.
-    ManualTrigger: Boolean; // Player must trigger this bomb by hand to explode
-    Jelly: Boolean; // If true, bomb will bounce back on walls.
-    DudBomb: Boolean; // If true, the dud bomb animation is showing (means the bomb will not explode for an unknown amount of time).
+    FlameLength: cint; // Humans do not know this directly, extra for AI ;)
+    Flying: cBool; // Is the bomb flying? Not physically on the map, but can be triggered by other bombs.
+    Owner: cInt; // Player index of the owner.
+    ManualTrigger: cBool; // Player must trigger this bomb by hand to explode
+    Jelly: cBool; // If true, bomb will bounce back on walls.
+    DudBomb: cBool; // If true, the dud bomb animation is showing (means the bomb will not explode for an unknown amount of time).
+    LifeTime: cint; // Time in ms since when the bomb is layed down  ! Attention ! if this bomb is dud or ManualTriggered, this time can be "resetted" to 0 when Dud is finished, or Manual Trigger is timed out
   End;
 
   TAiInfo = Record
     Teamplay: Boolean; // If true, TAiPlayerInfo.Team is relevant, otherwise free for all.
     PlayerInfos: Array[0..9] Of TAiPlayerInfo;
     Field: Array[0..14, 0..10] Of TAiField;
-    BombsCount: integer; // Number of elements in Bombs.
+    BombsCount: cint32; // Number of elements in Bombs.
     Bombs: Array Of TAiBombInfo;
   End;
 

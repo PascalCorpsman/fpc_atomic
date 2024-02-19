@@ -25,7 +25,7 @@ Uses
  * Initialize the Lib
  *)
 
-Function AiInit(): Boolean; cdecl;
+Function AiInit(): cbool; cdecl;
 Begin
   result := true;
   (*
@@ -48,7 +48,7 @@ End;
  * Callback to get Interface version
  *)
 
-Function AiInterfaceVersion(): uint32; cdecl;
+Function AiInterfaceVersion(): cuint32; cdecl;
 Begin
   (*
    * Do not change !!
@@ -73,7 +73,7 @@ End;
  * Strenght in [0% .. 100%] -> 100% means "Best / Strongest"
  *)
 
-Procedure AiNewRound(Strength: uint8); cdecl;
+Procedure AiNewRound(Strength: cuint8); cdecl;
 Begin
   (*
    * Put your implementation here...
@@ -84,7 +84,7 @@ End;
  * Will be Called every 10ms, this is the main routine where the Ai should be implemented
  *)
 
-Function AiHandlePlayer(PlayerIndex: uint32; Const AiInfo: TAiInfo): TAiCommand; cdecl;
+Function AiHandlePlayer(PlayerIndex: cuint32; Const AiInfo: TAiInfo): TAiCommand; cdecl;
 Begin
   Result.Action := apNone;
   Result.MoveState := amNone;

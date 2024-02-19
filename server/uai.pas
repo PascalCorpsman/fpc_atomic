@@ -21,6 +21,7 @@ Interface
 Uses
   Classes, SysUtils
   , uai_types
+  , ctypes
   ;
 
 Type
@@ -28,7 +29,7 @@ Type
   (*
    * Initialize the Lib with the Playercount (normally 10, only in Debuggmode different)
    *)
-  TAiInit = Function(): Boolean; cdecl;
+  TAiInit = Function(): cBool; cdecl;
 
   (*
    * Will be called on lib unloading
@@ -39,22 +40,22 @@ Type
    * Tells the Lib to start a new "round" = Reset all old values if needed
    * Strenght in [0% .. 100%] -> 100% means "Best / Strongest"
    *)
-  TAiNewRound = Procedure(Strength: uint8); cdecl;
+  TAiNewRound = Procedure(Strength: cuint8); cdecl;
 
   (*
    * Will be Called every 10ms, this is the main routine where the Ai should be implemented
    *)
-  TAiHandlePlayer = Function(PlayerIndex: uint32; Const AiInfo: TAiInfo): TAiCommand; Cdecl;
+  TAiHandlePlayer = Function(PlayerIndex: cuint32; Var AiInfo: TAiInfo): TAiCommand; Cdecl;
 
   (*
    * Callback to get Interface version
    *)
-  TAiInterfaceVersion = Function(): uint32; Cdecl;
+  TAiInterfaceVersion = Function(): cuint32; Cdecl;
 
   (*
    * Callback for versionstring of ai lib
    *)
-  TAiVersion = Function(): PChar; cdecl;
+  TAiVersion = Function(): pchar; cdecl;
 
 Var
   AiInit: TAiInit = Nil;

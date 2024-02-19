@@ -27,6 +27,7 @@ Const
    * -Published-  0.01 - Initialversion
    *              0.02 - Improve TreatedByOwnBombs (add chain reaction checks)
    *                     Cleanup readability of code
+   *                     Switch to InterfaceVersion 2
    *)
   Ai_Version = 'Atomic ai ver. 0.02 by Corpsman';
 

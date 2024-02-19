@@ -1921,6 +1921,7 @@ Begin
     result.Bombs[i].ManualTrigger := fBombs[i].Animation = baTimeTriggered;
     result.Bombs[i].Jelly := fBombs[i].Jelly;
     result.Bombs[i].DudBomb := fBombs[i].Animation = baDud;
+    result.Bombs[i].Lifetime := fBombs[i].Lifetime;
   End;
 End;
 

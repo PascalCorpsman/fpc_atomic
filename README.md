@@ -48,6 +48,15 @@ See the license.md file located at https://github.com/PascalCorpsman/Software_Li
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
 
+## What needs to be done to implement a own AI ?
+
+The AI that is delivered with this repository is more a try than a real AI, and to be correct in words it's a agent not a real AI (it does not learn nor uses neural nets). If you want to write your own version you have two options:
+
+- Implement a new AI with FreePascal using this [template](https://github.com/PascalCorpsman/fpc_atomic/tree/main/ai_empty)
+- Implement a new AI using the C [template](https://github.com/PascalCorpsman/fpc_atomic/tree/main/ai_c) (or use the C-interface to port it to your most favourite programing language)
+
+Read the manual section [Console commands](MANUAL.md#console-commands) to load and unload your ai without the need to restart the application.
+
 ## Contributors
 Idea : Interplay Productions  
 Implementation : Uwe Schächterle  
