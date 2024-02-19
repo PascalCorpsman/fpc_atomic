@@ -23,9 +23,12 @@ Uses
 
 Const
   (*
-   * History: 0.01 - Initialversion
+   * History:
+   * -Published-  0.01 - Initialversion
+   *              0.02 - Improve TreatedByOwnBombs (add chain reaction checks)
+   *                     Cleanup readability of code
    *)
-  Ai_Version = 'Atomic ai ver. 0.01 by Corpsman';
+  Ai_Version = 'Atomic ai ver. 0.02 by Corpsman';
 
   GoodPowerUps = [fExtraBomb, fLongerFlame, fGoldflame, fExtraSpeed, fKick, fSpooger, fPunch, fGrab, fTrigger, fJelly];
   BadPowerUps = [fRandom, fSlow, fDisease, fBadDisease];
@@ -43,6 +46,12 @@ Const
 
 Type
 
+  TBombinfo = Record
+    Value: Boolean; // True, if Bomb existing
+    Owner: integer;
+    FlameLength: integer;
+  End;
+
   THeightPoint = Record
     x, y, height: integer;
   End;
@@ -55,32 +64,41 @@ Type
 
   TAtomicAi = Class
   private
+    (*
+     * A Lot of this variables could be used Locally in functions. But they are
+     * not used locally to prevent allocation / deallocation on the OS-Stack
+     * This is done in the hope to reduce the CPU-Time of the algorithms with
+     * the cost of more memory consumption.
+     *)
+    fAix, fAiy: Integer; // The actual position where the Ai is located at the moment
     fPanik: Boolean; // Will be set, if Escape AI realizes that we are stuck and not able to rescue ourself
     fActualTarget: Tpoint; // Aktual Target to Navigate to (-1,-1) = not set
-    fIndex: integer; // Der Eigene Spieler Index [0..9]
-    fStrength: integer; // Die "gewünschte" stärke des Agenten -> Aktuell nicht genutzt
-    fAiInfo: PAiInfo; // Zeiger auf das Aktuell gültige Spiel
+    fIndex: integer; // The own player index
+    fStrength: integer; // The requested Ai-Strength -> Actually not used
+    fAiInfo: PAiInfo; // Pointer to AIinfo that is used globally by all routines
 
     (*
-     * True, wenn an dieser Stelle eine Bombe Liegt, redundant zu fAiInfo^.bombs
+     * True, if a bomb is on that coordinates (this is the unrolled version of fAiInfo^.bombs)
+     * will be initialized by InitHasBomb / HasBomb
      *)
-    fHasBomb: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
+    fHasBomb: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TBombinfo;
     fHasBomb_initialized: Boolean;
 
     (*
-     *  Wird von IsSurvivable initialisiert (on Demand)
+     * True, if the coord is not treated by any bomb
+     * will be initialized by IsSurvivable, don't use this variable directly
      *)
     fIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
     fIsSurvivable_initialized: Boolean;
 
     (*
-     * Live fIsSurvivable, but with a additional bomb that the ai want to place
+     * Like fIsSurvivable, but with a additional bomb that the ai want to place
      * \-> Does not need a initialized flag as it occures only once in code and this code directly initialize by itself
      *)
     fSimIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
 
     (*
-     * Like fIsSurvivable but takeing care of only own bombs
+     * Container that stores "true" if the field coord is treated by own bombs or by chain reaction of own bombs
      *)
     fTreatedByOwnBombs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
     fTreatedByOwnBombs_initialized: Boolean;
@@ -91,21 +109,22 @@ Type
     fDestroyableBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer;
 
     (*
-     * Sorted List of Bomb Targets (sorted by distance to Player Position)
+     * List of Coords, is used at different places inside the code
+     * used by: BrickDestroyAi, TreatedByOwnBombs
      *)
-    fDestroyableBrickCoordList: Array[0..FieldWidth * FieldHeight] Of TPoint;
+    fCoordList: Array[0..FieldWidth * FieldHeight] Of TPoint;
 
     (*
      * Initialize the heightfield used for the A* algorithm to enable "Navigation"
-     *   -1 = Nicht erreichbar von aX,aY,
-     *        sonst Abstand in Kacheln zu aX, aY => 0 an aX, aY
-     *  =>
+     *   NotAccessable = not accessable from aX, aY
+     *                   otherwise distance to aX, aY => 0 = location (aX, aY)
+     *  => initialized by InitHeightFieldFromPos
      *)
     fHeightField: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Integer;
-    fHeigtFifo: THeigtFifo; // Die ist Object Global, dass derren Speicher nicht immer neu allokiert werden muss -> Spart Rechenzeit !
+    fHeigtFifo: THeigtFifo; // used by InitHeightFieldFromPos
 
-    Procedure InitHeightFieldFromPos(aX, aY: integer; BombsAreBlocking: Boolean = false); // Initialisiert fHeightField
-    Procedure ResetHeightField(); // Setzt alle felder in fHeightField = -1
+    Procedure InitHeightFieldFromPos(aX, aY: integer; BombsAreBlocking: Boolean = false); // initializing routine for fHeightField
+    Procedure ResetHeightField(); // resets fHeightField values
 
     (*
      * True, if coord ax, ay can not be hit by any bomb
@@ -113,7 +132,7 @@ Type
     Function IsSurvivable(aX, aY: integer): Boolean;
 
     (*
-     * True, if coord ax, ay can not be hit by own bombs
+     * true, if coord ax, ay can be hit by own bombs
      *)
     Function TreatedByOwnBombs(aX, aY: integer): Boolean;
 
@@ -121,10 +140,13 @@ Type
      * True, if coord ax, ay holds a Bomb
      *)
     Function HasBomb(ax, ay: integer): Boolean;
+    Procedure InitHasBomb();
 
     Function EscapeAi(): TPoint; // Ai-Part that runs away from bombs !
 
     Function BrickDestroyAi(): TPoint; // Ai-Part thats aim is to destroy as much bricks as possible
+
+    Function TriggerBombAi(): Boolean; // Ai-Part that detects wether the Ai-should trigger his own triggerable bombs
 
     (*
      * Returns the Move Commands to navigate the by the shortest path possible to
@@ -138,6 +160,7 @@ Type
      * True, if this would lead to death
      *)
     Function SimMoveStateEscapeAi(Const MoveState: TAiMoveState): Boolean;
+
   public
 
     Constructor Create(index: integer); virtual;
@@ -222,7 +245,7 @@ Begin
     If (fHeightField[p.x, p.y] > p.height) Then Begin
       If (fAiInfo^.Field[p.x, p.y] In [fBlank {, fFlame}] + GoodPowerUps) // + BadPowerUps -- Die KI Will nicht über Bad PowerUps oder Flammen laufen
       Then Begin
-        If BombsAreBlocking And (Not ((p.x = trunc(fAiInfo^.PlayerInfos[fIndex].Position.x)) And (p.y = trunc(fAiInfo^.PlayerInfos[fIndex].Position.y)))) Then Begin
+        If BombsAreBlocking And (Not ((p.x = fAix) And (p.y = fAiy))) Then Begin
           If HasBomb(p.x, p.y) Then Continue;
         End;
         fHeightField[p.x, p.y] := p.height;
@@ -316,50 +339,73 @@ Begin
 End;
 
 Function TAtomicAi.TreatedByOwnBombs(aX, aY: integer): Boolean;
+Var
+  cnt: integer;
 
   Procedure SimExplode(sX, sY, sLen, sDirX, sDirY: Integer);
   Begin
     If (sLen < 0) Or (sx < 0) Or (sy < 0) Or (sx >= FieldWidth) Or (sy >= FieldHeight) Then exit;
     If Not (fAiInfo^.Field[sx, sy] In [fBlank, fFlame]) Then exit; // Only
-    fTreatedByOwnBombs[sx, sy] := false;
+    // The sx, sy Coord is calculated the very first time
+    If (Not fTreatedByOwnBombs[sx, sy]) And fHasBomb[sx, sy].Value Then Begin
+      // We are hitting a other bomb -> add this one to the "hit" stack
+      // Push Coord to Stack
+      fCoordList[cnt] := point(sx, sy);
+      inc(cnt);
+    End;
+    fTreatedByOwnBombs[sx, sy] := true;
     sx := sx + sDirX;
     sy := sy + sDirY;
     SimExplode(sx, sy, slen - 1, sdirx, sdiry);
   End;
 Var
   i, j: Integer;
+  p: Tpoint;
 Begin
   If Not fTreatedByOwnBombs_initialized Then Begin
     fTreatedByOwnBombs_initialized := true;
+    // As we use the HasBomb Informatios -> Init !
+    InitHasBomb();
     (*
-     * Wir Zünden
+     * All fields that actually hold flames are "pretreated"
      *)
     For i := 0 To FieldWidth - 1 Do Begin
       For j := 0 To FieldHeight - 1 Do Begin
-        fTreatedByOwnBombs[i, j] := (fAiInfo^.Field[i, j] <> fFlame);
+        fTreatedByOwnBombs[i, j] := (fAiInfo^.Field[i, j] = fFlame);
       End;
     End;
+    // Prefill the bombs to explode stack with all own Bombs
+    cnt := 0;
     For i := 0 To fAiInfo^.BombsCount - 1 Do Begin
       If fAiInfo^.Bombs[i].Flying Then Continue; // Flying bombs do not detonate !
       If fAiInfo^.Bombs[i].Owner <> fIndex Then Continue; // Only own bombs are considered
+      // Push Coord to Stack
+      fCoordList[cnt] := point(trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y));
+      inc(cnt);
+    End;
+    While cnt <> 0 Do Begin
+      // Pop Coord from Stack
+      dec(cnt);
+      p := fCoordList[cnt];
+      fTreatedByOwnBombs[p.x, p.y] := true; // "Pretreat" so that the bomb is not accidentially add to stack again by SimExplode
       SimExplode(
-        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
-        fAiInfo^.Bombs[i].FlameLength,
+        p.x, p.y,
+        fHasBomb[p.x, p.y].FlameLength,
         -1, 0
         );
       SimExplode(
-        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
-        fAiInfo^.Bombs[i].FlameLength,
+        p.x, p.y,
+        fHasBomb[p.x, p.y].FlameLength,
         1, 0
         );
       SimExplode(
-        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
-        fAiInfo^.Bombs[i].FlameLength,
+        p.x, p.y,
+        fHasBomb[p.x, p.y].FlameLength,
         0, -1
         );
       SimExplode(
-        trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y),
-        fAiInfo^.Bombs[i].FlameLength,
+        p.x, p.y,
+        fHasBomb[p.x, p.y].FlameLength,
         0, 1
         );
     End;
@@ -372,6 +418,16 @@ Begin
 End;
 
 Function TAtomicAi.HasBomb(ax, ay: integer): Boolean;
+Begin
+  InitHasBomb();
+  If (ax < 0) Or (ax >= FieldWidth) Or (ay < 0) Or (ay >= FieldHeight) Then Begin
+    result := false;
+    exit;
+  End;
+  result := fHasBomb[ax, ay].Value;
+End;
+
+Procedure TAtomicAi.InitHasBomb;
 Var
   i, j: Integer;
 Begin
@@ -379,38 +435,33 @@ Begin
     fHasBomb_initialized := true;
     For i := 0 To FieldWidth - 1 Do Begin
       For j := 0 To FieldHeight - 1 Do Begin
-        fHasBomb[i, j] := false;
+        fHasBomb[i, j].Value := false;
       End;
     End;
     For i := 0 To fAiInfo^.BombsCount - 1 Do Begin
       If Not fAiInfo^.Bombs[i].Flying Then Begin
-        fHasBomb[trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y)] := true;
+        fHasBomb[trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y)].Value := true;
+        fHasBomb[trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y)].Owner := fAiInfo^.Bombs[i].Owner;
+        fHasBomb[trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y)].FlameLength := fAiInfo^.Bombs[i].FlameLength;
       End;
     End;
   End;
-  If (ax < 0) Or (ax >= FieldWidth) Or (ay < 0) Or (ay >= FieldHeight) Then Begin
-    result := false;
-    exit;
-  End;
-  result := fHasBomb[ax, ay];
 End;
 
 Function TAtomicAi.EscapeAi: TPoint;
 Var
-  ax, ay, i, j, mi: Integer;
+  i, j, mi: Integer;
   nt: Tpoint;
 Begin
   result := NoTarget;
   (*
    * Check, wether the actual coord is "dangerous" or not
    *)
-  ax := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
-  ay := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
-  If Not IsSurvivable(ax, ay) Then Begin
+  If Not IsSurvivable(fAix, fAiy) Then Begin
     (*
      * We are in Trouble, calculate the coordinate which is save and the nearest to our position
      *)
-    InitHeightFieldFromPos(ax, ay, true);
+    InitHeightFieldFromPos(fAix, fAiy, true);
     nt := NoTarget;
     mi := NotAccessable;
     // Search for that coordinate, if it exists store it in nt
@@ -428,7 +479,7 @@ Begin
      *)
     If (nt = NoTarget) And (fAiInfo^.PlayerInfos[fIndex].Abilities And Ability_CanKick = Ability_CanKick) Then Begin
       fPanik := true;
-      InitHeightFieldFromPos(ax, ay, false);
+      InitHeightFieldFromPos(fAix, fAiy, false);
       mi := NotAccessable;
       // Search for that coordinate, if it exists store it in nt
       For i := 0 To FieldWidth - 1 Do Begin
@@ -452,7 +503,7 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
     i: integer;
   Begin
     result := 0;
-    // Field with boxes cannot used to place bombs on
+    // TODO: Maybe its clever to Exclude BadPowerUps here, so that the ai will not choose BadPowerUps as target ?
     If Not (fAiInfo^.Field[x, y] In [fBlank, fFlame] + GoodPowerUps + BadPowerUps) Then Begin
       exit;
     End;
@@ -507,18 +558,18 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
     h: TPoint;
   Begin
     If Li < Re Then Begin
-      p := fHeightField[fDestroyableBrickCoordList[Trunc((li + re) / 2)].x, fDestroyableBrickCoordList[Trunc((li + re) / 2)].y]; // Auslesen des Pivo Elementes
+      p := fHeightField[fCoordList[Trunc((li + re) / 2)].x, fCoordList[Trunc((li + re) / 2)].y]; // Auslesen des Pivo Elementes
       l := Li;
       r := re;
       While l < r Do Begin
-        While fHeightField[fDestroyableBrickCoordList[l].x, fDestroyableBrickCoordList[l].y] < p Do
+        While fHeightField[fCoordList[l].x, fCoordList[l].y] < p Do
           inc(l);
-        While fHeightField[fDestroyableBrickCoordList[r].x, fDestroyableBrickCoordList[r].y] > p Do
+        While fHeightField[fCoordList[r].x, fCoordList[r].y] > p Do
           dec(r);
         If L <= R Then Begin
-          h := fDestroyableBrickCoordList[l];
-          fDestroyableBrickCoordList[l] := fDestroyableBrickCoordList[r];
-          fDestroyableBrickCoordList[r] := h;
+          h := fCoordList[l];
+          fCoordList[l] := fCoordList[r];
+          fCoordList[r] := h;
           inc(l);
           dec(r);
         End;
@@ -571,12 +622,10 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
   End;
 
 Var
-  ax, ay, i, j, k: Integer;
+  i, j, k: Integer;
   cnt, amax: Integer;
 Begin
   result := NoTarget;
-  ax := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
-  ay := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
   // 1. Step all Felder Durchgehen und die Maximale
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
@@ -584,21 +633,21 @@ Begin
     End;
   End;
   // 2. Suchen des Feldes das von der Aktuellen Position aus erreichbar ist und dass die meisten Bricks kaputt machen kann
-  InitHeightFieldFromPos(ax, ay, true);
+  InitHeightFieldFromPos(fAix, fAiy, true);
   cnt := 0;
   amax := 0;
   For i := 0 To Fieldwidth - 1 Do Begin
     For j := 0 To Fieldheight - 1 Do Begin
       // Wenn wir aber ein Feld finden, welches "näher" ist und gleich viele Boxen hat, nehmen wir das
       If (fHeightField[i, j] <> NotAccessable) And (fDestroyableBricks[i, j] = amax) Then Begin
-        fDestroyableBrickCoordList[cnt] := point(i, j);
+        fCoordList[cnt] := point(i, j);
         inc(cnt);
       End;
       // Greedy suchen wir das feld, welches die meisten Bomben hat
       If (fHeightField[i, j] <> NotAccessable) And (fDestroyableBricks[i, j] > amax) Then Begin
         cnt := 0;
         amax := fDestroyableBricks[i, j];
-        fDestroyableBrickCoordList[cnt] := point(i, j);
+        fCoordList[cnt] := point(i, j);
         inc(cnt);
       End;
     End;
@@ -607,15 +656,49 @@ Begin
   Sort(0, cnt - 1);
   For k := 0 To cnt - 1 Do Begin
     // 1. Simulierte Bombe Legen
-    SimPlaceBomb(fDestroyableBrickCoordList[k]);
+    SimPlaceBomb(fCoordList[k]);
     // 2. Gibt es noch wenigstens 1 Feld auf dass wir Flüchten können ?
     For i := 0 To FieldWidth - 1 Do Begin
       For j := 0 To FieldHeight - 1 Do Begin
         If fSimIsSurvivable[i, j] And (fHeightField[i, j] <> NotAccessable) Then Begin
           // 3. Wenn Ja -> Dass ist unser Target ! Break
-          result := fDestroyableBrickCoordList[k];
+          result := fCoordList[k];
           exit;
         End;
+      End;
+    End;
+  End;
+End;
+
+Function TAtomicAi.TriggerBombAi(): Boolean;
+Var
+  px, py: integer;
+  skipSecondAction: Boolean;
+  iBomb, iPlayer: Integer;
+Begin
+  result := false;
+  If (IsSurvivable(fAix, fAiy)) Then Begin
+    skipSecondAction := false;
+    For iBomb := 0 To fAiInfo^.BombsCount - 1 Do Begin
+      If (fAiInfo^.Bombs[iBomb].Owner = fIndex) And (fAiInfo^.Bombs[iBomb].ManualTrigger) Then Begin
+        // Check for friendly fire
+        If fAiInfo^.Teamplay Then Begin
+          For iPlayer := 0 To high(fAiInfo^.PlayerInfos) Do Begin
+            If fAiInfo^.PlayerInfos[iPlayer].Alive And (fAiInfo^.PlayerInfos[iPlayer].Team = fAiInfo^.PlayerInfos[fIndex].Team) Then Begin
+              px := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.x);
+              py := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.y);
+              If TreatedByOwnBombs(px, py) Then Begin
+                skipSecondAction := true;
+                break;
+              End;
+            End;
+          End;
+        End;
+        If skipSecondAction Then Begin
+          break;
+        End;
+        result := true;
+        exit;
       End;
     End;
   End;
@@ -634,23 +717,21 @@ Const
   Epsilon = 0.125;
 
 Var
-  shortest, ax, ay: integer;
+  shortest: integer;
   commapartx, commaparty: Single;
 Begin
   result := amNone;
   fActualTarget := Point(tx, ty);
   If fActualTarget = NoTarget Then exit;
-  ax := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
-  ay := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
-  If (tx = ax) And (ty = aY) Then Begin
+  If (tx = fAix) And (ty = fAiy) Then Begin
     (*
      * The Player "stands" on the coordinate
      * now try to "center" the Player onto .5 / .5 as close as
      * possible, this feature is only for "optical" reasons. it has
      * no effect on the game logic
      *)
-    commapartx := fAiInfo^.PlayerInfos[fIndex].Position.x - ax;
-    commaparty := fAiInfo^.PlayerInfos[fIndex].Position.y - ay;
+    commapartx := fAiInfo^.PlayerInfos[fIndex].Position.x - fAix;
+    commaparty := fAiInfo^.PlayerInfos[fIndex].Position.y - fAiy;
     If abs(commapartx - 0.5) > epsilon Then Begin
       If commapartx < 0.5 Then Begin
         result := amRight;
@@ -685,45 +766,41 @@ Begin
   // There are 4 posibilities where to move, check which is the "shortest" and walk there
   shortest := FieldWidth * FieldHeight + 1; // Max Distance
   // First Loop define General direction
-  If (ax > 0) And (fHeightField[ax - 1, ay] <> NotAccessable) Then Begin
-    If shortest > fHeightField[ax - 1, ay] Then Begin
-      shortest := fHeightField[ax - 1, ay];
+  If (fAix > 0) And (fHeightField[fAix - 1, fAiy] <> NotAccessable) Then Begin
+    If shortest > fHeightField[fAix - 1, fAiy] Then Begin
+      shortest := fHeightField[fAix - 1, fAiy];
       result := amLeft;
     End;
   End;
-  If (ax + 1 < FieldWidth) And (fHeightField[ax + 1, ay] <> NotAccessable) Then Begin
-    If shortest > fHeightField[ax + 1, ay] Then Begin
-      shortest := fHeightField[ax + 1, ay];
+  If (fAix + 1 < FieldWidth) And (fHeightField[fAix + 1, fAiy] <> NotAccessable) Then Begin
+    If shortest > fHeightField[fAix + 1, fAiy] Then Begin
+      shortest := fHeightField[fAix + 1, fAiy];
       result := amRight;
     End;
   End;
-  If (ay > 0) And (fHeightField[ax, ay - 1] <> NotAccessable) Then Begin
-    If shortest > fHeightField[ax, ay - 1] Then Begin
-      shortest := fHeightField[ax, ay - 1];
+  If (fAiy > 0) And (fHeightField[fAix, fAiy - 1] <> NotAccessable) Then Begin
+    If shortest > fHeightField[fAix, fAiy - 1] Then Begin
+      shortest := fHeightField[fAix, fAiy - 1];
       result := amUp;
     End;
   End;
-  If (ay + 1 < FieldHeight) And (fHeightField[ax, ay + 1] <> NotAccessable) Then Begin
-    If shortest > fHeightField[ax, ay + 1] Then Begin
-      shortest := fHeightField[ax, ay + 1];
+  If (fAiy + 1 < FieldHeight) And (fHeightField[fAix, fAiy + 1] <> NotAccessable) Then Begin
+    If shortest > fHeightField[fAix, fAiy + 1] Then Begin
+      shortest := fHeightField[fAix, fAiy + 1];
       result := amDown;
     End;
   End;
 End;
 
 Function TAtomicAi.SimMoveStateEscapeAi(Const MoveState: TAiMoveState): Boolean;
-Var
-  ax, ay: integer;
 Begin
   result := false;
   If MoveState = amNone Then exit;
-  ax := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
-  ay := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
   Case MoveState Of
-    amDown: If (ay + 1 < FieldHeight) And (Not IsSurvivable(ax, ay + 1)) Then result := true;
-    amUp: If (ay - 1 >= 0) And (Not IsSurvivable(ax, ay - 1)) Then result := true;
-    amLeft: If (ax - 1 >= 0) And (Not IsSurvivable(ax - 1, ay)) Then result := true;
-    amRight: If (ax + 1 < FieldWidth) And (Not IsSurvivable(ax + 1, ay)) Then result := true;
+    amDown: If (fAiy + 1 < FieldHeight) And (Not IsSurvivable(fAix, fAiy + 1)) Then result := true;
+    amUp: If (fAiy - 1 >= 0) And (Not IsSurvivable(fAix, fAiy - 1)) Then result := true;
+    amLeft: If (fAix - 1 >= 0) And (Not IsSurvivable(fAix - 1, fAiy)) Then result := true;
+    amRight: If (fAix + 1 < FieldWidth) And (Not IsSurvivable(fAix + 1, fAiy)) Then result := true;
   End;
 End;
 
@@ -736,9 +813,6 @@ End;
 Function TAtomicAi.CalcAiCommand(Const AiInfo: TAiInfo): TAiCommand;
 Var
   eT: TPoint;
-  px, py, ax, ay: Integer;
-  iBomb, iPlayer: Integer;
-  skipSecondAction: Boolean;
 Begin
   // Init
   Result.Action := apNone;
@@ -748,6 +822,8 @@ Begin
   fIsSurvivable_initialized := false;
   fHasBomb_initialized := false;
   fTreatedByOwnBombs_initialized := false;
+  fAix := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
+  fAiy := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
   (*
    * Everything is now initialized, let the magic happen
    *)
@@ -761,12 +837,20 @@ Begin
   // Second we try to destroy bricks and collect "goods"
   fActualTarget := BrickDestroyAi;
   // 4. Sind wir schon an der Stelle an der wir sein wollen, wenn Ja dann Bombe legen
-  ax := trunc(fAiInfo^.PlayerInfos[fIndex].Position.x);
-  ay := trunc(fAiInfo^.PlayerInfos[fIndex].Position.y);
   // Wir sind wo wir hin wollen, und haben noch bomben übrig -> Bombe Legen
-  If (fActualTarget = point(ax, ay)) And (fAiInfo^.PlayerInfos[fIndex].AvailableBombs > 0) Then Begin
+  If (fActualTarget = point(fAix, fAiy)) And (fAiInfo^.PlayerInfos[fIndex].AvailableBombs > 0) Then Begin
+
+    // Question, should this code be included or not ?
+    // If included, then the AI triggers bombs really as fast as posible, otherwise they are triggered "later"
+
+    //If TriggerBombAi() Then Begin
+    // result.Action := apSecond;
+    // result.MoveState := amNone; // Stop Moving to secure not accidential walk into Dead zone
+    //End
+    //Else Begin
     result.Action := apFirst;
     result.MoveState := amNone; // Stop moving to prevent overshoting
+    //End;
     exit;
   End;
 
@@ -782,31 +866,9 @@ Begin
   (*
    * If the Ai has triggerable bombs and is in save position -> Fire (except friendly fire ;))
    *)
-  If (IsSurvivable(ax, ay)) Then Begin
-    skipSecondAction := false;
-    For iBomb := 0 To fAiInfo^.BombsCount - 1 Do Begin
-      If (fAiInfo^.Bombs[iBomb].Owner = fIndex) And (fAiInfo^.Bombs[iBomb].ManualTrigger) Then Begin
-        // Check for friendly fire
-        If fAiInfo^.Teamplay Then Begin
-          For iPlayer := 0 To high(fAiInfo^.PlayerInfos) Do Begin
-            If fAiInfo^.PlayerInfos[iPlayer].Alive And (fAiInfo^.PlayerInfos[iPlayer].Team = fAiInfo^.PlayerInfos[fIndex].Team) Then Begin
-              px := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.x);
-              py := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.y);
-              If Not TreatedByOwnBombs(px, py) Then Begin
-                skipSecondAction := true;
-                break;
-              End;
-            End;
-          End;
-        End;
-        If skipSecondAction Then Begin
-          break;
-        End;
-        result.Action := apSecond;
-        result.MoveState := amNone; // Stop Moving to secure not accidential walk into Dead zone
-        break;
-      End;
-    End;
+  If TriggerBombAi() Then Begin
+    result.Action := apSecond;
+    result.MoveState := amNone; // Stop Moving to secure not accidential walk into Dead zone
   End;
   // Debug(self);
 End;

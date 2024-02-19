@@ -61,7 +61,8 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-        <CursorPos X="13" Y="41"/>
+        <TopLine Value="187"/>
+        <CursorPos X="77" Y="211"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -137,8 +138,6 @@
         <Filename Value="../units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="4"/>
-        <TopLine Value="58"/>
-        <CursorPos X="28" Y="91"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -189,9 +188,8 @@
       <Unit15>
         <Filename Value="updater_settings.inc"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="5"/>
-        <CursorPos X="29" Y="21"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="40" Y="19"/>
         <UsageCount Value="174"/>
         <Loaded Value="True"/>
       </Unit15>
@@ -347,8 +345,8 @@
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="124"/>
-        <CursorPos X="9" Y="162"/>
+        <TopLine Value="451"/>
+        <CursorPos X="37" Y="518"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -396,9 +394,11 @@
       <Unit32>
         <Filename Value="globaldefines.inc"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="55" Y="33"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="5"/>
+        <CursorPos X="2" Y="29"/>
         <UsageCount Value="52"/>
+        <Loaded Value="True"/>
       </Unit32>
       <Unit33>
         <Filename Value="ukeyboarddialog.pas"/>
@@ -512,7 +512,7 @@
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
     </OtherDefines>
-    <JumpHistory Count="17" HistoryIndex="16">
+    <JumpHistory Count="25" HistoryIndex="24">
       <Position1>
         <Filename Value="unit1.pas"/>
       </Position1>
@@ -578,6 +578,36 @@
         <Filename Value="../units/uatomic_common.pas"/>
         <Caret Line="91" Column="28" TopLine="58"/>
       </Position17>
+      <Position18>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="106" Column="22" TopLine="91"/>
+      </Position18>
+      <Position19>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="41" Column="13"/>
+      </Position19>
+      <Position20>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="527" Column="60" TopLine="508"/>
+      </Position20>
+      <Position21>
+        <Filename Value="ugame.pas"/>
+      </Position21>
+      <Position22>
+        <Filename Value="ugame.pas"/>
+        <Caret Line="527" Column="18" TopLine="472"/>
+      </Position22>
+      <Position23>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="672" Column="39" TopLine="647"/>
+      </Position23>
+      <Position24>
+        <Filename Value="../units/uatomic_common.pas"/>
+        <Caret Line="79" Column="34" TopLine="58"/>
+      </Position24>
+      <Position25>
+        <Filename Value="../units/uatomic_common.pas"/>
+      </Position25>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
