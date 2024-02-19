@@ -24,12 +24,13 @@ Uses
 Const
   (*
    * History:
-   * -Published-  0.01 - Initialversion
-   *              0.02 - Improve TreatedByOwnBombs (add chain reaction checks)
-   *                     Cleanup readability of code
-   *                     Switch to InterfaceVersion 2
+   * -Published- 0.01 - Initialversion
+   * -Published- 0.02 - Improve TreatedByOwnBombs (add chain reaction checks)
+   *                    Cleanup readability of code
+   *                    Switch to InterfaceVersion 2
+   *             0.03 -
    *)
-  Ai_Version = 'Atomic ai ver. 0.02 by Corpsman';
+  Ai_Version = 'Atomic ai ver. 0.03 by Corpsman';
 
   GoodPowerUps = [fExtraBomb, fLongerFlame, fGoldflame, fExtraSpeed, fKick, fSpooger, fPunch, fGrab, fTrigger, fJelly];
   BadPowerUps = [fRandom, fSlow, fDisease, fBadDisease];
