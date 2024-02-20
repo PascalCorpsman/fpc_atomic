@@ -64,9 +64,9 @@ Type
     fArrowDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
     fHasConveyors: Boolean; // Wenn True, dann hat die Karte diese Blauen Fließbänder auf denen Spieler und Bomben automatisch bewegt werden (geschwindigkeit via Settings einstellbar)
     fConveyorDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
-    fHasHohles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
+    fHasHoles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
     fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
-    fHohles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
+    fHoles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
 {$IFDEF Client}
     fTrampStaticSprite, fHoleTex, fFieldTex, fBrickTex, fSolidTex: integer;
     fxBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TBrickAnimation;
@@ -280,14 +280,14 @@ Begin
     For j := 0 To FieldHeight - 1 Do Begin
       fArrowDirs[i, j] := -1;
       fConveyorDirs[i, j] := -1;
-      fHohles[i, j] := false;
+      fHoles[i, j] := false;
     End;
   End;
   // Die 4 Löcher
-  fHohles[2, 2] := true;
-  fHohles[12, 2] := true;
-  fHohles[12, 8] := true;
-  fHohles[2, 8] := true;
+  fHoles[2, 2] := true;
+  fHoles[12, 2] := true;
+  fHoles[12, 8] := true;
+  fHoles[2, 8] := true;
   // Alle nach Rechts
   fArrowDirs[2, 0] := 0;
   fArrowDirs[6, 0] := 0;
@@ -452,7 +452,7 @@ Begin
   name := ini.ReadString('General', 'Name', '');
   fHasArrows := ini.ReadBool('General', 'HasArrows', false);
   fHasConveyors := ini.ReadBool('General', 'HasConveyors', false);
-  fHasHohles := ini.ReadBool('General', 'HasHohles', false);
+  fHasHoles := ini.ReadBool('General', 'HasHoles', false);
   fHastrampolins := ini.ReadBool('General', 'Hastrampolins', false);
 
   // T
@@ -672,10 +672,10 @@ Begin
     End;
   End;
   // 2.5 Wenn die Karte "löcher" hat, dann müssen die immer Frei bleiben, und mindestens 1 adjazentes Feld auch !
-  If fHasHohles Then Begin
+  If fHasHoles Then Begin
     For i := 0 To FieldWidth - 1 Do Begin
       For j := 0 To FieldHeight - 1 Do Begin
-        If fHohles[i, j] Then Begin
+        If fHoles[i, j] Then Begin
           SetBlank(i, j);
           If (Not IsBlank(i - 1, j)) And (Not IsBlank(i + 1, j))
             And (Not IsBlank(i, j - 1)) And (Not IsBlank(i, j + 1)) Then Begin
@@ -1103,7 +1103,7 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
         (trunc(fBombs[i].Position.y) = trunc(ay)) Then exit;
     End;
     // Es darf keine Bombe auf ein Loch gelegt werden !
-    If fHasHohles And fHohles[trunc(ax), trunc(ay)] Then exit;
+    If fHasHoles And fHoles[trunc(ax), trunc(ay)] Then exit;
     fBombs[fBombCount].ColorIndex := player.info.ColorIndex;
     fBombs[fBombCount].Position.x := trunc(ax) + 0.5;
     fBombs[fBombCount].Position.y := trunc(ay) + 0.5;
@@ -1160,8 +1160,8 @@ Begin
           y := trunc(player.Info.Position.y);
           For i := 1 To player.Powers.AvailableBombs Do Begin
             If Not FielWalkable(x + i * dx, y + i * dy, true) {And (i <> 1)} Then exit;
-            If fHasHohles Then Begin // An Löchern ist auch schluss mit dem "Spoogen"
-              If fHohles[x + i * dx, y + i * dy] Then exit;
+            If fHasHoles Then Begin // An Löchern ist auch schluss mit dem "Spoogen"
+              If fHoles[x + i * dx, y + i * dy] Then exit;
             End;
             If fHastrampolins Then Begin // Auf Trampoline kann ebenfalls keine Bombe gelegt werden
               If fField[x + i * dx, y + i * dy].Tramp Then exit;
@@ -1261,8 +1261,8 @@ Type
 
   Function BlockedByHole(x, y: integer): Boolean; // Gillt nur für Bomben, wenn diese sich bewegen, deswegen extra
   Begin
-    If fHasHohles Then Begin
-      result := fHohles[x, y];
+    If fHasHoles Then Begin
+      result := fHoles[x, y];
     End
     Else Begin
       result := false;
@@ -1716,7 +1716,7 @@ Begin
       fField[x, y].PowerUp := puNone;
     End;
     // Die Kollision gegen ein Loch
-    If fHasHohles And fHohles[x, y] Then Begin
+    If fHasHoles And fHoles[x, y] Then Begin
       If (Not Players[i].IsInHohle) Then Begin // Flanke generieren ;)
         Players[i].IsInHohle := true;
         Players[i].Info.Animation := raTeleport;
@@ -1749,8 +1749,8 @@ Begin
           nx := -1;
         End;
         // Das gibt es eigentlich nicht, aber auf Löchern landen ist auch verboten!
-        If fHasHohles Then Begin
-          If fHohles[nx, ny] Then
+        If fHasHoles Then Begin
+          If fHoles[nx, ny] Then
             nx := -1;
         End;
       End;
@@ -1881,7 +1881,35 @@ Begin
             End
             Else Begin
               Case fField[i, j].PowerUp Of
-                puNone: result.Field[i, j] := fBlank;
+                puNone: Begin
+                    result.Field[i, j] := fBlank;
+                    If fHasHoles Then Begin
+                      If fHoles[i, j] Then Begin
+                        result.Field[i, j] := fHole;
+                      End;
+                    End;
+                    If fHastrampolins Then Begin
+                      If fField[i, j].Tramp Then Begin
+                        result.Field[i, j] := fTramp;
+                      End;
+                    End;
+                    If fHasConveyors Then Begin
+                      Case fConveyorDirs[i, j] Of
+                        0: result.Field[i, j] := fConveyorRight;
+                        90: result.Field[i, j] := fConveyorUp;
+                        180: result.Field[i, j] := fConveyorLeft;
+                        270: result.Field[i, j] := fConveyorDown;
+                      End;
+                    End;
+                    If fHasArrows Then Begin
+                      Case fArrowDirs[i, j] Of
+                        0: result.Field[i, j] := fArrowRight;
+                        90: result.Field[i, j] := fArrowUp;
+                        180: result.Field[i, j] := fArrowLeft;
+                        270: result.Field[i, j] := fArrowDown;
+                      End;
+                    End;
+                  End;
                 puExtraBomb: result.Field[i, j] := fExtraBomb;
                 puLongerFlameLength: result.Field[i, j] := fLongerFlame;
                 puCanCick: result.Field[i, j] := fKick;

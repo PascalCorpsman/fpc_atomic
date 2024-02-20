@@ -28,12 +28,31 @@ Const
    * -Published- 0.02 - Improve TreatedByOwnBombs (add chain reaction checks)
    *                    Cleanup readability of code
    *                    Switch to InterfaceVersion 2
-   *             0.03 -
+   *             0.03 - Switch to InterfaceVersion 3
+   *                    Take care of Holes
+   *                    Allow collecting bad powerups in panik mode
    *)
   Ai_Version = 'Atomic ai ver. 0.03 by Corpsman';
 
+  (*
+   * Powerups the AI want to collect
+   *)
   GoodPowerUps = [fExtraBomb, fLongerFlame, fGoldflame, fExtraSpeed, fKick, fSpooger, fPunch, fGrab, fTrigger, fJelly];
+  (*
+   * Powerups the Ai does not want to collect
+   *)
   BadPowerUps = [fRandom, fSlow, fDisease, fBadDisease];
+  (*
+   * Fields that can be walked on (missing all powerups)
+   *)
+  WalkableFields = [fBlank, fHole, fTramp, fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight, fArrowUp, fArrowDown, fArrowLeft, fArrowRight];
+
+  (*
+   * Fielts that some can place a bomb on (missing all powerups)
+   *)
+  // TODO: should conveyors be excluded from BombPlaceableFields?
+  BombPlaceableFields = [fBlank, fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight, fArrowUp, fArrowDown, fArrowLeft, fArrowRight];
+
   (*
    * There are 15 * 11 Fields, so every number > 165 will do the trick ;)
    * ! Attention !
@@ -232,6 +251,7 @@ Procedure TAtomicAi.InitHeightFieldFromPos(aX, aY: integer;
   BombsAreBlocking: Boolean);
 Var
   p: THeightPoint;
+  allowedFields: Set Of TAiField;
 Begin
   ResetHeightField();
   (*
@@ -245,8 +265,13 @@ Begin
     p := fHeigtFifo.Pop;
     If (p.x < 0) Or (p.y < 0) Or (p.x >= FieldWidth) Or (p.y >= FieldHeight) Then Continue;
     If (fHeightField[p.x, p.y] > p.height) Then Begin
-      If (fAiInfo^.Field[p.x, p.y] In [fBlank {, fFlame}] + GoodPowerUps) // + BadPowerUps -- Die KI Will nicht über Bad PowerUps oder Flammen laufen
-      Then Begin
+      // + BadPowerUps -- Die KI Will nicht über Bad PowerUps oder Flammen laufen
+      allowedFields := WalkableFields + GoodPowerUps;
+      // Im Panik Modus laufen wir zur not auch über Krankheiten, hauptsache wir kommen auf "Sichere" Koords !
+      If fPanik Then Begin
+        allowedFields := allowedFields + BadPowerUps;
+      End;
+      If (fAiInfo^.Field[p.x, p.y] In allowedFields) Then Begin
         If BombsAreBlocking And (Not ((p.x = fAix) And (p.y = fAiy))) Then Begin
           If HasBomb(p.x, p.y) Then Continue;
         End;
@@ -481,7 +506,7 @@ Begin
      *)
     If (nt = NoTarget) And (fAiInfo^.PlayerInfos[fIndex].Abilities And Ability_CanKick = Ability_CanKick) Then Begin
       fPanik := true;
-      InitHeightFieldFromPos(fAix, fAiy, false);
+      InitHeightFieldFromPos(fAix, fAiy, Not fPanik);
       mi := NotAccessable;
       // Search for that coordinate, if it exists store it in nt
       For i := 0 To FieldWidth - 1 Do Begin
@@ -505,8 +530,7 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
     i: integer;
   Begin
     result := 0;
-    // TODO: Maybe its clever to Exclude BadPowerUps here, so that the ai will not choose BadPowerUps as target ?
-    If Not (fAiInfo^.Field[x, y] In [fBlank, fFlame] + GoodPowerUps + BadPowerUps) Then Begin
+    If Not (fAiInfo^.Field[x, y] In BombPlaceableFields + [fFlame] + GoodPowerUps) Then Begin
       exit;
     End;
     // There is already a bomb on this field, ignore it
@@ -518,12 +542,12 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
     d[amRight] := x < Fieldwidth - 1;
 
     For i := 0 To fAiInfo^.PlayerInfos[fIndex].FlameLength Do Begin
-
       If y - i < 0 Then d[amUp] := false;
       If y + i >= FieldHeight Then d[amDown] := false;
       If x - i < 0 Then d[amLeft] := false;
       If x + i >= FieldWidth Then d[amRight] := false;
 
+      // TODO: The checks below ignore the GoodPowerUps which means that they will not get destroyed, is this good ?
       If d[amUp] Then Begin
         If fAiInfo^.Field[x, y - i] In [fBrick] + BadPowerUps Then Begin
           inc(result);

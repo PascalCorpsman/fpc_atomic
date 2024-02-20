@@ -35,8 +35,9 @@ Const
    * History: 0.01 = Initialversion
    *          0.02 = switch to ctypes.pas for all types -> now the interface is C compatible !
    *                 ADD: Lifetime info to bomb stuct
+   *          0.03 = ADD: fHole, fTramp, fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight , fArrowUp, fArrowDown, fArrowLeft, fArrowRight to TAiField
    *)
-  AiLibInterfaceVersion: cint32 = 2;
+  AiLibInterfaceVersion: cint32 = 3;
 
   (*
    * The bit masks for the TAiPlayerInfo.Abilities value
@@ -105,6 +106,16 @@ Type
     fBlank, // Nothing on the field
     fBrick, // A destructible brick
     fSolid, // A non-destructible brick
+    fHole, // A beamimg hole they beam counter clock wise
+    fTramp, // A tramp that kicks the player in the air
+    fConveyorUp, // If the player stands on this field it is being pushed in the "up" direction
+    fConveyorDown, // If the player stands on this field it is being pushed in the "up" direction
+    fConveyorLeft, // If the player stands on this field it is being pushed in the "up" direction
+    fConveyorRight, // If the player stands on this field it is being pushed in the "up" direction
+    fArrowUp, // If a bomb is beeing kicked against this field its direction will change to "up"
+    fArrowDown, // If a bomb is beeing kicked against this field its direction will change to "down"
+    fArrowLeft, // If a bomb is beeing kicked against this field its direction will change to "left"
+    fArrowRight, // If a bomb is beeing kicked against this field its direction will change to "right"
     // Flame
     fFlame, // The entire field is filled with flames
     // Powerups -> this automatically means no flame and fBlank
