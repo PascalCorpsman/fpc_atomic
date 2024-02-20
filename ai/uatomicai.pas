@@ -28,11 +28,12 @@ Const
    * -Published- 0.02 - Improve TreatedByOwnBombs (add chain reaction checks)
    *                    Cleanup readability of code
    *                    Switch to InterfaceVersion 2
-   *             0.03 - Switch to InterfaceVersion 3
+   * -Published- 0.03 - Switch to InterfaceVersion 3
    *                    Take care of Holes
    *                    Allow collecting bad powerups in panik mode
+   *             0.04 -
    *)
-  Ai_Version = 'Atomic ai ver. 0.03 by Corpsman';
+  Ai_Version = 'Atomic ai ver. 0.04 by Corpsman';
 
   (*
    * Powerups the AI want to collect
