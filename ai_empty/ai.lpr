@@ -19,6 +19,7 @@ Library ai;
 Uses
   Classes
   , uai_types
+  , ctypes
   ;
 
 (*

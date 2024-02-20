@@ -89,7 +89,7 @@ Const
    *                       FIX: Disease animation
    * -releaseG - 0.11003 = ADD: First Ai version that beats humans
    * -releaseG - 0.11004 = ADD: Update AI-Interface to 0.02 -> for better C support
-   *             0.11005 =
+   *             0.11005 = FIX: Do not respawn PowerUps on Holes
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

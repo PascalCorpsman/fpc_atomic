@@ -1979,7 +1979,7 @@ Var
   pu: TPowerUps;
   cnt, i, OverflowProtect, j: Integer;
   x, y: Int64;
-  b: Boolean;
+  b, noHole: Boolean;
 Begin
   log('TServer.RepopulatePlayersCollectedPowerUps', lltrace);
   For pu In TPowerUps Do Begin
@@ -1997,7 +1997,11 @@ Begin
         x := Random(FieldWidth);
         y := Random(FieldHeight);
         // Das Feld ist Prinzipiel mal "Frei"
-        If (fField[x, y].BrickData = bdBlank) And (fField[x, y].Flame = []) And (fField[x, y].PowerUp = puNone) Then Begin
+        noHole := true;
+        If fHasHoles Then Begin // Auf Löchern dürfen keine PowerUps erzeugt werden
+          If fHoles[x, y] Then noHole := false;
+        End;
+        If (fField[x, y].BrickData = bdBlank) And (fField[x, y].Flame = []) And (fField[x, y].PowerUp = puNone) And noHole Then Begin
           b := true;
           // Verhindern dass ein Powerup da generiert wird wo ein Spieler Steht.
           For j := 0 To high(Players) Do Begin
@@ -2138,7 +2142,7 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
 
   Procedure RenderHohle(x, y: integer);
   Begin
-    If fhohles[x, y] Then Begin
+    If fholes[x, y] Then Begin
       glPushMatrix;
       glTranslatef(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_EPSILON);
       RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fHoleTex);
@@ -2227,7 +2231,7 @@ Begin
               If fHasConveyors Then Begin
                 RenderConveyor(i, j);
               End;
-              If fHasHohles Then Begin
+              If fHasHoles Then Begin
                 RenderHohle(i, j);
               End;
               If fHastrampolins Then Begin

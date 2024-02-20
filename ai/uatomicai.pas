@@ -38,10 +38,12 @@ Const
    * Powerups the AI want to collect
    *)
   GoodPowerUps = [fExtraBomb, fLongerFlame, fGoldflame, fExtraSpeed, fKick, fSpooger, fPunch, fGrab, fTrigger, fJelly];
+
   (*
    * Powerups the Ai does not want to collect
    *)
   BadPowerUps = [fRandom, fSlow, fDisease, fBadDisease];
+
   (*
    * Fields that can be walked on (missing all powerups)
    *)
@@ -308,7 +310,7 @@ Function TAtomicAi.IsSurvivable(aX, aY: integer): Boolean;
   Procedure SimExplode(sX, sY, sLen, sDirX, sDirY: Integer);
   Begin
     If (sLen < 0) Or (sx < 0) Or (sy < 0) Or (sx >= FieldWidth) Or (sy >= FieldHeight) Then exit;
-    If Not (fAiInfo^.Field[sx, sy] In [fBlank, fFlame]) Then exit; // Only
+    If Not (fAiInfo^.Field[sx, sy] In WalkableFields + [fFlame]) Then exit; // Only
     fIsSurvivable[sx, sy] := false;
     sx := sx + sDirX;
     sy := sy + sDirY;
@@ -511,7 +513,7 @@ Begin
       // Search for that coordinate, if it exists store it in nt
       For i := 0 To FieldWidth - 1 Do Begin
         For j := 0 To FieldHeight - 1 Do Begin
-          If IsSurvivable(i, j) And (mi > fHeightField[i, j]) Then Begin
+          If (IsSurvivable(i, j) Or (fAiInfo^.Field[i, j] = fHole)) And (mi > fHeightField[i, j]) Then Begin
             mi := fHeightField[i, j];
             nt := point(i, j);
           End;
