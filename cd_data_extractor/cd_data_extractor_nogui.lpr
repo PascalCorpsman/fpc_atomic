@@ -44,6 +44,14 @@ Type
     Procedure Log(Logtext: String);
   End;
 
+Function CheckDir(aDir: String): String;
+Begin
+  result := aDir;
+  If Not DirectoryExists(aDir) Then Begin
+    result := ConcatRelativePath(ExtractFilePath(ParamStr(0)), aDir);
+  End;
+End;
+
 Var
   ini: TIniFile;
   CDFolder: String;
@@ -65,10 +73,10 @@ Begin
   ini.free;
   For i := 1 To ParamCount Do Begin
     If ParamStr(i) = '-cd' Then Begin
-      CDFolder := ParamStr(i + 1);
+      CDFolder := CheckDir(ParamStr(i + 1));
     End;
     If ParamStr(i) = '-atomic' Then Begin
-      AtomicFolder := ParamStr(i + 1);
+      AtomicFolder := CheckDir(ParamStr(i + 1));
     End;
     If (ParamStr(i) = '?') Or (ParamStr(i) = '-?') Or (ParamStr(i) = '-help') Or (ParamStr(i) = '-man') Then Begin
       PrintHelp();
@@ -78,7 +86,7 @@ Begin
     PrintHelp();
   End;
   dummy := TDummy.Create;
-  DoExtraction(ExtractRelativePath(ExtractFilePath(ParamStr(0)), CDFolder), ExtractRelativePath(ExtractFilePath(ParamStr(0)), AtomicFolder), @dummy.Log);
+  DoExtraction(CDFolder, AtomicFolder, @dummy.Log);
   dummy.free;
 
 End.

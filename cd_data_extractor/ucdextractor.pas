@@ -27,9 +27,10 @@ Uses
  *                 Add Addon Pack warning
  *          0.03 = Add Hohle and Jump animation
  *                 FIX crash, when creating a new job
+ *          0.04 = Remove Relative Path Handling
  *)
 Const
-  DefCaption = 'FPC Atomic data extractor ver. 0.03';
+  DefCaption = 'FPC Atomic data extractor ver. 0.04';
 
 Type
   TTransparentMode = (
@@ -887,8 +888,6 @@ Begin
     Raise Exception.Create('Error, missing LogCallback!');
   End;
   SetLogCallback(LogCallBack);
-  CDFolder := ConcatRelativePath(ExtractFilePath(ParamStr(0)), CDFolder);
-  AtomicFolder := ConcatRelativePath(ExtractFilePath(ParamStr(0)), AtomicFolder);
   n := GetTickCount64();
   // Start Extraction
   AddLog('Start');

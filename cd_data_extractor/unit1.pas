@@ -57,7 +57,6 @@ Type
 Var
   Form1: TForm1;
 
-
 Implementation
 
 {$R *.lfm}
@@ -70,7 +69,7 @@ Procedure TForm1.FormCreate(Sender: TObject);
 Begin
   IniPropStorage1.IniFileName := 'settings.ini';
   (*
-   * History: 0.01 = Initial version
+   * History is above DefCaption definition
    *)
   caption := DefCaption;
   label1.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('CD-Root', ''));
@@ -110,9 +109,14 @@ End;
 
 Procedure TForm1.Button4Click(Sender: TObject);
 Begin
+  // Set FPC Atomic Folder
   If SelectDirectoryDialog1.Execute Then Begin
     If CheckFPCAtomicFolder(SelectDirectoryDialog1.FileName) Then Begin
       label2.Caption := SelectDirectoryDialog1.FileName;
+      If label1.caption = label2.caption Then Begin
+        showmessage('Error, its not allowed to have CD-Image root folder = fpc atomic folder');
+        label2.caption := '';
+      End;
     End
     Else Begin
       showmessage('Error, the folder should at least contain the executable for fpc_atomic');
@@ -121,13 +125,29 @@ Begin
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
+  Function CheckDir(aDir: String): String;
+  Begin
+    result := aDir;
+    If Not DirectoryExists(aDir) Then Begin
+      result := ConcatRelativePath(ExtractFilePath(ParamStr(0)), aDir);
+    End;
+  End;
+
+Var
+  AtomicCDRootFolder, FPCAtomicRootFolder: String;
 Begin
   // Start Extraction
-  DoExtraction(ExtractRelativePath(ExtractFilePath(ParamStr(0)), Label1.caption), ExtractRelativePath(ExtractFilePath(ParamStr(0)), label2.caption), @AddLog);
+  If label1.caption = label2.caption Then Begin
+    showmessage('Error, its not allowed to have CD-Image root folder = fpc atomic folder');
+  End;
+  AtomicCDRootFolder := CheckDir(Label1.caption);
+  FPCAtomicRootFolder := CheckDir(Label2.caption);
+  DoExtraction(AtomicCDRootFolder, FPCAtomicRootFolder, @AddLog);
 End;
 
 Procedure TForm1.Button6Click(Sender: TObject);
 Begin
+  // Ani Job Creator
   If label1.Caption = '' Then Begin
     showmessage('First set atomic cd root folder!.');
     exit;
@@ -138,9 +158,14 @@ End;
 
 Procedure TForm1.Button1Click(Sender: TObject);
 Begin
+  // Set atomic CD Root folder
   If SelectDirectoryDialog1.Execute Then Begin
     If CheckCDRootFolder(SelectDirectoryDialog1.FileName) Then Begin
       label1.Caption := SelectDirectoryDialog1.FileName;
+      If label1.caption = label2.caption Then Begin
+        showmessage('Error, its not allowed to have CD-Image root folder = fpc atomic folder');
+        label1.caption := '';
+      End;
     End
     Else Begin
       showmessage('Error, you need to give the Atomic bomberman CD-Image root folder.' +
