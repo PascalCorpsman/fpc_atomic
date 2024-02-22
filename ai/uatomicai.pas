@@ -31,7 +31,7 @@ Const
    * -Published- 0.03 - Switch to InterfaceVersion 3
    *                    Take care of Holes
    *                    Allow collecting bad powerups in panik mode
-   *             0.04 -
+   *             0.04 - Improve Panik Mode, Friendly fire Check
    *)
   Ai_Version = 'Atomic ai ver. 0.04 by Corpsman';
 
@@ -168,6 +168,12 @@ Type
 
     Function EscapeAi(): TPoint; // Ai-Part that runs away from bombs !
 
+    (*
+     * Checks wether the Ai would loose its live if it walkes as Movestate wants to
+     * True, if this would lead to death
+     *)
+    Function SimMoveWouldLeadToDeath(Const MoveState: TAiMoveState): Boolean;
+
     Function BrickDestroyAi(): TPoint; // Ai-Part thats aim is to destroy as much bricks as possible
 
     Function TriggerBombAi(): Boolean; // Ai-Part that detects wether the Ai-should trigger his own triggerable bombs
@@ -178,12 +184,6 @@ Type
      * amNone if reached.
      *)
     Function NavigateTo(tX, tY: Integer; BombsAreBlocking: Boolean = false): TAiMoveState;
-
-    (*
-     * Checks wether the Ai would loose its live if it walkes as Movestate wants to do
-     * True, if this would lead to death
-     *)
-    Function SimMoveStateEscapeAi(Const MoveState: TAiMoveState): Boolean;
 
   public
 
@@ -219,8 +219,8 @@ Begin
 {$IFDEF _Debug_}
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
-      //      form1.StringGrid2.Cells[i, j] := inttostr(ai.fDestroyableBricks[i, j]);
-      form1.StringGrid2.Cells[i, j] := inttostr(ai.fHeightField[i, j]);
+      form1.StringGrid2.Cells[i, j] := inttostr(ai.fDestroyableBricks[i, j]);
+      //form1.StringGrid2.Cells[i, j] := inttostr(ai.fHeightField[i, j]);
       //      form1.StringGrid2.Cells[i, j] := IntToStr(ord(ai.fIsSurvivable[i, j]));
     End;
   End;
@@ -506,8 +506,9 @@ Begin
     (*
      * There is no more "save" place to walk to
      * Retry ignoring the Bombs, in the hope that the AI can kick the bomb away
+     * This Routine also walks into a Hole if there is one, so the check for the CanKick Ability needs to be removed.
      *)
-    If (nt = NoTarget) And (fAiInfo^.PlayerInfos[fIndex].Abilities And Ability_CanKick = Ability_CanKick) Then Begin
+    If (nt = NoTarget) { And (fAiInfo^.PlayerInfos[fIndex].Abilities And Ability_CanKick = Ability_CanKick)} Then Begin
       fPanik := true;
       InitHeightFieldFromPos(fAix, fAiy, Not fPanik);
       mi := NotAccessable;
@@ -702,32 +703,32 @@ End;
 Function TAtomicAi.TriggerBombAi(): Boolean;
 Var
   px, py: integer;
-  skipSecondAction: Boolean;
   iBomb, iPlayer: Integer;
 Begin
   result := false;
   If (IsSurvivable(fAix, fAiy)) Then Begin
-    skipSecondAction := false;
+    // Check if we have triggerable bombs
+    For iBomb := 0 To fAiInfo^.BombsCount - 1 Do Begin
+      If (fAiInfo^.Bombs[iBomb].Owner = fIndex) And (fAiInfo^.Bombs[iBomb].ManualTrigger) Then Begin
+        result := true;
+      End;
+    End;
+    // We do not have any triggerable bomb -> no need to check anything
+    // We are not in Teamplay -> kill them all !
+    If (Not result) Or (Not fAiInfo^.Teamplay) Then exit;
     For iBomb := 0 To fAiInfo^.BombsCount - 1 Do Begin
       If (fAiInfo^.Bombs[iBomb].Owner = fIndex) And (fAiInfo^.Bombs[iBomb].ManualTrigger) Then Begin
         // Check for friendly fire
-        If fAiInfo^.Teamplay Then Begin
-          For iPlayer := 0 To high(fAiInfo^.PlayerInfos) Do Begin
-            If fAiInfo^.PlayerInfos[iPlayer].Alive And (fAiInfo^.PlayerInfos[iPlayer].Team = fAiInfo^.PlayerInfos[fIndex].Team) Then Begin
-              px := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.x);
-              py := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.y);
-              If TreatedByOwnBombs(px, py) Then Begin
-                skipSecondAction := true;
-                break;
-              End;
+        For iPlayer := 0 To high(fAiInfo^.PlayerInfos) Do Begin
+          If fAiInfo^.PlayerInfos[iPlayer].Alive And (fAiInfo^.PlayerInfos[iPlayer].Team = fAiInfo^.PlayerInfos[fIndex].Team) Then Begin
+            px := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.x);
+            py := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.y);
+            If (point(px, py) <> point(fAix, fAiy)) And TreatedByOwnBombs(px, py) Then Begin
+              result := false;
+              exit;
             End;
           End;
         End;
-        If skipSecondAction Then Begin
-          break;
-        End;
-        result := true;
-        exit;
       End;
     End;
   End;
@@ -821,10 +822,9 @@ Begin
   End;
 End;
 
-Function TAtomicAi.SimMoveStateEscapeAi(Const MoveState: TAiMoveState): Boolean;
+Function TAtomicAi.SimMoveWouldLeadToDeath(Const MoveState: TAiMoveState): Boolean;
 Begin
   result := false;
-  If MoveState = amNone Then exit;
   Case MoveState Of
     amDown: If (fAiy + 1 < FieldHeight) And (Not IsSurvivable(fAix, fAiy + 1)) Then result := true;
     amUp: If (fAiy - 1 >= 0) And (Not IsSurvivable(fAix, fAiy - 1)) Then result := true;
@@ -841,7 +841,7 @@ End;
 
 Function TAtomicAi.CalcAiCommand(Const AiInfo: TAiInfo): TAiCommand;
 Var
-  eT: TPoint;
+  eT, bDT: TPoint;
 Begin
   // Init
   Result.Action := apNone;
@@ -859,18 +859,18 @@ Begin
   // First prio is life saving -> check wether we should run for our life
   fPanik := false;
   eT := EscapeAi;
-  If et <> NoTarget Then Begin
-    result.MoveState := NavigateTo(et.X, et.Y, Not fPanik);
+  If eT <> NoTarget Then Begin
+    result.MoveState := NavigateTo(eT.X, eT.Y, Not fPanik);
     exit;
   End;
   // Second we try to destroy bricks and collect "goods"
-  fActualTarget := BrickDestroyAi;
+  bDT := BrickDestroyAi;
   // 4. Sind wir schon an der Stelle an der wir sein wollen, wenn Ja dann Bombe legen
   // Wir sind wo wir hin wollen, und haben noch bomben übrig -> Bombe Legen
-  If (fActualTarget = point(fAix, fAiy)) And (fAiInfo^.PlayerInfos[fIndex].AvailableBombs > 0) Then Begin
+  If (bDT = point(fAix, fAiy)) And (fAiInfo^.PlayerInfos[fIndex].AvailableBombs > 0) Then Begin
 
     // Question, should this code be included or not ?
-    // If included, then the AI triggers bombs really as fast as posible, otherwise they are triggered "later"
+    // If included, then the AI triggers bombs as fast as posible, otherwise they are triggered "later"
 
     //If TriggerBombAi() Then Begin
     // result.Action := apSecond;
@@ -879,6 +879,7 @@ Begin
     //Else Begin
     result.Action := apFirst;
     result.MoveState := amNone; // Stop moving to prevent overshoting
+    fActualTarget := NoTarget;
     //End;
     exit;
   End;
@@ -886,8 +887,10 @@ Begin
   (*
    * Navigate to the choosen target
    *)
-  result.MoveState := NavigateTo(fActualTarget.X, fActualTarget.Y);
-  If SimMoveStateEscapeAi(result.MoveState) Then Begin
+  result.MoveState := NavigateTo(bDT.X, bDT.Y);
+
+  // Check wether the requested move would kill the Ai
+  If SimMoveWouldLeadToDeath(result.MoveState) Then Begin
     result.MoveState := amNone;
     fActualTarget := NoTarget;
   End;
@@ -898,6 +901,7 @@ Begin
   If TriggerBombAi() Then Begin
     result.Action := apSecond;
     result.MoveState := amNone; // Stop Moving to secure not accidential walk into Dead zone
+    fActualTarget := NoTarget;
   End;
   // Debug(self);
 End;

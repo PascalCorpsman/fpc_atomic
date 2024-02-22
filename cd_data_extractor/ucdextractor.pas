@@ -346,7 +346,8 @@ End;
    end;
  *)
 
-Function ConcatRelativePath(Const BaseName: String; Const RelativeName: String): String;
+Function ConcatRelativePath(Const BaseName: String; Const RelativeName: String
+  ): String;
 Var
   pre, suf: String;
   i: integer;
