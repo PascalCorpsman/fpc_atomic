@@ -1838,7 +1838,7 @@ Begin
     result.PlayerInfos[i].Flying := Players[i].Flying;
     result.PlayerInfos[i].FlameLength := Players[i].Powers.FlameLen;
     result.PlayerInfos[i].Speed := Players[i].Powers.Speed;
-    // TODO: In die Spielerinfos mit geben welche Krankheiten der Spieler hat.
+    result.PlayerInfos[i].IsIll := Players[i].Disease <> [];
     result.PlayerInfos[i].Abilities := 0;
     If Players[i].Powers.CanKickBombs Then Begin
       result.PlayerInfos[i].Abilities := result.PlayerInfos[i].Abilities Or Ability_CanKick;

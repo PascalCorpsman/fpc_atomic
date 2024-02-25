@@ -36,8 +36,9 @@ Const
    *          0.02 = switch to ctypes.pas for all types -> now the interface is C compatible !
    *                 ADD: Lifetime info to bomb stuct
    *          0.03 = ADD: fHole, fTramp, fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight , fArrowUp, fArrowDown, fArrowLeft, fArrowRight to TAiField
+   *          0.04 = ADD: missing info for Diseases
    *)
-  AiLibInterfaceVersion: cint32 = 3;
+  AiLibInterfaceVersion: cint32 = 4;
 
   (*
    * The bit masks for the TAiPlayerInfo.Abilities value
@@ -99,6 +100,7 @@ Type
     AvailableBombs: cint; // The number of bombs the AI is allowed to place at the moment. This will decrease when a bomb is placed and increase if the bomb explodes. It is 0 if the player has the "no bomb" disease.
     Speed: cfloat; // The actual speed of the player in fields per second.
     Abilities: cUint32; // A bitfield of abilities. If the bit is 1, then the ability is available.
+    IsIll: Boolean; // If true the Player has a Disease (Unknown which)
   End;
 
   TAiField = (

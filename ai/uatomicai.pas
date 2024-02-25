@@ -32,8 +32,9 @@ Const
    *                    Take care of Holes
    *                    Allow collecting bad powerups in panik mode
    *             0.04 - Improve Panik Mode, Friendly fire Check
+   *             0.05 - Try to skip Other player that have diseases
    *)
-  Ai_Version = 'Atomic ai ver. 0.04 by Corpsman';
+  Ai_Version = 'Atomic ai ver. 0.05 by Corpsman';
 
   (*
    * Powerups the AI want to collect
@@ -319,7 +320,7 @@ Function TAtomicAi.IsSurvivable(aX, aY: integer): Boolean;
   End;
 
 Var
-  i, j: Integer;
+  px, py, i, j: Integer;
 Begin
   If Not fIsSurvivable_initialized Then Begin
     fIsSurvivable_initialized := true;
@@ -329,6 +330,15 @@ Begin
     For i := 0 To FieldWidth - 1 Do Begin
       For j := 0 To FieldHeight - 1 Do Begin
         fIsSurvivable[i, j] := (fAiInfo^.Field[i, j] <> fFlame);
+      End;
+    End;
+    // Treat other players that are ill as "deadly"
+    For i := 0 To 9 Do Begin
+      // If we are the one who is ill, we need to skip our self, otherwise we would run as long as we are ill
+      If fAiInfo^.PlayerInfos[i].Alive And fAiInfo^.PlayerInfos[i].IsIll And (i <> fIndex) Then Begin
+        px := trunc(fAiInfo^.PlayerInfos[i].Position.x);
+        py := trunc(fAiInfo^.PlayerInfos[i].Position.y);
+        fIsSurvivable[px, py] := false;
       End;
     End;
     (*
