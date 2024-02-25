@@ -132,6 +132,7 @@ Type
      * If a Bomb is placed on grid coord, this array tells how many bricks could be destroyed (according to the actual flame settings)
      *)
     fDestroyableBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer;
+    fDestroyableBrickField: Array[0..14, 0..10] Of TAiField; // Field that simulates bomb exposions for getBrickCountAt
 
     (*
      * List of Coords, is used at different places inside the code
@@ -544,7 +545,7 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
     i: integer;
   Begin
     result := 0;
-    If Not (fAiInfo^.Field[x, y] In BombPlaceableFields + [fFlame] + GoodPowerUps) Then Begin
+    If Not (fDestroyableBrickField[x, y] In BombPlaceableFields + [fFlame] + GoodPowerUps) Then Begin
       exit;
     End;
     // There is already a bomb on this field, ignore it
@@ -563,28 +564,28 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
 
       // TODO: The checks below ignore the GoodPowerUps which means that they will not get destroyed, is this good ?
       If d[amUp] Then Begin
-        If fAiInfo^.Field[x, y - i] In [fBrick] + BadPowerUps Then Begin
+        If fDestroyableBrickField[x, y - i] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amUp] := false;
         End;
       End;
 
       If d[amDown] Then Begin
-        If fAiInfo^.Field[x, y + i] In [fBrick] + BadPowerUps Then Begin
+        If fDestroyableBrickField[x, y + i] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amDown] := false;
         End;
       End;
 
       If d[amLeft] Then Begin
-        If fAiInfo^.Field[x - i, y] In [fBrick] + BadPowerUps Then Begin
+        If fDestroyableBrickField[x - i, y] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amLeft] := false;
         End;
       End;
 
       If d[amRight] Then Begin
-        If fAiInfo^.Field[x + i, y] In [fBrick] + BadPowerUps Then Begin
+        If fDestroyableBrickField[x + i, y] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amRight] := false;
         End;
@@ -617,6 +618,18 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
       Sort(li, r);
       Sort(l, re);
     End;
+  End;
+
+  Procedure SimBombExplodeOnBrickField(sX, sY, sLen, sDirX, sDirY: Integer);
+  Begin
+    If (sLen < 0) Or (sx < 0) Or (sy < 0) Or (sx >= FieldWidth) Or (sy >= FieldHeight) Then exit;
+    If Not (fDestroyableBrickField[sx, sy] In [fBlank, fFlame]) Then Begin
+      fDestroyableBrickField[sx, sy] := fBlank;
+      exit;
+    End;
+    sx := sx + sDirX;
+    sy := sy + sDirY;
+    SimBombExplodeOnBrickField(sx, sy, slen - 1, sdirx, sdiry);
   End;
 
   Procedure SimPlaceBomb(Const Pos: TPoint);
@@ -666,7 +679,19 @@ Var
   cnt, amax: Integer;
 Begin
   result := NoTarget;
-  // 1. Step all Felder Durchgehen und die Maximale
+  // 1. Simuliere Alle Bombem als "explodiert" -> Rausnehmen dieser Bricks
+  For i := 0 To FieldWidth - 1 Do Begin
+    For j := 0 To FieldHeight - 1 Do Begin
+      fDestroyableBrickField[i, j] := fAiInfo^.Field[i, j];
+    End;
+  End;
+  For i := 0 To fAiInfo^.BombsCount - 1 Do Begin
+    SimBombExplodeOnBrickField(trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y), fAiInfo^.Bombs[i].FlameLength, 1, 0);
+    SimBombExplodeOnBrickField(trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y), fAiInfo^.Bombs[i].FlameLength, -1, 0);
+    SimBombExplodeOnBrickField(trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y), fAiInfo^.Bombs[i].FlameLength, 0, 1);
+    SimBombExplodeOnBrickField(trunc(fAiInfo^.Bombs[i].Position.x), trunc(fAiInfo^.Bombs[i].Position.y), fAiInfo^.Bombs[i].FlameLength, 0, -1);
+  End;
+  // 2. Step all simulierte Felder Durchgehen und die Maximale bestimmen
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
       fDestroyableBricks[i, j] := getBrickCountAt(i, j);
