@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define AI_LIB_INTERFACE_VERSION 2u
+#define AI_LIB_INTERFACE_VERSION 4u
 
 #define MAX_PLAYERS 10
 #define FIELD_WIDTH 15
@@ -83,6 +83,7 @@ typedef struct
     int AvailableBombs;    // The number of bombs the AI is allowed to place at the moment. This will decrease when a bomb is placed and increase if the bomb explodes. It is 0 if the player has the "no bomb" disease.
     float Speed;           // The actual speed of the player in fields per second.
     uint32_t Abilities;    // A bitfield of abilities. If the bit is 1, then the ability is available.
+    IsIll: Boolean;        // If true the Player has a Disease (Unknown which)
 } TAiPlayerInfo_t;
 
 typedef enum
@@ -91,6 +92,16 @@ typedef enum
     fBlank, // Nothing on the field
     fBrick, // A destructible brick
     fSolid, // A non-destructible brick
+    fHole, // A beamimg hole they beam counter clock wise
+    fTramp, // A tramp that kicks the player in the air
+    fConveyorUp, // If the player stands on this field it is being pushed in the "up" direction
+    fConveyorDown, // If the player stands on this field it is being pushed in the "up" direction
+    fConveyorLeft, // If the player stands on this field it is being pushed in the "up" direction
+    fConveyorRight, // If the player stands on this field it is being pushed in the "up" direction
+    fArrowUp, // If a bomb is beeing kicked against this field its direction will change to "up"
+    fArrowDown, // If a bomb is beeing kicked against this field its direction will change to "down"
+    fArrowLeft, // If a bomb is beeing kicked against this field its direction will change to "left"
+    fArrowRight, // If a bomb is beeing kicked against this field its direction will change to "right"
     // Flame
     fFlame, // The entire field is filled with flames
     // Powerups -> this automatically means no flame and fBlank
