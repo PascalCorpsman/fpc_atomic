@@ -679,7 +679,7 @@ Var
   cnt, amax: Integer;
 Begin
   result := NoTarget;
-  // 1. Simuliere Alle Bombem als "explodiert" -> Rausnehmen dieser Bricks
+  // TODO: 1. Simuliere Alle Bombem als "explodiert" -> Rausnehmen dieser Bricks
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
       fDestroyableBrickField[i, j] := fAiInfo^.Field[i, j];

@@ -412,7 +412,7 @@ Begin
   glPushMatrix;
 
   // Die Notwendige Animation
-  If Info.Dieing Then Begin
+  If Info.Dying Then Begin
     // Das hier Triggert hoffentlich nur bei der ersten Steigenden Flanke
     fAnimation := fDieAnimations[Info.Value Mod length(fDieAnimations)];
     (*

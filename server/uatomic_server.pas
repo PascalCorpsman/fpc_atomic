@@ -1013,7 +1013,7 @@ Begin
     fPLayer[i].Disease := [];
     fPLayer[i].DiseaseCounter := 0;
     fPLayer[i].IdleTimer := 0;
-    fPLayer[i].Info.Dieing := false; // Wir Sind alle wieder am Leben ;)
+    fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
     For pu In TPowerUps Do Begin
@@ -1664,7 +1664,7 @@ Begin
   End;
   // Die Spieler Bewegen
   For i := 0 To high(fPLayer) Do Begin
-    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dieing) Then Begin
+    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) Then Begin
       fPLayer[i].IdleTimer := fPLayer[i].IdleTimer + FrameRate; // Wir zählen den immer hoch, der läuft erst nach 41 Tagen über...
       If fPLayer[i].UID = AIPlayer Then Begin
         If assigned(AiHandlePlayer) Then Begin
@@ -1726,7 +1726,7 @@ Begin
   End;
   // Aktions durchführen
   For i := 0 To high(fPLayer) Do Begin
-    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dieing) Then Begin
+    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) Then Begin
       If dEbola In fPLayer[i].Disease Then fPLayer[i].Action := aaFirst; // Wenn der Spieler "Ebola" hat, legt er wann immer möglich eine Bombe
       // TODO: Feature oder Bug, wenn der Spieler Ebola hat und dNoBombs wird er hier verschont ...
       If (fPLayer[i].Action <> aaNone) And (Not (dNoBombs In fPLayer[i].Disease)) Then Begin
@@ -1736,6 +1736,7 @@ Begin
     End;
   End;
   // Bomben Handeln
+  // TODO: Magic Numbers -> entfernen klären ...
   fActualField.HandleBombs(fPLayer, (fPlayingTimedesc <= 80000) And (fPlayingTimedesc <> -1000), fSettings.ConveyorSpeed);
   // Kollision mit Flammen
   fActualField.HandlePlayerVsMap(fPLayer, @HandlePlayerGetsPowerUp);
@@ -1759,7 +1760,7 @@ Begin
         (fPLayer[i].Info.Counter >= AtomicAnimationTimeTeleport Div 2) Then Begin
         fActualField.TelePortPlayer(fPLayer[i]);
       End;
-      If fPLayer[i].Info.Dieing Then Begin
+      If fPLayer[i].Info.Dying Then Begin
         If fPLayer[i].Info.Counter > AtomicDietimeout Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);

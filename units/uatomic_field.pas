@@ -85,7 +85,7 @@ Type
     (*
      * False, wenn der Strahl gestoppt wird und nicht mehr "weiter" Laufen darf
      *)
-    Function Detonate(x, y: integer; PlayerIndex, ColorIndex: integer; Flame: TFlame): Boolean;
+    Function Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: integer; Flame: TFlame): Boolean;
     Function FielWalkable(x, y: integer; AlsoCheckPowerUps: Boolean): Boolean;
 {$ENDIF}
   public
@@ -503,7 +503,7 @@ End;
 
 {$IFDEF Server}
 
-Function TAtomicField.Detonate(x, y: integer; PlayerIndex, ColorIndex: integer;
+Function TAtomicField.Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: integer;
   Flame: TFlame): Boolean;
 Var
   i: Integer;
@@ -520,7 +520,7 @@ Begin
     bdBlank: Begin
         If fField[x, y].PowerUp = puNone Then Begin
           fField[x, y].FlameColor := ColorIndex;
-          fField[x, y].FlamePlayer := PlayerIndex;
+          fField[x, y].FlamePlayer := TriggerPlayerindex;
           If Not (fCross In fField[x, y].Flame) Then Begin // Sonst sieht es komisch aus ..
             fField[x, y].Flame := [Flame];
           End;
@@ -528,7 +528,7 @@ Begin
         End
         Else Begin
           fPowerUpClearFifo.Push(point(x, y));
-          //          fField[x, y].PowerUp := puNone; -- Das geht net, da sonst 2 Bombem hintereinander durch das Popup durchschießen können !
+          // fField[x, y].PowerUp := puNone; -- Das geht net, da sonst 2 Bombem hintereinander durch das Popup durchschießen können !
           result := false; // Egal wie der Strahl wird hier gestoppt !
         End;
       End;
@@ -548,6 +548,8 @@ Begin
   For i := 0 To fBombCount - 1 Do Begin
     If Not fBombs[i].Detonated Then Begin
       If (trunc(fBombs[i].Position.x) = x) And (trunc(fBombs[i].Position.y) = y) Then Begin
+        // Derjenige der die Kettenreaktion auslöst, der bekommt den Kill
+        fBombs[i].TriggerPlayerindex := TriggerPlayerindex;
         fBombDetonateFifo.push(i);
       End;
     End;
@@ -1072,7 +1074,6 @@ Begin
       End;
   End;
   // evtl. ist der Spieler ja "eingesperrt"
-  // TODO: Wenn die Spieler "Fliegen" muss das hier berücksichtigt werden
   x := trunc(Players[PlayerIndex].Info.Position.x);
   y := trunc(Players[PlayerIndex].info.Position.y);
   If (Not FielWalkable(x - 1, y, false)) And
@@ -1122,6 +1123,7 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     End;
     fBombs[fBombCount].AnimationOffset := random(65536);
     fBombs[fBombCount].PlayerIndex := PlayerIndex;
+    fBombs[fBombCount].TriggerPlayerindex := -1; // Force a exception, should be set during triggering !
     fBombs[fBombCount].Lifetime := 0;
     fBombs[fBombCount].FireLen := player.Powers.FlameLen;
     fBombs[fBombCount].Jelly := false; // Das wird vom "Kickenden" Spieler übernommen
@@ -1232,6 +1234,7 @@ Begin
               fBombs[i].MoveDir := bmFly;
               fBombs[i].FlyTime := 0;
               fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
+              fBombs[i].Lifetime := 0; // Reset Bomb timer when punch
               fPlaySoundEffect(PlayerIndex, seBombPunch);
               Player.Info.Animation := raPunch;
               Player.Info.Counter := 0;
@@ -1285,7 +1288,7 @@ Type
   Begin
     result := false;
     For i := 0 To high(Players) Do Begin
-      If (Players[i].Info.Alive) And (Not Players[i].Info.Dieing) Then Begin
+      If (Players[i].Info.Alive) And (Not Players[i].Info.Dying) Then Begin
         If (trunc(Players[i].Info.Position.x) = x) And
           (trunc(Players[i].Info.Position.y) = y) Then Begin
           result := true;
@@ -1306,14 +1309,14 @@ Type
     End;
   End;
 
-  Procedure AddEndFlame(x, y, PlayerIndex: integer);
+  Procedure AddEndFlame(x, y, TriggerPlayerindex: integer);
   Begin
     (*
      * So überschreibt jeder Spieler ggf. einen Anderen, es sieht so aus als
      * ob TAtomicField.Detonate das auch so macht, wenn nicht, muss das If mit rein !
      *)
     //If fField[x, y].Flame = [] Then Begin
-    fField[x, y].FlamePlayer := PlayerIndex;
+    fField[x, y].FlamePlayer := TriggerPlayerindex;
     //End;
     fField[x, y].Flame := fField[x, y].Flame + [fend];
   End;
@@ -1560,6 +1563,7 @@ Begin
     Case fBombs[i].Animation Of
       baNormal, baWobble: Begin
           If fBombs[i].Lifetime >= AtomicBombDetonateTime Then Begin
+            fBombs[i].TriggerPlayerindex := fBombs[i].PlayerIndex;
             fBombDetonateFifo.Push(i);
           End;
         End;
@@ -1584,6 +1588,7 @@ Begin
       If (fField[x, y].Flame <> []) Then Begin
         fBombs[i].Position.x := x + 0.5;
         fBombs[i].Position.y := y + 0.5;
+        fBombs[i].TriggerPlayerindex := fField[x, y].FlamePlayer;
         fBombDetonateFifo.Push(i);
       End;
     End;
@@ -1596,6 +1601,7 @@ Begin
         If (x = p.x) And (y = p.y) Then Begin
           fBombs[i].Position.x := x + 0.5;
           fBombs[i].Position.y := y + 0.5;
+          fBombs[i].TriggerPlayerindex := fBombs[i].PlayerIndex;
           fBombDetonateFifo.Push(i);
         End;
       End;
@@ -1615,48 +1621,48 @@ Begin
     y := trunc(fBombs[index].Position.y);
     If fField[x, y].BrickData = bdSolid Then continue; // Die Bombe Explodiert auf einem Festen Brick -> dann richtet sie keinen Schaden an
     If fField[x, y].BrickData = bdBrick Then Begin // Die Bombe explodiert auf einem Brick, den macht sie kaputt, aber nichts weiter ..
-      Detonate(x, y, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fCross);
+      Detonate(x, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fCross);
       Continue;
     End
     Else Begin
-      Detonate(x, y, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fCross);
+      Detonate(x, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fCross);
     End;
     dirs := [DirUp, DirDown, DirLeft, DirRight];
     For i := 1 To fBombs[index].FireLen Do Begin
       If DirUp In dirs Then Begin
-        If (Not Detonate(x, y - i, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fup)) Then Begin
+        If (Not Detonate(x, y - i, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fup)) Then Begin
           dirs := dirs - [DirUp];
-          AddEndFlame(x, y - i + 1, fBombs[index].PlayerIndex);
+          AddEndFlame(x, y - i + 1, fBombs[index].TriggerPlayerindex);
         End;
         If (i = fBombs[index].FireLen) And (y - i >= 0) Then Begin
-          AddEndFlame(x, y - i, fBombs[index].PlayerIndex);
+          AddEndFlame(x, y - i, fBombs[index].TriggerPlayerindex);
         End;
       End;
       If Dirdown In dirs Then Begin
-        If (Not Detonate(x, y + i, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fdown)) Then Begin
+        If (Not Detonate(x, y + i, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fdown)) Then Begin
           dirs := dirs - [Dirdown];
-          AddEndFlame(x, y + i - 1, fBombs[index].PlayerIndex);
+          AddEndFlame(x, y + i - 1, fBombs[index].TriggerPlayerindex);
         End;
         If (i = fBombs[index].FireLen) And (y + i < FieldHeight) Then Begin
-          AddEndFlame(x, y + i, fBombs[index].PlayerIndex);
+          AddEndFlame(x, y + i, fBombs[index].TriggerPlayerindex);
         End;
       End;
       If DirLeft In dirs Then Begin
-        If (Not Detonate(x - i, y, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fleft)) Then Begin
+        If (Not Detonate(x - i, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fleft)) Then Begin
           dirs := dirs - [DirLeft];
-          AddEndFlame(x - i + 1, y, fBombs[index].PlayerIndex);
+          AddEndFlame(x - i + 1, y, fBombs[index].TriggerPlayerindex);
         End;
         If (i = fBombs[index].FireLen) And (x - i > 0) Then Begin
-          AddEndFlame(x - i, y, fBombs[index].PlayerIndex);
+          AddEndFlame(x - i, y, fBombs[index].TriggerPlayerindex);
         End;
       End;
       If DirRight In dirs Then Begin
-        If (Not Detonate(x + i, y, fBombs[index].PlayerIndex, fBombs[index].ColorIndex, fright)) Then Begin
+        If (Not Detonate(x + i, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fright)) Then Begin
           dirs := dirs - [DirRight];
-          AddEndFlame(x + i - 1, y, fBombs[index].PlayerIndex);
+          AddEndFlame(x + i - 1, y, fBombs[index].TriggerPlayerindex);
         End;
         If (i = fBombs[index].FireLen) And (x + i < FieldWidth) Then Begin
-          AddEndFlame(x + i, y, fBombs[index].PlayerIndex);
+          AddEndFlame(x + i, y, fBombs[index].TriggerPlayerindex);
         End;
       End;
     End;
@@ -1707,7 +1713,7 @@ Var
   nx, ny, x, y, i: integer;
 Begin
   For i := 0 To high(Players) Do Begin
-    If (Not Players[i].Info.Alive) Or (Players[i].Info.Dieing) Or (Players[i].Flying) Then Continue;
+    If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
     x := trunc(Players[i].Info.Position.x);
     y := trunc(Players[i].Info.Position.y);
     // Die Kollision Spieler gegen PowerUp
@@ -1761,7 +1767,8 @@ Begin
     End;
     // Die Kollision Spieler gegen eine Flamme
     If fField[x, y].Flame <> [] Then Begin
-      If Not Players[i].Info.Dieing Then Begin
+      // TODO: Während eines Teleport vorgangs ist der Spieler unsterblich -> Klären ob das wirklich gewollt ist..
+      If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) Then Begin
         If i = fField[x, y].FlamePlayer Then Begin
           // Selfkill
           Players[fField[x, y].FlamePlayer].Kills := Players[fField[x, y].FlamePlayer].Kills - 1;
@@ -1834,7 +1841,7 @@ Begin
     result.PlayerInfos[i].Team := Players[i].Team;
     result.PlayerInfos[i].Position.x := Players[i].Info.Position.x;
     result.PlayerInfos[i].Position.y := Players[i].Info.Position.y;
-    result.PlayerInfos[i].Alive := Players[i].Info.Alive And (Not Players[i].Info.Dieing);
+    result.PlayerInfos[i].Alive := Players[i].Info.Alive And (Not Players[i].Info.Dying);
     result.PlayerInfos[i].Flying := Players[i].Flying;
     result.PlayerInfos[i].FlameLength := Players[i].Powers.FlameLen;
     result.PlayerInfos[i].Speed := Players[i].Powers.Speed;
@@ -1968,7 +1975,7 @@ Begin
   Players[Index].MoveState := msStill; // Zum Sterben halten wir an ;)
   Players[Index].Info.Animation := raDie;
   Players[Index].Info.Value := Random(65536); // Eine Zufällige Todesanimation wählen
-  Players[Index].Info.Dieing := true;
+  Players[Index].Info.Dying := true;
   Players[Index].Info.Direction := 0;
   Players[Index].Info.Counter := 0;
 End;

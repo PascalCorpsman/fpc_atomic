@@ -90,7 +90,8 @@ Const
    * -releaseG - 0.11003 = ADD: First Ai version that beats humans
    * -releaseG - 0.11004 = ADD: Update AI-Interface to 0.02 -> for better C support
    * -releaseG - 0.11005 = FIX: Do not respawn PowerUps on Holes
-   *             0.11006 =
+   *             0.11006 = FIX: If a bomb triggers a bomb from a other player then the second bombs owner is not allowed to get the kill, instead the firsts bombs owner get the kill!
+   *                       FIX: Player is imortable during teleporting
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
@@ -300,6 +301,7 @@ Type
     FlyFinTime: integer; // Zeit in ms wenn der Flug fertig sein soll
     Speed: Single;
     PlayerIndex: Integer; // Wer hat die Bombe den nun gelegt !
+    TriggerPlayerindex: integer; // Wessen Bombe hat die initiale Zündung ausgelöst -> Wer bekommt den Kill ?
     Lifetime: integer; // Zeit in Ms seit wann die Bombe Lebt
     FireLen: integer; // Strahlläng ein Kacheln (>= 1)
     Detonated: Boolean; // Wird für handle Bombs benötigt, damit man weis welche bombem in diesem Run bereits "Explodiert" sind
@@ -455,7 +457,7 @@ Type
    *)
   TAtomicInfo = Record
     Alive: Boolean; // Rendern, Ja / Nein
-    Dieing: Boolean; // Wenn True, dann "Stirbt" der Spieler gerade
+    Dying: Boolean; // Wenn True, dann "Stirbt" der Spieler gerade
     Animation: TRenderAnimation; // Welche Animation soll gerade Gerendert werden ?
     Counter: uint16; // Zähler Wie Lange der PLayer etwas "Tut" Dieing = True ist. -> Der kann ggf noch nach TPlayer wandern
     Value: uint16; // Bei raDie, raZen, raLockedIn muss eine bestimmte angewählt werden, hier steht ihr Index
