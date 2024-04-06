@@ -54,7 +54,7 @@ Begin
       VK_DOWN: result := 'Down';
       VK_SPACE: result := 'Space';
       VK_SHIFT: result := 'Shift';
-      VK_TAB: result := 'Tap';
+      VK_TAB: result := 'Tab';
       VK_CAPITAL: result := 'Capital';
       VK_F1..VK_F12: result := 'F' + inttostr(key - VK_F1 + 1);
       VK_INSERT: result := 'Insert';
