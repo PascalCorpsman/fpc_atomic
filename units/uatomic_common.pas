@@ -92,6 +92,7 @@ Const
    * -releaseG - 0.11005 = FIX: Do not respawn PowerUps on Holes
    *             0.11006 = FIX: If a bomb triggers a bomb from a other player then the second bombs owner is not allowed to get the kill, instead the firsts bombs owner get the kill!
    *                       FIX: Player is imortable during teleporting
+   *                       FIX: Schemes that do not define a "team" for player pos, crashed during loading..
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

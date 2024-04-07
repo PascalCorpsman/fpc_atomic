@@ -1439,7 +1439,8 @@ Function TGame.LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
   End;
 
   (*
-   * -S,1,14,10,1 -> Playerpos 1
+   * -S,index,x,y[,team]
+   * -S,1,14,10,1
    *)
   Procedure EvalPlayerPos(Data: String);
   Var
@@ -1447,12 +1448,14 @@ Function TGame.LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     pPos: LongInt;
   Begin
     sa := data.Split(',');
-    If length(sa) <> 5 Then Raise exception.create('Error, invalid player starting position: ' + data);
+    If length(sa) < 4 Then Raise exception.create('Error, invalid player starting position: ' + data);
     pPos := strtoint(sa[1]);
     If (pPos >= 0) And (pPos <= high(fScheme.PlayerStartPositions)) Then Begin
       fScheme.PlayerStartPositions[pPos].x := strtoint(sa[2]);
       fScheme.PlayerStartPositions[pPos].y := strtoint(sa[3]);
-      fScheme.PlayerStartPositions[pPos].Team := strtoint(sa[4]);
+      If length(sa) >= 5 Then Begin
+        fScheme.PlayerStartPositions[pPos].Team := strtoint(sa[4]);
+      End;
     End;
   End;
 
