@@ -65,13 +65,13 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="-p 9876 -t 0 -l 0"/>
+        <CommandLineParams Value="-p 9876 -t 0 -l 1"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="Default">
           <local>
-            <CommandLineParams Value="-p 9876 -t 0 -l 0"/>
+            <CommandLineParams Value="-p 9876 -t 0 -l 1"/>
           </local>
         </Mode0>
       </Modes>

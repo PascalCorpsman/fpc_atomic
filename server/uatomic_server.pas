@@ -498,10 +498,6 @@ Begin
   log('TServer.HandleUserLoginRequest', llTrace);
   ClientVersion := $FFFFFFFF;
   Stream.Read(ClientVersion, sizeof(ClientVersion));
-  ClientMode := 0;
-  Stream.Read(ClientMode, sizeof(ClientMode));
-  Username := Stream.ReadAnsiString;
-
   m := TMemoryStream.Create;
   // 0. Check ob die beiden Versionen Compatibel sind
   If version <> ClientVersion Then Begin
@@ -511,6 +507,11 @@ Begin
     LogLeave;
     exit;
   End;
+
+  ClientMode := 0;
+  Stream.Read(ClientMode, sizeof(ClientMode));
+  Username := Stream.ReadAnsiString;
+
 {$IFDEF Release}
   If ClientMode <> GameModeRelease Then
 {$ELSE}

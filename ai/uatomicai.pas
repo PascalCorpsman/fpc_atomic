@@ -33,8 +33,9 @@ Const
    *                    Allow collecting bad powerups in panik mode
    *             0.04 - Improve Panik Mode, Friendly fire Check
    *             0.05 - Try to skip Other player that have diseases
+   *             0.06 - FIX: AV on ill flying AI'S
    *)
-  Ai_Version = 'Atomic ai ver. 0.05 by Corpsman';
+  Ai_Version = 'Atomic ai ver. 0.06 by Corpsman';
 
   (*
    * Powerups the AI want to collect
@@ -336,7 +337,7 @@ Begin
     // Treat other players that are ill as "deadly"
     For i := 0 To 9 Do Begin
       // If we are the one who is ill, we need to skip our self, otherwise we would run as long as we are ill
-      If fAiInfo^.PlayerInfos[i].Alive And fAiInfo^.PlayerInfos[i].IsIll And (i <> fIndex) Then Begin
+      If fAiInfo^.PlayerInfos[i].Alive And fAiInfo^.PlayerInfos[i].IsIll And (i <> fIndex) and (not (fAiInfo^.PlayerInfos[i].Flying)) Then Begin
         px := trunc(fAiInfo^.PlayerInfos[i].Position.x);
         py := trunc(fAiInfo^.PlayerInfos[i].Position.y);
         fIsSurvivable[px, py] := false;
