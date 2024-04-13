@@ -561,9 +561,11 @@ Begin
         PlaySound := Game.Settings.PlaySounds;
         Game.Settings.PlaySounds := false;
         Game.PlaySoundEffect('');
+        Game.StartPlayingSong('');
         Game.DisConnect;
         Application.ProcessMessages;
         timer1.Enabled := false;
+        Initialized := false; // Wir legen die gesamte Anwendung Lahm !
         form18.timer1.enabled := true; // So tun wie wenn was passieren würde ..
         form18.Show; // Dem User Anzeigen dass wir nun Downloaden
         If fUpdater.DoUpdate_Part1(dir, ver) Then Begin

@@ -90,9 +90,11 @@ Const
    * -releaseG - 0.11003 = ADD: First Ai version that beats humans
    * -releaseG - 0.11004 = ADD: Update AI-Interface to 0.02 -> for better C support
    * -releaseG - 0.11005 = FIX: Do not respawn PowerUps on Holes
-   *             0.11006 = FIX: If a bomb triggers a bomb from a other player then the second bombs owner is not allowed to get the kill, instead the firsts bombs owner get the kill!
+   * -releaseGP- 0.11006 = FIX: If a bomb triggers a bomb from a other player then the second bombs owner is not allowed to get the kill, instead the firsts bombs owner get the kill!
    *                       FIX: Player is imortable during teleporting
    *                       FIX: Schemes that do not define a "team" for player pos, crashed during loading..
+   *                       FIX: try to improove Update process
+   *             0.11007 =
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden

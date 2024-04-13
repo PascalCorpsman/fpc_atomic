@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uupdate.pas                                                     20.12.2018 *)
 (*                                                                            *)
-(* Version     : 0.05                                                         *)
+(* Version     : 0.06                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -27,6 +27,7 @@
 (*               0.03 - Besseres Follow_Links                                 *)
 (*               0.04 - Fix AV beim beenden nach DoUpdate_Part1               *)
 (*               0.05 - Unter Windows warten, bis der Prozess beendet ist     *)
+(*               0.06 - Finished dialog und frage nach Restart                *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uupdate;
@@ -224,7 +225,7 @@ Function GetVersionFileContent(Data: TVersion; Const AdditionalRecords: Array Of
 
 Implementation
 
-Uses ssl_openssl, HTTPSend, zipper, FileUtil, synautil,
+Uses ssl_openssl, HTTPSend, zipper, FileUtil, synautil, LCLType,
 
 {$IFDEF Linux}
   Process,
@@ -890,12 +891,14 @@ Begin
     If Not DeleteDirectory(SourceDir, false) Then Begin
       LastError := LastError + 'Could not delete: ' + SourceDir;
     End;
-    // 4. Starten der neuen
-    p := TProcessUTF8.Create(Nil);
-    p.Executable := StarterName;
-    p.Options := [];
-    p.Execute;
-    p.free;
+    If ID_yes = Application.MessageBox(pchar('Update successfully, do you want to restart ' + ExtractFileName(StarterName) + ' now ?'), 'Info', mb_YesNo Or MB_iconquestion) Then Begin
+      // 4. Starten der neuen
+      p := TProcessUTF8.Create(Nil);
+      p.Executable := StarterName;
+      p.Options := [];
+      p.Execute;
+      p.free;
+    End;
   Except
     On av: exception Do Begin
       LastError := LastError + av.Message;

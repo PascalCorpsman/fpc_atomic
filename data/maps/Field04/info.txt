@@ -1,6 +1,6 @@
 [General]
 Name=The Coal Mine
-HasHoles=1
+HasHohles=1
 
 [Preview]
 Row1=..:::
