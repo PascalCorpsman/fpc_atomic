@@ -11,6 +11,16 @@ FPC Atomic is a complete reimplementation of the original Atomic Bomberman game 
 ## What needs to be done to play the game?
 The steps shown here are only needed to be done once (for installation).
 
+```plantuml
+Alice -> Bob: Authentication Request
+Bob --> Alice: Authentication Response
+   
+Alice -> Bob: Another authentication Request
+Alice <-- Bob: Another authentication Response
+
+[[https://www.oocities.org/timessquare/tower/4056/download/ani.zip ani.zip]]
+```
+
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/documentation/installation.plantuml)
 
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
