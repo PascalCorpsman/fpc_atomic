@@ -1,0 +1,25 @@
+''Eval Image with http://plantuml.sourceforge.net/
+''---------- Atomic_Messages.png ---------- 
+@startuml
+
+:Store Atomic Bomberman 
+CD Content in folder "foo";
+if (Do you want 
+additional animations?) then (yes)
+:Download [[https://www.oocities.org/timessquare/tower/4056/download/ani.zip ani.zip]];
+:Extract the file to "foo/DATA/ANI";
+else (no)
+endif
+:Extract fpc_atomic.zp 
+in the designated 
+folder of the final
+game destination;
+:Run cd_data_extractor in this folder;
+if (Do you use Linux?) then (yes)
+:Run Linux_sound_install_script.sh;
+else (no)
+endif
+:read the [[https://github.com/PascalCorpsman/fpc_atomic/blob/main/MANUAL.md manual]];
+: Run fpc_atomic binary to start the game;
+
+@enduml
