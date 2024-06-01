@@ -500,7 +500,7 @@ Begin
   Stream.Read(ClientVersion, sizeof(ClientVersion));
   m := TMemoryStream.Create;
   // 0. Check ob die beiden Versionen Compatibel sind
-  If version <> ClientVersion Then Begin
+  If ProtocollVersion <> ClientVersion Then Begin
     i := EC_Invalid_Versions;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);

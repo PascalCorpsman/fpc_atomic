@@ -23,8 +23,6 @@ Interface
 Uses
   Classes, SysUtils, ulogger, Graphics, ugraphics, uvectormath;
 
-{$I ../client/updater_settings.inc}
-
 Const
   (*
    * Historie :  0.01    = Initialversion (Activate Updater, MainMenu, OptionsDialog)
@@ -97,18 +95,14 @@ Const
    * -releaseG - 0.11007 = no changes only Ai-Update
    *             0.11008 =
    *)
-  Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
+
+  ProtocollVersion: uint32 = 11; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  Version = '0.11008';
+  defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
 {$ENDIF}
   ;
-
-  RF_VersionInfo = 'Your version: %s' + LineEnding +
-    'Online version: %s' + LineEnding +
-    'Release Message: ' + LineEnding + LineEnding + '%s' + LineEnding + LineEnding +
-    'If you start the update now, all unsaved data will get lost.' + LineEnding +
-    'Would you like to update FPC Atomic now?';
 
   FieldWidth = 15; // Anzahl der Kacheln Waagrecht
   FieldHeight = 11; // Anzahl der Kacheln Senkrecht
@@ -796,29 +790,19 @@ Begin
   result := Logger.loglevel;
 End;
 
-{$IFDEF Server}
-
-Procedure InitLogger();
-Begin
-  logger.LogToConsole := true;
-  logger.LogToFile := false;
-  logger.AutoLogStackOnFatal := true;
-  logger.LogStackTrace := true;
-  logger.SetLogLevel(2);
-End;
-{$ELSE}
-
 Procedure InitLogger;
 Begin
-  logger.LogToFile := false;
-  logger.SetLogLevel(2);
-  logger.AutoLogStackOnFatal := true;
-  logger.LogStackTrace := true;
+{$IFDEF Server}
+  logger.LogToConsole := true;
+{$ENDIF}
 {$IFDEF Linux}
   logger.LogToConsole := true;
 {$ENDIF}
+  logger.LogToFile := false;
+  logger.AutoLogStackOnFatal := true;
+  logger.LogStackTrace := true;
+  logger.SetLogLevel(2);
 End;
-{$ENDIF}
 
 {$IFDEF Windows}
 

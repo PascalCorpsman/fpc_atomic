@@ -1,0 +1,25 @@
+object Form2: TForm2
+  Left = 816
+  Height = 240
+  Top = 108
+  Width = 320
+  Caption = 'Form2'
+  ClientHeight = 240
+  ClientWidth = 320
+  LCLVersion = '3.99.0.0'
+  OnCreate = FormCreate
+  object Memo1: TMemo
+    Left = 0
+    Height = 240
+    Top = 0
+    Width = 320
+    Align = alClient
+    Lines.Strings = (
+      'Memo1'
+    )
+    ReadOnly = True
+    ScrollBars = ssAutoBoth
+    TabOrder = 0
+    WordWrap = False
+  end
+end

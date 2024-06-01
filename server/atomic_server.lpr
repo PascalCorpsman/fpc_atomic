@@ -36,7 +36,7 @@ Uses Interfaces, sysutils, lazutf8, LazFileUtils
 Procedure PrintHelp;
 Begin
   writeln('');
-  writeln('Online help for FPC Atomic Server ver. ' + format('%0.2f', [Version / 100]));
+  writeln('Online help for FPC Atomic Server ver. ' + format('%0.2f', [ProtocollVersion / 100]));
   writeln('');
   writeln('-p <Port> = Spezifies the port number to listen to.');
   writeln('-l <LogLevel> = Sets Loglevel (default = 2)');
@@ -113,7 +113,7 @@ Begin
       exit;
     End;
   End;
-  Log('FPC Atomic - Server ver. ' + format('%0.2f', [Version / 100]) + ' by Corpsman www.Corpsman.de', llInfo); // Eigentlich müsste dieser Log weiter oben sein, aber nur so ist er auch in der evtl. erstellten .log Datei
+  Log('FPC Atomic - Server ver. ' + format('%0.2f', [ProtocollVersion / 100]) + ' by Corpsman www.Corpsman.de', llInfo); // Eigentlich müsste dieser Log weiter oben sein, aber nur so ist er auch in der evtl. erstellten .log Datei
   s := '';
   For i := 1 To high(Params) Do Begin
     If Not params[i] Then Begin

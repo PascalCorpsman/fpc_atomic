@@ -1,0 +1,127 @@
+object Form3: TForm3
+  Left = 348
+  Height = 549
+  Top = 114
+  Width = 773
+  Caption = 'Form3'
+  ClientHeight = 549
+  ClientWidth = 773
+  Position = poScreenCenter
+  LCLVersion = '3.99.0.0'
+  OnCreate = FormCreate
+  object Memo1: TMemo
+    Left = 8
+    Height = 98
+    Top = 24
+    Width = 756
+    Anchors = [akTop, akLeft, akRight]
+    Lines.Strings = (
+      'Memo1'
+    )
+    ReadOnly = True
+    ScrollBars = ssAutoBoth
+    TabOrder = 0
+    WordWrap = False
+  end
+  object CheckBox1: TCheckBox
+    Left = 8
+    Height = 22
+    Top = 128
+    Width = 124
+    Caption = 'Update launcher'
+    TabOrder = 1
+    OnChange = CheckListBox1Click
+  end
+  object Label1: TLabel
+    Left = 8
+    Height = 16
+    Top = 160
+    Width = 175
+    Caption = 'Files that should be updated:'
+  end
+  object CheckListBox1: TCheckListBox
+    Left = 8
+    Height = 118
+    Top = 176
+    Width = 756
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ItemHeight = 0
+    TabOrder = 2
+    TopIndex = -1
+    OnClick = CheckListBox1Click
+  end
+  object Label2: TLabel
+    Left = 8
+    Height = 16
+    Top = 325
+    Width = 244
+    Anchors = [akLeft, akBottom]
+    Caption = 'Additional files that can be downloaded:'
+  end
+  object CheckListBox2: TCheckListBox
+    Left = 8
+    Height = 96
+    Top = 341
+    Width = 756
+    Anchors = [akLeft, akRight, akBottom]
+    ItemHeight = 0
+    TabOrder = 3
+    TopIndex = -1
+    OnClick = CheckListBox1Click
+  end
+  object Button1: TButton
+    Left = 8
+    Height = 25
+    Top = 469
+    Width = 756
+    Anchors = [akLeft, akRight, akBottom]
+    Caption = 'Download and update files'
+    TabOrder = 4
+    OnClick = Button1Click
+  end
+  object Button2: TButton
+    Left = 8
+    Height = 25
+    Top = 509
+    Width = 756
+    Anchors = [akLeft, akRight, akBottom]
+    Caption = 'Cancel'
+    TabOrder = 5
+    OnClick = Button2Click
+  end
+  object Label3: TLabel
+    Left = 8
+    Height = 16
+    Top = 445
+    Width = 41
+    Anchors = [akLeft, akBottom]
+    Caption = 'Label3'
+  end
+  object Button3: TButton
+    Left = 658
+    Height = 25
+    Top = 298
+    Width = 50
+    Anchors = [akRight, akBottom]
+    Caption = 'All'
+    TabOrder = 6
+    OnClick = Button3Click
+  end
+  object Button4: TButton
+    Left = 714
+    Height = 25
+    Top = 298
+    Width = 50
+    Anchors = [akRight, akBottom]
+    Caption = 'None'
+    TabOrder = 7
+    OnClick = Button4Click
+  end
+  object Label4: TLabel
+    Left = 8
+    Height = 16
+    Top = 8
+    Width = 129
+    Caption = 'Last release message:'
+  end
+end

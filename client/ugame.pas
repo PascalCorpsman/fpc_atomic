@@ -160,7 +160,6 @@ Type
 {$IFDEF DebuggMode}
     fPlayer: TPlayers;
 {$ENDIF}
-    VersionInfoString: String; // Für den Updater ;)
     Settings: TAtomicSettings; // für uscreens
 
     Constructor Create();
@@ -733,7 +732,7 @@ Begin
   log('TGame.Connection_Connect', llTrace);
   fChunkManager.SetNoDelay(true);
   m := TMemoryStream.Create;
-  m.Write(version, sizeof(version));
+  m.Write(ProtocollVersion, sizeof(ProtocollVersion));
 {$IFDEF Release}
   b := GameModeRelease;
 {$ELSE}
@@ -1731,7 +1730,6 @@ Begin
   fPlayerIndex[ks0] := -1;
   fPlayerIndex[ks1] := -1;
   fInitialized := false;
-  VersionInfoString := '';
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
   fUDPPingData.Connection := Nil;
@@ -2048,15 +2046,6 @@ Begin
   Case fgameState Of
     gs_MainMenu: Begin
         If assigned(fActualScreen) Then fActualScreen.Render;
-        // Ver VersionInfoString anzeigen;
-        If fActualScreen = fScreens[sMainScreen] Then Begin
-          glPushMatrix();
-          glTranslatef(GameWidth - OpenGL_ASCII_Font.TextWidth(VersionInfoString + ' '), GameHeight - 24, atomic_dialog_Layer + atomic_EPSILON);
-          glBindTexture(GL_TEXTURE_2D, 0);
-          OpenGL_ASCII_Font.Color := clwhite;
-          OpenGL_ASCII_Font.Textout(0, 0, VersionInfoString);
-          glPopMatrix();
-        End;
       End;
     gs_Gaming: Begin
         fActualField.render(fAtomics, fPowerUpsTex);

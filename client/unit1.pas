@@ -53,8 +53,7 @@ Uses
   , uopengl_graphikengine // Die OpenGLGraphikengine ist eine Eigenproduktion von www.Corpsman.de, und kann getrennt geladen werden.
   , uOpenGL_ASCII_Font
   , ugame
-  , uatomic_common
-  , uupdate;
+  , uatomic_common;
 
 {$IFDEF AUTOMODE}
 Const
@@ -102,7 +101,6 @@ Type
     Procedure Timer1Timer(Sender: TObject);
   private
     { private declarations }
-    fUpdater: TUpdater;
     fUserMessages: Array Of TUserMessages;
     // Ehemals Globale Variablen
     Initialized: Boolean; // Wenn True dann ist OpenGL initialisiert
@@ -115,13 +113,10 @@ Type
 {$ENDIF}
     ConnectParamsHandled: Boolean; // Die Übergabe Parameter -ip, -port werden nur 1 mal ausgewertet !
     Procedure OnIdle(Sender: TObject; Var Done: Boolean);
-    Procedure UpdateResultCallback(AlwaysShowResult: Boolean;
-      OnlineVersions: TVersionArray);
     Procedure Load_Atomic_Settings;
     Function GetWorkDir(Out Directory: String): Boolean;
   public
     { public declarations }
-    Procedure CheckForNewVersion(AlwaysShowResult: Boolean);
     Procedure OnConnectToServer(Sender: TObject);
     Procedure OnDisconnectFromServer(Sender: TObject);
     Procedure AddUserMessage(Msg: String; WarnLevel: TLogLevel);
@@ -309,7 +304,6 @@ Begin
     halt;
   End;
 
-  fUpdater := TUpdater.Create;
   ClientWidth := 640;
   ClientHeight := 480;
   Tform(self).Constraints.MinHeight := 480;
@@ -382,6 +376,8 @@ Begin
   log('TForm1.FormCloseQuery', llTrace);
   // Todo: Speichern der Map, oder wenigstens Nachfragen ob gespeichert werden soll
   log('Shuting down.', llInfo);
+  IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
+  IniPropStorage1.WriteString('Version', Version);
   //setValue('MainForm', 'Left', inttostr(Form1.left));
   //setValue('MainForm', 'Top', inttostr(Form1.top));
   //setValue('MainForm', 'Width', inttostr(Form1.Width));
@@ -406,13 +402,8 @@ Begin
   LUDPComponent1.Disconnect(true);
 {$ENDIF}
   Game.OnIdle;
-  fUpdater.free;
-  fUpdater := Nil;
   LogLeave;
 End;
-
-Var
-  FirstTimer: Boolean = True;
 
 Procedure TForm1.Timer1Timer(Sender: TObject);
 Var
@@ -422,19 +413,6 @@ Var
 {$ENDIF}
   t: int64;
 Begin
-  If FirstTimer Then Begin
-    FirstTimer := false;
-    (*
-     * Der Timer wird erst gestartet, wenn Atomic Initialize durch ist -> Damit sind wir im Regulären Rendering Modus
-     * und können auch die Messagebox des Dialoges anzeigen.
-     *)
-    If Game.Settings.CheckForUpdates Then Begin
-      CheckForNewVersion(false); // Das Automatische Update triggern ..
-    End
-    Else Begin
-      Game.VersionInfoString := 'Your version is not checked!';
-    End;
-  End;
   If Initialized Then Begin
     inc(FPS_Counter);
     t := GetTickCount64();
@@ -518,77 +496,6 @@ Begin
    *)
   If assigned(game) Then
     Game.OnIdle;
-End;
-
-Procedure TForm1.UpdateResultCallback(AlwaysShowResult: Boolean;
-  OnlineVersions: TVersionArray);
-Var
-  ReleaseText, Dir: String;
-  Ver: TVersion;
-  i: Integer;
-  PlaySound: Boolean;
-Begin
-  If Not assigned(OnlineVersions) Then Begin
-{$IFDEF Linux}
-    Game.VersionInfoString := 'Error, could not download infos, did you install libssldev ?' + LineEnding + LineEnding +
-      'sudo apt-get install libssl-dev';
-{$ELSE}
-    Game.VersionInfoString := fUpdater.LastError;
-{$ENDIF}
-    exit;
-  End;
-  // Suchen der Version die zu uns gehört
-  ver.name := '';
-  For i := 0 To high(OnlineVersions) Do Begin
-    If OnlineVersions[i].Name = updater_AppName Then Begin
-      ver := OnlineVersions[i];
-      break;
-    End;
-  End;
-  If ver.name = '' Then Begin
-    Game.VersionInfoString := 'Could not download valid version informations.';
-    exit;
-  End;
-  If strtofloat(ver.Version, DefFormat) > strtofloat(updater_Version, DefFormat) Then Begin
-    ReleaseText := ver.ReleaseText;
-    If ID_YES = application.MessageBox(pchar(format(RF_VersionInfo, [updater_Version, ver.Version, ReleaseText])), 'Information', MB_YESNO Or MB_ICONINFORMATION) Then Begin
-      If Not GetWorkDir(dir) Then Begin
-        Game.VersionInfoString := 'Unable to create temporary folder.';
-      End
-      Else Begin
-        self.Enabled := false;
-        // Proaktiv schon mal so viel wie möglich abschalten
-        PlaySound := Game.Settings.PlaySounds;
-        Game.Settings.PlaySounds := false;
-        Game.PlaySoundEffect('');
-        Game.StartPlayingSong('');
-        Game.DisConnect;
-        Application.ProcessMessages;
-        timer1.Enabled := false;
-        Initialized := false; // Wir legen die gesamte Anwendung Lahm !
-        form18.timer1.enabled := true; // So tun wie wenn was passieren würde ..
-        form18.Show; // Dem User Anzeigen dass wir nun Downloaden
-        If fUpdater.DoUpdate_Part1(dir, ver) Then Begin
-          form18.timer1.enabled := false; // So tun wie wenn was passieren würde ..
-          self.Enabled := true;
-        End
-        Else Begin
-          Game.VersionInfoString := format(
-            'An error occured, the update process is not finished correct:' + LineEnding + LineEnding +
-            '%s' + LineEnding + LineEnding +
-            'Please retry by hand (or retry with admin rights).', [fUpdater.LastError]);
-          self.Enabled := true;
-          exit;
-        End;
-        Game.Settings.PlaySounds := PlaySound;
-        // Egal ob mit oder ohne Fehler wir gehen aus !
-        close; // Wenn das auch nicht geht, dann hilft hier nur noch ein Halt :/
-      End;
-    End;
-  End
-  Else Begin
-    Game.VersionInfoString := 'Your version is up to date.';
-  End;
 End;
 
 Procedure TForm1.Load_Atomic_Settings;
@@ -723,20 +630,6 @@ Begin
    *)
   Directory := IncludeTrailingPathDelimiter(GetTempDir(false)) + 'FPC_Atomic';
   result := ForceDirectoriesUTF8(Directory);
-End;
-
-Procedure TForm1.CheckForNewVersion(AlwaysShowResult: Boolean);
-Begin
-  //  fUpdater.ProxyHost := getvalue('General', 'ProxyHost', '');
-  //  fUpdater.ProxyPort := getvalue('General', 'ProxyPort', '');
-  //  fUpdater.ProxyUser := getvalue('General', 'ProxyUser', '');
-  //  fUpdater.ProxyPass := getvalue('General', 'ProxyPass', '');
-  If URL_CheckForUpdate <> '' Then Begin
-    fUpdater.GetVersions(URL_CheckForUpdate, AlwaysShowResult, @UpdateResultCallback);
-  End
-  Else Begin
-    game.VersionInfoString := 'No version checking available';
-  End;
 End;
 
 Procedure TForm1.OnConnectToServer(Sender: TObject);

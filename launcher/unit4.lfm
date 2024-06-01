@@ -1,0 +1,21 @@
+object Form4: TForm4
+  Left = 353
+  Height = 91
+  Top = 124
+  Width = 320
+  BorderStyle = bsNone
+  Caption = 'Form4'
+  ClientHeight = 91
+  ClientWidth = 320
+  FormStyle = fsSystemStayOnTop
+  Position = poScreenCenter
+  LCLVersion = '3.99.0.0'
+  OnCreate = FormCreate
+  object ProgressBar1: TProgressBar
+    Left = 8
+    Height = 72
+    Top = 8
+    Width = 304
+    TabOrder = 0
+  end
+end

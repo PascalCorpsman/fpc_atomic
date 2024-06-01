@@ -1,0 +1,154 @@
+object Form1: TForm1
+  Left = 347
+  Height = 429
+  Top = 107
+  Width = 467
+  Caption = 'Form1'
+  ClientHeight = 429
+  ClientWidth = 467
+  Position = poScreenCenter
+  LCLVersion = '3.99.0.0'
+  OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
+  object Image1: TImage
+    Left = 8
+    Height = 288
+    Top = 8
+    Width = 192
+    Center = True
+    Stretch = True
+  end
+  object Button1: TButton
+    Left = 208
+    Height = 25
+    Top = 8
+    Width = 248
+    Caption = 'Check for updates'
+    TabOrder = 0
+    OnClick = Button1Click
+  end
+  object GroupBox1: TGroupBox
+    Left = 208
+    Height = 128
+    Top = 72
+    Width = 248
+    Caption = ' Quicksetup '
+    ClientHeight = 111
+    ClientWidth = 246
+    TabOrder = 1
+    object CheckBox1: TCheckBox
+      Left = 8
+      Height = 22
+      Top = 8
+      Width = 82
+      Caption = 'Show FPS'
+      TabOrder = 0
+    end
+    object CheckBox2: TCheckBox
+      Left = 8
+      Height = 22
+      Top = 32
+      Width = 86
+      Caption = 'Fullscreen'
+      TabOrder = 1
+    end
+    object Label1: TLabel
+      Left = 8
+      Height = 16
+      Top = 90
+      Width = 68
+      Caption = 'NodeName'
+    end
+    object Edit1: TEdit
+      Left = 136
+      Height = 26
+      Top = 80
+      Width = 104
+      TabOrder = 2
+      Text = 'Edit1'
+    end
+    object CheckBox4: TCheckBox
+      Left = 8
+      Height = 22
+      Top = 56
+      Width = 97
+      Caption = 'Play sounds'
+      TabOrder = 3
+    end
+  end
+  object Button2: TButton
+    Left = 8
+    Height = 50
+    Top = 328
+    Width = 448
+    Caption = 'Launch FPC Atomic'
+    TabOrder = 2
+    OnClick = Button2Click
+  end
+  object Button3: TButton
+    Left = 8
+    Height = 25
+    Top = 392
+    Width = 448
+    Caption = 'Close'
+    TabOrder = 3
+    OnClick = Button3Click
+  end
+  object GroupBox2: TGroupBox
+    Left = 208
+    Height = 112
+    Top = 208
+    Width = 248
+    Caption = ' WAN '
+    ClientHeight = 95
+    ClientWidth = 246
+    TabOrder = 4
+    object CheckBox3: TCheckBox
+      Left = 8
+      Height = 22
+      Top = 8
+      Width = 176
+      Caption = 'connect through internet'
+      TabOrder = 0
+    end
+    object Edit2: TEdit
+      Left = 136
+      Height = 26
+      Top = 32
+      Width = 104
+      TabOrder = 1
+      Text = 'Edit2'
+    end
+    object Edit3: TEdit
+      Left = 136
+      Height = 26
+      Top = 64
+      Width = 104
+      TabOrder = 2
+      Text = 'Edit3'
+    end
+    object Label2: TLabel
+      Left = 8
+      Height = 16
+      Top = 42
+      Width = 59
+      Caption = 'Router IP:'
+    end
+    object Label3: TLabel
+      Left = 8
+      Height = 16
+      Top = 74
+      Width = 70
+      Caption = 'Router Port'
+    end
+  end
+  object Button4: TButton
+    Left = 208
+    Height = 25
+    Top = 40
+    Width = 248
+    Caption = 'Run cd data extractor'
+    TabOrder = 5
+    OnClick = Button4Click
+  end
+end
