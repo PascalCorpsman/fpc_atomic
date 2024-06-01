@@ -57,28 +57,28 @@
       },
       {
         "file":        {
-          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
-          "SIZE":"-1",
-          "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
-          "SIZE2":"-1",
+          "HASH":"f3ca2d9bbcf56e5860168724f86f1f1e",
+          "SIZE":"299520",
+          "HASH2":"b498c4aa86ee2a2778fc84acd338d4aa",
+          "SIZE2":"1191608",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/ai.dll",
           "Filename":"ai.dll"
         }
       },
       {
         "file":        {
-          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
-          "SIZE":"-1",
-          "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
-          "SIZE2":"-1",
+          "HASH":"86c7feb93a9b7460a393dcd9ce07e19f",
+          "SIZE":"265728",
+          "HASH2":"66e086f711648cee1db87234dc0c8072",
+          "SIZE2":"255200",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/bass.dll",
           "Filename":"bass.dll"
         }
       },
       {
         "file":        {
-          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
-          "SIZE":"-1",
+          "HASH":"777d7d007fc6c89df46e72b7f7ddf73e",
+          "SIZE":"380",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
