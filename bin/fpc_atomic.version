@@ -1,6 +1,6 @@
 {
   "fpc_atomic":  {
-    "Version":updater_Version,
+    "Version":0.11008,
     "LauncherVersion":1,
     "VersionText":"",
     "Download_core":
