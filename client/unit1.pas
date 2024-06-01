@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* FPC_Atomic                                                      01.03.2023 *)
 (*                                                                            *)
-(* Version     : 0.01                                                         *)
+(* Version     : see uatomic_common.pas                                       *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)

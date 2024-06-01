@@ -94,7 +94,8 @@ Const
    *                       FIX: Player is imortable during teleporting
    *                       FIX: Schemes that do not define a "team" for player pos, crashed during loading..
    *                       FIX: try to improove Update process
-   *             0.11007 =
+   * -releaseG - 0.11007 = no changes only Ai-Update
+   *             0.11008 =
    *)
   Version: uint32 = updater_int_Version; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   defCaption = 'FPC Atomic ver. ' + updater_Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
