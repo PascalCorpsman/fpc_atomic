@@ -13,10 +13,10 @@ Const
   JSON_ROOT = 'fpc_atomic';
   (*
    * Historie : 0.01 = Initial version
-   *
+   *            0.02 =
    * Known Bugs :
    *)
-  LauncherVersion: integer = 1;
+  LauncherVersion: integer = 2;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);

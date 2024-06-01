@@ -93,11 +93,12 @@ Const
    *                       FIX: Schemes that do not define a "team" for player pos, crashed during loading..
    *                       FIX: try to improove Update process
    * -releaseG - 0.11007 = no changes only Ai-Update
-   *             0.11008 =
+   * -releaseG - 0.11008 = ADD: Release Launcher
+   *             0.11009 =
    *)
 
   ProtocollVersion: uint32 = 11; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.11008';
+  Version = '0.11009';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
