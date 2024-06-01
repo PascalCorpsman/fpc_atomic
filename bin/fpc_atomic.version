@@ -82,6 +82,14 @@
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
+      },
+      {
+        "file":        {
+          "HASH":"c4c60b1715b9bf0f926f2d3987f7c725",
+          "SIZE":"193",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/shadow.png",
+          "Filename":"data\/atomic\/shadow.png"
+        }
       }
     ]
   }
