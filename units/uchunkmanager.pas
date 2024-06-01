@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* TChunkmanager                                                   03.06.2015 *)
 (*                                                                            *)
-(* Version     : 0.15                                                         *)
+(* Version     : 0.16                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -41,6 +41,7 @@
 (*               0.14 - Fix Memleak if server is killed with more than 1      *)
 (*                      client connected.                                     *)
 (*               0.15 - Fix AV on client disconnect                           *)
+(*               0.16 - Disconnect socket instead of raising AV on error      *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uChunkmanager;
@@ -148,6 +149,11 @@ Type
      * Beginnt das Senden des ersten Elementes in der Warteschlange
      *)
     Procedure StartSendChunk(aSocket: TLSocket);
+
+    (*
+     * trennt einen Socket und ruft wenn möglich noch OnError mit msg auf
+     *)
+    Procedure ShutdownSocketWithError(Const msg: String; aSocket: TLSocket);
 
   public
     Property Connected: Boolean read fGetConnected;
@@ -385,7 +391,7 @@ Var
   k: Int64;
   j: Integer;
   Chunk: TChunk;
-  NeedFurtherReadings: BOolean;
+  NeedFurtherReadings: Boolean;
 Begin
 {$IFDEF UseLogger}
   log('TChunkManager.OnReceive' + asocket.PeerAddress, llTrace);
@@ -415,15 +421,17 @@ Begin
           (pu^.RecvBuf.HeaderBytes[1] <> magicHeader[1]) Or
           (pu^.RecvBuf.HeaderBytes[2] <> magicHeader[2]) Or
           (pu^.RecvBuf.HeaderBytes[3] <> magicHeader[3]) Then Begin
+          magicTemp := ''; // prevent compiler warning
           SetLength(magicTemp, 4);
           magicTemp[1] := chr(pu^.RecvBuf.HeaderBytes[0]);
           magicTemp[2] := chr(pu^.RecvBuf.HeaderBytes[1]);
           magicTemp[3] := chr(pu^.RecvBuf.HeaderBytes[2]);
           magicTemp[4] := chr(pu^.RecvBuf.HeaderBytes[3]);
 {$IFDEF UseLogger}
-          log('Magic Header ist ungültig: ' + magicTemp, llfatal);
+          log('Magic Header id invalid: ' + magicTemp, llerror);
 {$ENDIF}
-          Raise Exception.Create('Magic Header ist ungültig: ' + magicTemp);
+          ShutdownSocketWithError('Magic Header id invalid: ' + magicTemp, aSocket);
+          exit;
         End;
 {$ELSE}
         d := 0;
@@ -467,9 +475,10 @@ Begin
         If pu^.RecvBuf.Data.Size >= pu^.RecvBuf.Size Then Begin
           If pu^.RecvBuf.Data.Size > pu^.RecvBuf.Size Then Begin
 {$IFDEF UseLogger}
-            log('Zu viele Daten für Chunk ausgelesen.', llfatal);
+            log('To much data to be read from chunk', llerror);
 {$ENDIF}
-            Raise Exception.Create('Zu viele Daten für Chunk ausgelesen.');
+            ShutdownSocketWithError('To much data to be read from chunk', aSocket);
+            exit;
           End;
           If assigned(fOnReceivedChunk) Then Begin
             pu^.RecvBuf.Data.Position := 0;
@@ -629,6 +638,24 @@ Begin
 {$IFDEF UseLogger}
   logleave;
 {$ENDIF}
+End;
+
+Procedure TChunkManager.ShutdownSocketWithError(Const msg: String;
+  aSocket: TLSocket);
+Var
+  recv: Integer;
+  data: Array[0..ChunkSize - 1] Of byte;
+Begin
+  // Wir Melden den Fehler
+  If assigned(fconnection.OnError) Then Begin
+    fconnection.OnError(msg, aSocket);
+  End;
+  // Lesen den Puffer Leer und schmeisen alles weg was da so kommt..
+  Repeat
+    recv := aSocket.get(data, ChunkSize);
+  Until recv = 0;
+  // Trennen der Verbindung
+  aSocket.Disconnect(true);
 End;
 
 Procedure TChunkManager.OnAccept(aSocket: TLSocket);

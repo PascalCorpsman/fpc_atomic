@@ -34,8 +34,10 @@ Const
    *             0.04 - Improve Panik Mode, Friendly fire Check
    *             0.05 - Try to skip Other player that have diseases
    *             0.06 - FIX: AV on ill flying AI'S
+   *             0.07 - FIX: take solid bricks into account, when searching for destroyable bricks
+   *                    FIX: don't get stuck on a hole if there are no more destroyable bricks
    *)
-  Ai_Version = 'Atomic ai ver. 0.06 by Corpsman';
+  Ai_Version = 'Atomic ai ver. 0.07 by Corpsman';
 
   (*
    * Powerups the AI want to collect
@@ -337,7 +339,7 @@ Begin
     // Treat other players that are ill as "deadly"
     For i := 0 To 9 Do Begin
       // If we are the one who is ill, we need to skip our self, otherwise we would run as long as we are ill
-      If fAiInfo^.PlayerInfos[i].Alive And fAiInfo^.PlayerInfos[i].IsIll And (i <> fIndex) and (not (fAiInfo^.PlayerInfos[i].Flying)) Then Begin
+      If fAiInfo^.PlayerInfos[i].Alive And fAiInfo^.PlayerInfos[i].IsIll And (i <> fIndex) And (Not (fAiInfo^.PlayerInfos[i].Flying)) Then Begin
         px := trunc(fAiInfo^.PlayerInfos[i].Position.x);
         py := trunc(fAiInfo^.PlayerInfos[i].Position.y);
         fIsSurvivable[px, py] := false;
@@ -565,6 +567,7 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
 
       // TODO: The checks below ignore the GoodPowerUps which means that they will not get destroyed, is this good ?
       If d[amUp] Then Begin
+        If fDestroyableBrickField[x, y - i] In [fSolid] Then d[amUp] := false; // Stop at a solid brick !
         If fDestroyableBrickField[x, y - i] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amUp] := false;
@@ -572,6 +575,7 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
       End;
 
       If d[amDown] Then Begin
+        If fDestroyableBrickField[x, y + i] In [fSolid] Then d[amDown] := false; // Stop at a solid brick !
         If fDestroyableBrickField[x, y + i] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amDown] := false;
@@ -579,6 +583,7 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
       End;
 
       If d[amLeft] Then Begin
+        If fDestroyableBrickField[x - i, y] In [fSolid] Then d[amLeft] := false; // Stop at a solid brick !
         If fDestroyableBrickField[x - i, y] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amLeft] := false;
@@ -586,6 +591,7 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
       End;
 
       If d[amRight] Then Begin
+        If fDestroyableBrickField[x + i, y] In [fSolid] Then d[amRight] := false; // Stop at a solid brick !
         If fDestroyableBrickField[x + i, y] In [fBrick] + BadPowerUps Then Begin
           inc(result);
           d[amRight] := false;
@@ -913,11 +919,25 @@ Begin
     // result.MoveState := amNone; // Stop Moving to secure not accidential walk into Dead zone
     //End
     //Else Begin
-    result.Action := apFirst;
-    result.MoveState := amNone; // Stop moving to prevent overshoting
-    fActualTarget := NoTarget;
-    //End;
-    exit;
+    If fAiInfo^.Field[fAix, fAiy] <> fHole Then Begin
+      result.Action := apFirst;
+      result.MoveState := amNone; // Stop moving to prevent overshoting
+      fActualTarget := NoTarget;
+      //End;
+      exit;
+    End
+    Else Begin
+      // Die AI würde nun hier stecken bleiben -> Schicken wir sie weg ;
+      If IsSurvivable(fAix, fAiy) Then Begin // Das Initialisiert das fIsSurvivable
+        fIsSurvivable[fAix, fAiy] := false; // Die Aktuelle Koordinate "böse" machen
+        // Den Rest macht die Escape AI ;)
+        eT := EscapeAi;
+        If eT <> NoTarget Then Begin
+          result.MoveState := NavigateTo(eT.X, eT.Y, Not fPanik);
+          exit;
+        End;
+      End;
+    End;
   End;
 
   (*
