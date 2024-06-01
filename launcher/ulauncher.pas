@@ -13,11 +13,13 @@ Const
   JSON_ROOT = 'fpc_atomic';
   (*
    * Historie : 0.01 = Initial version
-   *            0.02 = ADD: Improve error message, if launcher needs update and no updater is present.
+   * -Released- 0.02 = ADD: Improve error message, if launcher needs update and no updater is present.
    *                   ADD: Check if all data from cd_data_extractor is extracted
+   *            0.03 =
+   *
    * Known Bugs :
    *)
-  LauncherVersion: integer = 2;
+  LauncherVersion: integer = 3;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);
