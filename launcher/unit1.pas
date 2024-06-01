@@ -126,9 +126,9 @@ Begin
   // Run the App ;)
   p := TProcessUTF8.Create(Nil);
   p.Executable := 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
+  p.Options := p.Options + [poWaitOnExit];
   p.Execute;
   p.free;
-  close;
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
