@@ -1,8 +1,8 @@
 {
   "fpc_atomic":  {
     "Version":0.11008,
-    "LauncherVersion":1,
-    "VersionText":"Release Launcher",
+    "LauncherVersion":2,
+    "VersionText":"atomic launcher, also checks now results of cd_data_extractor",
     "Download_core":
     [
       {
@@ -17,10 +17,10 @@
       },
       {
         "file":        {
-          "HASH":"14abf728310de0e29d976272e0b6246f",
-          "SIZE":"5735424",
-          "HASH2":"81f95557000ebede1d8d37d2008e6542",
-          "SIZE2":"7247016",
+          "HASH":"44a1785bef1df0090e4c945bab3e01cf",
+          "SIZE":"5784064",
+          "HASH2":"7928253bc0d099b38d6bf8b8493328cd",
+          "SIZE2":"7935608",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
