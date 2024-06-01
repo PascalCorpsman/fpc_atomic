@@ -10,16 +10,16 @@ additional animations?) then (yes)
 :Extract the file to "foo/DATA/ANI";
 else (no)
 endif
-:Download and extract [[https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin fpc_atomic.zp]] 
+:Download [[https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin/atomic_launcher.exe atomic_launcher]] 
 in the designated folder of the final
 game destination;
-:Run cd_data_extractor in this folder
+:Run atomic_launcher in this folder
 and follow the instructions;
 if (Do you use Linux?) then (yes)
 :Run Linux_sound_install_script.sh;
 else (no)
 endif
 :read the [[https://github.com/PascalCorpsman/fpc_atomic/blob/main/MANUAL.md manual]];
-: Run fpc_atomic binary to start the game;
+: Run atomic_launcher to start the game;
 
 @enduml
