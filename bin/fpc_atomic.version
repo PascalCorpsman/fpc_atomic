@@ -2,32 +2,42 @@
   "fpc_atomic":  {
     "Version":0.11008,
     "LauncherVersion":1,
-    "VersionText":"",
+    "VersionText":"Release Launcher",
     "Download_core":
     [
       {
         "file":        {
-          "HASH":"671cb41787a9a152b223b98cbd4b5c04",
+          "HASH":"e50e3b2436ee44a68c3a07defd4e8b06",
           "SIZE":"3089920",
-          "HASH2":"0f5685a398e5b008d77aff683bc52510",
-          "SIZE2":"7737304",
+          "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE2":"-1",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":        {
-          "HASH":"a55e032288667685afbbf7b7bf86b2cd",
-          "SIZE":"4181504",
-          "HASH2":"68e7997b9f017689e0e42e56a2776789",
-          "SIZE2":"8779784",
+          "HASH":"14abf728310de0e29d976272e0b6246f",
+          "SIZE":"5735424",
+          "HASH2":"81f95557000ebede1d8d37d2008e6542",
+          "SIZE2":"7247016",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
+          "Filename":"atomic_launcher.exe"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"17f2caee555c37e949eff3239de4ee04",
+          "SIZE":"4000768",
+          "HASH2":"351cea471383c04bd8c123824e1d5a0c",
+          "SIZE2":"8527736",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
       },
       {
         "file":        {
-          "HASH":"d750459b849d6814d47787bdf4fb050f",
+          "HASH":"351ff8df7b498ff304cae533ba903109",
           "SIZE":"2938368",
           "HASH2":"d1ffff1e274f8a474523f46e9d9c5f98",
           "SIZE2":"7645224",
@@ -37,8 +47,8 @@
       },
       {
         "file":        {
-          "HASH":"70cf95b5f3e2c08f6b6a0cde354a78a5",
-          "SIZE":"2777600",
+          "HASH":"11ba2bb4bcdd29cef8eeaa6b15b97ee8",
+          "SIZE":"2673664",
           "HASH2":"fe5e85eccfb4ac902705782acfadd1ae",
           "SIZE2":"6907400",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
@@ -47,9 +57,9 @@
       },
       {
         "file":        {
-          "HASH":"ba0d659f82f4e1ecd0f5fd853926ffee",
+          "HASH":"56c8c5ce2048c7714022b430e24a29ca",
           "SIZE":"2907648",
-          "HASH2":"5c10b0f3a02340122b756dfe9d4b6382",
+          "HASH2":"d739f60cd1ff9dda03dadf8bbc14d589",
           "SIZE2":"7330632",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
@@ -57,7 +67,7 @@
       },
       {
         "file":        {
-          "HASH":"f3ca2d9bbcf56e5860168724f86f1f1e",
+          "HASH":"be33344dbc97e32cfdc923e66a3b1e13",
           "SIZE":"299520",
           "HASH2":"b498c4aa86ee2a2778fc84acd338d4aa",
           "SIZE2":"1191608",
