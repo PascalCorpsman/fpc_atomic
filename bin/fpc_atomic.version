@@ -39,8 +39,8 @@
         "file":        {
           "HASH":"70cf95b5f3e2c08f6b6a0cde354a78a5",
           "SIZE":"2777600",
-          "HASH2":"37bbd1f96a6e5a8248327c4c57000854",
-          "SIZE2":"7194344",
+          "HASH2":"fe5e85eccfb4ac902705782acfadd1ae",
+          "SIZE2":"6907400",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
           "Filename":"updater.exe"
         }
