@@ -11,7 +11,7 @@
           "SIZE":"3089920",
           "HASH2":"0f5685a398e5b008d77aff683bc52510",
           "SIZE2":"7737304",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/Animation_Editor.exe",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
@@ -21,7 +21,7 @@
           "SIZE":"4181504",
           "HASH2":"68e7997b9f017689e0e42e56a2776789",
           "SIZE2":"8779784",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/fpc_atomic.exe",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
       },
@@ -31,7 +31,7 @@
           "SIZE":"2938368",
           "HASH2":"d1ffff1e274f8a474523f46e9d9c5f98",
           "SIZE2":"7645224",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/cd_data_extractor.exe",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
       },
@@ -41,7 +41,7 @@
           "SIZE":"2777600",
           "HASH2":"37bbd1f96a6e5a8248327c4c57000854",
           "SIZE2":"7194344",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/updater.exe",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
           "Filename":"updater.exe"
         }
       },
@@ -51,7 +51,7 @@
           "SIZE":"2907648",
           "HASH2":"5c10b0f3a02340122b756dfe9d4b6382",
           "SIZE2":"7330632",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/atomic_server.exe",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
@@ -61,7 +61,7 @@
           "SIZE":"-1",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE2":"-1",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/ai.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/ai.dll",
           "Filename":"ai.dll"
         }
       },
@@ -71,7 +71,7 @@
           "SIZE":"-1",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE2":"-1",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/bass.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/bass.dll",
           "Filename":"bass.dll"
         }
       },
@@ -79,7 +79,7 @@
         "file":        {
           "HASH":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE":"-1",
-          "URL":"https:\/\/raw.githubusercontent.com\/PascalCorpsman\/fpc_atomic\/tree\/main\/bin\/Linux_sound_install_script.sh",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
       }
