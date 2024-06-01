@@ -212,6 +212,22 @@
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/shadow.png",
           "Filename":"data\/atomic\/shadow.png"
         }
+      },
+      {
+        "file":        {
+          "HASH":"d58cdf31766861efd00e29996e56a486",
+          "SIZE":"503",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/license.md",
+          "Filename":"license.md"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"d92e6c7cef43d28f5e0761199b461561",
+          "SIZE":"6060",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/MANUAL.md",
+          "Filename":"MANUAL.md"
+        }
       }
     ]
   }
