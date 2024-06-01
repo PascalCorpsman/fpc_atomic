@@ -33,7 +33,7 @@ Type
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
-    procedure Button4Click(Sender: TObject);
+    Procedure Button4Click(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
   private
@@ -110,7 +110,7 @@ Begin
   close;
 End;
 
-procedure TForm1.Button4Click(Sender: TObject);
+Procedure TForm1.Button4Click(Sender: TObject);
 Var
   P: TProcessUTF8;
 Begin
@@ -129,7 +129,7 @@ Begin
   p.Execute;
   p.free;
   close;
-end;
+End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
@@ -142,10 +142,20 @@ End;
 Procedure TForm1.Button2Click(Sender: TObject);
 Var
   P: TProcessUTF8;
+  sl: TStringList;
 Begin
   // Launch
   StoreSettings();
   ini.UpdateFile;
+  sl := CheckForFiles();
+  If sl.count <> 0 Then Begin
+    showmessage('Error, the following files are missing:' + LineEnding +
+      sl.Text + LineEnding +
+      'Please re run cd_data_extractor');
+    sl.free;
+    exit;
+  End;
+  sl.free;
   // Short Prechecks
   If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
     (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin

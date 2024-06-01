@@ -13,7 +13,8 @@ Const
   JSON_ROOT = 'fpc_atomic';
   (*
    * Historie : 0.01 = Initial version
-   *            0.02 =
+   *            0.02 = ADD: Improve error message, if launcher needs update and no updater is present.
+   *                   ADD: Check if all data from cd_data_extractor is extracted
    * Known Bugs :
    *)
   LauncherVersion: integer = 2;
@@ -74,9 +75,11 @@ Function DownloadFile(URL, Filename: String): boolean;
 
 Function Change_DLL_To_lib_so(Const filename: String): String;
 
+Function CheckForFiles(): TStringList;
+
 Implementation
 
-Uses unit1, unit2, ssl_openssl, httpsend, synautil, uJSON, LazFileUtils;
+Uses unit1, unit2, ssl_openssl, httpsend, synautil, uJSON, LazFileUtils, ucdextractor;
 
 Procedure ClearLog();
 Begin
@@ -265,6 +268,32 @@ Begin
   result := fp + 'lib' + fn + '.so';
 End;
 
+Function CheckForFiles(): TStringList;
+Var
+  s: String;
+  i, j: Integer;
+  optionals, Files: TStringArray;
+  found: Boolean;
+Begin
+  result := TStringList.Create;
+  s := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  Files := GetAllFilesToCheck();
+  optionals := GetOptionalFilesToCheck;
+  For i := 0 To high(Files) Do Begin
+    If Not FileExists(s + files[i]) Then Begin
+      found := false;
+      For j := 0 To high(optionals) Do Begin
+        If optionals[j] = Files[i] Then Begin
+          found := true;
+          break;
+        End;
+      End;
+      If Not found Then Begin
+        result.Add(Files[i]);
+      End;
+    End;
+  End;
+End;
 
 { TVersion }
 

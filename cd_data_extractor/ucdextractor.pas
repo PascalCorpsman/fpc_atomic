@@ -74,6 +74,12 @@ Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback
 
 Function ConcatRelativePath(Const BaseName: String; Const RelativeName: String): String;
 
+(*
+ * Helper routines for atomic_launcher
+ *)
+Function GetAllFilesToCheck(): TStringArray;
+Function GetOptionalFilesToCheck(): TStringArray;
+
 Implementation
 
 Uses
@@ -374,6 +380,72 @@ Begin
     result := pre + copy(suf, 2, length(suf));
     i := pos('..', result);
   End;
+End;
+
+Function GetAllFilesToCheck(): TStringArray;
+Var
+  c, i: Integer;
+Begin
+  result := Nil;
+  setlength(result, 1024);
+  c := 0;
+  // Alle OCX Jobs
+  For i := 0 To High(PCXJobs) Do Begin
+    result[c] := PCXJobs[i].Destname;
+    inc(c);
+  End;
+  // Alle Sound Jobs
+  For i := 0 To High(SoundJobs) Do Begin
+    result[c] := SoundJobs[i].Destname;
+    inc(c);
+  End;
+  // Alle AniJobs
+  For i := 0 To High(AniJobs) Do Begin
+    result[c] := AniJobs[i].DestPng;
+    inc(c);
+  End;
+  // Alle CascadeJobs
+  For i := 0 To High(CascadeJobs) Do Begin
+    result[c] := CascadeJobs[i][high(CascadeJobs[i])].DestPng;
+    inc(c);
+  End;
+  // Alle AniToAniJobs
+  For i := 0 To High(AniToAniJobs) Do Begin
+    result[c] := AniToAniJobs[i].AniJob.DestPng;
+    inc(c);
+  End;
+  If c > length(result) Then Begin
+    Raise exception.create('Overflow: ucdextractor.GetAllFilesToCheck');
+  End;
+  setlength(result, c);
+End;
+
+Function GetOptionalFilesToCheck(): TStringArray;
+Const
+  ani_zip_content: Array Of String = (
+    'XPLODE21.ANI', 'Trig_sbm.ani', 'XPLODE20.ANI', 'xplode18.ani', 'Powerna.ani',
+    'pwr_sbm.ani', 'lit_dud.ani', 'conv_sbm.ani', 'pwa_sbm2.ani', 'rth_dud.ani',
+    'XPLODE19.ANI', 'Powera.ani', 'pwr_sbm2.ani', 'rth_bomb.ani', 'rth_trig.ani',
+    'lit_trig.ani', 'lit_bomb.ani', 'Powern.ani', 'pwa_sbm.ani', 'rth_flam.ani',
+    'lit_flam.ani');
+Var
+  c, i, j: Integer;
+Begin
+  result := Nil;
+  setlength(result, 1024);
+  c := 0;
+  For i := 0 To high(ani_zip_content) Do Begin
+    For j := 0 To high(AniJobs) Do Begin
+      If pos(uppercase(ani_zip_content[i]), uppercase(AniJobs[j].SourceAni)) <> 0 Then Begin
+        result[c] := AniJobs[j].DestPng;
+        inc(c);
+      End;
+    End;
+  End;
+  If c > length(result) Then Begin
+    Raise exception.create('Overflow: ucdextractor.GetOptionalFilesToCheck');
+  End;
+  setlength(result, c);
 End;
 
 Function CheckCDRootFolder(aFolder: String): boolean;
