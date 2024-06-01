@@ -1,6 +1,0 @@
-This folder should contain the following files to use fpc_atomic without errors:
-nuckblow.png
-zen.png
-files.txt
-headwipe.png
-applbite.png
