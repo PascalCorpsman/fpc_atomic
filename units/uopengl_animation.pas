@@ -843,22 +843,24 @@ End;
 
 Function TOpenGL_Animation.SaveToFile(Const Filename: String): Boolean;
 Var
-  fs: TFileStream;
+  fs: TMemoryStream;
 Begin
   result := false;
-  fs := TFileStream.Create(Filename, fmCreate Or fmOpenWrite);
+  fs := TMemoryStream.Create();
   result := SaveToStream(fs);
+  fs.SaveToFile(Filename);
   fs.free;
 End;
 
 Function TOpenGL_Animation.LoadFromFile(Const Filename: String;
   InitOpenGLData: Boolean): Boolean;
 Var
-  fs: TFileStream;
+  fs: TMemoryStream;
   i: Integer;
 Begin
   result := false;
-  fs := TFileStream.Create(Filename, fmOpenRead);
+  fs := TMemoryStream.Create();
+  fs.LoadFromFile(Filename);
   result := LoadFromStream(fs);
   fName := Filename;
   // Alles Geladen, nun initialisieren wir den OpenGL Teil direkt mal mit

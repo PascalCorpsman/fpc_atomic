@@ -28,9 +28,10 @@ Uses
  *          0.03 = Add Hohle and Jump animation
  *                 FIX crash, when creating a new job
  *          0.04 = Remove Relative Path Handling
+ *          0.05 = Speedup Sound extraction by factor of 8
  *)
 Const
-  DefCaption = 'FPC Atomic data extractor ver. 0.04';
+  DefCaption = 'FPC Atomic data extractor ver. 0.05';
 
 Type
   TTransparentMode = (
@@ -860,7 +861,7 @@ Var
   sSoundFile, tSoundFile: String;
   SoundWarning: Boolean;
   wav: TWave;
-  sFile: TFileStream;
+  sFile: TMemoryStream;
   sint: int32;
 Begin
   SoundWarning := false;
@@ -886,7 +887,8 @@ Begin
     End;
     // Load the source file stream and convert into a .wav file
     wav := TWave.Create;
-    sFile := TFileStream.Create(sSoundFile, fmOpenRead);
+    sFile := TMemoryStream.Create();
+    sFile.LoadFromFile(sSoundFile);
     samplecnt := sFile.Size Div sizeof(sint);
     wav.InitNewBuffer(1, 22050, 16, samplecnt);
     Sint := 0;
@@ -964,7 +966,7 @@ Begin
   n := GetTickCount64();
   // Start Extraction
   AddLog('Start');
-  Addlog('  be aware the process will take some time (approx. 60s), ...');
+  Addlog('  be aware the process will take some time, ...');
   // Start extraction
   If Not CheckCDRootFolder(CDFolder) Then Begin
     AddLog('Error: invalid atomic bomberman CD-Image folder');
