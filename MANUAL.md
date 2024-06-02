@@ -1,5 +1,7 @@
 # Detailed user Manual
 
+If you have a markdown viewer installed on your machine (e.g. VSCode) it is highly recommended to read the manual local on your machine, after you run the cd_data_extractor. Doing so enables a lot of graphics inside the manual which increases readabillity by a lot.
+
 ## Starting the Game/Server
 
 To play FPC Atomic in a local area network, simply start the FPC Atomic client on each machine (run fpc_atomic executable). If desired, it is also possible to start the server in dedicated mode using the [Server control](#Server-Control-commands), if done so all clients need to "join" as the server is already startet. The first client who connects to a dedicated server will be treated as if he has startet the game.
