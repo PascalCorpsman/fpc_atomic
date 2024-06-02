@@ -33,7 +33,7 @@ Const
    *                    Allow collecting bad powerups in panik mode
    *             0.04 - Improve Panik Mode, Friendly fire Check
    *             0.05 - Try to skip Other player that have diseases
-   *             0.06 - FIX: AV on ill flying AI'S
+   * -Published- 0.06 - FIX: AV on ill flying AI'S
    *             0.07 - FIX: take solid bricks into account, when searching for destroyable bricks
    *                    FIX: don't get stuck on a hole if there are no more destroyable bricks
    *)
