@@ -37,10 +37,10 @@
       },
       {
         "file":        {
-          "HASH":"351ff8df7b498ff304cae533ba903109",
-          "SIZE":"2938368",
-          "HASH2":"d1ffff1e274f8a474523f46e9d9c5f98",
-          "SIZE2":"7645224",
+          "HASH":"983ffaa1c4a55e1c862b1dde8c0f0f66",
+          "SIZE":"2939904",
+          "HASH2":"17d105026decc7205c631347a72c2a35",
+          "SIZE2":"7645496",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
