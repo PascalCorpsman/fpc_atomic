@@ -24,14 +24,15 @@ Uses
 (*
  * History: 0.01 = Initial version
  *          0.02 = Switch to relative paths
- *                 Add Addon Pack warning
- *          0.03 = Add Hohle and Jump animation
- *                 FIX crash, when creating a new job
+ *                 ADD: Addon Pack warning
+ *          0.03 = ADD: Hohle and Jump animation
+ *                 FIX: crash, when creating a new job
  *          0.04 = Remove Relative Path Handling
  *          0.05 = Speedup Sound extraction by factor of 8
+ *          0.06 = ADD: "Iterative" mode
  *)
 Const
-  DefCaption = 'FPC Atomic data extractor ver. 0.05';
+  DefCaption = 'FPC Atomic data extractor ver. 0.06';
 
 Type
   TTransparentMode = (
@@ -71,7 +72,7 @@ Function CheckFPCAtomicFolder(aFolder: String): boolean; // True, if fpc_atomic 
 (*
  * This is the routine that does all the work, it handles everyting what needs to be done
  *)
-Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback);
+Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback; Iterative: Boolean);
 
 Function ConcatRelativePath(Const BaseName: String; Const RelativeName: String): String;
 
@@ -383,7 +384,7 @@ Begin
   End;
 End;
 
-Function GetAllFilesToCheck(): TStringArray;
+Function GetAllFilesToCheck: TStringArray;
 Var
   c, i: Integer;
 Begin
@@ -421,7 +422,7 @@ Begin
   setlength(result, c);
 End;
 
-Function GetOptionalFilesToCheck(): TStringArray;
+Function GetOptionalFilesToCheck: TStringArray;
 Const
   ani_zip_content: Array Of String = (
     'XPLODE21.ANI', 'Trig_sbm.ani', 'XPLODE20.ANI', 'xplode18.ani', 'Powerna.ani',
@@ -636,7 +637,7 @@ End;
  * -> TCascadeJob
  *)
 
-Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String);
+Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String; Iterative: Boolean);
   Function StoreBmp(b: TBitmap; Filename: String): Boolean;
   Var
     p: TPortableNetworkGraphic;
@@ -671,6 +672,7 @@ Begin
   AniWarning := false;
   // The Normal Jobs
   For i := 0 To high(AniJobs) Do Begin
+    If Iterative And FileExists(AtomicFolder + AniJobs[i].DestPng) Then Continue;
     b := DoAniJob(CDFolder, AniJobs[i]);
     If Not assigned(b) Then Begin
       AniWarning := true;
@@ -694,6 +696,7 @@ Begin
   // The Cascade Jobs
   bmps := Nil;
   For i := 0 To high(CascadeJobs) Do Begin
+    If Iterative And FileExists(AtomicFolder + CascadeJobs[i, high(CascadeJobs[i])].DestPng) Then Continue;
     setlength(bmps, length(CascadeJobs[i]));
     For j := 0 To high(CascadeJobs[i]) Do Begin
       bmps[j] := DoAniJob(CDFolder, CascadeJobs[i, j]);
@@ -732,7 +735,7 @@ End;
  * -> TAniToAniJob
  *)
 
-Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String);
+Procedure ExtractAtomicAniToAnis(CDFolder, AtomicFolder: String; iterative: Boolean);
 Var
   cnt, i, j: integer;
   b: TBitmap;
@@ -744,6 +747,8 @@ Begin
   CDFolder := IncludeTrailingPathDelimiter(CDFolder);
   AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
   For i := 0 To high(AniToAniJobs) Do Begin
+    targetAniFile := AtomicFolder + AniToAniJobs[i].AniJob.DestPng;
+    If iterative And FileExists(targetAniFile) Then Continue;
     b := DoAniJob(CDFolder, AniToAniJobs[i].AniJob);
     If Not assigned(b) Then Begin
       Continue;
@@ -774,7 +779,6 @@ Begin
       s.FrameCount := AniToAniJobs[i].SpriteData[j].FrameCount;
       ani.Sprite[j] := s;
     End;
-    targetAniFile := AtomicFolder + AniToAniJobs[i].AniJob.DestPng;
     If Not ForceDirectories(ExtractFilePath(targetAniFile)) Then Begin
       addlog('  Error unable to create dir: ' + ExtractFilePath(targetAniFile));
       ani.free;
@@ -797,7 +801,7 @@ End;
  * -> TPCXJob
  *)
 
-Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String);
+Procedure ExtractAtomicPCXs(CDFolder, AtomicFolder: String; Iterative: Boolean);
 Var
   cnt, i: integer;
   pcx: TPCX;
@@ -814,6 +818,8 @@ Begin
       AddLog('  Error could not locate: ' + PCXJobs[i].Sourcefile);
       Continue;
     End;
+    tPCXFile := AtomicFolder + PCXJobs[i].Destname;
+    If Iterative And FileExists(tPCXFile) Then Continue;
     pcx := TPCX.Create();
     pcx.LoadFromFile(sPCXFile);
     b := pcx.AsTBitmap();
@@ -833,7 +839,6 @@ Begin
     p.assign(b);
     b.free;
     // Store the thing ;)
-    tPCXFile := AtomicFolder + PCXJobs[i].Destname;
     If Not ForceDirectories(ExtractFilePath(tPCXFile)) Then Begin
       addlog('  Error unable to create dir: ' + ExtractFilePath(tPCXFile));
       p.free;
@@ -855,7 +860,7 @@ End;
  * -> TSoundJob
  *)
 
-Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String);
+Procedure ExtractAtomicSounds(CDFolder, AtomicFolder: String; iterative: Boolean);
 Var
   samplecnt, cnt, i, j: integer;
   sSoundFile, tSoundFile: String;
@@ -868,21 +873,14 @@ Begin
   cnt := 0;
   CDFolder := IncludeTrailingPathDelimiter(CDFolder);
   AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
-  (*
-   * normally you would see here a for i := 0 to high(SoundJobs) do begin
-   *
-   * but during development i did not want to do all jobs again and again and again
-   * so i switchted to a repeat and therefor was able to init i with higher values
-   * and skip the already tested ones.
-   *)
-  i := 0;
-  Repeat
+  For i := 0 To high(SoundJobs) Do Begin
+    tSoundFile := AtomicFolder + SoundJobs[i].Destname;
+    If iterative And FileExists(tSoundFile) Then Continue;
     // Find the source file
     sSoundFile := GetFileByMatch(ExtractFilePath(CDFolder + SoundJobs[i].Sourcefile), SoundJobs[i].Sourcefile);
     If sSoundFile = '' Then Begin
       AddLog('  Error could not locate: ' + SoundJobs[i].Sourcefile);
       SoundWarning := true;
-      inc(i);
       Continue;
     End;
     // Load the source file stream and convert into a .wav file
@@ -898,7 +896,6 @@ Begin
     End;
     sFile.Free;
     // Store the thing ;)
-    tSoundFile := AtomicFolder + SoundJobs[i].Destname;
     If Not ForceDirectories(ExtractFilePath(tSoundFile)) Then Begin
       addlog('  Error unable to create dir: ' + ExtractFilePath(tSoundFile));
       wav.free;
@@ -911,8 +908,7 @@ Begin
       addlog('  Error unable to save: ' + tSoundFile);
     End;
     wav.free;
-    inc(i);
-  Until i > high(SoundJobs);
+  End;
   AddLog(format('  %d files created', [cnt]));
   If SoundWarning Then Begin
     Addlog('  with missing sounds the game is still playable, but with less fun.');
@@ -923,7 +919,7 @@ End;
  * Copy's all .sch files from the Atomic Bomberman CD into the corresponding scheme folder of FPC_Atomic, no conversion needed.
  *)
 
-Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String);
+Procedure ExtractAtomicShemes(CDFolder, AtomicFolder: String; iterative: Boolean);
 Var
   sSchemeFolder, tSchemeFolder: String;
   sl: TStringList;
@@ -944,6 +940,7 @@ Begin
   cnt := 0;
   For i := 0 To sl.Count - 1 Do Begin
     If lowercase(ExtractFileExt(sl[i])) = '.sch' Then Begin
+      If iterative And FileExists(tSchemeFolder + uppercase(ExtractFileName(sl[i]))) Then Continue;
       If CopyFile(sl[i], tSchemeFolder + uppercase(ExtractFileName(sl[i]))) Then inc(cnt);
     End;
   End;
@@ -955,7 +952,8 @@ End;
  * This is the routine that does all the work, it handles everyting what needs to be done
  *)
 
-Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback);
+Procedure DoExtraction(CDFolder, AtomicFolder: String;
+  LogCallBack: TLogCallback; Iterative: Boolean);
 Var
   n: QWord;
 Begin
@@ -981,14 +979,14 @@ Begin
     exit;
   End;
   AddLog('PCXs');
-  ExtractAtomicPCXs(CDFolder, AtomicFolder);
+  ExtractAtomicPCXs(CDFolder, AtomicFolder, Iterative);
   AddLog('ANIs');
-  ExtractAtomicAnis(CDFolder, AtomicFolder);
-  ExtractAtomicAniToAnis(CDFolder, AtomicFolder);
+  ExtractAtomicAnis(CDFolder, AtomicFolder, Iterative);
+  ExtractAtomicAniToAnis(CDFolder, AtomicFolder, Iterative);
   AddLog('Sounds');
-  ExtractAtomicSounds(CDFolder, AtomicFolder);
+  ExtractAtomicSounds(CDFolder, AtomicFolder, Iterative);
   AddLog('Shemes');
-  ExtractAtomicShemes(CDFolder, AtomicFolder);
+  ExtractAtomicShemes(CDFolder, AtomicFolder, Iterative);
   n := GetTickCount64() - n;
   Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
   AddLog('Done, please check results.');

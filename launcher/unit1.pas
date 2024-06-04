@@ -209,7 +209,7 @@ Begin
     showmessage(
       'Your version of fpc_atomic is up to date.'
       //      + LineEnding + LineEnding +
-      //      'But the additional *.zip files (like the Config TD Data repository) are not checked.' + LineEnding + LineEnding +
+      //      'But the additional *.zip files are not checked.' + LineEnding + LineEnding +
       //      'If you want, you can check these files now manually and update them.'
       );
   End;

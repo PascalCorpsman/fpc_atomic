@@ -33,6 +33,7 @@ Type
     Button4: TButton;
     Button5: TButton;
     Button6: TButton;
+    CheckBox1: TCheckBox;
     IniPropStorage1: TIniPropStorage;
     Label1: TLabel;
     Label2: TLabel;
@@ -142,7 +143,7 @@ Begin
   End;
   AtomicCDRootFolder := CheckDir(Label1.caption);
   FPCAtomicRootFolder := CheckDir(Label2.caption);
-  DoExtraction(AtomicCDRootFolder, FPCAtomicRootFolder, @AddLog);
+  DoExtraction(AtomicCDRootFolder, FPCAtomicRootFolder, @AddLog, CheckBox1.Checked);
 End;
 
 Procedure TForm1.Button6Click(Sender: TObject);
