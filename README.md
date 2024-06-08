@@ -23,7 +23,7 @@ The steps shown here are only needed to be done once (for installation).
 1. start the game by executing "atomic_launcher" and enjoy
 
 ## How do i get updates ?
-If there are updates of the engine available, the game will inform you through a popup on startup. Click yes and your version will be updated automatically.
+By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates.
 
 ## Differences to the original
 
@@ -58,6 +58,10 @@ The AI that is delivered with this repository is more a try than a real AI, and 
 - Implement a new AI using the C [template](https://github.com/PascalCorpsman/fpc_atomic/tree/main/ai_c) (or use the C-interface to port it to your most favourite programing language)
 
 Read the manual section [Console commands](MANUAL.md#console-commands) to load and unload your ai without the need to restart the application.
+
+## External known sites which link to this repository
+- https://osgameclones.com/atomic-bomberman/
+- https://www.myabandonware.com/game/atomic-bomberman-bat
 
 ## Contributors
 Idea : Interplay Productions  
