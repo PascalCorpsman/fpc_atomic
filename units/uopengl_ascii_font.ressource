@@ -1,3 +1,18 @@
+(******************************************************************************)
+(*                                                                            *)
+(* Author      : Uwe Schächterle (Corpsman)                                   *)
+(*                                                                            *)
+(* This file is part of OpenGL_ASCII_Font                                     *)
+(*                                                                            *)
+(*  See the file license.md, located under:                                   *)
+(*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
+(*  for details about the license.                                            *)
+(*                                                                            *)
+(*               It is not allowed to change or remove this text from any     *)
+(*               source file of the project.                                  *)
+(*                                                                            *)
+(******************************************************************************)
+
 LazarusResources.Add('OpenGLFont','BMP',[
   'BM6 '#1#0#0#0#0#0'6'#0#0#0'('#0#0#0#0#1#0#0'`'#0#0#0#1#0#24#0#0#0#0#0#0' '#1
   +#0#196#14#0#0#196#14#0#0#0#0#0#0#0#0#0#0#0#0#255#0#0#0#0#0#0#0#0#0#0#0#0#0#0

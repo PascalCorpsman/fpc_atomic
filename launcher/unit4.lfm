@@ -7,7 +7,7 @@ object Form4: TForm4
   Caption = 'Form4'
   ClientHeight = 91
   ClientWidth = 320
-  FormStyle = fsSystemStayOnTop
+  FormStyle = fsStayOnTop
   Position = poScreenCenter
   LCLVersion = '3.99.0.0'
   OnCreate = FormCreate

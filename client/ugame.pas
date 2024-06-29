@@ -1803,6 +1803,16 @@ Var
   fTrampStatic: Integer; // Wenn das Trampolin gerade nicht "an wackelt"
 {$IFDEF ShowInitTime}
   t: UInt64;
+
+  Procedure TimePoint(tp: Integer);
+  Var
+    d, n: UInt64;
+  Begin
+    n := GetTickCount64;
+    d := n - t;
+    t := n;
+    writeln(format('%d: %d', [tp, d]));
+  End;
 {$ENDIF}
 Begin
 {$IFDEF ShowInitTime}
@@ -1819,7 +1829,9 @@ Begin
    *)
   Loader.Percent := 0;
   Loader.Render(); // So schnell wie Möglich dem User mal Anzeigen, dass wir dran sind
-
+{$IFDEF ShowInitTime}
+  TimePoint(1);
+{$ENDIF}
   fSoundInfo.Musik := Settings.PlaySounds;
   fSoundInfo.Volume := Settings.VolumeValue;
   If Not fSoundManager.SetVolumeValue(Settings.VolumeValue) Then Begin
@@ -1865,6 +1877,9 @@ Begin
   End;
   Loader.Percent := 10;
   Loader.Render();
+{$IFDEF ShowInitTime}
+  TimePoint(2);
+{$ENDIF}
 
   fPowerUpsTex[puNone] := 0; // Das Gibts ja net -> Weg
   fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smStretchHard);
@@ -1901,6 +1916,9 @@ Begin
   If fhurry.Texture.Image = 0 Then exit;
   hohletex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', smStretchHard);
   If hohletex.Image = 0 Then exit;
+{$IFDEF ShowInitTime}
+  TimePoint(3);
+{$ENDIF}
 
   // Laden der Felder
   fArrows := TOpenGL_Animation.Create;
@@ -1915,6 +1933,10 @@ Begin
   If Not fTramp.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', true) Then Begin
     Exit;
   End;
+{$IFDEF ShowInitTime}
+  TimePoint(4);
+{$ENDIF}
+
   (*
    * Da es Sich bewegende Trampoline gibt, und "Statische" müssen wir ein extra Sprite mit einem "Statischen" anlegen,
    * das nachher gerendert werden kann, via fTramp.GetFirstBitmap() geht es nicht, da da sonst Rundungsfehler entstehen die man sieht :/
@@ -1934,6 +1956,9 @@ Begin
     Nil,
     Nil
     );
+{$IFDEF ShowInitTime}
+  TimePoint(5);
+{$ENDIF}
   sl := FindAllDirectories(p + 'data' + PathDelim + 'maps', false);
   sl.Sorted := true;
   sl.Sort;
@@ -1948,6 +1973,9 @@ Begin
     LogLeave;
     exit;
   End;
+{$IFDEF ShowInitTime}
+  TimePoint(6);
+{$ENDIF}
   For j := 0 To sl.count - 1 Do Begin
     fFields[j] := TAtomicField.Create();
     If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, fTramp, hohletex.Image, fTrampStatic) Then Begin
@@ -1957,6 +1985,9 @@ Begin
     End;
     Loader.Percent := 10 + round(40 * j / sl.count);
     Loader.Render();
+{$IFDEF ShowInitTime}
+    TimePoint(7 + j);
+{$ENDIF}
   End;
   sl.free;
   // Anfügen der Random Karte
@@ -1965,8 +1996,10 @@ Begin
 
   setlength(fFields, length(fFields) + 1); // Die Random Karte MUSS immer die Letzte sein (siehe auch TGame.HandleUpdateAvailableFieldList)
   fFields[high(fFields)] := field;
-
-  // Laden aller Atomic's in ihren Farben
+{$IFDEF ShowInitTime}
+  TimePoint(20);
+{$ENDIF}
+  // Laden aller Atomic's in ihren Farben --> Das ist was Ladetechnisch richtig weh tut, alles andere ist eigentlich "erträglich"
   For j := 0 To high(fAtomics) Do Begin
     Loader.Percent := 50 + round(50 * j / length(fAtomics));
     Loader.Render();
@@ -1976,6 +2009,9 @@ Begin
       LogLeave;
       exit;
     End;
+{$IFDEF ShowInitTime}
+    TimePoint(21 + j);
+{$ENDIF}
   End;
   Loader.Percent := 100;
   Loader.Render(); // Als letztes kriegt der User zu sehen, dass wir fertig sind :-)
@@ -1990,6 +2026,9 @@ Begin
   If Settings.Fullscreen Then Begin
     form1.SetFullScreen(True);
   End;
+{$ENDIF}
+{$IFDEF ShowInitTime}
+  TimePoint(100);
 {$ENDIF}
   LogLeave;
 End;

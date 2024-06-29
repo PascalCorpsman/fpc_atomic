@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uOpenGLGraphikEngine.pas                                        ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.09                                                         *)
+(* Version     : 0.10                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -37,6 +37,7 @@
 (*               0.07 - LoadAlphaPNGGraphik                                   *)
 (*               0.08 - Fix Memleaks                                          *)
 (*               0.09 - Fix LoadAlphaColorGraphik                             *)
+(*               0.10 - Fix speedup graphik loading                           *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uopengl_graphikengine;
@@ -742,11 +743,8 @@ Begin
             Else Begin
               Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imNearestNeighbour);
             End;
-
-            b.Width := nw;
-            b.height := nh;
-            b.canvas.draw(0, 0, b2);
-            b2.free;
+            b.free;
+            b := b2;
           End;
         End;
       smClamp: Begin
@@ -758,10 +756,8 @@ Begin
             b2.width := nw;
             b2.height := nh;
             b2.canvas.Draw(0, 0, b);
-            b.Width := nw;
-            b.height := nh;
-            b.canvas.draw(0, 0, b2);
-            b2.free;
+            b.free;
+            b := b2;
           End;
         End;
     End;
@@ -877,10 +873,8 @@ Begin
           Else Begin
             Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imNearestNeighbour);
           End;
-          b.Width := nw;
-          b.height := nh;
-          b.canvas.draw(0, 0, b2);
-          b2.free;
+          b.free;
+          b := b2;
         End;
       End;
     smClamp: Begin
@@ -892,10 +886,8 @@ Begin
           b2.width := nw;
           b2.height := nh;
           b2.canvas.Draw(0, 0, b);
-          b.Width := nw;
-          b.height := nh;
-          b.canvas.draw(0, 0, b2);
-          b2.free;
+          b.free;
+          b := b2;
         End;
       End;
   End;
@@ -1185,10 +1177,8 @@ Begin
           Else Begin
             Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imNearestNeighbour);
           End;
-          b.Width := nw;
-          b.height := nh;
-          b.canvas.draw(0, 0, b2);
-          b2.free;
+          b.free;
+          b := b2;
         End;
       End;
     smClamp: Begin
@@ -1200,10 +1190,8 @@ Begin
           b2.width := nw;
           b2.height := nh;
           b2.canvas.Draw(0, 0, b);
-          b.Width := nw;
-          b.height := nh;
-          b.canvas.draw(0, 0, b2);
-          b2.free;
+          b.free;
+          b := b2;
         End;
       End;
   End;
@@ -1406,10 +1394,8 @@ Begin
             Else Begin
               Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imNearestNeighbour);
             End;
-            b.Width := nw;
-            b.height := nh;
-            b.canvas.draw(0, 0, b2);
-            b2.free;
+            b.free;
+            b := b2;
           End;
         End;
       smClamp: Begin
@@ -1421,10 +1407,8 @@ Begin
             b2.width := nw;
             b2.height := nh;
             b2.canvas.Draw(0, 0, b);
-            b.Width := nw;
-            b.height := nh;
-            b.canvas.draw(0, 0, b2);
-            b2.free;
+            b.free;
+            b := b2;
           End;
         End;
     End;
@@ -1555,10 +1539,8 @@ Begin
           Else Begin
             Stretchdraw(b2.canvas, rect(0, 0, nw, nh), g, imNearestNeighbour);
           End;
-          g.Width := nw;
-          g.height := nh;
-          g.canvas.draw(0, 0, b2);
-          b2.free;
+          g.free;
+          g := b2;
         End;
         If (nw <> a.width) Or (nh <> a.height) Then Begin
           b2 := TBitmap.create;
@@ -1571,10 +1553,8 @@ Begin
           Else Begin
             Stretchdraw(b2.canvas, rect(0, 0, nw, nh), a, imNearestNeighbour);
           End;
-          a.Width := nw;
-          a.height := nh;
-          a.canvas.draw(0, 0, b2);
-          b2.free;
+          a.free;
+          a := b2;
         End;
       End;
     smClamp: Begin
@@ -1586,10 +1566,8 @@ Begin
           b2.width := nw;
           b2.height := nh;
           b2.canvas.Draw(0, 0, g);
-          g.Width := nw;
-          g.height := nh;
-          g.canvas.draw(0, 0, b2);
-          b2.free;
+          g.free;
+          g := b2;
         End;
         If (nw <> a.width) Or (nh <> a.height) Then Begin
           b2 := TBitmap.create;
@@ -1597,10 +1575,8 @@ Begin
           b2.width := nw;
           b2.height := nh;
           b2.canvas.Draw(0, 0, a);
-          a.Width := nw;
-          a.height := nh;
-          a.canvas.draw(0, 0, b2);
-          b2.free;
+          a.free;
+          a := b2;
         End;
       End;
   End;
@@ -1774,10 +1750,8 @@ Begin
           Else Begin
             Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imNearestNeighbour);
           End;
-          b.Width := nw;
-          b.height := nh;
-          b.canvas.draw(0, 0, b2);
-          b2.free;
+          b.free;
+          b := b2;
         End;
         If (nw <> a.width) Or (nh <> a.height) Then Begin
           b2 := TBitmap.create;
@@ -1785,10 +1759,8 @@ Begin
           b2.width := nw;
           b2.height := nh;
           b2.canvas.StretchDraw(rect(0, 0, nw, nh), a);
-          a.Width := nw;
-          a.height := nh;
-          a.canvas.draw(0, 0, b2);
-          b2.free;
+          a.free;
+          a := b2;
         End;
       End;
     smClamp: Begin
@@ -1800,10 +1772,8 @@ Begin
           b2.width := nw;
           b2.height := nh;
           b2.canvas.Draw(0, 0, b);
-          b.Width := nw;
-          b.height := nh;
-          b.canvas.draw(0, 0, b2);
-          b2.free;
+          b.free;
+          b := b2;
         End;
         If (nw <> a.width) Or (nh <> a.height) Then Begin
           b2 := TBitmap.create;
@@ -1811,10 +1781,8 @@ Begin
           b2.width := nw;
           b2.height := nh;
           b2.canvas.Draw(0, 0, a);
-          a.Width := nw;
-          a.height := nh;
-          a.canvas.draw(0, 0, b2);
-          b2.free;
+          a.free;
+          a := b2;
         End;
       End;
   End;

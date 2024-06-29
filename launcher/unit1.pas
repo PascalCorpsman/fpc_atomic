@@ -268,10 +268,9 @@ Initialization
 {$I atomic_launcher.lrs}
 
   // 1. ggf. die Crypto libs entpacken und dann einrichten
-{$IFDEF Windows}
   If Not CheckAndMaybeExtract('ssleay32') Then exit;
   If Not CheckAndMaybeExtract('libeay32') Then exit;
-{$ENDIF}
+
   If SSLImplementation = TSSLNone Then Begin
     If InitSSLInterface Then
       SSLImplementation := TSSLOpenSSL;

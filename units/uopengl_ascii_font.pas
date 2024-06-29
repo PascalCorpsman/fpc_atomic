@@ -103,8 +103,8 @@ Type
     (*
      * Zeichen Routinen
      *)
-    Procedure Textout(x, y: Integer; Text: String); // Zeichnet einen Text, unter Berücksichtigung von CRT's ( Vorher muss Go2d aufgerufen werden )
-    Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); // Rendert einen Schriftzug ( zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
+    Procedure Textout(x, y: Integer; Text: String); // Zeichnet einen Text, unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
+    Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); // Rendert einen Schriftzug (zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
     Procedure ThreeDTextout(Position, Up, Right: TVector3; Height: TBaseType; Text: String); // Rendert eine  Schriftzug Zentriert auf Position und entsprechend Up und Right, da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
     Procedure RenderTextToRect(rect: TRect; Text: String); // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
   End;
