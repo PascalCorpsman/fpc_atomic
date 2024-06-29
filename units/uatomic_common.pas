@@ -94,7 +94,7 @@ Const
    *                       FIX: try to improove Update process
    * -releaseG - 0.11007 = no changes only Ai-Update
    * -releaseG - 0.11008 = ADD: Release Launcher
-   *             0.11009 =
+   *             0.11009 = ADD: Speedup startup of client by more than 30s
    *)
 
   ProtocollVersion: uint32 = 11; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
