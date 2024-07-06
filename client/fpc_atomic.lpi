@@ -8,6 +8,7 @@
       </Flags>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
+      <ActiveWindowIndexAtStart Value="1"/>
     </General>
     <VersionInfo>
       <Language Value=""/>
@@ -46,7 +47,7 @@
         <PackageName Value="LCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="46">
+    <Units Count="47">
       <Unit0>
         <Filename Value="fpc_atomic.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -518,6 +519,15 @@
         <EditorIndex Value="-1"/>
         <UsageCount Value="10"/>
       </Unit45>
+      <Unit46>
+        <Filename Value="../../Sample/OpenGL/uopengl_font_common.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="-1"/>
+        <CursorPos X="-1" Y="-1"/>
+        <UsageCount Value="20"/>
+      </Unit46>
     </Units>
     <OtherDefines Count="1">
       <Define0 Value="Client"/>

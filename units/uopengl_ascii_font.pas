@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uOpenGL_ASCII_Font.pas                                          ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.05                                                         *)
+(* Version     : 0.06                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -30,6 +30,7 @@
 (*               0.03 - Disable Lighting on Textout                           *)
 (*               0.04 - Suppurt UTF8 Strings                                  *)
 (*               0.05 - CurrentColor nicht nach Außen ändern                  *)
+(*               0.06 - Umstellen auf Abgeleitet von TOpenGL_Font             *)
 (*                                                                            *)
 (******************************************************************************)
 (*                                                                            *)
@@ -56,37 +57,21 @@ Uses
   dglopengl, // http://wiki.delphigl.com/index.php/dglOpenGL.pas
   uvectormath, // http://corpsman.de/index.php?doc=opengl/opengl_graphikengine
   LConvEncoding,
+  uopengl_font_common,
   math;
 
 Type
 
   { TOpenGL_ASCII_Font }
 
-  TOpenGL_ASCII_Font = Class
+  TOpenGL_ASCII_Font = Class(TOpenGL_Font)
   private
     FBaseList: gluint; // Basispointer, für die OpenGL List
     FCharcount: integer; // Anzahl der Zeichen, sollte immer 256 sein !!
-    fColor: TVector3; // Farbe der Schrift
-    fsize: Single; // Größe der Schrift in Pixeln ( Höhe )
     fCharheight: integer; // "Echte" Größe eines Buchstabens in Pixeln
     fCharwidth: integer; // "Echte" Größe eines Buchstabens in Pixeln
-    Function getcolor: TColor;
-    Function getcolorfp: TFPColor;
-    Function getcolorV3: TVector3;
-    Function getsize: Single;
     Procedure RenderChar(Number: integer); // Zeichnet ein Zeichen
-    Procedure setColor(AValue: TColor);
-    Procedure setColorV3(AValue: TVector3);
-    Procedure setColorfp(AValue: TFPColor);
-    Procedure setsize(AValue: Single);
   public
-    (*
-     * Farbe, Größe
-     *)
-    Property Color: TColor read getcolor write setColor; // Zugriff auf die Schriftfarbe
-    Property ColorV3: TVector3 read getcolorV3 write setColorV3; // Zugriff auf die Schriftfarbe
-    Property Colorfp: TFPColor read getcolorfp write setColorfp; // Zugriff auf die Schriftfarbe
-    Property Size: Single read getsize write setsize; // Höhe der Schrift in Pixeln ( Gillt nur für Textout im 3D-Mode wird die Höhe explizit gesetzt)
     (*
      * Die Init und Free Routinen brauchen nicht direkt aufgerufen zu werden. Hier
      * Genügt ein Aufruf von : Create_ASCII_Font
@@ -97,13 +82,13 @@ Type
     (*
      * Text Dimensionen
      *)
-    Function TextWidth(Text: String): single; // Breite des Textes in Pixeln  ACHTUNG, Als CRT gillt nur #13 !!
-    Function TextHeight(text: String): single; // Höhe des Textes in Pixeln   ACHTUNG, Als CRT gillt nur #13 !!
+    Function TextWidth(Text: String): single; override; // Breite des Textes in Pixeln  ACHTUNG, Als CRT gillt nur #13 !!
+    Function TextHeight(text: String): single; override; // Höhe des Textes in Pixeln   ACHTUNG, Als CRT gillt nur #13 !!
     Function TextWidth3D(Height: TBaseType; Text: String): TBaseType; // Im 3D-Mode Gibt man die Höhe des gesammten Textes vor, aus dieser Vorgabe lässt sich dann die Breite Ableiten
     (*
      * Zeichen Routinen
      *)
-    Procedure Textout(x, y: Integer; Text: String); // Zeichnet einen Text, unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
+    Procedure Textout(x, y: Integer; Text: String); override; // Zeichnet einen Text, unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
     Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); // Rendert einen Schriftzug (zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
     Procedure ThreeDTextout(Position, Up, Right: TVector3; Height: TBaseType; Text: String); // Rendert eine  Schriftzug Zentriert auf Position und entsprechend Up und Right, da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
     Procedure RenderTextToRect(rect: TRect; Text: String); // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
@@ -177,7 +162,6 @@ Begin
   fsize := CharHeight;
   fCharheight := CharHeight;
   fCharwidth := charwidth;
-  fColor := v3(1, 1, 1);
   FCharcount := Charcount;
   FBaseList := glGenLists(Charcount);
   TempIntfImg := TLazIntfImage.Create(0, 0);
@@ -419,7 +403,6 @@ Function TOpenGL_ASCII_Font.TextWidth3D(Height: TBaseType; Text: String
   ): TBaseType;
 Var
   w, h: TBaseType;
-
 Begin
   h := TextHeight(text);
   w := TextWidth(text);
@@ -430,64 +413,6 @@ Procedure TOpenGL_ASCII_Font.RenderChar(Number: integer);
 Begin
   glListBase(FBaseList);
   glCallLists(1, GL_UNSIGNED_BYTE, @Number);
-End;
-
-Procedure TOpenGL_ASCII_Font.setColor(AValue: TColor);
-Begin
-  fcolor.x := byte(Avalue) / 255;
-  fcolor.y := byte(Avalue Shr 8) / 255;
-  fcolor.z := byte(Avalue Shr 16) / 255;
-End;
-
-Procedure TOpenGL_ASCII_Font.setColorV3(AValue: TVector3);
-Begin
-  fColor := AValue;
-End;
-
-Procedure TOpenGL_ASCII_Font.setColorfp(AValue: TFPColor);
-Begin
-  fcolor.x := ((AValue.red And $FF00) Shr 8) / 255;
-  fcolor.y := ((AValue.green And $FF00) Shr 8) / 255;
-  fcolor.z := ((AValue.blue And $FF00) Shr 8) / 255;
-End;
-
-Function TOpenGL_ASCII_Font.getsize: Single;
-Begin
-  result := fsize;
-End;
-
-Function TOpenGL_ASCII_Font.getcolor: TColor;
-Var
-  r, g, b: integer;
-Begin
-  r := max(0, min(255, round(fColor.x * 255)));
-  g := max(0, min(255, round(fColor.y * 255)));
-  b := max(0, min(255, round(fColor.z * 255)));
-  result := r Or (g Shl 8) Or (b Shl 16);
-End;
-
-Function TOpenGL_ASCII_Font.getcolorV3: TVector3;
-Begin
-  result := fColor;
-End;
-
-Function TOpenGL_ASCII_Font.getcolorfp: TFPColor;
-Var
-  r, g, b: integer;
-Begin
-  r := max(0, min(255, round(fColor.x * 255))) Shl 8 Or $FF;
-  g := max(0, min(255, round(fColor.y * 255))) Shl 8 Or $FF;
-  b := max(0, min(255, round(fColor.z * 255))) Shl 8 Or $FF;
-  result.red := r;
-  result.green := g;
-  result.blue := b;
-  result.alpha := 0;
-End;
-
-
-Procedure TOpenGL_ASCII_Font.setsize(AValue: Single);
-Begin
-  fsize := AValue;
 End;
 
 Initialization

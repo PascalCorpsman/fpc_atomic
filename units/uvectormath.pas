@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uvectormat.pas                                                  12.11.2014 *)
 (*                                                                            *)
-(* Version     : 0.17                                                         *)
+(* Version     : 0.18                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -59,6 +59,7 @@
 (*                    TMatrix4x4.Raw, TMatrix4x4.getInverse,                  *)
 (*                     TMatrix3x3.getInverse, TMatrix2x2.getInverse           *)
 (*                    InvertMatrix2 for TMatrix4x4, TMatrix2x2                *)
+(*               0.18 CalculatePlumbFootPoint                                 *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uvectormath;
@@ -543,6 +544,11 @@ Function IntersectLines(Const A, m_A, B, m_B: TVector2; Out P: TVector2): Boolea
 
 // True, wenn sich die Geradenstücke AB und CD Schneigen, Wenn True ist P der Schnittpunkt
 Function IntersectLine_segments(Const A, B, C, D: TVector2; Out P: TVector2): Boolean;
+
+//
+// Gibt die Projektion des Punkts P auf den Lotfußpunkt der Geraden durch P1 und P2 zurück
+//
+Function CalculatePlumbFootPoint(Const P, P1, P2: TVector2): TVector2;
 
 // Berechnet die Schnittpunkte einer Ellipse mit einem Streckenabschnitt AB
 // Die Ellipse ist definiert durch M und hat die Ausdehnung Rx, Ry
@@ -3072,18 +3078,43 @@ Begin
   a01 := m_a.y;
   a10 := -(m_B.x);
   a11 := -(m_B.y);
-  a20 := b.x - a.x;
-  a21 := b.y - a.y;
   det := a00 * a11 - a01 * a10;
   If det <> 0 Then Begin
-    result := true;
+    a20 := b.x - a.x;
+    a21 := b.y - a.y;
     dett := a20 * a11 - a21 * a10;
     r := dett / det;
     p := a + r * m_A;
+    result := true;
   End
   Else Begin
     result := false;
   End;
+End;
+
+Function CalculatePlumbFootPoint(Const P, P1, P2: TVector2): TVector2;
+(*
+ * In 2D kann man tatsächlich die Gleichung einfach aufstellen und direkt
+ * auflösen.
+ *
+ * Die Idee:
+ * - P3 = beweglicher Punkt auf der Geraden P1 - P2
+ * - Der Vektor P - P3 muss im Rechten Winkel zum Richtungsvektor der Geraden stehen
+ * => Das Scalarprodukt dieser beiden ist also 0
+ *)
+Var
+  p3: TVector2;
+  s, nominator: Single;
+Begin
+  // Nebenbedingung
+  p3 := p2 - p1;
+  nominator := LenV2SQR(p3);
+  If nominator = 0 Then Begin
+    Raise exception.create('uvectormath.CalculatePlumbFootPoint: p1 = p2');
+    exit;
+  End;
+  s := (-p3.x * (p2.x - p.x) - p3.y * (p2.y - p.y)) / nominator;
+  result := p3 * s + p2;
 End;
 
 Function IntersectLineEllipse(Const A, B, M: TVector2; Rx, Ry: TBaseType; Out
