@@ -8,7 +8,6 @@
       </Flags>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
-      <ActiveWindowIndexAtStart Value="1"/>
     </General>
     <VersionInfo>
       <Language Value=""/>
@@ -62,15 +61,16 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-        <IsVisibleTab Value="True"/>
-        <TopLine Value="349"/>
-        <CursorPos X="113" Y="367"/>
+        <EditorIndex Value="2"/>
+        <WindowIndex Value="1"/>
+        <TopLine Value="501"/>
+        <CursorPos X="32" Y="503"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
-          <EditorIndex Value="2"/>
-          <WindowIndex Value="1"/>
-          <TopLine Value="501"/>
-          <CursorPos X="32" Y="503"/>
+          <IsVisibleTab Value="True"/>
+          <EditorIndex Value="-1"/>
+          <TopLine Value="349"/>
+          <CursorPos X="113" Y="367"/>
         </ExtraEditor1>
         <UsageCount Value="198"/>
         <Loaded Value="True"/>
@@ -142,7 +142,7 @@
         <EditorIndex Value="3"/>
         <WindowIndex Value="1"/>
         <TopLine Value="67"/>
-        <CursorPos X="44" Y="101"/>
+        <CursorPos X="38" Y="85"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
@@ -355,21 +355,20 @@
       <Unit29>
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="699"/>
-        <CursorPos X="52" Y="735"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1883"/>
+        <CursorPos X="67" Y="1913"/>
         <ExtraEditorCount Value="1"/>
         <ExtraEditor1>
           <EditorIndex Value="-1"/>
-          <TopLine Value="1883"/>
-          <CursorPos X="67" Y="1913"/>
+          <TopLine Value="699"/>
+          <CursorPos X="52" Y="735"/>
         </ExtraEditor1>
         <UsageCount Value="122"/>
         <Bookmarks Count="2">
           <Item0 Y="804" ID="4"/>
           <Item1 Y="1095" ID="5"/>
         </Bookmarks>
-        <Loaded Value="True"/>
       </Unit29>
       <Unit30>
         <Filename Value="uatomic.pas"/>
@@ -532,7 +531,7 @@
     <OtherDefines Count="1">
       <Define0 Value="Client"/>
     </OtherDefines>
-    <JumpHistory Count="30" HistoryIndex="29">
+    <JumpHistory Count="22" HistoryIndex="21">
       <Position1>
         <Filename Value="../units/uatomic_common.pas"/>
         <Caret Line="100" Column="3" TopLine="55"/>
@@ -565,92 +564,61 @@
         <Filename Value="unit1.pas"/>
       </Position8>
       <Position9>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="14" Column="33"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="639" TopLine="609"/>
       </Position9>
       <Position10>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="878" Column="81" TopLine="813"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="636" Column="28" TopLine="609"/>
       </Position10>
       <Position11>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="881" Column="37" TopLine="816"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="56" Column="22"/>
       </Position11>
       <Position12>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="883" Column="37" TopLine="818"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="104" TopLine="73"/>
       </Position12>
       <Position13>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="842" Column="44" TopLine="818"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="307" TopLine="276"/>
       </Position13>
       <Position14>
-        <Filename Value="ugame.pas"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="395" Column="93" TopLine="374"/>
       </Position14>
       <Position15>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="163" TopLine="98"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="4" Column="4"/>
       </Position15>
       <Position16>
         <Filename Value="unit1.pas"/>
-        <Caret Line="639" TopLine="609"/>
+        <Caret Line="288" Column="15" TopLine="257"/>
       </Position16>
       <Position17>
-        <Filename Value="ugame.pas"/>
-        <Caret Line="1733" TopLine="1697"/>
+        <Filename Value="unit1.pas"/>
+        <Caret Line="289" Column="64" TopLine="257"/>
       </Position17>
       <Position18>
         <Filename Value="unit1.pas"/>
-        <Caret Line="636" Column="28" TopLine="609"/>
+        <Caret Line="379" Column="68" TopLine="348"/>
       </Position18>
       <Position19>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="56" Column="22"/>
+        <Filename Value="../units/uatomic_common.pas"/>
+        <Caret Line="91" Column="34" TopLine="77"/>
       </Position19>
       <Position20>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="104" TopLine="73"/>
+        <Filename Value="../units/uatomic_common.pas"/>
+        <Caret Line="26"/>
       </Position20>
       <Position21>
         <Filename Value="unit1.pas"/>
-        <Caret Line="307" TopLine="276"/>
+        <Caret Line="368" Column="65" TopLine="349"/>
       </Position21>
       <Position22>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="395" Column="93" TopLine="374"/>
-      </Position22>
-      <Position23>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="4" Column="4"/>
-      </Position23>
-      <Position24>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="288" Column="15" TopLine="257"/>
-      </Position24>
-      <Position25>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="289" Column="64" TopLine="257"/>
-      </Position25>
-      <Position26>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="379" Column="68" TopLine="348"/>
-      </Position26>
-      <Position27>
-        <Filename Value="../units/uatomic_common.pas"/>
-        <Caret Line="91" Column="34" TopLine="77"/>
-      </Position27>
-      <Position28>
-        <Filename Value="../units/uatomic_common.pas"/>
-        <Caret Line="26"/>
-      </Position28>
-      <Position29>
-        <Filename Value="unit1.pas"/>
-        <Caret Line="368" Column="65" TopLine="349"/>
-      </Position29>
-      <Position30>
         <Filename Value="../units/uatomic_common.pas"/>
         <Caret Line="101" Column="44" TopLine="67"/>
-      </Position30>
+      </Position22>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>

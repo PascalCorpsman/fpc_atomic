@@ -170,13 +170,13 @@ Var
 
   ACHTUNG Diese Routinen funktionieren nicht immer mit eingeschalteten CullFacing !!
   *)
-Procedure RenderAlphaQuad(Top, Left: Single; Image: TGraphikItem); overload; // Fertig Getestet
+Procedure RenderAlphaQuad(Top, Left: Single; Image: TGraphikItem); overload; // Fertig Getestet // WTF: warum ist hier top und left vertauscht ?
 Procedure RenderAlphaQuad(Middle: Tpoint; Width, Height, Angle: Integer; Texture: integer = 0); overload; // Fertig Getestet
 Procedure RenderAlphaRQuad(TopLeft, BottomRight: TPoint; Angle: Integer; RotatebyOrigin: Boolean = False; Texture: Integer = 0); overload; // Fertig Getestet
 Procedure RenderAlphaRQuad(TopLeft, BottomRight: TVector2; Angle: Integer; RotatebyOrigin: Boolean = False; Texture: Integer = 0); overload; // Fertig Getestet
 Procedure RenderAlphaImage(Value: TSubImage);
 
-Procedure RenderQuad(Top, Left: Single; Image: TGraphikItem); overload;
+Procedure RenderQuad(Top, Left: Single; Image: TGraphikItem); overload; // WTF: warum ist hier top und left vertauscht ?
 Procedure RenderQuad(Middle: TVector2; Angle: Single; Image: TGraphikItem); overload;
 Procedure RenderQuad(Middle: Tpoint; Width, Height, Angle: Integer; Texture: integer = 0); overload; // Fertig Getestet
 Procedure RenderQuad(Middle: TVector2; Width, Height, Angle: Single; Texture: integer = 0); overload; // Fertig Getestet
@@ -1893,7 +1893,7 @@ Var
   i, j: Integer;
 Begin
   result := false;
-  For i := 0 To high(FImages) Do
+  For i := 0 To high(FImages) Do Begin
     If FImages[i].Image = Value Then Begin
       result := true;
       glDeleteTextures(1, @value);
@@ -1903,6 +1903,7 @@ Begin
       setlength(FImages, high(FImages));
       exit;
     End;
+  End;
 End;
 
 Initialization

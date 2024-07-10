@@ -77,7 +77,7 @@ Type
      * Genügt ein Aufruf von : Create_ASCII_Font
      * Freigeben tut sich die Klasse selbständig beim Beenden der Anwendung
      *)
-    Constructor Create(Const Bitmap: Tbitmap; CharWidth, CharHeight, CharCount: Integer); // Alles was Weiß ist, ist sichtbar, der Rest Transparent
+    Constructor Create(Const Bitmap: Tbitmap; CharWidth, CharHeight, CharCount: Integer); virtual; reintroduce; // Alles was Weiß ist, ist sichtbar, der Rest Transparent
     Destructor destroy; override;
     (*
      * Text Dimensionen
