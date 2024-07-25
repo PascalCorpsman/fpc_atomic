@@ -94,11 +94,12 @@ Const
    *                       FIX: try to improove Update process
    * -releaseG - 0.11007 = no changes only Ai-Update
    * -releaseG - 0.11008 = ADD: Release Launcher
-   *             0.11009 = ADD: Speedup startup of client by more than 30s
+   * -releaseG - 0.11009 = ADD: Speedup startup of client by more than 30s
+   *             0.11010 =
    *)
 
   ProtocollVersion: uint32 = 11; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.11009';
+  Version = '0.11010';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
