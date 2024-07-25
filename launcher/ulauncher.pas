@@ -15,11 +15,12 @@ Const
    * Historie : 0.01 = Initial version
    * -Released- 0.02 = ADD: Improve error message, if launcher needs update and no updater is present.
    *                   ADD: Check if all data from cd_data_extractor is extracted
-   *            0.03 = ADD: Wait for cd_data_extractor
+   * -Released- 0.03 = ADD: Wait for cd_data_extractor
+   *            0.04 =
    *
    * Known Bugs :
    *)
-  LauncherVersion: integer = 3;
+  LauncherVersion: integer = 4;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);
