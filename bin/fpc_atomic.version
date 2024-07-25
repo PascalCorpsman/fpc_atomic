@@ -1,46 +1,46 @@
 {
   "fpc_atomic":  {
-    "Version":0.11008,
-    "LauncherVersion":2,
-    "VersionText":"atomic launcher, also checks now results of cd_data_extractor",
+    "Version":0.11009,
+    "LauncherVersion":3,
+    "VersionText":"* shorten client startuptime by 30sec on reference system",
     "Download_core":
     [
       {
         "file":        {
-          "HASH":"2f332baaaa6f525ea770213175706e19",
+          "HASH":"d8ce068f7de732b6d16c2b15ec11df7f",
           "SIZE":"3089920",
-          "HASH2":"0f5685a398e5b008d77aff683bc52510",
-          "SIZE2":"7737304",
+          "HASH2":"8a9b6b1643fa500e36440a1694176e99",
+          "SIZE2":"7733208",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":        {
-          "HASH":"44a1785bef1df0090e4c945bab3e01cf",
+          "HASH":"224b642d61ac2fac771eec374308a82a",
           "SIZE":"5784064",
-          "HASH2":"7928253bc0d099b38d6bf8b8493328cd",
-          "SIZE2":"7935608",
+          "HASH2":"b9565084ddb587a3e865bf1fd96ae435",
+          "SIZE2":"7935592",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":        {
-          "HASH":"17f2caee555c37e949eff3239de4ee04",
-          "SIZE":"4000768",
-          "HASH2":"351cea471383c04bd8c123824e1d5a0c",
-          "SIZE2":"8527736",
+          "HASH":"5f1e4cdc58ee417596d5d078dfd16092",
+          "SIZE":"4003840",
+          "HASH2":"a2db2d13743b0684b4dc410eadc62f81",
+          "SIZE2":"8532392",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
       },
       {
         "file":        {
-          "HASH":"983ffaa1c4a55e1c862b1dde8c0f0f66",
-          "SIZE":"2939904",
-          "HASH2":"17d105026decc7205c631347a72c2a35",
-          "SIZE2":"7645496",
+          "HASH":"0ad99ce5ef5354e1166c28d4bbb7ce6d",
+          "SIZE":"2946048",
+          "HASH2":"c677383d93ec2eba60bd012fa0e14fb7",
+          "SIZE2":"7649896",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
@@ -59,7 +59,7 @@
         "file":        {
           "HASH":"56c8c5ce2048c7714022b430e24a29ca",
           "SIZE":"2907648",
-          "HASH2":"d739f60cd1ff9dda03dadf8bbc14d589",
+          "HASH2":"f1c4bb32f25c7ea3e589073201871d67",
           "SIZE2":"7330632",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
@@ -67,7 +67,7 @@
       },
       {
         "file":        {
-          "HASH":"ea202b42cc0cbd70391a972fb4f0e6a0",
+          "HASH":"cc4499ff992bcce3105e970b8e04c38f",
           "SIZE":"299520",
           "HASH2":"b498c4aa86ee2a2778fc84acd338d4aa",
           "SIZE2":"1191608",
@@ -223,8 +223,8 @@
       },
       {
         "file":        {
-          "HASH":"d92e6c7cef43d28f5e0761199b461561",
-          "SIZE":"6060",
+          "HASH":"44276677172c9954df24f20b0eca0643",
+          "SIZE":"6329",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/MANUAL.md",
           "Filename":"MANUAL.md"
         }
