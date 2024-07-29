@@ -742,7 +742,7 @@ Begin
     End
     Else Begin
       If PlayerData[i].UID > 0 Then Begin
-        fPlayerDetails[i].PlayerData := 'NET';
+        fPlayerDetails[i].PlayerData := PlayerData[i].UserName; // 'NET'; -- The Orig Game shows at this place only a "NET" entry
       End
       Else Begin
         If PlayerData[i].UID = NoPlayer Then Begin
@@ -894,7 +894,7 @@ Begin
   If (key = VK_ESCAPE) Or (key = VK_BACK) Then Begin
     Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
     Tgame(fOwner).SwitchToScreen(sMainScreen);
-    Form1.IniPropStorage1SavingProperties(nil);
+    Form1.IniPropStorage1SavingProperties(Nil);
   End;
   If key = VK_DOWN Then Begin
     fCursorPos := min(fCursorPos + 1, 11);
@@ -1237,5 +1237,4 @@ Begin
 End;
 
 End.
-
 

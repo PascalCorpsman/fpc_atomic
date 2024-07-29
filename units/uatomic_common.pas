@@ -95,7 +95,7 @@ Const
    * -releaseG - 0.11007 = no changes only Ai-Update
    * -releaseG - 0.11008 = ADD: Release Launcher
    * -releaseG - 0.11009 = ADD: Speedup startup of client by more than 30s
-   *             0.11010 =
+   *             0.11010 = ADD: show Nodenames in "TPlayerSetupMenu" Menu (Improve Orig game!)
    *)
 
   ProtocollVersion: uint32 = 11; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
