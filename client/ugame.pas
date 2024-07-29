@@ -671,6 +671,7 @@ Begin
 
   // zuerst senden wir allen die Aktuellen Wunschdaten für das Field zu
   TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch := Settings.LastWinsToWinMatch;
+  TFieldSetupMenu(fScreens[sEditFieldSetup]).SchemeFile := settings.SchemeFile;
 
   fActualField := Nil;
   For i := 0 To high(fFields) Do Begin
@@ -1137,6 +1138,7 @@ Begin
   Stream.Read(Settings.ConveyorSpeed, SizeOf(Settings.ConveyorSpeed));
   If SchemeFromStream(Stream, fScheme) Then Begin
     TPlayerSetupMenu(fScreens[sPlayerSetup]).LoadScheme(fScheme);
+    TFieldSetupMenu(fScreens[sEditFieldSetup]).SchemeFile := fScheme.Filename;
   End
   Else Begin
     logShow('Error, could not extract scheme send from server', llCritical);
@@ -1516,6 +1518,7 @@ Begin
   fScheme := GetDefaultScheme();
   sl := TStringList.Create;
   sl.LoadFromFile(fn);
+  fScheme.Filename := ExtractFileName(fn);
   Try
     For i := 0 To sl.Count - 1 Do Begin
       s := trim(sl[i]);

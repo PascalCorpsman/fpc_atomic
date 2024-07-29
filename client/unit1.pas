@@ -511,7 +511,7 @@ Begin
   Else
     Game.Settings.ConveyorSpeed := csMiddle;
   End;
-  Game.Settings.SchemeFile := IniPropStorage1.ReadString('ShemeFile', 'BASIC.SCH');
+  Game.Settings.SchemeFile := IniPropStorage1.ReadString('SchemeFile', 'BASIC.SCH');
   Game.Settings.PlayTime := IniPropStorage1.ReadInteger('PlayTime', 2 * 60 + 30);
   Game.Settings.LostPlayersRevertToAI := IniPropStorage1.ReadBoolean('LostPlayersRevertToAI', false);
   Game.Settings.PlaySounds := IniPropStorage1.ReadBoolean('PlaySounds', true);
@@ -558,7 +558,7 @@ Begin
     csFast: IniPropStorage1.WriteInteger('Conveyorspeed', 2);
   End;
   // Game.Settings.ConveyorSpeed // TODO: Einstellbar machen
-  IniPropStorage1.WriteString('ShemeFile', Game.Settings.SchemeFile);
+  IniPropStorage1.WriteString('SchemeFile', Game.Settings.SchemeFile);
   IniPropStorage1.WriteInteger('PlayTime', Game.Settings.PlayTime);
   IniPropStorage1.WriteBoolean('LostPlayersRevertToAI', Game.Settings.LostPlayersRevertToAI);
   IniPropStorage1.WriteBoolean('PlaySounds', Game.Settings.PlaySounds);

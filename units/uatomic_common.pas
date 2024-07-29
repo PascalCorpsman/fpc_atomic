@@ -96,10 +96,12 @@ Const
    * -releaseG - 0.11008 = ADD: Release Launcher
    * -releaseG - 0.11009 = ADD: Speedup startup of client by more than 30s
    *             0.11010 = ADD: show Nodenames in "TPlayerSetupMenu" Menu (Improve Orig game!)
+   *             0.12000 = ADD: Show scheme informations during connections -> need change in ProtocollVersion
+   *                       FIX: sheme -> scheme
    *)
 
-  ProtocollVersion: uint32 = 11; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.11010';
+  ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  Version = '0.12000';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
@@ -391,6 +393,7 @@ Type
   End;
 
   TScheme = Record
+    Filename: String; // Der Dateiname aus dem das Schema geladen wurde
     Name: String; // Name des Schemas, wird der irgendwo angezeigt
     BrickDensity: integer; // [0.. 100%]
     BrickData: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TBrickData;
@@ -605,7 +608,7 @@ Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 {$ENDIF}
 
 Procedure Nop(); // Nur zum Debuggen ;)
-Function BrickShemeToString(Const Scheme: TScheme): String; // Only Debug
+Function BrickSchemeToString(Const Scheme: TScheme): String; // Only Debug
 
 Implementation
 
@@ -620,7 +623,7 @@ Begin
 
 End;
 
-Function BrickShemeToString(Const Scheme: TScheme): String; // Only Debug
+Function BrickSchemeToString(Const Scheme: TScheme): String; // Only Debug
 Var
   j, i: Integer;
   s, t: String;
@@ -675,6 +678,7 @@ End;
 
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme);
 Begin
+  Stream.WriteAnsiString(Scheme.Filename);
   Stream.WriteAnsiString(Scheme.Name);
   stream.Write(Scheme.BrickDensity, SizeOf(Scheme.BrickDensity));
   stream.Write(Scheme.BrickData, SizeOf(Scheme.BrickData));
@@ -685,6 +689,7 @@ End;
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Begin
   result := false;
+  Scheme.Filename := stream.ReadAnsiString;
   Scheme.Name := stream.ReadAnsiString;
   stream.read(Scheme.BrickDensity, SizeOf(Scheme.BrickDensity));
   stream.read(Scheme.BrickData, SizeOf(Scheme.BrickData));
@@ -715,6 +720,7 @@ Begin
   (*
    * Das ist Im Prinzip das Basic.sch
    *)
+  result.Filename := 'BASIC.SCH';
   result.Name := 'Just the BASIC SET! (10)';
   result.BrickDensity := 90;
   // alle ::::::::::::::: Zeilen

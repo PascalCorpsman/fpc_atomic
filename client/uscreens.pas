@@ -110,6 +110,7 @@ Type
 
   TPlayerSetupMenu = Class(TScreen)
   private
+    fSchemeFile: String;
     fcursorTex: integer;
     fCursorPos: integer; // Position des "Kopfes" in Menüpunkten
     fPlayerDetails: Array[0..length(PlayerColors) - 1] Of Record
@@ -143,6 +144,7 @@ Type
     MasterPlayerName: String;
     ActualField: TAtomicField;
     LastWinsToWinMatch: Integer;
+    SchemeFile: String;
 
     Procedure OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState); override;
 
@@ -655,6 +657,10 @@ Begin
     AtomicFont.BackColor := clBlack;
     AtomicFont.Textout(45, 176 - 28 - 28, 'Wait until ' + MasterPlayerName + LineEnding + 'finished setup.');
   End;
+  glBindTexture(GL_TEXTURE_2D, 0);
+  AtomicFont.Color := clwhite;
+  AtomicFont.BackColor := clBlack;
+  AtomicFont.Textout(60, 400, 'Scheme: ' + SchemeFile);
   (*
    * Das Eigentliche Kartenvorschau Fenster
    *)
@@ -714,6 +720,7 @@ Procedure TPlayerSetupMenu.LoadScheme(Const Scheme: TScheme);
 Var
   i: Integer;
 Begin
+  fSchemeFile := Scheme.Filename;
   (*
    * Für das Playersetup ist nur die "TEAM" Verteilung relevant / interessant
    *)
@@ -803,6 +810,7 @@ Begin
   // Reset am ende
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
+  AtomicFont.Textout(60, 400, 'Scheme: ' + fSchemeFile);
   glPushMatrix();
   glTranslatef(60 - 32 + 10, 37 + 14 + 28 * fCursorPos + 50, atomic_Map_Layer + atomic_EPSILON);
   RenderAlphaQuad(point(16, 16), 32, -32, 0, fcursorTex);
@@ -933,7 +941,7 @@ Begin
             End;
           End;
         End;
-      4: Begin // Sheme File
+      4: Begin // Scheme File
           key := 0;
           qf := TSchemQuestionForm.CreateNew(Nil);
           qf.LoadSchemes(Tgame(fOwner).Settings.SchemeFile);
@@ -1045,7 +1053,7 @@ Begin
     'Random Start: ' + BoolToStr(TGame(fOwner).Settings.RandomStart, 'Yes', 'No') + LineEnding + LineEnding +
     'Node Name: ''' + TGame(fOwner).Settings.NodeName + '''' + LineEnding + LineEnding +
     'Conveyor Speed: ' + ConveyerSpeedToString(TGame(fOwner).Settings.ConveyorSpeed) + LineEnding + LineEnding +
-    'Sheme File: ' + TGame(fOwner).Settings.SchemeFile + LineEnding + LineEnding +
+    'Scheme File: ' + TGame(fOwner).Settings.SchemeFile + LineEnding + LineEnding +
     'Play Time: ' + PrettyTime(TGame(fOwner).Settings.PlayTime) + LineEnding + LineEnding +
     'Lost net players revert to AIs: ' + BoolToStr(TGame(fOwner).Settings.LostPlayersRevertToAI, 'Yes', 'No') + LineEnding + LineEnding +
     'Disable music during gameplay: ' + BoolToStr(TGame(fOwner).Settings.PlaySounds, 'No', 'Yes') + LineEnding + LineEnding +
