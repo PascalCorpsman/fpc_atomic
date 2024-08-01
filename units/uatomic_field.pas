@@ -1967,7 +1967,16 @@ Begin
   inc(fHurryIndex);
   If (fHurryIndex < 0) Or (fHurryIndex > high(HurryCoords)) Then exit; // Komisch ..
   p := HurryCoords[fHurryIndex];
+  // Set the Solid Brick
   fField[p.x, p.y].BrickData := bdSolid;
+  // Reset everything else
+  fField[p.x, p.y].Exploding := false;
+  fField[p.x, p.y].ExplodingRenderFlag := false;
+  fField[p.x, p.y].PowerUp := puNone;
+  fField[p.x, p.y].Flame := [];
+  fField[p.x, p.y].Tramp := false;
+  fField[p.x, p.y].TrampRunning := false;
+  fField[p.x, p.y].Counter := 0;
 End;
 
 Procedure TAtomicField.KillPlayer(Var Players: TPlayers; Index: integer);
