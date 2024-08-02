@@ -47,6 +47,7 @@ Type
 
     Procedure LoadSideImage();
   public
+    Procedure StoreVersion(NewVersion: single);
 
   End;
 
@@ -232,7 +233,18 @@ Begin
   End;
 End;
 
-Procedure TForm1.LoadSettings();
+Procedure TForm1.StoreVersion(NewVersion: single);
+Var
+  fm: TFormatSettings;
+Begin
+  fm := DefaultFormatSettings;
+  fm.DecimalSeparator := '.';
+  ini.WriteString('TApplication.Form1', 'Version', format('%0.5f', [NewVersion], fm));
+  ini.UpdateFile;
+  Version := NewVersion;
+End;
+
+Procedure TForm1.LoadSettings;
 Var
   fm: TFormatSettings;
 Begin
@@ -250,7 +262,7 @@ Begin
   edit3.text := ini.ReadString('Launcher', 'Router_Port', '5521');
 End;
 
-Procedure TForm1.StoreSettings();
+Procedure TForm1.StoreSettings;
 Begin
   ini.WriteBool('TApplication.Form1', 'ShowFPS', CheckBox1.Checked);
   ini.WriteBool('TApplication.Form1', 'Fullscreen', CheckBox2.Checked);
