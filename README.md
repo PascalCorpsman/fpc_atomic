@@ -10,7 +10,6 @@ FPC Atomic is a complete reimplementation of the original Atomic Bomberman game 
 
 
 ## Preview:
-![](https://www.myabandonware.com/media/screenshots/a/atomic-bomberman-ik0/webp/atomic-bomberman_1.webp)
 
 ![](https://www.myabandonware.com/media/screenshots/a/atomic-bomberman-ik0/atomic-bomberman_10.png)
 
