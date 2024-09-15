@@ -8,6 +8,13 @@ Wiki     : https://en.wikipedia.org/wiki/Atomic_Bomberman
 ## Description
 FPC Atomic is a complete reimplementation of the original Atomic Bomberman game (from 1997). This repository hosts only the source code, as the graphics and sounds are copyrighted by Interplay Productions. To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
 
+
+## Preview:
+![](https://www.myabandonware.com/media/screenshots/a/atomic-bomberman-ik0/webp/atomic-bomberman_1.webp)
+
+![](https://www.myabandonware.com/media/screenshots/a/atomic-bomberman-ik0/atomic-bomberman_10.png)
+
+
 ## What needs to be done to play the game?
 The steps shown here are only needed to be done once (for installation).
 
