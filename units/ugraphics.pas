@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uGraphiks.pas                                                   ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.11                                                         *)
+(* Version     : 0.13                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -38,6 +38,9 @@
 (*               0.09 - added floodfill                                       *)
 (*               0.10 - FIX: revert 90* Rotation images back to old algorithm *)
 (*               0.11 - FIX: revert 90* Rotations to matrix multiplications   *)
+(*               0.12 - add wmFuchsia                                         *)
+(*                      FIX: glitch on rotating images                        *)
+(*               0.13 - RGBAToFPColor, FPColorToRGBA                          *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -68,6 +71,7 @@ Type
 
   TWrapMode = (
     wmBlack, // Ist ein Pixel nicht Teil des Bildes wird er Schwarz eingefärbt
+    wmFuchsia, // Ist ein Pixel nicht Teil des Bildes wird er mit clFuchsia eingefärbt
     wmClamp, // Ist ein Pixel nicht Teil des Bildes wird seine Koordinate auf den Nächsten Pixel im Bild zurück Projiziert x >= Image.Width => Image.Width -1
     wmWrap //   Ist ein Pixel nicht Teil des Bildes wird seine Koordinate mittels Modulo in das Bild zurück Projiziert
     );
@@ -91,19 +95,23 @@ Type
   THSV = Record
     h: integer; // [0..360[
     s: integer; // [0..255]
-    L: Integer; // [0..255]
+    V: Integer; // [0..255]
   End;
 
   // Farb Konvertierungen
 Function Color565ToRGB(value: Word): TRGB; // Wandelt eine 2Byte Farbe in eine 3 Byte RGB Farbe um
 Function RGB(r, g, b: Byte): TRGB;
+Function RGBA(R, G, B, A: Byte): TRGBA;
 Function ColorToRGB(c: TColor): TRGB;
 Function ColorToRGBA(c: TColor; AlphaValue: byte = 0): TRGBA;
 Function RGBToColor(rgb: TRGB): TColor;
+Function RGBAToColor(rgba: TRGBA): TColor;
 Function FPColorToColor(Const Color: TFPColor): TColor; // Wandelt eine FPColor in TColor um
 Function ColorToFPColor(Const Color: TColor): TFPColor; // Wandelt eine TColor in eine FPColor um
 Function FPColorToV4(Const Color: TFPColor): TVector4; // Wandelt eine FPColor in TVector4 um
 Function V4ToFPColor(Const V: TVector4): TFPColor; // Wandelt eine TVector4 in eine FPColor um
+Function RGBAToFPColor(Const Color: TRGBA): TFPColor;
+Function FPColorToRGBA(Const Color: TFPColor): TRGBA;
 
 Function FPColorToHSL(Const Color: TFPColor): THSL;
 Function HSLToFPColor(Const hsl: THSL): TFPColor;
@@ -223,6 +231,8 @@ Procedure RenderArrow(Const Canvas: TCanvas; StartPoint: TPoint; EndPoint: TPoin
 Function StringToInterpolationMode(Value: String): TInterpolationMode;
 Function InterpolationModeToString(Value: TInterpolationMode): String;
 
+Operator = (a, b: TRGBA): Boolean;
+
 Implementation
 
 Uses sysutils, ufifo; // Exception
@@ -253,6 +263,15 @@ Begin
   End;
 End;
 
+Operator = (a, b: TRGBA): Boolean;
+Begin
+  result :=
+    (a.r = b.r) And
+    (a.g = b.g) And
+    (a.b = b.b) And
+    (a.a = b.a);
+End;
+
 Function Color565ToRGB(value: Word): TRGB;
 Begin
   result.r := clamp(round(((value Shr 11) And $1F) * 255 / $1F), 0, 255);
@@ -265,6 +284,14 @@ Begin
   result.r := r;
   result.g := g;
   result.b := b;
+End;
+
+Function RGBA(R, G, B, A: Byte): TRGBA;
+Begin
+  result.r := r;
+  result.g := g;
+  result.b := b;
+  result.a := a;
 End;
 
 Function ColorToRGB(c: TColor): TRGB;
@@ -285,6 +312,11 @@ End;
 Function RGBToColor(rgb: TRGB): TColor;
 Begin
   result := rgb.r Or (rgb.g Shl 8) Or (rgb.b Shl 16);
+End;
+
+Function RGBAToColor(rgba: TRGBA): TColor;
+Begin
+  result := rgba.r Or (rgba.g Shl 8) Or (rgba.b Shl 16);
 End;
 
 Function FPColorToColor(Const Color: TFPColor): TColor;
@@ -317,6 +349,22 @@ Begin
   result.Green := clamp(round(v.y * 255), 0, 255) Shl 8;
   result.Blue := clamp(round(v.z * 255), 0, 255) Shl 8;
   result.Alpha := clamp(round(v.w * 255), 0, 255) Shl 8;
+End;
+
+Function RGBAToFPColor(Const Color: TRGBA): TFPColor;
+Begin
+  result.Red := Color.r Shl 8;
+  result.Green := Color.g Shl 8;
+  result.Blue := Color.b Shl 8;
+  result.Alpha := Color.a Shl 8;
+End;
+
+Function FPColorToRGBA(Const Color: TFPColor): TRGBA;
+Begin
+  result.r := Color.Red Shr 8;
+  result.g := Color.Green Shr 8;
+  result.b := Color.Blue Shr 8;
+  result.a := Color.Alpha Shr 8;
 End;
 
 // Quelle: https://www.pocketmagic.net/enhance-saturation-in-images-programatically/
@@ -578,7 +626,7 @@ Begin
 End;
 
 (*
- * Interpoliert 4 Farbwerte Mittels Polynim 3. Grades f in [0..1]
+ * Interpoliert 4 Farbwerte Mittels Polynom 3. Grades f in [0..1]
  * c1, c2, f sind Identisch zu den Parametern von z.B.: InterpolateLinear
  * c0 = Vorgänger von c1
  * c2 = Nachfolger von c2
@@ -615,6 +663,17 @@ Function GetPixel(Const Image: TLazIntfImage; x, y: Single; wMode: TWrapMode; iM
   Function PointToColor(p: TPoint): TFPColor;
   Begin
     Case wMode Of
+      wmFuchsia: Begin
+          If (p.x < 0) Or (p.y < 0) Or (p.x >= Image.Width) Or (p.y >= Image.Height) Then Begin
+            result.Red := 255 Shl 8;
+            result.Green := 0;
+            result.Blue := 255 Shl 8;
+            result.Alpha := 0;
+          End
+          Else Begin
+            result := Image.Colors[p.x, p.y];
+          End;
+        End;
       wmBlack: Begin
           If (p.x < 0) Or (p.y < 0) Or (p.x >= Image.Width) Or (p.y >= Image.Height) Then Begin
             result.Red := 0;
@@ -1124,8 +1183,8 @@ Begin
   Else Begin
     // Ist die Matrix Invertierbar kann über die Zielbild Koordinaten Iteriert werden
     // => kein Oversampling notwendig ;)
-    For i := trunc(mi.x) To ceil(ma.x) - 1 Do Begin
-      For j := trunc(mi.y) To ceil(ma.y) - 1 Do Begin
+    For i := trunc(mi.x) To ceil(ma.x) Do Begin
+      For j := trunc(mi.y) To ceil(ma.y) Do Begin
         (*
          * Unter Windows sind die Pixel Links oben Angeschlagen,
          * Damit das aber "Gut" aus sieht, muss ein Pixel mittig Zentriert sein.
