@@ -1,36 +1,36 @@
 {
   "fpc_atomic":  {
-    "Version":0.11009,
-    "LauncherVersion":3,
-    "VersionText":"* shorten client startuptime by 30sec on reference system",
+    "Version":0.12001,
+    "LauncherVersion":4,
+    "VersionText":"ADD: show Nodenames in \"TPlayerSetupMenu\" Menu (Improve Orig game!)\nADD: Show scheme informations during connections -> need change in ProtocollVersion\nFIX: sheme -> scheme\nFIX: #4 Solid Brick not set in timeout mode",
     "Download_core":
     [
       {
         "file":        {
-          "HASH":"d8ce068f7de732b6d16c2b15ec11df7f",
+          "HASH":"29b5899a73ff45ee1ad5c3fb771b62fc",
           "SIZE":"3089920",
-          "HASH2":"8a9b6b1643fa500e36440a1694176e99",
-          "SIZE2":"7733208",
+          "HASH2":"355f8653e7bd60b139f086bf79aad201",
+          "SIZE2":"7853480",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":        {
-          "HASH":"224b642d61ac2fac771eec374308a82a",
-          "SIZE":"5784064",
-          "HASH2":"b9565084ddb587a3e865bf1fd96ae435",
-          "SIZE2":"7935592",
+          "HASH":"45d6d07bedc33f3cc25734710dc4a151",
+          "SIZE":"5784576",
+          "HASH2":"38bc3a775e69d91b4bf3c65246443e8f",
+          "SIZE2":"8049896",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":        {
-          "HASH":"5f1e4cdc58ee417596d5d078dfd16092",
-          "SIZE":"4003840",
-          "HASH2":"a2db2d13743b0684b4dc410eadc62f81",
-          "SIZE2":"8532392",
+          "HASH":"61281b2524fefefb6f8464097888eb94",
+          "SIZE":"4004352",
+          "HASH2":"aa746dbd39e117887e9c09f536f63ea2",
+          "SIZE2":"8646760",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
@@ -39,8 +39,8 @@
         "file":        {
           "HASH":"0ad99ce5ef5354e1166c28d4bbb7ce6d",
           "SIZE":"2946048",
-          "HASH2":"c677383d93ec2eba60bd012fa0e14fb7",
-          "SIZE2":"7649896",
+          "HASH2":"46882525b27ca8c5c57c1b6706979195",
+          "SIZE2":"7764200",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
@@ -49,25 +49,25 @@
         "file":        {
           "HASH":"11ba2bb4bcdd29cef8eeaa6b15b97ee8",
           "SIZE":"2673664",
-          "HASH2":"fe5e85eccfb4ac902705782acfadd1ae",
-          "SIZE2":"6907400",
+          "HASH2":"31a46bd64778eab80f93045e9a286f72",
+          "SIZE2":"7025768",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
           "Filename":"updater.exe"
         }
       },
       {
         "file":        {
-          "HASH":"56c8c5ce2048c7714022b430e24a29ca",
-          "SIZE":"2907648",
-          "HASH2":"f1c4bb32f25c7ea3e589073201871d67",
-          "SIZE2":"7330632",
+          "HASH":"568f2d22b0270261126f334b112406e2",
+          "SIZE":"2908160",
+          "HASH2":"2937792a126c1bbcb0d20ec3a6cf66f7",
+          "SIZE2":"7444968",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
       {
         "file":        {
-          "HASH":"cc4499ff992bcce3105e970b8e04c38f",
+          "HASH":"8dd4f789e36bf8cd4b23c4ab0e8a6a44",
           "SIZE":"299520",
           "HASH2":"b498c4aa86ee2a2778fc84acd338d4aa",
           "SIZE2":"1191608",
