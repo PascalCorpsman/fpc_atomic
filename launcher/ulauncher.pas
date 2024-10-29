@@ -16,11 +16,12 @@ Const
    * -Released- 0.02 = ADD: Improve error message, if launcher needs update and no updater is present.
    *                   ADD: Check if all data from cd_data_extractor is extracted
    * -Released- 0.03 = ADD: Wait for cd_data_extractor
-   *            0.04 = FIX: Übernehmen der Localen Version, wenn config_td binary runter geladen wurde.
+   * -Released- 0.04 = FIX: Übernehmen der Localen Version, wenn config_td binary runter geladen wurde.
+   *            0.05 = 
    *
    * Known Bugs :
    *)
-  LauncherVersion: integer = 4;
+  LauncherVersion: integer = 5;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);
