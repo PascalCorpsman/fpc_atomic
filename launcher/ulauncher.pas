@@ -17,7 +17,7 @@ Const
    *                   ADD: Check if all data from cd_data_extractor is extracted
    * -Released- 0.03 = ADD: Wait for cd_data_extractor
    * -Released- 0.04 = FIX: Übernehmen der Localen Version, wenn config_td binary runter geladen wurde.
-   *            0.05 = 
+   *            0.05 = FIX: prevent update crash on Linux by renaming folder before update
    *
    * Known Bugs :
    *)

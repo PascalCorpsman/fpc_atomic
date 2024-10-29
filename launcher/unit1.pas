@@ -58,7 +58,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3
+Uses UTF8Process, process, Unit2, Unit3, LCLType
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -181,6 +181,20 @@ Procedure TForm1.Button1Click(Sender: TObject);
 Var
   tmpFolder: String;
 Begin
+{$IFDEF Linux}
+  If DirectoryExists('cd_data_extractor') Then Begin
+    If id_yes = Application.MessageBox('In the launcher location there is a folder named "cd_data_extractor", this will crash the update process' + LineEnding +
+      'Do you want to rename that folder ?', 'Warning', MB_YESNO) Then Begin
+      If Not RenameFile('cd_data_extractor' + PathDelim, 'cd_data_extractor_' + PathDelim) Then Begin
+        showmessage('Error, could not rename.');
+        exit;
+      End;
+    End
+    Else Begin
+      exit;
+    End;
+  End;
+{$ENDIF}
   ClearLog();
   // 2. Download der Version Info
   tmpFolder := IncludeTrailingPathDelimiter(GetTempDir()) + 'atomic_update' + PathDelim;
