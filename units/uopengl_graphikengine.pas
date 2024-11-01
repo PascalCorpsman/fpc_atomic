@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uOpenGLGraphikEngine.pas                                        ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.10                                                         *)
+(* Version     : 0.11                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -38,6 +38,8 @@
 (*               0.08 - Fix Memleaks                                          *)
 (*               0.09 - Fix LoadAlphaColorGraphik                             *)
 (*               0.10 - Fix speedup graphik loading                           *)
+(*               0.11 - Fix LoadAlphaGraphikItem did not respect png          *)
+(*                          transparency                                      *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uopengl_graphikengine;
@@ -1296,14 +1298,18 @@ End;
 Function TOpenGL_GraphikEngine.LoadAlphaGraphikItem(Filename: String; Stretch: TStretchmode): TGraphikItem;
 Var
   OpenGLData: Array Of Array[0..3] Of Byte;
+  tmp, AlphaMask: Array Of Array Of Byte;
   Data: String;
+  //ba,
   b2, b: Tbitmap;
   jp: TJPEGImage;
   png: TPortableNetworkGraphic;
-  nw, nh, ow, oh: INteger;
+  nw, nh, ow, oh: Integer;
   IntfImg1: TLazIntfImage;
   CurColor: TFPColor;
   c, j, i: Integer;
+  fi, fj, uu, vv, u, v: Single;
+  xi, yi: integer;
   bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
 Begin
   (*
@@ -1312,6 +1318,7 @@ Begin
   Es sollte einem nur Klar sein dass hier evtl noch deutlich nachgebessert werden muß.
   *)
 {$WARNING not Implemented correctly}
+  AlphaMask := Nil;
   If FileExists(Filename) Then Begin
     Data := LowerCase(Filename);
     // Graphik bereits geladen
@@ -1340,13 +1347,20 @@ Begin
       png.TransparentColor := clBlack;
       png.Transparent := false;
       b.assign(png);
+      setlength(AlphaMask, b.Width, b.Height);
+      IntfImg1 := b.CreateIntfImage;
+      For i := 0 To b.Width - 1 Do Begin
+        For j := 0 To b.Height - 1 Do Begin
+          AlphaMask[i, j] := IntfImg1.Colors[i, j].Alpha Shr 8;
+        End;
+      End;
+      IntfImg1.free;
       png.free;
     End
     Else Begin
       b.LoadFromFile(Filename);
     End;
     // create the raw image
-    IntfImg1 := TLazIntfImage.Create(0, 0);
     nw := b.width;
     nh := b.height;
     ow := b.width;
@@ -1366,21 +1380,117 @@ Begin
             b2.PixelFormat := pf24bit;
             b2.width := nw;
             b2.height := nh;
-            // b2.canvas.StretchDraw(rect(0, 0, nw, nh), b);
             If Stretch = smStretch Then Begin
               Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imBilinear);
             End
             Else Begin
               Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imNearestNeighbour);
             End;
+            //{
+            If assigned(AlphaMask) Then Begin
+              If Stretch = smStretch Then Begin
+                Raise exception.Create('TOpenGL_GraphikEngine.LoadAlphaGraphikItem: missing implementation for Bilinear');
+              End;
+              tmp := Nil;
+              setlength(tmp, nw, nh);
+              // Die Formeln sehen heftig aus, aber sind genau dass was raus
+              // Kommt wenn man die ugraphic.pas variante "auspackt"
+              For i := 0 To nw - 1 Do Begin
+                u := i / (nw - 1);
+                uu := u * b.Width;
+                xi := trunc(uu);
+                fi := uu - xi;
+                For j := 0 To nh - 1 Do Begin
+                  v := j / (nh - 1);
+                  vv := v * b.Height;
+                  yi := trunc(vv);
+                  fj := vv - yi;
+                  If fi <= 0.5 Then Begin
+                    If fj <= 0.5 Then Begin
+                      tmp[i, j] := AlphaMask[min(xi, high(AlphaMask)), min(yi, high(AlphaMask[0]))];
+                    End
+                    Else Begin
+                      tmp[i, j] := AlphaMask[min(xi, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))];
+                    End;
+                  End
+                  Else Begin
+                    If fj <= 0.5 Then Begin
+                      tmp[i, j] := AlphaMask[min(xi + 1, high(AlphaMask)), min(yi, high(AlphaMask[0]))];
+                    End
+                    Else Begin
+                      tmp[i, j] := AlphaMask[min(xi + 1, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))];
+                    End;
+                  End;
+                End;
+              End;
+              SetLength(AlphaMask, 0, 0);
+              AlphaMask := tmp;
+            End; //}
             b.free;
             b := b2;
+            b2 := Nil;
+            {
+            If assigned(AlphaMask) Then Begin // TODO: Das geht zwar, aber mit Effizients hat das nichts mehr zu tun ... Der Obige Code ist schneller, aber kann Bilinear nicht ..
+              ba := TBitmap.Create;
+              ba.PixelFormat := pf24bit;
+              ba.Width := length(AlphaMask);
+              ba.Height := length(AlphaMask[0]);
+              IntfImg1 := ba.CreateIntfImage;
+              For i := 0 To ba.Width - 1 Do Begin
+                For j := 0 To ba.Height - 1 Do Begin
+                  CurColor.Red := AlphaMask[i, j] Shl 8;
+                  CurColor.Green := AlphaMask[i, j] Shl 8;
+                  CurColor.Blue := AlphaMask[i, j] Shl 8;
+                  CurColor.Alpha := AlphaMask[i, j] Shl 8;
+                  IntfImg1.Colors[i, j] := CurColor;
+                End;
+              End;
+              ba.LoadFromIntfImage(IntfImg1);
+              IntfImg1.free;
+              b2 := TBitmap.create;
+              b2.PixelFormat := pf24bit;
+              b2.width := nw;
+              b2.height := nh;
+              If Stretch = smStretch Then Begin
+                Stretchdraw(b2.canvas, rect(0, 0, nw, nh), ba, imBilinear);
+              End
+              Else Begin
+                Stretchdraw(b2.canvas, rect(0, 0, nw, nh), ba, imNearestNeighbour);
+              End;
+              ba.free;
+              IntfImg1 := b2.CreateIntfImage;
+              setlength(AlphaMask, nw, nh);
+              For i := 0 To b2.Width - 1 Do Begin
+                For j := 0 To b2.Height - 1 Do Begin
+                  CurColor := IntfImg1.Colors[i, j];
+                  AlphaMask[i, j] := CurColor.Red Shr 8;
+                End;
+              End;
+              IntfImg1.free;
+              b2.free;
+            End; //}
           End;
         End;
       smClamp: Begin
           nw := GetNextPowerOfTwo(b.width);
           nh := GetNextPowerOfTwo(b.height);
           If (nw <> b.width) Or (nh <> b.height) Then Begin
+            If assigned(AlphaMask) Then Begin
+              tmp := Nil;
+              setlength(tmp, nw, nh);
+              For i := 0 To nw - 1 Do Begin
+                For j := 0 To nh - 1 Do Begin
+                  If (i < b.width) And (j < b.height) Then Begin
+                    tmp[i, j] := AlphaMask[i, j];
+                  End
+                  Else Begin
+                    tmp[i, j] := 0;
+                  End;
+                End;
+              End;
+              setlength(AlphaMask, 0, 0);
+              AlphaMask := tmp;
+            End;
             b2 := TBitmap.create;
             b2.PixelFormat := pf24bit;
             b2.width := nw;
@@ -1392,7 +1502,7 @@ Begin
         End;
     End;
     // load the raw image from the bitmap handles
-    IntfImg1.LoadFromBitmap(B.Handle, B.MaskHandle);
+    IntfImg1 := b.CreateIntfImage;
 {$IFDEF DEBUGGOUTPUT}
     writeln('OpenGL size : ' + inttostr(b.width) + 'x' + inttostr(b.height));
     OpenGLBufCount := OpenGLBufCount + (b.width * b.height * 4);
@@ -1409,12 +1519,17 @@ Begin
           OpenGLData[c, 0] := CurColor.Red Div 256;
           OpenGLData[c, 1] := CurColor.green Div 256;
           OpenGLData[c, 2] := CurColor.blue Div 256;
-          If (OpenGLData[c, 0] = Fuchsia.r) And
-            (OpenGLData[c, 1] = Fuchsia.g) And
-            (OpenGLData[c, 2] = Fuchsia.b) Then
-            OpenGLData[c, 3] := 255
-          Else
-            OpenGLData[c, 3] := 0;
+          If assigned(AlphaMask) Then Begin
+            OpenGLData[c, 3] := 255 - AlphaMask[i, j];
+          End
+          Else Begin
+            If (OpenGLData[c, 0] = Fuchsia.r) And
+              (OpenGLData[c, 1] = Fuchsia.g) And
+              (OpenGLData[c, 2] = Fuchsia.b) Then
+              OpenGLData[c, 3] := 255
+            Else
+              OpenGLData[c, 3] := 0;
+          End;
           inc(c);
         End;
       End;
