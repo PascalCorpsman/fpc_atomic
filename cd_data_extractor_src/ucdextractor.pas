@@ -30,9 +30,10 @@ Uses
  *          0.04 = Remove Relative Path Handling
  *          0.05 = Speedup Sound extraction by factor of 8
  *          0.06 = ADD: "Iterative" mode
+ *          0.07 = Set titles for select dialogs
  *)
 Const
-  DefCaption = 'FPC Atomic data extractor ver. 0.06';
+  DefCaption = 'FPC Atomic data extractor ver. 0.07';
 
 Type
   TTransparentMode = (

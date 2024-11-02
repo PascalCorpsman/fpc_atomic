@@ -111,6 +111,7 @@ End;
 Procedure TForm1.Button4Click(Sender: TObject);
 Begin
   // Set FPC Atomic Folder
+  SelectDirectoryDialog1.Title := button4.caption;
   If SelectDirectoryDialog1.Execute Then Begin
     If CheckFPCAtomicFolder(SelectDirectoryDialog1.FileName) Then Begin
       label2.Caption := SelectDirectoryDialog1.FileName;
@@ -160,6 +161,7 @@ End;
 Procedure TForm1.Button1Click(Sender: TObject);
 Begin
   // Set atomic CD Root folder
+  SelectDirectoryDialog1.Title := button1.caption;
   If SelectDirectoryDialog1.Execute Then Begin
     If CheckCDRootFolder(SelectDirectoryDialog1.FileName) Then Begin
       label1.Caption := SelectDirectoryDialog1.FileName;
