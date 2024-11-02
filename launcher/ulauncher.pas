@@ -17,11 +17,12 @@ Const
    *                   ADD: Check if all data from cd_data_extractor is extracted
    * -Released- 0.03 = ADD: Wait for cd_data_extractor
    * -Released- 0.04 = FIX: Übernehmen der Localen Version, wenn config_td binary runter geladen wurde.
-   *            0.05 = FIX: prevent update crash on Linux by renaming folder before update
+   * -Released- 0.05 = FIX: prevent update crash on Linux by renaming folder before update
+   *            0.06 = 
    *
    * Known Bugs :
    *)
-  LauncherVersion: integer = 5;
+  LauncherVersion: integer = 6;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);

@@ -99,12 +99,13 @@ Const
    *             0.12000 = ADD: Show scheme informations during connections -> need change in ProtocollVersion
    *                       FIX: sheme -> scheme
    * -releaseG - 0.12001 = FIX: #4 Solid Brick not set in timeout mode
-   *             0.12002 = 
+   * -releaseG - 0.12002 = ADD: Major change in Grpahikeninge
+   *             0.12003 = 
    *
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12002';
+  Version = '0.12003';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
