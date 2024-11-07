@@ -138,6 +138,7 @@ Type
     Function LoadGraphik(Const Graphik: TBitmap; Name: String; Stretch: TStretchmode = smNone): Integer; overload; // Laden einer Graphik ohne Alphakanal
     Function LoadAlphaColorGraphik(Filename: String; Color: TRGB; Stretch: TStretchmode = smNone): Integer; overload; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
     Function LoadAlphaColorGraphik(Const Graphik: TBitmap; Name: String; Color: TRGB; Stretch: TStretchmode = smNone): Integer; overload; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
+    Function LoadAlphaColorGraphikItem(Const Graphik: TBitmap; Name: String; Color: TRGB; Stretch: TStretchmode = smNone): TGraphikItem; overload;
     (*
     Funktionen die NICHT Machen was sie sollen
 
@@ -1243,6 +1244,23 @@ Begin
     Raise Exception.create('Error Image ' + extractfilename(name) + ' has invalid Width / Height, has to be 2^x.');
   End;
   b.free;
+End;
+
+Function TOpenGL_GraphikEngine.LoadAlphaColorGraphikItem(
+  Const Graphik: TBitmap; Name: String; Color: TRGB; Stretch: TStretchmode
+  ): TGraphikItem;
+Var
+  img, i: integer;
+Begin
+  // TODO: Das sollte so umgeschrieben werden, dass alle Funtionen LoadAlphaColorGraphikItem aufrufen und man sich hier das Suchen sparen kann
+  img := LoadAlphaColorGraphik(Graphik, Name, Color, Stretch);
+  For i := 0 To high(FImages) Do Begin
+    If FImages[i].Image = img Then Begin
+      result := FImages[i];
+      exit;
+    End;
+  End;
+  raise exception.Create('TOpenGL_GraphikEngine.LoadAlphaColorGraphikItem: Unable to load');
 End;
 
 Function TOpenGL_GraphikEngine.LoadAlphaColorGraphik(Filename: String; Color: TRGB; Stretch: TStretchmode): Integer; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
