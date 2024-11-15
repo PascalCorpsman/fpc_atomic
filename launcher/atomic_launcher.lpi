@@ -73,10 +73,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../cd_data_extractor/ucdextractor.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="../../Sample/Sound/uwave.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -88,6 +84,10 @@
         <Filename Value="../../Sample/OpenGL/uopengl_animation.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../cd_data_extractor_src/ucdextractor.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -97,7 +97,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../cd_data_extractor;../../Sample/Sound;../../Sample/OpenGL"/>
+      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
