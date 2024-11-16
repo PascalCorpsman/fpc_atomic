@@ -100,7 +100,7 @@ Const
    *                       FIX: sheme -> scheme
    * -releaseG - 0.12001 = FIX: #4 Solid Brick not set in timeout mode
    * -releaseG - 0.12002 = ADD: Major change in Grpahikeninge
-   *             0.12003 = 
+   *             0.12003 = ADD: Support für Gamepads / Joysticks via SDL2
    *
    *)
 
@@ -542,6 +542,15 @@ Type
   TLogShowHandler = Procedure(Msg: String; WarnLevel: TLogLevel);
 
   TKeys = Record
+    UseSDL2: Boolean;
+    // if UseSDL2 then this is used
+    Name: String;
+    AchsisIdle: Array[0..1] Of Integer; // 0 = Hoch Runter, 1 = Links Rechts
+    AchsisIndex: Array[0..1] Of integer; // 0 = Hoch Runter, 1 = Links Rechts
+    AchsisDirection: Array[0..1] Of integer; // 0 = Hoch Runter, 1 = Links Rechts
+    ButtonsIdle: Array[0..1] Of Boolean; // 0 = First, 1 = Second
+    ButtonIndex: Array[0..1] Of integer; // 0 = First, 1 = Second
+    // if not UseSDL2 then this key's are valid
     KeyUp: Word;
     KeyDown: Word;
     KeyLeft: Word;
@@ -607,7 +616,7 @@ Function GetDefaultScheme(): TScheme;
 
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
 
-{$IFDEF Client}
+{$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
 Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 {$ENDIF}
 
@@ -617,7 +626,7 @@ Function BrickSchemeToString(Const Scheme: TScheme): String; // Only Debug
 Implementation
 
 Uses math
-{$IFDEF Client}
+{$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
   , LCLType
 {$ENDIF}
   ;
@@ -647,10 +656,22 @@ Begin
   result := trim(s);
 End;
 
-{$IFDEF Client}
+{$IFNDEF Server}
 
 Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 Begin
+  result.UseSDL2 := false;
+  result.Name := '';
+  result.AchsisIndex[0] := -1;
+  result.AchsisIndex[1] := -1;
+  result.AchsisIdle[0] := 0;
+  result.AchsisIdle[1] := 0;
+  result.AchsisDirection[0] := 0;
+  result.AchsisDirection[1] := 0;
+  result.ButtonIndex[0] := -1;
+  result.ButtonIndex[1] := -1;
+  result.ButtonsIdle[0] := false;
+  result.ButtonsIdle[1] := false;
   If Index = ks0 Then Begin
     result.KeyUp := VK_UP;
     result.KeyDown := VK_DOWN;

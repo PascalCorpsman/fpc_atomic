@@ -1,10 +1,10 @@
 object Form1: TForm1
   Left = 347
-  Height = 429
+  Height = 461
   Top = 107
   Width = 467
   Caption = 'Form1'
-  ClientHeight = 429
+  ClientHeight = 461
   ClientWidth = 467
   Position = poScreenCenter
   LCLVersion = '3.99.0.0'
@@ -13,7 +13,7 @@ object Form1: TForm1
   object Image1: TImage
     Left = 8
     Height = 288
-    Top = 8
+    Top = 40
     Width = 192
     Center = True
     Stretch = True
@@ -29,11 +29,11 @@ object Form1: TForm1
   end
   object GroupBox1: TGroupBox
     Left = 208
-    Height = 128
+    Height = 160
     Top = 72
     Width = 248
     Caption = ' Quicksetup '
-    ClientHeight = 111
+    ClientHeight = 143
     ClientWidth = 246
     TabOrder = 1
     object CheckBox1: TCheckBox
@@ -75,11 +75,20 @@ object Form1: TForm1
       Caption = 'Play sounds'
       TabOrder = 3
     end
+    object Button5: TButton
+      Left = 8
+      Height = 25
+      Top = 112
+      Width = 232
+      Caption = 'Key assignment'
+      TabOrder = 4
+      OnClick = Button5Click
+    end
   end
   object Button2: TButton
     Left = 8
     Height = 50
-    Top = 328
+    Top = 360
     Width = 448
     Caption = 'Launch FPC Atomic'
     TabOrder = 2
@@ -88,7 +97,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 8
     Height = 25
-    Top = 392
+    Top = 424
     Width = 448
     Caption = 'Close'
     TabOrder = 3
@@ -97,7 +106,7 @@ object Form1: TForm1
   object GroupBox2: TGroupBox
     Left = 208
     Height = 112
-    Top = 208
+    Top = 240
     Width = 248
     Caption = ' WAN '
     ClientHeight = 95

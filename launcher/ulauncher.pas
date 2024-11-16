@@ -18,7 +18,7 @@ Const
    * -Released- 0.03 = ADD: Wait for cd_data_extractor
    * -Released- 0.04 = FIX: Übernehmen der Localen Version, wenn config_td binary runter geladen wurde.
    * -Released- 0.05 = FIX: prevent update crash on Linux by renaming folder before update
-   *            0.06 = 
+   *            0.06 = ADD: Keyboard / Joystick Wizzard
    *
    * Known Bugs :
    *)

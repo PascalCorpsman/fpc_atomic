@@ -88,6 +88,22 @@
         <Filename Value="../cd_data_extractor_src/ucdextractor.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../units/ukeyboarddialog.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="sdl2_cfg.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../units/usdlwizzard.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../Sample/SDL2/usdl_joystick.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -97,7 +113,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src"/>
+      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src;../../Sample/SDL2/library;../../Sample/SDL2"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

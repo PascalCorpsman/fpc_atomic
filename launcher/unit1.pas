@@ -17,6 +17,7 @@ Type
     Button2: TButton;
     Button3: TButton;
     Button4: TButton;
+    Button5: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -34,6 +35,7 @@ Type
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
+    Procedure Button5Click(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
   private
@@ -59,6 +61,7 @@ Implementation
 {$R *.lfm}
 
 Uses UTF8Process, process, Unit2, Unit3, LCLType
+  , ukeyboarddialog, uatomic_common
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -130,6 +133,100 @@ Begin
   p.Options := p.Options + [poWaitOnExit];
   p.Execute;
   p.free;
+End;
+
+Procedure TForm1.Button5Click(Sender: TObject);
+Var
+  Dialog: TKeyboardDialog;
+  Keys: Array[TKeySet] Of TKeys;
+Begin
+  // Key Assignment
+  dialog := TKeyboardDialog.CreateNew(self, 0);
+  Keys[ks0] := AtomicDefaultKeys(ks0);
+  Keys[ks0].KeyUp := ini.ReadInteger('TApplication.Form1', 'KeyUp', Keys[ks0].KeyUp);
+  Keys[ks0].KeyDown := ini.ReadInteger('TApplication.Form1', 'KeyDown', Keys[ks0].KeyDown);
+  Keys[ks0].KeyLeft := ini.ReadInteger('TApplication.Form1', 'KeyLeft', Keys[ks0].KeyLeft);
+  Keys[ks0].KeyRight := ini.ReadInteger('TApplication.Form1', 'KeyRight', Keys[ks0].KeyRight);
+  Keys[ks0].KeyPrimary := ini.ReadInteger('TApplication.Form1', 'KeyPrimary', Keys[ks0].KeyPrimary);
+  Keys[ks0].KeySecondary := ini.ReadInteger('TApplication.Form1', 'KeySecondary', Keys[ks0].KeySecondary);
+  Keys[ks0].UseSDL2 := ini.ReadBool('TApplication.Form1', 'UseSDL', Keys[ks0].UseSDL2);
+  If Keys[ks0].UseSDL2 Then Begin
+    Keys[ks0].Name := ini.ReadString('TApplication.Form1', 'SDL_Name', Keys[ks0].Name);
+    Keys[ks0].ButtonIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_First', Keys[ks0].ButtonIndex[0]);
+    Keys[ks0].ButtonsIdle[0] := ini.readBool('TApplication.Form1', 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
+    Keys[ks0].ButtonIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_Second', Keys[ks0].ButtonIndex[1]);
+    Keys[ks0].ButtonsIdle[1] := ini.readBool('TApplication.Form1', 'SDL_SecondIdle', Keys[ks0].ButtonsIdle[1]);
+    Keys[ks0].AchsisIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDown', Keys[ks0].AchsisIndex[0]);
+    Keys[ks0].AchsisIdle[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownIdle', Keys[ks0].AchsisIdle[0]);
+    Keys[ks0].AchsisDirection[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownDirection', Keys[ks0].AchsisDirection[0]);
+    Keys[ks0].AchsisIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
+    Keys[ks0].AchsisIdle[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
+    Keys[ks0].AchsisDirection[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
+  End;
+  Keys[ks1] := AtomicDefaultKeys(ks1);
+  Keys[ks1].KeyUp := ini.ReadInteger('TApplication.Form1', 'KeyUp2', Keys[ks1].KeyUp);
+  Keys[ks1].KeyDown := ini.ReadInteger('TApplication.Form1', 'KeyDown2', Keys[ks1].KeyDown);
+  Keys[ks1].KeyLeft := ini.ReadInteger('TApplication.Form1', 'KeyLeft2', Keys[ks1].KeyLeft);
+  Keys[ks1].KeyRight := ini.ReadInteger('TApplication.Form1', 'KeyRight2', Keys[ks1].KeyRight);
+  Keys[ks1].KeyPrimary := ini.ReadInteger('TApplication.Form1', 'KeyPrimary2', Keys[ks1].KeyPrimary);
+  Keys[ks1].KeySecondary := ini.ReadInteger('TApplication.Form1', 'KeySecondary2', Keys[ks1].KeySecondary);
+  Keys[ks1].UseSDL2 := ini.ReadBool('TApplication.Form1', 'UseSDL2', Keys[ks1].UseSDL2);
+  If Keys[ks1].UseSDL2 Then Begin
+    Keys[ks1].Name := ini.ReadString('TApplication.Form1', 'SDL_Name2', Keys[ks1].Name);
+    Keys[ks1].ButtonIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_First2', Keys[ks1].ButtonIndex[0]);
+    Keys[ks1].ButtonsIdle[0] := ini.readBool('TApplication.Form1', 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
+    Keys[ks1].ButtonIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
+    Keys[ks1].ButtonsIdle[1] := ini.readBool('TApplication.Form1', 'SDL_SecondIdle2', Keys[ks1].ButtonsIdle[1]);
+    Keys[ks1].AchsisIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDown2', Keys[ks1].AchsisIndex[0]);
+    Keys[ks1].AchsisIdle[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownIdle2', Keys[ks1].AchsisIdle[0]);
+    Keys[ks1].AchsisDirection[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownDirection2', Keys[ks1].AchsisDirection[0]);
+    Keys[ks1].AchsisIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
+    Keys[ks1].AchsisIdle[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
+    Keys[ks1].AchsisDirection[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
+  End;
+  Dialog.LoadKeys(Keys[ks0], Keys[ks1]);
+  If Dialog.Execute() Then Begin
+    Keys[ks0] := Dialog.GetKeys(ks0);
+    Keys[ks1] := Dialog.GetKeys(ks1);
+    ini.WriteInteger('TApplication.Form1', 'KeyUp', Keys[ks0].KeyUp);
+    ini.WriteInteger('TApplication.Form1', 'KeyDown', Keys[ks0].KeyDown);
+    ini.WriteInteger('TApplication.Form1', 'KeyLeft', Keys[ks0].KeyLeft);
+    ini.WriteInteger('TApplication.Form1', 'KeyRight', Keys[ks0].KeyRight);
+    ini.WriteInteger('TApplication.Form1', 'KeyPrimary', Keys[ks0].KeyPrimary);
+    ini.WriteInteger('TApplication.Form1', 'KeySecondary', Keys[ks0].KeySecondary);
+    ini.WriteBool('TApplication.Form1', 'UseSDL', Keys[ks0].UseSDL2);
+    ini.WriteString('TApplication.Form1', 'SDL_Name', Keys[ks0].Name);
+    ini.WriteInteger('TApplication.Form1', 'SDL_First', Keys[ks0].ButtonIndex[0]);
+    ini.WriteBool('TApplication.Form1', 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_Second', Keys[ks0].ButtonIndex[1]);
+    ini.WriteBool('TApplication.Form1', 'SDL_SecondIdle', Keys[ks0].ButtonsIdle[1]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_UpDown', Keys[ks0].AchsisIndex[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownIdle', Keys[ks0].AchsisIdle[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownDirection', Keys[ks0].AchsisDirection[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
+    ini.WriteInteger('TApplication.Form1', 'KeyUp2', Keys[ks1].KeyUp);
+    ini.WriteInteger('TApplication.Form1', 'KeyDown2', Keys[ks1].KeyDown);
+    ini.WriteInteger('TApplication.Form1', 'KeyLeft2', Keys[ks1].KeyLeft);
+    ini.WriteInteger('TApplication.Form1', 'KeyRight2', Keys[ks1].KeyRight);
+    ini.WriteInteger('TApplication.Form1', 'KeyPrimary2', Keys[ks1].KeyPrimary);
+    ini.WriteInteger('TApplication.Form1', 'KeySecondary2', Keys[ks1].KeySecondary);
+    ini.WriteBool('TApplication.Form1', 'UseSDL2', Keys[ks1].UseSDL2);
+    ini.WriteString('TApplication.Form1', 'SDL_Name2', Keys[ks1].Name);
+    ini.WriteInteger('TApplication.Form1', 'SDL_First2', Keys[ks1].ButtonIndex[0]);
+    ini.WriteBool('TApplication.Form1', 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
+    ini.WriteBool('TApplication.Form1', 'SDL_SecondIdle2', Keys[ks1].ButtonsIdle[1]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_UpDown2', Keys[ks1].AchsisIndex[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownIdle2', Keys[ks1].AchsisIdle[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownDirection2', Keys[ks1].AchsisDirection[0]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
+    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
+
+  End;
+  dialog.free;
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);

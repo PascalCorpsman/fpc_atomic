@@ -2,7 +2,7 @@
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
-(* This file is part of FPC_Atomic                                            *)
+(* This file is part of config_td                                             *)
 (*                                                                            *)
 (*  See the file license.md, located under:                                   *)
 (*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
@@ -12,26 +12,6 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
-Program fpc_atomic;
 
-{$MODE objfpc}{$H+}
-
-Uses
-{$IFDEF UNIX}
-  cthreads,
-{$ENDIF}
-  Interfaces, // this includes the LCL widgetset
-  Forms, Unit1, Unit18, uatomic, ukeyboarddialog, ukeygrabber;
-
-Begin
-  // Do not Report if there is no error, that only confuses player..
-{$IF declared(UseHeapTrace)}
-  GlobalSkipIfNoLeaks := True;
-{$ENDIF}
-  Application.Title:='';
-  Application.Initialize;
-  Application.CreateForm(TForm1, Form1);
-  Application.CreateForm(TForm18, Form18);
-  Application.Run;
-End.
+{$define USELCL}
 
