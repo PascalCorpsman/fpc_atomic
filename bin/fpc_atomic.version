@@ -77,6 +77,16 @@
       },
       {
         "file":        {
+          "HASH":"7a11cbcf3d011d61dfc45eeea0197839",
+          "SIZE":"1471488",
+          "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE2":"-1",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/SDL2.dll",
+          "Filename":"SDL2.dll"
+        }
+      },
+      {
+        "file":        {
           "HASH":"86c7feb93a9b7460a393dcd9ce07e19f",
           "SIZE":"265728",
           "HASH2":"66e086f711648cee1db87234dc0c8072",
