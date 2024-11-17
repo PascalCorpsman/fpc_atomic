@@ -1,3 +1,17 @@
+(******************************************************************************)
+(*                                                                            *)
+(* Author      : Uwe Schächterle (Corpsman)                                   *)
+(*                                                                            *)
+(* This file is part of FPC_Atomic                                            *)
+(*                                                                            *)
+(*  See the file license.md, located under:                                   *)
+(*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
+(*  for details about the license.                                            *)
+(*                                                                            *)
+(*               It is not allowed to change or remove this text from any     *)
+(*               source file of the project.                                  *)
+(*                                                                            *)
+(******************************************************************************)
 Unit usdlwizzard;
 
 {$MODE ObjFPC}{$H+}
@@ -71,7 +85,7 @@ Type
 
 Implementation
 
-Uses SDL2, Dialogs, Graphics, LResources, math;
+Uses SDL2, Dialogs, Graphics, LResources, math, uatomic_common;
 
 { TSDLWizzard }
 
@@ -170,8 +184,6 @@ Begin
 End;
 
 Procedure TSDLWizzard.Timer1Timer(Sender: TObject);
-Const
-  achsistrigger = 32767 Div 4;
 Var
   event: TSDL_Event;
   i, d: Integer;

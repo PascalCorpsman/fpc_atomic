@@ -265,6 +265,8 @@ Const
   GameModeRelease = 1;
   GameModeDebug = 2;
 
+  Achsistrigger = 32767 Div 4; // Wert um den sich eine "Move" Achse auf dem Joystick von der Mittelstellung weg bewegen muss, damit ein "Hit" erkannt wird
+
 Type
 
   (*

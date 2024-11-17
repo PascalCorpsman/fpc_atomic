@@ -64,7 +64,25 @@ Type
     Destructor Destroy; override;
   End;
 
+Function ResolveJoystickNameToIndex(Const aName: String): integer; // -1 wenn nicht gefunden
+
 Implementation
+
+Function ResolveJoystickNameToIndex(Const aName: String): integer;
+Var
+  i: Integer;
+  s: String;
+Begin
+  result := -1;
+  If aname = '' Then exit;
+  For i := 0 To SDL_NumJoysticks() - 1 Do Begin
+    s := SDL_JoystickNameForIndex(i);
+    If aName = s Then Begin
+      result := i;
+      exit;
+    End;
+  End;
+End;
 
 { TSDL_Joystick }
 

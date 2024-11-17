@@ -22,7 +22,7 @@ Interface
 
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
-  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds;
+  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick;
 
 Type
   TUDPPingData = Record
@@ -58,6 +58,8 @@ Type
 
   TGame = Class
   private
+    fsdl_Loaded: Boolean;
+    fsdlJoysticks: Array[TKeySet] Of TSDL_Joystick;
     fTramp, fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
     fSoundManager: TSoundManager;
@@ -105,6 +107,10 @@ Type
 
     Procedure FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
+
+    Procedure CheckKeyDown(Key: Word; Keys: TKeySet);
+    Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
+    Procedure CheckSDLKeys();
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
@@ -201,6 +207,7 @@ Uses dglopengl
   , Forms
   , Unit1 // Nur wegen Close, ggf via Dependency Injection besser lösen...
   , math
+  , sdl2
   , uip
   , uOpenGL_ASCII_Font
   , uloaderdialog
@@ -296,9 +303,41 @@ End;
 { TGame }
 
 Procedure TGame.SwitchToScreen(TargetScreen: TScreenEnum);
+Var
+  index: integer;
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   log('TGame.SwitchToScreen', llTrace);
+  // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
+  If (TargetScreen = sHost) Or
+    (TargetScreen = sJoinNetwork) Then Begin
+    If (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
+      If (Not fsdl_Loaded) Then Begin
+        fsdl_Loaded := SDL_LoadLib('');
+        If fsdl_Loaded Then Begin
+          fsdl_Loaded := SDL_Init(SDL_INIT_JOYSTICK) = 0;
+        End;
+      End;
+      If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].Free;
+      If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].Free;
+      fsdlJoysticks[ks0] := Nil;
+      fsdlJoysticks[ks1] := Nil;
+      If fsdl_Loaded Then Begin
+        If Settings.Keys[ks0].UseSDL2 Then Begin
+          index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name);
+          If index <> -1 Then Begin
+            fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
+          End;
+        End;
+        If Settings.Keys[ks1].UseSDL2 Then Begin
+          index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name);
+          If index <> -1 Then Begin
+            fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
+          End;
+        End;
+      End;
+    End;
+  End;
   (*
    * Wenn es "individuell" noch was zu tun gibt ...
    *)
@@ -466,45 +505,6 @@ Begin
 End;
 
 Procedure TGame.FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-
-  Procedure CheckKey(Keys: TKeySet);
-  Var
-    m: TMemoryStream;
-    db, b: Boolean;
-    ak: TAtomicKey;
-    n: QWORD;
-  Begin
-    If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary] Then Begin
-      m := TMemoryStream.Create;
-      b := true;
-      db := false;
-      m.Write(fPlayerIndex[keys], SizeOf(fPlayerIndex[keys]));
-      m.Write(b, sizeof(b));
-      Case IndexOf(Key, [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary]) Of
-        0: ak := akLeft;
-        1: ak := akRight;
-        2: ak := akUp;
-        3: ak := akDown;
-        4: Begin
-            ak := akFirstAction;
-            n := GetTickCount64;
-            If fLastKeyDown[ak] + AtomicActionDoubleTime > n Then db := true;
-            fLastKeyDown[ak] := n;
-          End;
-        5: Begin
-            ak := akSecondAction;
-            n := GetTickCount64;
-            If fLastKeyDown[ak] + AtomicActionDoubleTime > n Then db := true;
-            fLastKeyDown[ak] := n;
-          End;
-      End;
-      fPlayer[fPlayerIndex[keys]].KeysPressed[ak] := True;
-      m.Write(ak, SizeOf(ak));
-      m.Write(db, sizeof(db));
-      SendChunk(miClientKeyEvent, m);
-    End;
-  End;
-
 Var
   aVolume: Dword;
 Begin
@@ -557,8 +557,8 @@ Begin
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
           End;
-          If fPlayerIndex[ks0] <> -1 Then CheckKey(ks0);
-          If fPlayerIndex[ks1] <> -1 Then CheckKey(ks1);
+          If fPlayerIndex[ks0] <> -1 Then CheckKeyDown(key, ks0);
+          If fPlayerIndex[ks1] <> -1 Then CheckKeyDown(key, ks1);
         End;
     End;
   End;
@@ -567,50 +567,181 @@ Begin
   End;
 End;
 
-Procedure TGame.FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
-
-  Procedure CheckKey(Keys: TKeySet);
-  Var
-    m: TMemoryStream;
-    ak: TAtomicKey;
-    b: Boolean;
-    j: TAtomicKey;
-  Begin
-    If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown] Then Begin
-      Case IndexOf(Key, [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown]) Of
-        0: ak := akLeft;
-        1: ak := akRight;
-        2: ak := akUp;
-        3: ak := akDown;
-      End;
-      fPlayer[fPlayerIndex[Keys]].KeysPressed[ak] := false;
-      b := false;
-      ak := akUp; // Vollkommen Wurscht, hauptsache der Server Stoppt die Animation
-      // Schaun ob der Spieler tatsächlich nicht mehr Steuern will, oder nur grad um eine Ecke läuft und diese "geglättet" werden muss ;)
-      For j In [akUp, akDown, akLeft, akRight] Do Begin
-        If fPlayer[fPlayerIndex[Keys]].KeysPressed[j] Then Begin
-          b := true;
-          ak := j;
-          break;
+Procedure TGame.CheckKeyDown(Key: Word; Keys: TKeySet);
+Var
+  m: TMemoryStream;
+  db, b: Boolean;
+  ak: TAtomicKey;
+  n: QWORD;
+Begin
+  If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary] Then Begin
+    m := TMemoryStream.Create;
+    b := true;
+    db := false;
+    m.Write(fPlayerIndex[keys], SizeOf(fPlayerIndex[keys]));
+    m.Write(b, sizeof(b));
+    Case IndexOf(Key, [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary]) Of
+      0: ak := akLeft;
+      1: ak := akRight;
+      2: ak := akUp;
+      3: ak := akDown;
+      4: Begin
+          ak := akFirstAction;
+          n := GetTickCount64;
+          If fLastKeyDown[ak] + AtomicActionDoubleTime > n Then db := true;
+          fLastKeyDown[ak] := n;
         End;
-      End;
-      m := TMemoryStream.Create;
-      m.Write(fPlayerIndex[Keys], SizeOf(fPlayerIndex[Keys]));
-      m.Write(b, sizeof(b)); // Key "Up"
-      m.Write(ak, SizeOf(ak));
-      m.Write(b, sizeof(b)); // ssDouble
-      SendChunk(miClientKeyEvent, m);
+      5: Begin
+          ak := akSecondAction;
+          n := GetTickCount64;
+          If fLastKeyDown[ak] + AtomicActionDoubleTime > n Then db := true;
+          fLastKeyDown[ak] := n;
+        End;
     End;
+    fPlayer[fPlayerIndex[keys]].KeysPressed[ak] := True;
+    m.Write(ak, SizeOf(ak));
+    m.Write(db, sizeof(db));
+    SendChunk(miClientKeyEvent, m);
   End;
+End;
 
+Procedure TGame.CheckKeyUp(Key: Word; Keys: TKeySet);
+Var
+  m: TMemoryStream;
+  ak: TAtomicKey;
+  db, b: Boolean;
+  j: TAtomicKey;
+Begin
+  If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown] Then Begin
+    Case IndexOf(Key, [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown]) Of
+      0: ak := akLeft;
+      1: ak := akRight;
+      2: ak := akUp;
+      3: ak := akDown;
+    End;
+    fPlayer[fPlayerIndex[Keys]].KeysPressed[ak] := false;
+    // Das Problem ist, das der Server bei Key Up die Animation komplett stoppt, das führt dazu, dass der Spieler "träge" wirkt
+    // Aus diesem Grund muss hier geschaut werden ob ggf noch eine Andere Taste "Aktiv" ist, wenn ja wird stattdessen derren Down gesendet !
+    b := false;
+    db := false;
+    For j In [akUp, akDown, akLeft, akRight] Do Begin
+      If fPlayer[fPlayerIndex[Keys]].KeysPressed[j] Then Begin
+        b := true;
+        ak := j;
+        break;
+      End;
+    End;
+    m := TMemoryStream.Create;
+    m.Write(fPlayerIndex[Keys], SizeOf(fPlayerIndex[Keys]));
+    m.Write(b, sizeof(b));
+    m.Write(ak, SizeOf(ak));
+    m.Write(db, sizeof(db)); // Double wird beu Richtungs Key's ignoriert
+    SendChunk(miClientKeyEvent, m);
+  End;
+End;
+
+Procedure TGame.FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
 Begin
   If fgameState = gs_Gaming Then Begin
-    If fPlayerIndex[ks0] <> -1 Then CheckKey(ks0);
-    If fPlayerIndex[ks1] <> -1 Then CheckKey(ks1);
+    If fPlayerIndex[ks0] <> -1 Then CheckKeyUp(Key, ks0);
+    If fPlayerIndex[ks1] <> -1 Then CheckKeyUp(key, ks1);
   End;
   If assigned(FOnKeyUpCapture) Then Begin
     FOnKeyUpCapture(sender, key, shift);
   End;
+End;
+
+Procedure TGame.CheckSDLKeys();
+
+  Procedure CheckKeys(Keys: TKeySet);
+  Var
+    d: Integer;
+    up, down, left, right, first, second: Boolean;
+  Begin
+    If Not Settings.Keys[keys].UseSDL2 Then exit;
+    If Not assigned(fsdlJoysticks[keys]) Then exit;
+    // 1. Ermitteln des Aktuellen "Gedrückt" stati
+    up := false;
+    down := false;
+    left := false;
+    right := false;
+    d := Settings.Keys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[0]];
+    If abs(d) > achsistrigger Then Begin
+      If sign(d) = Settings.Keys[keys].AchsisDirection[0] Then Begin
+        up := true;
+      End
+      Else Begin
+        down := true;
+      End;
+    End;
+    d := Settings.Keys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[1]];
+    If abs(d) > achsistrigger Then Begin
+      If sign(d) = Settings.Keys[keys].AchsisDirection[1] Then Begin
+        left := true;
+      End
+      Else Begin
+        right := true;
+      End;
+    End;
+    first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
+    second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
+    // 2. Rauskriegen ob ein Event abgeleitet werden muss
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
+      If up Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+      End;
+    End;
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> Down Then Begin
+      If Down Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+      End;
+    End;
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
+      If left Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+      End;
+    End;
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
+      If right Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+      End;
+    End;
+    // Das Key Up wird bei Action nicht geprüft..
+    If (fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] <> first) And first Then Begin
+      CheckKeyDown(Settings.Keys[keys].KeyPrimary, keys);
+    End;
+    // Das Key Up wird bei Action nicht geprüft..
+    If (fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] <> second) And Second Then Begin
+      CheckKeyDown(Settings.Keys[keys].KeySecondary, keys);
+    End;
+    // 3. Speichern für die nächste Runde ;)
+    fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] := first;
+    fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] := second;
+  End;
+
+Var
+  event: TSDL_Event;
+Begin
+  If Not fsdl_Loaded Then exit;
+  If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then exit;
+
+  While SDL_PollEvent(@event) <> 0 Do Begin // TODO: Braucht man das wirklich ?
+  End;
+
+  CheckKeys(ks0);
+  CheckKeys(ks1);
 End;
 
 Function TGame.StartHost: Boolean;
@@ -1725,6 +1856,9 @@ End;
 Constructor TGame.Create;
 Begin
   Inherited Create;
+  fsdl_Loaded := false;
+  fsdlJoysticks[ks0] := Nil;
+  fsdlJoysticks[ks1] := Nil;
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
@@ -1745,6 +1879,10 @@ Var
   i: TScreenEnum;
   j: Integer;
 Begin
+  If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].free;
+  If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].free;
+  fsdlJoysticks[ks0] := Nil;
+  fsdlJoysticks[ks1] := Nil;
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -2090,6 +2228,7 @@ Begin
         If assigned(fActualScreen) Then fActualScreen.Render;
       End;
     gs_Gaming: Begin
+        CheckSDLKeys;
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
         For i := 0 To high(fPlayer) Do Begin
