@@ -86,6 +86,7 @@ Procedure TForm3.CheckAddFile(Const ListBox: TCheckListBox; Const aFile: TFile;
 Var
   io: TitemObject;
   fn, s, cfh, fh: String;
+  fs: Int64;
   NeedAdd: Boolean;
   i: integer;
 Begin
@@ -97,24 +98,29 @@ Begin
 {$ENDIF}
   fh := aFile.Hash;
 {$IFDEF Linux}
+  fs := aFile.Size;
   If (aFile.Kind = fkExecutable) Then Begin
     fn := ExtractFileNameWithoutExt(fn);
     fh := aFile.Hash2;
+    fs := aFile.Size2;
   End;
   If (aFile.Kind = fkLib) Then Begin
     fn := Change_DLL_To_lib_so(fn);
     fh := aFile.Hash2;
+    fs := aFile.Size2
   End;
 {$ENDIF}
   If (Not NeedAdd) And (aFile.Kind In [fkExecutable, fkFile, fkLib, fkScript]) Then Begin
-    If FileExists(fn) Then Begin
-      cfh := MD5Print(MD5File(fn));
-      If lowercase(fh) <> lowercase(cfh) Then Begin
+    If fs <> -1 Then Begin
+      If FileExists(fn) Then Begin
+        cfh := MD5Print(MD5File(fn));
+        If lowercase(fh) <> lowercase(cfh) Then Begin
+          NeedAdd := true;
+        End;
+      End
+      Else Begin
         NeedAdd := true;
       End;
-    End
-    Else Begin
-      NeedAdd := true;
     End;
   End;
   s := 'TForm3.CheckAddFile: missing case.';
