@@ -55,7 +55,7 @@ See the license.md file located at https://github.com/PascalCorpsman/Software_Li
 5. Install the following packages into the Lazarus IDE:
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
-6. Download SDL2-Header from https://github.com/PascalCorpsman/Pascal-SDL-2-Headers and store its content in the "units" folder 
+6. Download SDL2-Header from https://github.com/PascalCorpsman/SDL2-for-Pascal and store the content its "units" folder in the "units" folder 
 
 ## What needs to be done to implement a own AI ?
 
