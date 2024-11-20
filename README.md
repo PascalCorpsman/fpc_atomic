@@ -37,6 +37,7 @@ By using the launcher you can click the "check for update" feature to check weth
 - Custom AI implementation
 - Single player mode is not present
 - Not all sounds are used
+- Joypad support via SDL2
 - Missing online manual; use the [manual](MANUAL.md) provided in this repository instead (best UX if you have a .md viewer and can use the MANUAL.md that is shipped with the game after the CD-Content extraction).
 - Pro gamers may discover additional differences due to guessing of the original functionality.
 
