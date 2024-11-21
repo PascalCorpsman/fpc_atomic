@@ -50,6 +50,7 @@ Type
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
+    Button6: TButton;
     PageControl1: TPageControl;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
@@ -70,6 +71,7 @@ Type
     Procedure OnSelectDeviceNext(Sender: TObject);
     Procedure OnCenterDeviceNext(Sender: TObject);
     Procedure Timer1Timer(Sender: TObject);
+    Procedure OnRestartWizzard(Sender: TObject);
   private
     WizzardState: TWizzardState;
     fsdlJoyStick: TSDL_Joystick;
@@ -291,6 +293,28 @@ Begin
   End;
 End;
 
+Procedure TSDLWizzard.OnRestartWizzard(Sender: TObject);
+Var
+  i: Integer;
+Begin
+  // Restart Wizzard
+  For i := 0 To high(pb) Do Begin
+    pb[i].Free;
+  End;
+  setlength(pb, 0);
+  For i := 0 To high(sp) Do Begin
+    sp[i].Free;
+  End;
+  setlength(sp, 0);
+  PageControl1.ActivePageIndex := 0;
+  Button2.Enabled := false;
+  Button5.Visible := true;
+  timer1.Enabled := false;
+  If assigned(fsdlJoyStick) Then fsdlJoyStick.free;
+  fsdlJoyStick := Nil;
+  OnRefreshDeviceList(Nil);
+End;
+
 Constructor TSDLWizzard.CreateNew(AOwner: TComponent; Num: Integer);
   Procedure CreateLabel(Var lb: TLabel; aName, acaption: String; aTop, aleft: integer; aOwner: TWinControl);
   Begin
@@ -381,7 +405,9 @@ Begin
   CreateShape(First, 'First', 208, 416, TabSheet2);
   CreateShape(Second, 'Second', 208, 528, TabSheet2);
   CreateButton(Button5, 'Button5', 'Next', 264, 464, mrNone, TabSheet2);
+  CreateButton(Button6, 'Button6', 'Restart', 264, 464 - 115 - 8, mrNone, TabSheet2);
   button5.OnClick := @OnCenterDeviceNext;
+  button6.OnClick := @OnRestartWizzard;
 
   PageControl1.ActivePageIndex := 0;
   CreateButton(Button1, 'Button1', 'Cancel', 320, 8, mrCancel, self);

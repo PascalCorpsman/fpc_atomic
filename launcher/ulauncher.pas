@@ -34,6 +34,7 @@ Const
    * -Released- 0.05 = FIX: prevent update crash on Linux by renaming folder before update
    *            0.06 = ADD: Keyboard / Joystick Wizzard
    *                   FIX: Do not suggest files with filesize -1
+   *                   ADD: Restart Button for SDL-wizzard
    *
    * Known Bugs :
    *)
