@@ -4,4 +4,4 @@
  * Not all functions are "ported yet, see existing "working" code on how to
  * port missing functions.
  *)
-{$DEFINE SDL_DYNAMIC_LINKING}
+{$DEFINE SDL_RUNTIME_LOADING}
