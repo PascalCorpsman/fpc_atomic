@@ -86,7 +86,7 @@ Begin
     PrintHelp();
   End;
   dummy := TDummy.Create;
-  DoExtraction(CDFolder, AtomicFolder, @dummy.Log);
+  DoExtraction(CDFolder, AtomicFolder, @dummy.Log, false);
   dummy.free;
 
 End.
