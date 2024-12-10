@@ -59,7 +59,7 @@ See the license.md file located at https://github.com/PascalCorpsman/Software_Li
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
 6. Download SDL2-Header from https://github.com/PascalCorpsman/SDL2-for-Pascal and store the content its "units" folder in a new subfolder "sdl2_for_pascal"
-7. Add the paths from 4. and 6. as searchpaths for all .lpi files (at least client, launcher and server) (in the IDE project -> settings -> compilersettings -> paths)
+7. Add the paths from 4. and 6. as searchpaths for all .lpi files (at least client, launcher and server) (in the IDE project -> settings -> compilersettings -> paths). Ignore the not resolvable searchpaths.
 
 !! Attention !!
 
