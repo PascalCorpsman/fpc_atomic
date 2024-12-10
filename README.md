@@ -51,13 +51,19 @@ See the license.md file located at https://github.com/PascalCorpsman/Software_Li
 
 1. Install Lazarus IDE from https://www.lazarus-ide.org/
 2. Download dglopengl.pas from https://github.com/saschawillems/dglopengl and store it in the "units" folder
-3. Download bass.pas from https://www.un4seen.com/ and store it in the "units" folder (Linux users may also need to copy the libbass.so to "/usr/lib/")
+3. Download bass.pas from https://www.un4seen.com/ and store it in the "units" folder
+   - Linux users: copy libbass.so to "/usr/lib/" or run "Linux_sound_install_script.sh"
+   - Windows users: copy bass.dll from the bin folder into the repository root folder
 4. Download synapse from http://www.ararat.cz/synapse/doku.php/download and store it in a new subfolder "synapse"
 5. Install the following packages into the Lazarus IDE:
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
 6. Download SDL2-Header from https://github.com/PascalCorpsman/SDL2-for-Pascal and store the content its "units" folder in a new subfolder "sdl2_for_pascal"
 7. Add the paths from 4. and 6. as searchpaths for all .lpi files (at least client, launcher and server) (in the IDE project -> settings -> compilersettings -> paths)
+
+!! Attention !!
+
+All *.lpi files are configured to create their compilation results into the root folder of the repository. If you do compile the code by your own, do not use the version from the bin folder anymore.
 
 ## What needs to be done to implement a own AI ?
 
