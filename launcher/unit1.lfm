@@ -7,7 +7,7 @@ object Form1: TForm1
   ClientHeight = 461
   ClientWidth = 467
   Position = poScreenCenter
-  LCLVersion = '3.99.0.0'
+  LCLVersion = '4.99.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   object Image1: TImage

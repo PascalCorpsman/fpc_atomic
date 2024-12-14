@@ -1,13 +1,13 @@
 object Form3: TForm3
-  Left = 348
-  Height = 549
-  Top = 114
+  Left = 323
+  Height = 617
+  Top = 107
   Width = 773
   Caption = 'Form3'
-  ClientHeight = 549
+  ClientHeight = 617
   ClientWidth = 773
   Position = poScreenCenter
-  LCLVersion = '3.99.0.0'
+  LCLVersion = '4.99.0.0'
   OnCreate = FormCreate
   object Memo1: TMemo
     Left = 8
@@ -41,7 +41,7 @@ object Form3: TForm3
   end
   object CheckListBox1: TCheckListBox
     Left = 8
-    Height = 118
+    Height = 134
     Top = 176
     Width = 756
     Anchors = [akTop, akLeft, akRight, akBottom]
@@ -53,15 +53,15 @@ object Form3: TForm3
   object Label2: TLabel
     Left = 8
     Height = 16
-    Top = 325
+    Top = 343
     Width = 244
     Anchors = [akLeft, akBottom]
     Caption = 'Additional files that can be downloaded:'
   end
   object CheckListBox2: TCheckListBox
     Left = 8
-    Height = 96
-    Top = 341
+    Height = 97
+    Top = 359
     Width = 756
     Anchors = [akLeft, akRight, akBottom]
     ItemHeight = 0
@@ -72,7 +72,7 @@ object Form3: TForm3
   object Button1: TButton
     Left = 8
     Height = 25
-    Top = 469
+    Top = 541
     Width = 756
     Anchors = [akLeft, akRight, akBottom]
     Caption = 'Download and update files'
@@ -82,7 +82,7 @@ object Form3: TForm3
   object Button2: TButton
     Left = 8
     Height = 25
-    Top = 509
+    Top = 581
     Width = 756
     Anchors = [akLeft, akRight, akBottom]
     Caption = 'Cancel'
@@ -92,7 +92,7 @@ object Form3: TForm3
   object Label3: TLabel
     Left = 8
     Height = 16
-    Top = 445
+    Top = 464
     Width = 41
     Anchors = [akLeft, akBottom]
     Caption = 'Label3'
@@ -100,7 +100,7 @@ object Form3: TForm3
   object Button3: TButton
     Left = 658
     Height = 25
-    Top = 298
+    Top = 316
     Width = 50
     Anchors = [akRight, akBottom]
     Caption = 'All'
@@ -110,7 +110,7 @@ object Form3: TForm3
   object Button4: TButton
     Left = 714
     Height = 25
-    Top = 298
+    Top = 316
     Width = 50
     Anchors = [akRight, akBottom]
     Caption = 'None'
@@ -123,5 +123,31 @@ object Form3: TForm3
     Top = 8
     Width = 129
     Caption = 'Last release message:'
+  end
+  object ProgressBar1: TProgressBar
+    Left = 8
+    Height = 20
+    Top = 488
+    Width = 756
+    Anchors = [akLeft, akRight, akBottom]
+    TabOrder = 8
+  end
+  object ProgressBar2: TProgressBar
+    Left = 8
+    Height = 20
+    Top = 512
+    Width = 756
+    Anchors = [akLeft, akRight, akBottom]
+    TabOrder = 9
+  end
+  object Label5: TLabel
+    Left = 200
+    Height = 16
+    Top = 464
+    Width = 564
+    Alignment = taRightJustify
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    AutoSize = False
+    Caption = 'Label5'
   end
 end

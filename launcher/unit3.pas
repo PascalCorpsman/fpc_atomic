@@ -20,7 +20,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  CheckLst, ulauncher;
+  CheckLst, ComCtrls, ulauncher;
 
 Type
 
@@ -42,7 +42,10 @@ Type
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
+    Label5: TLabel;
     Memo1: TMemo;
+    ProgressBar1: TProgressBar;
+    ProgressBar2: TProgressBar;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
@@ -56,6 +59,7 @@ Type
     Procedure CheckAddFile(Const ListBox: TCheckListBox; Const aFile: TFile; Force: Boolean);
     Function dlFile(aFile: TFile): int64;
     Procedure TriggerUpdater(Executable: String);
+    Procedure OnFileDownloadUpdateEvent(Sender: TObject; aSize, aTotalSize: Int64);
   public
     Procedure InitWith(Const aVersion: TVersion; Force: Boolean);
 
@@ -67,7 +71,7 @@ Var
 
 Implementation
 
-Uses lazfileutils, md5, Zipper, FileUtil, process, UTF8Process, unit4, LCLType, Unit1;
+Uses lazfileutils, md5, Zipper, FileUtil, process, UTF8Process, LCLType, Unit1, usynapsedownloader;
 
 {$R *.lfm}
 
@@ -147,6 +151,7 @@ Var
   newRoot, root, fn, source, target, TargetDir: String;
   sl: TStringList;
   i: Integer;
+  dl: TSynapesDownloader;
 {$IFDEF Linux}
   pr: TProcessUTF8;
 {$ENDIF}
@@ -166,66 +171,76 @@ Begin
   If aFile.Kind = fkZip Then Begin
     fn := IncludeTrailingPathDelimiter(GetTempDir()) + 'atomic_update' + PathDelim + ExtractFileName(aFile.URL);
   End;
-  If DownloadFile(aFile.URL, fn) Then Begin
-    result := FileSize(fn);
-    If (aFile.Kind = fkExecutable) Or (aFile.Kind = fkScript) Then Begin
+  dl := TSynapesDownloader.Create;
+  dl.OnFileDownloadUpdateEvent := @OnFileDownloadUpdateEvent;
+  Try
+    label5.caption := ExtractFileName(fn);
+    If dl.DownloadFile(aFile.URL, fn) Then Begin
+      result := FileSize(fn);
+      If (aFile.Kind = fkExecutable) Or (aFile.Kind = fkScript) Then Begin
 {$IFDEF LINUX}
-      pr := TProcessUTF8.Create(Nil);
-      pr.Options := [poWaitOnExit];
-      pr.CurrentDirectory := GetCurrentDir;
-      pr.Executable := 'chmod';
-      pr.Parameters.Add('+x');
-      pr.Parameters.Add(fn);
-      pr.Execute;
-      pr.free;
+        pr := TProcessUTF8.Create(Nil);
+        pr.Options := [poWaitOnExit];
+        pr.CurrentDirectory := GetCurrentDir;
+        pr.Executable := 'chmod';
+        pr.Parameters.Add('+x');
+        pr.Parameters.Add(fn);
+        pr.Execute;
+        pr.free;
 {$ENDIF}
-      // Die Locale Versionsanzeige "umbiegen", falls jemand 2 mal Check for update clickt ;)
-      If lowercase(ExtractFileName(fn)) = 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF} Then Begin
-        Form1.StoreVersion(fNewVersion);
+        // Die Locale Versionsanzeige "umbiegen", falls jemand 2 mal Check for update clickt ;)
+        If lowercase(ExtractFileName(fn)) = 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF} Then Begin
+          Form1.StoreVersion(fNewVersion);
+        End;
       End;
-    End;
-    If aFile.Kind = fkZip Then Begin
-      UnZipper := TUnZipper.Create;
-      Try
-        UnZipper.FileName := fn;
-        If aFile.InFileOffset = '' Then Begin
-          UnZipper.OutputPath := ExtractFilePath(ParamStr(0));
-          UnZipper.Examine;
-          UnZipper.UnZipAllFiles;
-        End
-        Else Begin
-          UnZipper.OutputPath := IncludeTrailingPathDelimiter(GetTempDir()) + 'atomic_update';
-          UnZipper.Examine;
-          UnZipper.UnZipAllFiles;
-          root := IncludeTrailingPathDelimiter(GetTempDir()) + 'atomic_update' + PathDelim + aFile.InFileOffset;
-          sl := FindAllFiles(root);
-          root := root + PathDelim;
-          newRoot := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-          For i := 0 To sl.count - 1 Do Begin
-            source := sl[i];
-            target := StringReplace(sl[i], root, newRoot, []);
-            TargetDir := ExtractFilePath(target);
-            If TargetDir <> '' Then Begin
-              ForceDirectories(TargetDir); // Braucht keine Fehlermeldung, weil die unten durch Copyfile auch gemacht wird ;)
+      If aFile.Kind = fkZip Then Begin
+        UnZipper := TUnZipper.Create;
+        Try
+          UnZipper.FileName := fn;
+          If aFile.InFileOffset = '' Then Begin
+            UnZipper.OutputPath := ExtractFilePath(ParamStr(0));
+            UnZipper.Examine;
+            UnZipper.UnZipAllFiles;
+          End
+          Else Begin
+            UnZipper.OutputPath := IncludeTrailingPathDelimiter(GetTempDir()) + 'atomic_update';
+            UnZipper.Examine;
+            UnZipper.UnZipAllFiles;
+            root := IncludeTrailingPathDelimiter(GetTempDir()) + 'atomic_update' + PathDelim + aFile.InFileOffset;
+            sl := FindAllFiles(root);
+            root := root + PathDelim;
+            newRoot := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+            For i := 0 To sl.count - 1 Do Begin
+              source := sl[i];
+              target := StringReplace(sl[i], root, newRoot, []);
+              TargetDir := ExtractFilePath(target);
+              If TargetDir <> '' Then Begin
+                ForceDirectories(TargetDir); // Braucht keine Fehlermeldung, weil die unten durch Copyfile auch gemacht wird ;)
+              End;
+              If Not CopyFile(source, target) Then Begin
+                log('Error, could not create: ' + target);
+              End;
+              // Sollten die Temp daten wieder gelöscht werden oder ist uns dass egal ?
             End;
-            If Not CopyFile(source, target) Then Begin
-              log('Error, could not create: ' + target);
-            End;
-            // Sollten die Temp daten wieder gelöscht werden oder ist uns dass egal ?
+            sl.free;
           End;
-          sl.free;
+        Except
+          On av: exception Do Begin
+            log(av.Message);
+          End;
         End;
-      Except
-        On av: exception Do Begin
-          log(av.Message);
-        End;
+        UnZipper.Free;
       End;
-      UnZipper.Free;
+    End
+    Else Begin
+      // Es braucht keine Fehlermeldung, da das DownloadFile schon gemacht hat ..
     End;
-  End
-  Else Begin
-    // Es braucht keine Fehlermeldung, da das DownloadFile schon gemacht hat ..
+  Except
+    On av: exception Do Begin
+      ShowMessage(av.Message);
+    End;
   End;
+  dl.free;
   Application.ProcessMessages;
 End;
 
@@ -243,6 +258,14 @@ Begin
   p.Parameters.add(Executable);
   p.Execute; // Ab jetzt heist es so schnell wie möglich raus aus der Anwendung
   p.free;
+End;
+
+Procedure TForm3.OnFileDownloadUpdateEvent(Sender: TObject; aSize,
+  aTotalSize: Int64);
+Begin
+  ProgressBar1.Max := aTotalSize;
+  ProgressBar1.Position := aSize;
+  Application.ProcessMessages;
 End;
 
 Function TForm3.GetFilesToDLCount: Integer;
@@ -360,21 +383,20 @@ Begin
       exit;
     End;
   End;
-  form4.Show;
-  form4.ProgressBar1.Max := total Div 1024;
-  form4.ProgressBar1.Position := 0;
+  ProgressBar2.Max := total;
+  ProgressBar2.Position := 0;
   total := 0;
   For i := 0 To CheckListBox1.items.count - 1 Do Begin
     If CheckListBox1.Checked[i] Then Begin
       total := total + dlFile((CheckListBox1.Items.Objects[i] As TitemObject).filecontainer);
-      form4.ProgressBar1.Position := total Div 1024;
+      ProgressBar2.Position := total;
       Application.ProcessMessages;
     End;
   End;
   For i := 0 To CheckListBox2.items.count - 1 Do Begin
     If CheckListBox2.Checked[i] Then Begin
       total := total + dlFile((CheckListBox2.Items.Objects[i] As TitemObject).filecontainer);
-      form4.ProgressBar1.Position := total Div 1024;
+      ProgressBar2.Position := total;
       Application.ProcessMessages;
     End;
   End;
@@ -390,18 +412,16 @@ Begin
       SelfFile.Filename := OwnFile;
       dlFile(SelfFile);
       total := total + dlFile(SelfFile);
-      form4.ProgressBar1.Position := total Div 1024;
+      ProgressBar2.Position := total;
       Application.ProcessMessages;
       If FileExists(OwnFile) Then Begin
         // So schnell wie möglich beenden !
-        form4.Close;
         TriggerUpdater(OwnFile);
         Application.Terminate;
         exit;
       End
       Else Begin
         // Der Fehler wurde ja schon ausgegeben
-        form4.Close;
         close;
       End;
     End
@@ -409,8 +429,10 @@ Begin
       log('Error, could not update launcher due to missing download informations.');
     End;
   End;
-  form4.Close;
   log('Finished');
+  ProgressBar1.Position := 0;
+  ProgressBar2.Position := 0;
+  Label5.Caption := '';
   Close;
 End;
 
@@ -423,6 +445,7 @@ Procedure TForm3.InitWith(Const aVersion: TVersion; Force: Boolean);
 Var
   i: Integer;
 Begin
+  label5.caption := '';
   fNewVersion := aVersion.Version;
   SelfFile.URL := '';
   SelfFile.Size := 0;

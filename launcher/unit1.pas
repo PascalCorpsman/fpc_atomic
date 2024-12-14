@@ -75,7 +75,7 @@ Implementation
 {$R *.lfm}
 
 Uses UTF8Process, process, Unit2, Unit3, LCLType
-  , ukeyboarddialog, uatomic_common
+  , ukeyboarddialog, uatomic_common, usynapsedownloader
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -291,6 +291,7 @@ End;
 Procedure TForm1.Button1Click(Sender: TObject);
 Var
   tmpFolder: String;
+  dl: TSynapesDownloader;
 Begin
 {$IFDEF Linux}
   If DirectoryExists('cd_data_extractor') Then Begin
@@ -314,12 +315,15 @@ Begin
     log('Error, could not create: ' + tmpFolder);
     exit;
   End;
-  If Not DownloadFile(VersionInfoUrl, tmpFolder + 'fpc_atomic_version.json') Then Begin
+  dl := TSynapesDownloader.Create;
+  If Not dl.DownloadFile(VersionInfoUrl, tmpFolder + 'fpc_atomic_version.json') Then Begin
 {$IFDEF Linux}
     log('try installing ssl support: sudo aptitude install libssl-dev');
 {$ENDIF}
+    dl.free;
     exit;
   End;
+  dl.free;
   If Not Atomic_Version.LoadFromFile(tmpFolder + 'fpc_atomic_version.json') Then exit;
   log('Online version: ' + format('%0.5f', [Atomic_Version.Version]));
   If Version = -1 Then Begin
