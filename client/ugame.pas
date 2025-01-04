@@ -218,6 +218,7 @@ Uses dglopengl
   , uatomic_messages
   , uatomicfont
   , uopengl_spriteengine
+  , ugraphics
   ;
 
 Var
@@ -2051,12 +2052,16 @@ Begin
   If fPowerUpsTex[puSlow] = 0 Then exit;
   fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powrand.png', smStretchHard);
   If fPowerUpsTex[purandom] = 0 Then exit;
-  fPlayerdeadTex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', smClamp);
+  // Load PlayerDead Tex correct.
+  fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+  fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png');
   If fPlayerdeadTex.Image = 0 Then exit;
-  fhurry.Texture := OpenGL_GraphikEngine.LoadAlphaGraphikItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', smClamp);
+  fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
   If fhurry.Texture.Image = 0 Then exit;
-  hohletex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', smStretchHard);
+  fhurry.Texture := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png');
+  hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smStretchHard);
   If hohletex.Image = 0 Then exit;
+  hohletex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png');
 {$IFDEF ShowInitTime}
   TimePoint(3);
 {$ENDIF}
