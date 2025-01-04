@@ -106,7 +106,7 @@ Const
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12004';
+  Version = '0.12005';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
