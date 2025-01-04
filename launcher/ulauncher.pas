@@ -32,13 +32,14 @@ Const
    * -Released- 0.03 = ADD: Wait for cd_data_extractor
    * -Released- 0.04 = FIX: Übernehmen der Localen Version, wenn config_td binary runter geladen wurde.
    * -Released- 0.05 = FIX: prevent update crash on Linux by renaming folder before update
-   *            0.06 = ADD: Keyboard / Joystick Wizzard
+   * -Released- 0.06 = ADD: Keyboard / Joystick Wizzard
    *                   FIX: Do not suggest files with filesize -1
    *                   ADD: Restart Button for SDL-wizzard
    *                   ADD: umstieg auf SynapseDownloader
+   *            0.07 =
    * Known Bugs :
    *)
-  LauncherVersion: integer = 6;
+  LauncherVersion: integer = 7;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);

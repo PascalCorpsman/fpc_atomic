@@ -100,12 +100,13 @@ Const
    *                       FIX: sheme -> scheme
    * -releaseG - 0.12001 = FIX: #4 Solid Brick not set in timeout mode
    * -releaseG - 0.12002 = ADD: Major change in Grpahikeninge
-   *             0.12003 = ADD: Support für Gamepads / Joysticks via SDL2
+   * -releaseG - 0.12003 = ADD: Support für Gamepads / Joysticks via SDL2
+   *             0.12004 = 
    *
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12003';
+  Version = '0.12004';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
