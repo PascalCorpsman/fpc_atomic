@@ -23,7 +23,11 @@ The steps shown here are only needed to be done once (for installation).
    1.1 if you want all animations download and merge the expansion pack from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
 2. download the atomic_launcher of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin) on your harddisc
-3. run the "atomic_launcher" and follow the instructions
+3. run the "atomic_launcher" and follow the instructions<br>
+   3.1 Linux users may need to run the following commands:
+   >
+   > sudo aptitude install libssl-dev
+   >
 4. read the [manual](MANUAL.md)  
 4.5 if you are a Linux user run the "Linux_sound_install_script.sh"
 1. start the game by executing "atomic_launcher" and enjoy
