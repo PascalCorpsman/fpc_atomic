@@ -1,36 +1,36 @@
 {
   "fpc_atomic":  {
-    "Version":0.12002,
-    "LauncherVersion":5,
-    "VersionText":"Graphikengine updated, need to recreate all graphics !",
+    "Version":0.12003,
+    "LauncherVersion":6,
+    "VersionText":"ADD: Support für Gamepads \/ Joysticks via SDL2",
     "Download_core":
     [
       {
         "file":        {
           "HASH":"29b5899a73ff45ee1ad5c3fb771b62fc",
           "SIZE":"3089920",
-          "HASH2":"6bbc0f7f8ce93515afd87fb176d8bc4e",
-          "SIZE2":"7853608",
+          "HASH2":"4eea15f862dbb1a982513357dd187ece",
+          "SIZE2":"7754424",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":        {
-          "HASH":"2ab5283366a987293c095c88a4f2e8d4",
-          "SIZE":"5784576",
-          "HASH2":"beb38f29d0731bb77399a444f0f3aa17",
-          "SIZE2":"8054120",
+          "HASH":"4a1e659edd6480db391afc904563828f",
+          "SIZE":"5975552",
+          "HASH2":"e1d2223499be3c0d03a1f7508bf1b500",
+          "SIZE2":"8126248",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":        {
-          "HASH":"b153139536e5c6a3bfd985bb5d27ed43",
-          "SIZE":"4006912",
-          "HASH2":"b671ed5d4c038355ba68ecb7861bde05",
-          "SIZE2":"8646888",
+          "HASH":"1bdb3c130690c737f4511491873e0525",
+          "SIZE":"4173312",
+          "HASH2":"fd26e26842735df99c76b92a4c288212",
+          "SIZE2":"8684184",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
@@ -49,8 +49,8 @@
         "file":        {
           "HASH":"11ba2bb4bcdd29cef8eeaa6b15b97ee8",
           "SIZE":"2673664",
-          "HASH2":"31a46bd64778eab80f93045e9a286f72",
-          "SIZE2":"7025768",
+          "HASH2":"606546006d73655a7427f85cd1e3f521",
+          "SIZE2":"6922488",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
           "Filename":"updater.exe"
         }
@@ -59,15 +59,15 @@
         "file":        {
           "HASH":"568f2d22b0270261126f334b112406e2",
           "SIZE":"2908160",
-          "HASH2":"2937792a126c1bbcb0d20ec3a6cf66f7",
-          "SIZE2":"7444968",
+          "HASH2":"301f5be1b9100cdf34deaca30ba1d9b2",
+          "SIZE2":"7346152",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
       {
         "file":        {
-          "HASH":"b46b2a6275b44f3b94b069011ea64bed",
+          "HASH":"e589176925a3a3d78fe95a9cbd94a5b7",
           "SIZE":"299520",
           "HASH2":"b498c4aa86ee2a2778fc84acd338d4aa",
           "SIZE2":"1191608",
