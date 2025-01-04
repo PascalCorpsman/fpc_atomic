@@ -115,6 +115,8 @@ Type
     Procedure OnIdle(Sender: TObject; Var Done: Boolean);
     Procedure Load_Atomic_Settings;
     Function GetWorkDir(Out Directory: String): Boolean;
+    Procedure HideCursor(Sender: TObject);
+    Procedure ShowCursor(Sender: TObject);
   public
     { public declarations }
     Procedure OnConnectToServer(Sender: TObject);
@@ -137,9 +139,9 @@ Uses lazfileutils, LazUTF8, LCLType
   , windows // Für Konsolenmodus zur Laufzeit
 {$ENDIF}
   , bass
-  , unit18 // Der Fortschrittsbalken während des Updates
+  //  , unit18 // Der Fortschrittsbalken während des Updates
   , uatomicfont
-  , uscreens
+  //  , uscreens
   ;
 
 Var
@@ -154,7 +156,6 @@ End;
 
 Var
   allowcnt: Integer = 0;
-
 
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
@@ -325,6 +326,8 @@ Begin
   Timer1.Interval := 17;
   OpenGLControl1.Align := alClient;
   Game := TGame.Create();
+  game.OnNeedHideCursor := @HideCursor;
+  game.OnNeedShowCursor := @ShowCursor;
   Load_Atomic_Settings;
 {$IFDEF AUTOMODE}
   AutomodeData.State := AM_Idle;
@@ -686,6 +689,18 @@ Begin
    *)
   Directory := IncludeTrailingPathDelimiter(GetTempDir(false)) + 'FPC_Atomic';
   result := ForceDirectoriesUTF8(Directory);
+End;
+
+Procedure TForm1.HideCursor(Sender: TObject);
+Begin
+  Cursor := crNone;
+  OpenGLControl1.Cursor := crNone;
+End;
+
+Procedure TForm1.ShowCursor(Sender: TObject);
+Begin
+  Cursor := crDefault;
+  OpenGLControl1.Cursor := crDefault;
 End;
 
 Procedure TForm1.OnConnectToServer(Sender: TObject);

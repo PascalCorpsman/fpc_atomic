@@ -168,6 +168,9 @@ Type
 {$ENDIF}
     Settings: TAtomicSettings; // für uscreens
 
+    OnNeedHideCursor: TNotifyEvent;
+    OnNeedShowCursor: TNotifyEvent;
+
     Constructor Create();
     Destructor Destroy; override;
 
@@ -310,8 +313,8 @@ Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   log('TGame.SwitchToScreen', llTrace);
   // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
-  If (TargetScreen = sHost) Or
-    (TargetScreen = sJoinNetwork) Then Begin
+  If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
+    If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
     If (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
       If (Not fsdl_Loaded) Then Begin
         fsdl_Loaded := SDL_LoadLib('');
@@ -351,6 +354,7 @@ Begin
         StopPingingForGames;
         Disconnect();
         HandleSetPause(false); // Sonst bleibt die Hauptmenü Animation ggf stehen, das will natürlich keiner ;)
+        If assigned(OnNeedShowCursor) Then OnNeedShowCursor(Nil);
       End;
     sExitBomberman: Begin
         NeedFormClose := true;
@@ -1873,6 +1877,8 @@ Begin
   fUDPPingData.Connection := Nil;
   fUDPPingData.Active := false;
   fLastIdleTick := GetTickCount64;
+  OnNeedHideCursor := Nil;
+  OnNeedShowCursor := Nil;
 End;
 
 Destructor TGame.Destroy;

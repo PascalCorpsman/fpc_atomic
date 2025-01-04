@@ -102,6 +102,7 @@ Const
    * -releaseG - 0.12002 = ADD: Major change in Grpahikeninge
    * -releaseG - 0.12003 = ADD: Support für Gamepads / Joysticks via SDL2
    * -releaseG - 0.12004 = FIX: Hurry, Playerdead and Map Hole tex have been loaded without transparancy
+   *                       ADD: Show / Hide Cursor, when in / not in Main Menu
    *
    *)
 

@@ -111,6 +111,8 @@ End;
 
 Procedure TForm1.FormCreate(Sender: TObject);
 Begin
+  sdl2.dll muss auch geladen und extrahiert werden !
+
   ini := TIniFile.Create('fpc_atomic.ini');
   Constraints.MinHeight := Height;
   Constraints.MaxHeight := Height;
