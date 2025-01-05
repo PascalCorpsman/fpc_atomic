@@ -1,8 +1,8 @@
 {
   "fpc_atomic":  {
-    "Version":0.12004,
-    "LauncherVersion":6,
-    "VersionText":"FIX: Transparancy of some graphics have not loaded correct",
+    "Version":0.12005,
+    "LauncherVersion":7,
+    "VersionText":"FIX: wrote Patch for DrawGame glitch\nFIX: Crash when SDL-Keyboard slot is used as AI\nADD: Support for multiple Joysticks with same name",
     "Download_core":
     [
       {
@@ -17,20 +17,20 @@
       },
       {
         "file":        {
-          "HASH":"4a1e659edd6480db391afc904563828f",
-          "SIZE":"5975552",
-          "HASH2":"e1d2223499be3c0d03a1f7508bf1b500",
-          "SIZE2":"8126248",
+          "HASH":"21b7eaa195fd6aa4811399663481ef52",
+          "SIZE":"5976576",
+          "HASH2":"7eebde77319cfb14a9981964c24e31e5",
+          "SIZE2":"8134792",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":        {
-          "HASH":"7447d3163bcefc493153ee9bc19f2a7a",
-          "SIZE":"4174848",
-          "HASH2":"fe4e32c1c5ae982d04798756de8b70bb",
-          "SIZE2":"8684328",
+          "HASH":"91f2a19093e125e82490ff9e282592bc",
+          "SIZE":"4175872",
+          "HASH2":"6eb0e9c1c5e830434e1b2bcc2a9b47ba",
+          "SIZE2":"8688776",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
@@ -57,10 +57,10 @@
       },
       {
         "file":        {
-          "HASH":"568f2d22b0270261126f334b112406e2",
-          "SIZE":"2908160",
-          "HASH2":"301f5be1b9100cdf34deaca30ba1d9b2",
-          "SIZE2":"7346152",
+          "HASH":"a0d378fbe88922e46438d0f2a92035f9",
+          "SIZE":"2908672",
+          "HASH2":"e09d3b35ac4d8b20fe461c9c0cdbc0cc",
+          "SIZE2":"7346168",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
