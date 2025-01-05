@@ -1867,14 +1867,14 @@ Var
   End;
 
 Var
-  teamwhite, teamred, cnt, cntindex, i: Integer;
+  WinnerTeamIndex, teamwhite, teamred, cnt, cntindex, i: Integer;
   m: TMemoryStream;
   v: TVictor;
 Begin
   (*
    * Bedingungen zum "Ende"
    *)
-  // 1. Nur noch 1 Spieler am Leben, oder im Team Modus nur noch 1 Team am Leben
+  // 1. Nur noch <=1 Spieler am Leben, oder im Team Modus nur noch 1 Team am Leben
   teamwhite := 0;
   teamred := 0;
   cnt := 0;
@@ -1895,44 +1895,66 @@ Begin
   If fSettings.TeamPlay Then Begin
     // Nur noch 1 Team am Leben
     If (teamwhite = 0) Or (teamred = 0) Then Begin
-      // Die Scores erhöhen
-      If teamred = 0 Then Begin // Team weis hat gewonnen
-        v := vWhiteTeam;
-        For i := 0 To high(fPLayer) Do Begin
-          If fPLayer[i].Team = 0 Then Begin
-            SendWinner(fPLayer[i].UID, i);
-            inc(fPLayer[i].Score);
-          End;
-        End;
-      End
-      Else Begin // Team 2 hat gewonnen
-        v := vRedTeam;
-        For i := 0 To high(fPLayer) Do Begin
-          If fPLayer[i].Team = 1 Then Begin
-            SendWinner(fPLayer[i].UID, i);
-            inc(fPLayer[i].Score);
-          End;
+      // Draw Game Check
+      // => Es kann passieren, dass das andere Team gerade am "Sterben" ist aber eben auch tot
+      //    Aus diesem Grund muss hier noch mal extra geprüft werden ob die Gewinner Mannschaft
+      //    auch wirklich am Leben ist..
+      WinnerTeamIndex := IfThen((teamred = 0), TeamIndexWhite, TeamIndexRed);
+      cnt := 0;
+      For i := 0 To high(fPLayer) Do Begin
+        If (fPLayer[i].Team = WinnerTeamIndex) And fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) Then Begin
+          inc(cnt);
         End;
       End;
-      SendPlayerStatistiks(); // Damit alle Clients auch die Richtigen Scores anzeigen diese nun Aktualisieren
-      m := TMemoryStream.Create;
-      m.Write(v, SizeOf(v));
-      SendChunk(miShowMatchStatistik, m, 0);
-      fGameState := gsShowHighscore;
+      If cnt <> 0 Then Begin // Wir haben wirklich einen Gewinner ;)
+        // Die Scores erhöhen
+        If teamred = 0 Then Begin // Team weis hat gewonnen
+          v := vWhiteTeam;
+          For i := 0 To high(fPLayer) Do Begin
+            If fPLayer[i].Team = 0 Then Begin
+              SendWinner(fPLayer[i].UID, i);
+              inc(fPLayer[i].Score);
+            End;
+          End;
+        End
+        Else Begin // Team 2 hat gewonnen
+          v := vRedTeam;
+          For i := 0 To high(fPLayer) Do Begin
+            If fPLayer[i].Team = 1 Then Begin
+              SendWinner(fPLayer[i].UID, i);
+              inc(fPLayer[i].Score);
+            End;
+          End;
+        End;
+        SendPlayerStatistiks(); // Damit alle Clients auch die Richtigen Scores anzeigen diese nun Aktualisieren
+        m := TMemoryStream.Create;
+        m.Write(v, SizeOf(v));
+        SendChunk(miShowMatchStatistik, m, 0);
+        fGameState := gsShowHighscore;
+      End
+      Else Begin
+        // Draw Game, aber es laufen noch Todesanimationen,
+        // -> Damit der Code unten nicht direkt das DrawGame triggert mus cnt
+        //    manipuliert werden ;)
+        cnt := 1; // Egal hauptsache <> 0
+      End;
     End;
   End
   Else Begin
     // Nur noch 1 Überlebender Spieler
     If cnt = 1 Then Begin
-      // Dem Sieger den Punkt geben ;)
-      SendWinner(fPLayer[cntindex].UID, cntindex);
-      fPLayer[cntindex].Score := fPLayer[cntindex].Score + 1;
-      SendPlayerStatistiks(); // Damit alle Clients auch die Richtigen Scores anzeigen diese nun Aktualisieren
-      v := TVictor(integer(vCol0) + cntindex);
-      m := TMemoryStream.Create;
-      m.Write(v, SizeOf(v));
-      SendChunk(miShowMatchStatistik, m, 0);
-      fGameState := gsShowHighscore;
+      // Dem Sieger den Punkt geben, aber nur, wenn er nicht auch gerade am sterben ist ..
+      // Wenn der Spieler Gestorben ist geht dann cnt von alleine Später auf 0 ;)
+      If Not fPLayer[cntindex].Info.Dying Then Begin
+        SendWinner(fPLayer[cntindex].UID, cntindex);
+        fPLayer[cntindex].Score := fPLayer[cntindex].Score + 1;
+        SendPlayerStatistiks(); // Damit alle Clients auch die Richtigen Scores anzeigen diese nun Aktualisieren
+        v := TVictor(integer(vCol0) + cntindex);
+        m := TMemoryStream.Create;
+        m.Write(v, SizeOf(v));
+        SendChunk(miShowMatchStatistik, m, 0);
+        fGameState := gsShowHighscore;
+      End;
     End;
   End;
   // 2. Zeit abgelaufen (wenn Zeitlimit Aktiv)

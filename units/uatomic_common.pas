@@ -99,11 +99,12 @@ Const
    *             0.12000 = ADD: Show scheme informations during connections -> need change in ProtocollVersion
    *                       FIX: sheme -> scheme
    * -releaseG - 0.12001 = FIX: #4 Solid Brick not set in timeout mode
-   * -releaseG - 0.12002 = ADD: Major change in Grpahikeninge
+   * -releaseG - 0.12002 = ADD: Major change in graphic engine
    * -releaseG - 0.12003 = ADD: Support für Gamepads / Joysticks via SDL2
    * -releaseG - 0.12004 = FIX: Hurry, Playerdead and Map Hole tex have been loaded without transparancy
    *                       ADD: Show / Hide Cursor, when in / not in Main Menu
-   *
+   *             0.12005 = FIX: wrote Patch for DrawGame glitch
+   *                       FIX: Crash when SDL-Keyboard slot is used as AI
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden

@@ -313,6 +313,7 @@ Begin
   If assigned(fsdlJoyStick) Then fsdlJoyStick.free;
   fsdlJoyStick := Nil;
   OnRefreshDeviceList(Nil);
+  label2.caption := 'Center All axis and do not press' + LineEnding + 'any buttons then click next.';
 End;
 
 Constructor TSDLWizzard.CreateNew(AOwner: TComponent; Num: Integer);
@@ -400,6 +401,7 @@ Begin
   // Tab Select
   TabSheet2 := PageControl1.AddTabSheet;
   CreateLabel(label2, 'Label2', 'Center All axis and do not press' + LineEnding + 'any buttons then click next.', 8, 8, TabSheet2);
+  label2.font.Color := clred;
   CreateLabel(label3, 'Label3', 'First' + LineEnding + 'action', 168, 416, TabSheet2);
   CreateLabel(label4, 'Label4', 'Second' + LineEnding + 'action', 168, 528, TabSheet2);
   CreateShape(First, 'First', 208, 416, TabSheet2);

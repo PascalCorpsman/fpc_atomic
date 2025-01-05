@@ -665,6 +665,7 @@ Procedure TGame.CheckSDLKeys();
   Begin
     If Not Settings.Keys[keys].UseSDL2 Then exit;
     If Not assigned(fsdlJoysticks[keys]) Then exit;
+    If fPlayerIndex[keys] = AIPlayer Then exit;
     // 1. Ermitteln des Aktuellen "Gedrückt" stati
     up := false;
     down := false;
