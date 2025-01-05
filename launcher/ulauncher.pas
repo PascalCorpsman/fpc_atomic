@@ -36,11 +36,13 @@ Const
    *                   FIX: Do not suggest files with filesize -1
    *                   ADD: Restart Button for SDL-wizzard
    *                   ADD: umstieg auf SynapseDownloader
-   *            0.07 = FIX: crash on start if SDL2.dll is not present
+   * -Released- 0.07 = FIX: crash on start if SDL2.dll is not present
    *                   ADD: Support for multipla Joysticks with the same name
+   *            0.08 = 
+   *
    * Known Bugs :
    *)
-  LauncherVersion: integer = 7;
+  LauncherVersion: integer = 8;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);

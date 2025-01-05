@@ -103,13 +103,14 @@ Const
    * -releaseG - 0.12003 = ADD: Support für Gamepads / Joysticks via SDL2
    * -releaseG - 0.12004 = FIX: Hurry, Playerdead and Map Hole tex have been loaded without transparancy
    *                       ADD: Show / Hide Cursor, when in / not in Main Menu
-   *             0.12005 = FIX: wrote Patch for DrawGame glitch
+   * -releaseG - 0.12005 = FIX: wrote Patch for DrawGame glitch
    *                       FIX: Crash when SDL-Keyboard slot is used as AI
    *                       ADD: Support for multiple Joysticks with same name
+   *             0.12006 = 
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12005';
+  Version = '0.12006';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
