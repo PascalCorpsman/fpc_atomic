@@ -105,6 +105,7 @@ Const
    *                       ADD: Show / Hide Cursor, when in / not in Main Menu
    *             0.12005 = FIX: wrote Patch for DrawGame glitch
    *                       FIX: Crash when SDL-Keyboard slot is used as AI
+   *                       ADD: Support for multiple Joysticks with same name
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -550,6 +551,7 @@ Type
     UseSDL2: Boolean;
     // if UseSDL2 then this is used
     Name: String;
+    NameIndex: Integer; // Der Index, Der Wievielte Controller das ist (nur Relevant wenn mehrere Controller mit dem Selben Namen genutzt werden..)
     AchsisIdle: Array[0..1] Of Integer; // 0 = Hoch Runter, 1 = Links Rechts
     AchsisIndex: Array[0..1] Of integer; // 0 = Hoch Runter, 1 = Links Rechts
     AchsisDirection: Array[0..1] Of integer; // 0 = Hoch Runter, 1 = Links Rechts
@@ -667,6 +669,7 @@ Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 Begin
   result.UseSDL2 := false;
   result.Name := '';
+  result.NameIndex := 0;
   result.AchsisIndex[0] := -1;
   result.AchsisIndex[1] := -1;
   result.AchsisIdle[0] := 0;

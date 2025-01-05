@@ -26,6 +26,7 @@ Type
 
   TDeviceInfo = Record
     Name: String;
+    Nameindex: Integer;
     AchsisIdle: Array Of Integer;
     ButtonsIdle: Array Of Boolean;
     FirstButtonIndex, SecondButtonIndex: integer;
@@ -105,6 +106,17 @@ Begin
 End;
 
 Procedure TSDLWizzard.OnSelectDeviceNext(Sender: TObject);
+
+  Function GetDeviceIndex(aName: String; aIndex: Integer): Integer;
+  Var
+    i: Integer;
+  Begin
+    result := 0;
+    For i := 0 To aIndex - 1 Do Begin
+      If ComboBox1.Items[i] = aName Then inc(result);
+    End;
+  End;
+
 Var
   i: Integer;
 Begin
@@ -121,6 +133,7 @@ Begin
     exit;
   End;
   Device.Name := ComboBox1.Text;
+  Device.Nameindex := GetDeviceIndex(Device.Name, ComboBox1.ItemIndex);
   setlength(pb, fsdlJoyStick.AxisCount);
   For i := 0 To fsdlJoyStick.AxisCount - 1 Do Begin
     pb[i] := TProgressBar.Create(TabSheet2);

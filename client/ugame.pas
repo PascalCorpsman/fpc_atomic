@@ -328,13 +328,13 @@ Begin
       fsdlJoysticks[ks1] := Nil;
       If fsdl_Loaded Then Begin
         If Settings.Keys[ks0].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name);
+          index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name, Settings.Keys[ks0].NameIndex);
           If index <> -1 Then Begin
             fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
           End;
         End;
         If Settings.Keys[ks1].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name);
+          index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name, Settings.Keys[ks1].NameIndex);
           If index <> -1 Then Begin
             fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
           End;

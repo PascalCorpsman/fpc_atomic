@@ -111,8 +111,6 @@ End;
 
 Procedure TForm1.FormCreate(Sender: TObject);
 Begin
-  sdl2.dll muss auch geladen und extrahiert werden !
-
   ini := TIniFile.Create('fpc_atomic.ini');
   Constraints.MinHeight := Height;
   Constraints.MaxHeight := Height;
@@ -168,6 +166,7 @@ Begin
   Keys[ks0].UseSDL2 := ini.ReadBool('TApplication.Form1', 'UseSDL', Keys[ks0].UseSDL2);
   If Keys[ks0].UseSDL2 Then Begin
     Keys[ks0].Name := ini.ReadString('TApplication.Form1', 'SDL_Name', Keys[ks0].Name);
+    Keys[ks0].NameIndex := ini.readInteger('TApplication.Form1', 'SDL_NameIndex', Keys[ks0].NameIndex);
     Keys[ks0].ButtonIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_First', Keys[ks0].ButtonIndex[0]);
     Keys[ks0].ButtonsIdle[0] := ini.readBool('TApplication.Form1', 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
     Keys[ks0].ButtonIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_Second', Keys[ks0].ButtonIndex[1]);
@@ -189,6 +188,7 @@ Begin
   Keys[ks1].UseSDL2 := ini.ReadBool('TApplication.Form1', 'UseSDL2', Keys[ks1].UseSDL2);
   If Keys[ks1].UseSDL2 Then Begin
     Keys[ks1].Name := ini.ReadString('TApplication.Form1', 'SDL_Name2', Keys[ks1].Name);
+    Keys[ks1].NameIndex := ini.readInteger('TApplication.Form1', 'SDL_NameIndex2', Keys[ks1].NameIndex);
     Keys[ks1].ButtonIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_First2', Keys[ks1].ButtonIndex[0]);
     Keys[ks1].ButtonsIdle[0] := ini.readBool('TApplication.Form1', 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
     Keys[ks1].ButtonIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
@@ -212,6 +212,7 @@ Begin
     ini.WriteInteger('TApplication.Form1', 'KeySecondary', Keys[ks0].KeySecondary);
     ini.WriteBool('TApplication.Form1', 'UseSDL', Keys[ks0].UseSDL2);
     ini.WriteString('TApplication.Form1', 'SDL_Name', Keys[ks0].Name);
+    ini.WriteInteger('TApplication.Form1', 'SDL_NameIndex', Keys[ks0].NameIndex);
     ini.WriteInteger('TApplication.Form1', 'SDL_First', Keys[ks0].ButtonIndex[0]);
     ini.WriteBool('TApplication.Form1', 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
     ini.WriteInteger('TApplication.Form1', 'SDL_Second', Keys[ks0].ButtonIndex[1]);
@@ -230,6 +231,7 @@ Begin
     ini.WriteInteger('TApplication.Form1', 'KeySecondary2', Keys[ks1].KeySecondary);
     ini.WriteBool('TApplication.Form1', 'UseSDL2', Keys[ks1].UseSDL2);
     ini.WriteString('TApplication.Form1', 'SDL_Name2', Keys[ks1].Name);
+    ini.WriteInteger('TApplication.Form1', 'SDL_NameIndex2', Keys[ks1].NameIndex);
     ini.WriteInteger('TApplication.Form1', 'SDL_First2', Keys[ks1].ButtonIndex[0]);
     ini.WriteBool('TApplication.Form1', 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
     ini.WriteInteger('TApplication.Form1', 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
@@ -240,7 +242,6 @@ Begin
     ini.WriteInteger('TApplication.Form1', 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
     ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
     ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
-
   End;
   dialog.free;
 End;
@@ -408,6 +409,7 @@ End;
 {$IFDEF Windows}
 
 Initialization
+  // TODO: Hier fehlt noch ein Hinweis wie man die .lrs Datei erzeugt ;)
 {$I atomic_launcher.lrs}
 
   // 1. ggf. die Crypto libs entpacken und dann einrichten

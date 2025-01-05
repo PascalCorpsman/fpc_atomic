@@ -9,7 +9,7 @@ object Form1: TForm1
   ClientWidth = 692
   FormStyle = fsStayOnTop
   Position = poScreenCenter
-  LCLVersion = '3.99.0.0'
+  LCLVersion = '4.99.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy

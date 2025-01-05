@@ -142,7 +142,7 @@ Begin
     showmessage('Error, could not load sdl2 lib.' + LineEnding +
       'Please'
 {$IFDEF Windows}
-      + ' download sdl2.dll and store it into fpc_atomic root folder-'
+      + ' download sdl2.dll and store it into fpc_atomic root folder'
 {$ELSE}
       + ' run' + LineEnding + LineEnding + 'sudo aptitude install libsdl2-dev'
 {$ENDIF}
@@ -157,7 +157,7 @@ Begin
   End;
   SDL_GetVersion(@ver);
   If SDL_VERSIONNUM(ver.major, ver.minor, ver.patch) < SDL_COMPILEDVERSION Then Begin
-    showmessage(format('The version of sdl (%d.%d.%d) is to low you have to have at least %d.%d.%d', [ver.major, ver.minor, ver.patch, SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL]));
+    showmessage(format('The version of sdl2 (%d.%d.%d) is to low you have to have at least %d.%d.%d', [ver.major, ver.minor, ver.patch, SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL]));
     exit;
   End;
   w := TSDLWizzard.CreateNew(self);
@@ -166,6 +166,7 @@ Begin
     If sender = button4 Then Begin
       fkeys[ks0].UseSDL2 := true;
       fkeys[ks0].Name := SDL_DeviceInfo.Name;
+      fkeys[ks0].NameIndex := SDL_DeviceInfo.Nameindex;
       fkeys[ks0].ButtonIndex[0] := SDL_DeviceInfo.FirstButtonIndex;
       fkeys[ks0].ButtonIndex[1] := SDL_DeviceInfo.SecondButtonIndex;
       fkeys[ks0].ButtonsIdle[0] := SDL_DeviceInfo.ButtonsIdle[SDL_DeviceInfo.FirstButtonIndex];
@@ -180,6 +181,7 @@ Begin
     Else Begin
       fkeys[ks1].UseSDL2 := true;
       fkeys[ks1].Name := SDL_DeviceInfo.Name;
+      fkeys[ks1].NameIndex := SDL_DeviceInfo.Nameindex;
       fkeys[ks1].ButtonIndex[0] := SDL_DeviceInfo.FirstButtonIndex;
       fkeys[ks1].ButtonIndex[1] := SDL_DeviceInfo.SecondButtonIndex;
       fkeys[ks1].ButtonsIdle[0] := SDL_DeviceInfo.ButtonsIdle[SDL_DeviceInfo.FirstButtonIndex];

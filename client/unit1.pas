@@ -530,6 +530,7 @@ Begin
   Game.Settings.Keys[ks0].KeySecondary := IniPropStorage1.ReadInteger('KeySecondary', Game.Settings.Keys[ks0].KeySecondary);
   If Game.Settings.Keys[ks0].UseSDL2 Then Begin
     Game.Settings.Keys[ks0].Name := IniPropStorage1.ReadString('SDL_Name', Game.Settings.Keys[ks0].Name);
+    Game.Settings.Keys[ks0].NameIndex := IniPropStorage1.readInteger('SDL_NameIndex', Game.Settings.Keys[ks0].NameIndex);
     Game.Settings.Keys[ks0].ButtonIndex[0] := IniPropStorage1.readInteger('SDL_First', Game.Settings.Keys[ks0].ButtonIndex[0]);
     Game.Settings.Keys[ks0].ButtonsIdle[0] := IniPropStorage1.ReadBoolean('SDL_FirstIdle', Game.Settings.Keys[ks0].ButtonsIdle[0]);
     Game.Settings.Keys[ks0].ButtonIndex[1] := IniPropStorage1.readInteger('SDL_Second', Game.Settings.Keys[ks0].ButtonIndex[1]);
@@ -551,6 +552,7 @@ Begin
   Game.Settings.Keys[ks1].KeySecondary := IniPropStorage1.ReadInteger('KeySecondary2', Game.Settings.Keys[ks1].KeySecondary);
   If Game.Settings.Keys[ks1].UseSDL2 Then Begin
     Game.Settings.Keys[ks1].Name := IniPropStorage1.ReadString('SDL_Name2', Game.Settings.Keys[ks1].Name);
+    Game.Settings.Keys[ks1].NameIndex := IniPropStorage1.readInteger('SDL_NameIndex2', Game.Settings.Keys[ks1].NameIndex);
     Game.Settings.Keys[ks1].ButtonIndex[0] := IniPropStorage1.readInteger('SDL_First2', Game.Settings.Keys[ks1].ButtonIndex[0]);
     Game.Settings.Keys[ks1].ButtonsIdle[0] := IniPropStorage1.ReadBoolean('SDL_FirstIdle2', Game.Settings.Keys[ks1].ButtonsIdle[0]);
     Game.Settings.Keys[ks1].ButtonIndex[1] := IniPropStorage1.readInteger('SDL_Second2', Game.Settings.Keys[ks1].ButtonIndex[1]);
@@ -603,6 +605,7 @@ Begin
   IniPropStorage1.WriteInteger('KeySecondary', Game.Settings.Keys[ks0].KeySecondary);
   IniPropStorage1.WriteBoolean('UseSDL', Game.Settings.Keys[ks0].UseSDL2);
   IniPropStorage1.WriteString('SDL_Name', Game.Settings.Keys[ks0].Name);
+  IniPropStorage1.WriteInteger('SDL_NameIndex', Game.Settings.Keys[ks0].NameIndex);
   IniPropStorage1.WriteInteger('SDL_First', Game.Settings.Keys[ks0].ButtonIndex[0]);
   IniPropStorage1.WriteBoolean('SDL_FirstIdle', Game.Settings.Keys[ks0].ButtonsIdle[0]);
   IniPropStorage1.WriteInteger('SDL_Second', Game.Settings.Keys[ks0].ButtonIndex[1]);
@@ -622,6 +625,7 @@ Begin
   IniPropStorage1.WriteInteger('KeySecondary2', Game.Settings.Keys[ks1].KeySecondary);
   IniPropStorage1.WriteBoolean('UseSDL2', Game.Settings.Keys[ks1].UseSDL2);
   IniPropStorage1.WriteString('SDL_Name2', Game.Settings.Keys[ks1].Name);
+  IniPropStorage1.WriteInteger('SDL_NameIndex2', Game.Settings.Keys[ks1].NameIndex);
   IniPropStorage1.WriteInteger('SDL_First2', Game.Settings.Keys[ks1].ButtonIndex[0]);
   IniPropStorage1.WriteBoolean('SDL_FirstIdle2', Game.Settings.Keys[ks1].ButtonsIdle[0]);
   IniPropStorage1.WriteInteger('SDL_Second2', Game.Settings.Keys[ks1].ButtonIndex[1]);
