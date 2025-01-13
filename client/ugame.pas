@@ -742,7 +742,7 @@ Var
 Begin
   If Not fsdl_Loaded Then exit;
   If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then exit;
-
+  SDL_PumpEvents();
   While SDL_PollEvent(@event) <> 0 Do Begin // TODO: Braucht man das wirklich ?
   End;
 

@@ -43,7 +43,7 @@ Type
   (*
    * TQueue
    *
-   * Eine via Pointer realisierte FIFO, Thread Save
+   * Eine via Pointer realisierte FIFO, Thread Safe
    *)
 
   { TFifo }
@@ -86,7 +86,7 @@ Type
    *
    * Eine via Array realisierte FIFO, welche sich intern bei Bedarf erweitert
    * Vorteil : weniger Speicherallokationen
-   * Nachteil : nicht Thread Save (höchstwahrscheinlich)
+   * Nachteil : nicht Thread Safe (höchstwahrscheinlich)
    *)
 
   { TBufferedFifo }

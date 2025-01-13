@@ -203,6 +203,7 @@ Var
   event: TSDL_Event;
   i, d: Integer;
 Begin
+  SDL_PumpEvents();
   While SDL_PollEvent(@event) <> 0 Do Begin
     Case event.type_ Of
       SDL_JOYAXISMOTION: Begin // Eine Joystick Achse wurde geändert, diese überbehmen wir

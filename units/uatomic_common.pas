@@ -106,7 +106,7 @@ Const
    * -releaseG - 0.12005 = FIX: wrote Patch for DrawGame glitch
    *                       FIX: Crash when SDL-Keyboard slot is used as AI
    *                       ADD: Support for multiple Joysticks with same name
-   *             0.12006 = 
+   *             0.12006 = FIX: add missing SDL_PumpEvents
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
