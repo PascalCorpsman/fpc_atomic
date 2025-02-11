@@ -20,7 +20,7 @@ The steps shown here are only needed to be done once (for installation).
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/documentation/installation.plantuml)
 
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
-   1.1 if you want all animations download and merge the expansion pack from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)  
+   1.1 if you want all animations download and merge the expansion pack <del>from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)</del> link is broken use [new link](https://www.geocities.ws/mheid.geo/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
 2. download the atomic_launcher of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin) on your harddisc
 3. run the "atomic_launcher" and follow the instructions<br>
