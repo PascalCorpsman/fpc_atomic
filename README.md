@@ -44,6 +44,7 @@ By using the launcher you can click the "check for update" feature to check weth
 - Joypad support via SDL2
 - Missing online manual; use the [manual](MANUAL.md) provided in this repository instead (best UX if you have a .md viewer and can use the MANUAL.md that is shipped with the game after the CD-Content extraction).
 - Pro gamers may discover additional differences due to guessing of the original functionality.
+- The Carry Bomb feature is not yet implemented, atm the blue glove can only throw the bombs.
 
 ## Manual
 See the [manual](MANUAL.md) for detailed information.
