@@ -1084,6 +1084,8 @@ Begin
   If key = VK_J Then Begin
     // Frage IP und Port zum Game.JoinViaParams(ip, port);  ab !
     f := TJoinQuestionForm.CreateNew(Nil, 0);
+    f.Edit1.Text := TGame(fOwner).Settings.Router_IP;
+    f.Edit2.Text := TGame(fOwner).Settings.Router_Port;
     If f.ShowModal = mrOK Then Begin
       TGame(fOwner).JoinViaParams(f.Edit1.Text, strtointdef(f.Edit2.Text, 9876));
     End;

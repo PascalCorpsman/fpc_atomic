@@ -110,6 +110,8 @@ End;
 { TForm1 }
 
 Procedure TForm1.FormCreate(Sender: TObject);
+Var
+  i: Integer;
 Begin
   ini := TIniFile.Create('fpc_atomic.ini');
   Constraints.MinHeight := Height;
@@ -121,6 +123,12 @@ Begin
   LoadSideImage();
   LoadSettings();
   caption := format('FPC Atomic, launcher ver. %0.2f', [LauncherVersion / 100]);
+  // Handle Launcher Parameters
+  For i := 1 To ParamCount Do Begin
+    If ParamStr(i) = '-cti' Then CheckBox3.Checked := true;
+    If ParamStr(i) = '-ip' Then edit2.text := ParamStr(i + 1);
+    If ParamStr(i) = '-port' Then edit3.text := ParamStr(i + 1);
+  End;
 End;
 
 Procedure TForm1.Button3Click(Sender: TObject);

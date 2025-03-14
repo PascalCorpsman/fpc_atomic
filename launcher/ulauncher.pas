@@ -39,7 +39,7 @@ Const
    * -Released- 0.07 = FIX: crash on start if SDL2.dll is not present
    *                   ADD: Support for multipla Joysticks with the same name
    *            0.08 = FIX: add missing SDL_PumpEvents call
-   *
+   *                   ADD: Parameter "-cti", "-ip", "-port"
    * Known Bugs :
    *)
   LauncherVersion: integer = 8;

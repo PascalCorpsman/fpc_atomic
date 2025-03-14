@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uJSON.pas                                                       ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.13                                                         *)
+(* Version     : 0.14                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -40,6 +40,7 @@
 (*               0.12 = .Clone Function                                       *)
 (*               0.13 = Erste Versuche eine Zeilennummer aus zu geben, wenn   *)
 (*                      der JSON Text falsch ist..                            *)
+(*               0.14 = Ignore \u tags instead of throwing an exception       *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uJSON;
@@ -712,7 +713,8 @@ Begin
         If (achar = 't') Then achar := chr($09);
         If (achar = 'u') Then Begin
           //todo: das Auswerten des Unicode Zeichens fehlt noch !!
-          Raise Exception.Create('parser does not support \u symbols in string.');
+          achar := ' '; // Das Zeichen bauen wir um zu einem Leerzeichen -> nicht richtig, aber so können wir es "überlesen"
+          aindex := aindex + 4; // Die 4 Zeichen welche nachfolgen und das UTF16 Zeichen bilden ignorieren wir mal ..
         End;
         interpretnext := false;
       End;

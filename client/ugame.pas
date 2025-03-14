@@ -1817,6 +1817,10 @@ Begin
    * initialisiert ist wie sie das via "Join" gewesen wäre ;)
    *)
   log(format('TGame.JoinViaParams: %s:%d', [ip, port]), lltrace);
+  Settings.Router_IP := ip;
+  Settings.Router_Port := inttostr(Port);
+  fBackupSettings.Router_IP := ip;
+  fBackupSettings.Router_Port := inttostr(Port);
   fActualScreen := fScreens[sJoinNetwork];
   fActualScreen.reset;
   fParamJoinIP := ip;

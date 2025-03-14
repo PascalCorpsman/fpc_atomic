@@ -504,7 +504,16 @@ Begin
 End;
 
 Procedure TForm1.Load_Atomic_Settings;
+Var
+  SectionBakup: String;
 Begin
+  // Read the Remote settings from "Launcher" Section
+  SectionBakup := IniPropStorage1.IniSection;
+  IniPropStorage1.IniSection := 'Launcher';
+  Game.Settings.Router_IP := IniPropStorage1.ReadString('Router_IP', '127.0.0.1');
+  Game.Settings.Router_Port := IniPropStorage1.ReadString('Router_Port', '5521');
+  IniPropStorage1.IniSection := SectionBakup;
+  // Default Settings..
   Game.Settings.VolumeValue := IniPropStorage1.ReadInteger('Volume', 10000);
   Game.Settings.TeamPlay := IniPropStorage1.ReadBoolean('TeamPlay', false);
   Game.Settings.RandomStart := IniPropStorage1.ReadBoolean('RandomStart', true);
@@ -582,7 +591,16 @@ Begin
 End;
 
 Procedure TForm1.IniPropStorage1SavingProperties(Sender: TObject);
+Var
+  SectionBakup: String;
 Begin
+  // Read the Remote settings from "Launcher" Section
+  SectionBakup := IniPropStorage1.IniSection;
+  IniPropStorage1.IniSection := 'Launcher';
+  IniPropStorage1.WriteString('Router_IP', Game.Settings.Router_IP);
+  IniPropStorage1.WriteString('Router_Port', Game.Settings.Router_Port);
+  IniPropStorage1.IniSection := SectionBakup;
+  // Default Settings..
   IniPropStorage1.WriteInteger('Volume', Game.Settings.VolumeValue);
   IniPropStorage1.WriteBoolean('TeamPlay', Game.Settings.TeamPlay);
   IniPropStorage1.WriteBoolean('RandomStart', Game.Settings.RandomStart);

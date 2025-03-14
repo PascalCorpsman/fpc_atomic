@@ -107,6 +107,7 @@ Const
    *                       FIX: Crash when SDL-Keyboard slot is used as AI
    *                       ADD: Support for multiple Joysticks with same name
    *             0.12006 = FIX: add missing SDL_PumpEvents
+   *                       ADD: Feature Request #8 load remote IP / Port Settings in "J" Dialog
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -592,6 +593,8 @@ Type
     Port: integer;
     Fullscreen: Boolean;
     VolumeValue: integer; // 0 .. 10000
+    Router_IP: String; // Für das "j" command
+    Router_Port: String; // Für das "j" command
     // --- Werte die "Intern" sind
     CheckForUpdates: Boolean; // Eigentlich nicht Steuerbar, nur für die Entwicklung gedacht ..
 {$ENDIF}
