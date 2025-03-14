@@ -91,6 +91,13 @@ During server execution it is possible to type the following commands in the con
 - "a": Load a new AI.
 - "ESC": instance close server
 
+### Launcher commands:
+
+Since ver 0.08 the launcher supports command line commands:
+- -ip \<IP\> : will prefill the "Router IP" field with the value given as \<IP\>
+- -port \<port\>:  will prefill the "Router Port" field with the value given as \<port\>
+- -cti: will check the checkbox "connect through internet"
+
 ## Included AI
 The server will automatically load ai.so (or ai.dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development.
 
