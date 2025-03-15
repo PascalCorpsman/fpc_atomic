@@ -1,36 +1,36 @@
 {
   "fpc_atomic":  {
-    "Version":0.12005,
-    "LauncherVersion":7,
-    "VersionText":"FIX: wrote Patch for DrawGame glitch\nFIX: Crash when SDL-Keyboard slot is used as AI\nADD: Support for multiple Joysticks with same name",
+    "Version":0.12006,
+    "LauncherVersion":8,
+    "VersionText":"- add missing SDL_PumpEvents\n- Feature Request #8 load remote IP \/ Port Settings in \"J\" Dialog\n- FIX: \"Slow\" bug under Windows #7",
     "Download_core":
     [
       {
         "file":        {
           "HASH":"29b5899a73ff45ee1ad5c3fb771b62fc",
           "SIZE":"3089920",
-          "HASH2":"4eea15f862dbb1a982513357dd187ece",
-          "SIZE2":"7754424",
+          "HASH2":"55daec2b420fe1beab9521ef86040fc2",
+          "SIZE2":"7762776",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":        {
-          "HASH":"21b7eaa195fd6aa4811399663481ef52",
-          "SIZE":"5976576",
-          "HASH2":"7eebde77319cfb14a9981964c24e31e5",
-          "SIZE2":"8134792",
+          "HASH":"33197a36c1420ca1678771c09cf755b9",
+          "SIZE":"5977088",
+          "HASH2":"95a8e28eebcee981370eec68e71e0706",
+          "SIZE2":"8143208",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":        {
-          "HASH":"91f2a19093e125e82490ff9e282592bc",
-          "SIZE":"4175872",
-          "HASH2":"6eb0e9c1c5e830434e1b2bcc2a9b47ba",
-          "SIZE2":"8688776",
+          "HASH":"bcf718d6051219d39bf8db6088265241",
+          "SIZE":"4176896",
+          "HASH2":"f731063721e6373882499cfe5fffb730",
+          "SIZE2":"8701352",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
@@ -49,25 +49,25 @@
         "file":        {
           "HASH":"11ba2bb4bcdd29cef8eeaa6b15b97ee8",
           "SIZE":"2673664",
-          "HASH2":"606546006d73655a7427f85cd1e3f521",
-          "SIZE2":"6922488",
+          "HASH2":"f1cbc56fd02a0ce69c5b702f42c1bba0",
+          "SIZE2":"6934920",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
           "Filename":"updater.exe"
         }
       },
       {
         "file":        {
-          "HASH":"a0d378fbe88922e46438d0f2a92035f9",
-          "SIZE":"2908672",
-          "HASH2":"e09d3b35ac4d8b20fe461c9c0cdbc0cc",
-          "SIZE2":"7346168",
+          "HASH":"cde40b23c2c4151b03f3ad08cf01a2f7",
+          "SIZE":"2842112",
+          "HASH2":"e28edebad9c4b23f7c8da1e8f6f269e1",
+          "SIZE2":"7235672",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
       {
         "file":        {
-          "HASH":"e589176925a3a3d78fe95a9cbd94a5b7",
+          "HASH":"7899fb5c74595bbd8962c2c5995b0dab",
           "SIZE":"299520",
           "HASH2":"b498c4aa86ee2a2778fc84acd338d4aa",
           "SIZE2":"1191608",
@@ -233,8 +233,8 @@
       },
       {
         "file":        {
-          "HASH":"44276677172c9954df24f20b0eca0643",
-          "SIZE":"6329",
+          "HASH":"423aac5f8869094cb09f5ccbdafd52a7",
+          "SIZE":"6650",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/MANUAL.md",
           "Filename":"MANUAL.md"
         }
