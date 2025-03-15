@@ -2120,7 +2120,12 @@ Begin
       End;
       }
     End;
-    sleep(1);
+    If fGameState = gsPlaying Then Begin
+      sleep(0);
+    End
+    Else Begin
+      sleep(1);
+    End;
   End;
   LogLeave;
 End;

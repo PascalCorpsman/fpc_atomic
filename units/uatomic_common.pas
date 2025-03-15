@@ -106,8 +106,9 @@ Const
    * -releaseG - 0.12005 = FIX: wrote Patch for DrawGame glitch
    *                       FIX: Crash when SDL-Keyboard slot is used as AI
    *                       ADD: Support for multiple Joysticks with same name
-   *             0.12006 = FIX: add missing SDL_PumpEvents
+   * -releaseG - 0.12006 = FIX: add missing SDL_PumpEvents
    *                       ADD: Feature Request #8 load remote IP / Port Settings in "J" Dialog
+   *                       FIX: "Slow" bug under Windows #7
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
