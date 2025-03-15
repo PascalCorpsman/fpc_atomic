@@ -81,9 +81,10 @@ Normally it is not necessary to take care of the server. The server is automatic
 
 To start the server in dedicated mode, use the following command line parameters:
 - -h: online help for server (see to get more informations)
-- -p \<port\>: the port to listen on
+- -p \<port\>: the port to listen on (this parameter is mandatory)
 - -t \<time\>: the timeout in seconds to automatically close the server if no users are connected. Use 0 to disable the timeout.
 - -l \<level\>: the log level (default is 2)
+- -ats \<speed\>: sets atomic normal speed (default is 5)
 
 ### Console commands:
 During server execution it is possible to type the following commands in the console window:
