@@ -2121,7 +2121,11 @@ Begin
       }
     End;
     If fGameState = gsPlaying Then Begin
+{$IFDEF Windows}
       sleep(0);
+{$ELSE}
+      sleep(1);
+{$ENDIF}
     End
     Else Begin
       sleep(1);
