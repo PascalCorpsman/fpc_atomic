@@ -109,10 +109,11 @@ Const
    * -releaseG - 0.12006 = FIX: add missing SDL_PumpEvents
    *                       ADD: Feature Request #8 load remote IP / Port Settings in "J" Dialog
    *                       FIX: "Slow" bug under Windows #7
+   *             0.12007 =
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12006';
+  Version = '0.12007';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}

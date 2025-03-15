@@ -40,9 +40,10 @@ Const
    *                   ADD: Support for multipla Joysticks with the same name
    * -Released- 0.08 = FIX: add missing SDL_PumpEvents call
    *                   ADD: Parameter "-cti", "-ip", "-port"
+   *            0.09 =
    * Known Bugs :
    *)
-  LauncherVersion: integer = 8;
+  LauncherVersion: integer = 9;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);
