@@ -57,6 +57,7 @@ Var
   Port: integer = -1;
   i: integer;
   s: String;
+  si: Single;
   Params: Array Of Boolean = Nil; // Zum Prüfen ob auch alle übergebenen Parameter verwendet wurden.
 Begin
   (*
@@ -74,6 +75,7 @@ Begin
           - Kollisionserkennung zwischen Atomic und Bomben via Distanzmessung und nicht via "Koordinaten" ?
   // *)
   DefaultFormatSettings.DecimalSeparator := '.';
+  CalculateAtomicSpeeds(AtomicDefaultSpeed);
   // Logger Konfigurieren
   InitLogger();
   setlength(params, Paramcount + 1);
@@ -81,6 +83,13 @@ Begin
     params[i] := false;
   End;
   For i := 1 To Paramcount - 1 Do Begin
+    If lowercase(paramstr(i)) = '-ats' Then Begin
+      si := strtointdef(paramstr(i + 1), round(AtomicDefaultSpeed * 10)) / 10;
+      CalculateAtomicSpeeds(si);
+      Log(format('Overwrite default atomic speed with: %0.1f', [si]), llInfo);
+      Params[i] := true;
+      Params[i + 1] := true;
+    End;
     If lowercase(paramstr(i)) = '-p' Then Begin
       port := strtointdef(paramstr(i + 1), -1);
       Params[i] := true;

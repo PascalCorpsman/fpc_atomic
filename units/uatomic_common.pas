@@ -145,18 +145,19 @@ Const
   AtomicIdleTimeout = 10000; // Zeit ab derer der Atomic anfängt sich zu langweilen muss >> 6050 ms sein, weil allein die Zen Animation schon so lange braucht
   AtomicTrampFlyTime = 1500; // Zeit in ms die es dauert bis ein Spieler der durch ein Trampolin rumfliegt wieder gelandet ist und weiter Spielen kann
 
-  AtomicDefaultSpeed = 0.5; // Die "Grundgeschwindigkeit" in Kacheln Pro Sekunde
+  AtomicDefaultSpeed: single = 0.5; // Die "Grundgeschwindigkeit" in Kacheln Pro Sekunde
   AtomicSpeedChange = 1.1; // Geschwindigkeitsänderung beim aufsammeln eines Rollschuh Items 1.1 = 10% Schneller
-  AtomicMaxSpeed = AtomicDefaultSpeed * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange; // Maximale Geschwindigkeit Eines Atomic in Kacheln Pro Sekunde
-  AtomicSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange); // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
-
+Var
+  AtomicMaxSpeed: single; // Maximale Geschwindigkeit eines Atomic in Kacheln Pro Sekunde
+  AtomicSlowSpeed: single; // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
   (*
    * Es gibt Startpunkte die direkt auf den Bändern liegen, da muss der Spieler auf jeden Fall
    * Schneller laufen können, alls die Schnellsten bänder !
    *)
-  ConveyorSlowSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
-  ConveyorMiddleSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
-  ConveyorFastSpeed = AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange);
+  ConveyorSlowSpeed: Single;
+  ConveyorMiddleSpeed: Single;
+  ConveyorFastSpeed: Single;
+Const
 
   AtomicShowSoundInfoTime = 1000; // Zeit in ms wie lange die Soundinfo angezeigt wird.
 
@@ -634,6 +635,9 @@ Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 Procedure Nop(); // Nur zum Debuggen ;)
 Function BrickSchemeToString(Const Scheme: TScheme): String; // Only Debug
 
+// Berechnet alle Spieler abhängigen Geschwindigkeiten und setzt die Spielergeschwindigkeit auf NewDefaultSpeed
+Procedure CalculateAtomicSpeeds(NewDefaultSpeed: Single);
+
 Implementation
 
 Uses math
@@ -665,6 +669,16 @@ Begin
     s := s + LineEnding + t;
   End;
   result := trim(s);
+End;
+
+Procedure CalculateAtomicSpeeds(NewDefaultSpeed: Single);
+Begin
+  AtomicDefaultSpeed := NewDefaultSpeed;
+  AtomicMaxSpeed := AtomicDefaultSpeed * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange; // Maximale Geschwindigkeit Eines Atomic in Kacheln Pro Sekunde
+  AtomicSlowSpeed := AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange); // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
+  ConveyorSlowSpeed := AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
+  ConveyorMiddleSpeed := AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
+  ConveyorFastSpeed := AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange);
 End;
 
 {$IFNDEF Server}
