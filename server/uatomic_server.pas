@@ -169,18 +169,14 @@ Begin
   fUDP.OnReceive := @OnUDPReceiveEvent;
   fUDP.OnError := @OnUDPError;
   fUDP.OnDisconnect := @OnUDPDisconnect;
-  If Not fUDP.Listen(UDPPingPort) Then Begin
-    Raise exception.create('Error, unable to listen on port: ' + inttostr(UDPPingPort));
-  End;
+
   fChunkManager := TChunkManager.create;
   fChunkManager.RegisterConnection(fTCP);
   fChunkManager.OnReceivedChunk := @OnReceivedChunk;
 
   fLastActiveTickTimestamp := GetTickCount64;
   fTCPPort := Port;
-  If Not fChunkManager.Listen(Port) Then Begin
-    Raise exception.create('Error could not listen on port: ' + inttostr(port));
-  End;
+
   // Laden aller Felder
   sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
   sl.Sorted := true;
@@ -196,6 +192,16 @@ Begin
   setlength(fFields, high(fFields) + 2);
   fFields[high(fFields)] := TAtomicRandomField.Create(Nil, Nil); // Die initialisiert sich bereits richtig ;)
   LoadAi();
+  If Not fUDP.Listen(UDPPingPort) Then Begin
+    log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
+    LogLeave;
+    exit;
+  End;
+  If Not fChunkManager.Listen(Port) Then Begin
+    log('Error could not listen on port: ' + inttostr(port), llFatal);
+    LogLeave;
+    exit;
+  End;
   factive := true; // Haben wir es bis hier her geschafft, darf die Execute auch "laufen"
   LogLeave;
 End;

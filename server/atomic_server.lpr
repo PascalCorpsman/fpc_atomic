@@ -43,6 +43,7 @@ Begin
   writeln('-t <Timeout> = Sets automatic close on no user connected, default ' + inttostr(ServerAutoTimeout) + 'ms');
   writeln('               0 = Disabled, typing "ESC" will terminate');
   writeln('-f <Filename> = Logs additional to a file');
+  writeln('-ats <factor> = overwrite default atomic speed (default = 5)');
   writeln('-h = This screen');
   writeln('');
   writeln('Commands during execution:');
@@ -61,11 +62,10 @@ Var
   Params: Array Of Boolean = Nil; // Zum Prüfen ob auch alle übergebenen Parameter verwendet wurden.
 Begin
   (*
-     OPL: - Diese "Beamer" Löcher
-          - Diese Jump Federn in der Gras Landschaft
-          - Alle Krankheiten (Speed Up, Switch Bombermen,  Fast Bomb,  Small Flame, Eject Bomb Fast + Kick)
+     OPL: - Alle Krankheiten (Speed Up, Switch Bombermen,  Fast Bomb,  Small Flame, Eject Bomb Fast + Kick)
           - Alle TODO's
           - Random Powerup ??
+          - Einer der Handschuhe kann Bombem tragen und dann auf andere "werfen", so dass diese dann Powerups verlieren und "stun" sind ..
 
     Known Bugs:
           - Wenn eine Bombe in ein Brennendes Feld "Rollt" muss sie instant explodieren
