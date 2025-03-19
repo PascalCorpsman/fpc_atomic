@@ -126,6 +126,7 @@ Type
     Procedure OnReceivedChunk(Sender: TObject; Const Chunk: TChunk);
     Procedure SendChunk(UserDefinedID: Integer; Const Data: TStream);
     Procedure OnUDPConnection_Receive(aSocket: TLSocket); // Empfängt die UDP Broadcast Nachrichten der Server
+    Procedure OnUDPConnection_Error(Const msg: String; aSocket: TLSocket);
 
     (*
      * Routinen die Der Client in OnReceivedChunk auslöst
@@ -781,7 +782,12 @@ Begin
     LogLeave;
     exit;
   End;
-  sleep(500); // Bis der Server Steht dauerts ein bischen, also warten wir
+  // Bis der Server Steht dauerts ein bischen, also warten wir
+{$IFDEF Windows}
+  sleep(1500); // Unter Windows scheint es deutlich "länger" zu dauern, wie lange genau wäre gut zu wissen ..
+{$ELSE}
+  sleep(500);
+{$ENDIF}
   // StartClientGame; --> Das Verbinden macht der SwitchToScreen schon ;)
   Application.Restore;
   Application.BringToFront;
@@ -910,6 +916,16 @@ Begin
   LogLeave;
 End;
 
+Procedure TGame.OnUDPConnection_Error(Const msg: String; aSocket: TLSocket);
+Begin
+  log('TGame.UDPConnection_Error', llTrace);
+  StopPingingForGames();
+  Disconnect();
+  LogShow(msg, llError);
+  SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
+  LogLeave;
+End;
+
 Procedure TGame.OnUDPConnection_Receive(aSocket: TLSocket);
 Var
   Buffer: Array[0..1023] Of byte;
@@ -1020,6 +1036,7 @@ Begin
             EC_Invalid_Mode_Versions: s := 'Server is in release mode, while client in debug mode ->  not compatible.';
 {$ENDIF}
           End;
+          Disconnect();
           SwitchToScreen(sMainScreen);
           LogShow('Could not join the server : ' + s, llInfo);
         End;
@@ -1934,9 +1951,11 @@ Procedure TGame.RegisterUDPConnection(Const Connection: TLUDPComponent);
 Begin
   log('TGame.RegisterUDPConnection', llTrace);
   fUDPPingData.Connection := Connection;
+  StopPingingForGames();
   If assigned(Connection) Then Begin
     If fUDPPingData.Connection.Connected Then fUDPPingData.Connection.Disconnect();
     fUDPPingData.Connection.OnReceive := @OnUDPConnection_Receive;
+    fUDPPingData.Connection.OnError := @OnUDPConnection_Error;
     If Not fUDPPingData.Connection.Connect('', UDPPingPort) Then Begin
       LogShow('Error, could not start UDP Server.', llError);
     End;
@@ -2215,6 +2234,7 @@ Begin
     End;
   End;
   If assigned(fUDPPingData.Connection) Then Begin
+    fUDPPingData.Active := false;
     If fUDPPingData.Connection.Connected Then Begin
       fUDPPingData.Connection.Disconnect(true);
     End;

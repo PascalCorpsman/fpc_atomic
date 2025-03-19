@@ -109,7 +109,7 @@ Const
    * -releaseG - 0.12006 = FIX: add missing SDL_PumpEvents
    *                       ADD: Feature Request #8 load remote IP / Port Settings in "J" Dialog
    *                       FIX: "Slow" bug under Windows #7
-   *             0.12007 =
+   * -releaseG - 0.12007 = FIX: made Windows version more robust (start game did not really work ...)
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden

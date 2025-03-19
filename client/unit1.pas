@@ -141,7 +141,9 @@ Uses lazfileutils, LazUTF8, LCLType
   , bass
   //  , unit18 // Der Fortschrittsbalken während des Updates
   , uatomicfont
-  //  , uscreens
+{$IFDEF AUTOMODE}
+  , uscreens
+{$ENDIF}
   ;
 
 Var
@@ -373,10 +375,6 @@ Begin
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
-{$IFDEF Windows}
-Var
-  socket: TLSocket;
-{$ENDIF}
 Begin
   log('TForm1.FormCloseQuery', llTrace);
   // Todo: Speichern der Map, oder wenigstens Nachfragen ob gespeichert werden soll
@@ -392,20 +390,6 @@ Begin
   Initialized := false;
   // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
   Game.Disconnect;
-{$IFDEF Windows}
-  Game.RegisterUDPConnection(Nil);
-  (*
-   * The windows Version of L-Net has a Memleak, it does not free the RootSocket of the UDP-Connection
-   * so we do this by hand ;)
-   *)
-  LUDPComponent1.IterReset;
-  socket := LUDPComponent1.Iterator;
-  (*
-   * If you get a Access violation here, this means you have a "old" L-Net version
-   *)
-  If assigned(socket) Then socket.free;
-  LUDPComponent1.Disconnect(true);
-{$ENDIF}
   Game.OnIdle;
   LogLeave;
 End;
