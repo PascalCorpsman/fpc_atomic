@@ -1,8 +1,8 @@
 {
   "fpc_atomic":  {
-    "Version":0.12006,
+    "Version":0.12007,
     "LauncherVersion":8,
-    "VersionText":"- add missing SDL_PumpEvents\n- Feature Request #8 load remote IP \/ Port Settings in \"J\" Dialog\n- FIX: \"Slow\" bug under Windows #7",
+    "VersionText":"FIX: made Windows version more robust (on some machines it was not possible to start a game, by fpc_atomic.exe)",
     "Download_core":
     [
       {
@@ -27,9 +27,9 @@
       },
       {
         "file":        {
-          "HASH":"bcf718d6051219d39bf8db6088265241",
+          "HASH":"bb060c7407caf13b2ef7d8658d17ccb0",
           "SIZE":"4176896",
-          "HASH2":"f731063721e6373882499cfe5fffb730",
+          "HASH2":"59071f2170bc2ee2dc60480b91ecc7fc",
           "SIZE2":"8701352",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
@@ -57,9 +57,9 @@
       },
       {
         "file":        {
-          "HASH":"cde40b23c2c4151b03f3ad08cf01a2f7",
+          "HASH":"5227ec2ce3b09a6e29a75533f0ded8f7",
           "SIZE":"2842112",
-          "HASH2":"e28edebad9c4b23f7c8da1e8f6f269e1",
+          "HASH2":"b60199beafeeed0bcd7d83365cfe4d29",
           "SIZE2":"7235672",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
           "Filename":"atomic_server.exe"
@@ -233,8 +233,8 @@
       },
       {
         "file":        {
-          "HASH":"423aac5f8869094cb09f5ccbdafd52a7",
-          "SIZE":"6650",
+          "HASH":"51e165dd7c91897345745128d51ecc3a",
+          "SIZE":"6739",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/MANUAL.md",
           "Filename":"MANUAL.md"
         }
