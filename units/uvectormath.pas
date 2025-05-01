@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uvectormat.pas                                                  12.11.2014 *)
 (*                                                                            *)
-(* Version     : 0.18                                                         *)
+(* Version     : 0.19                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -60,6 +60,8 @@
 (*                     TMatrix3x3.getInverse, TMatrix2x2.getInverse           *)
 (*                    InvertMatrix2 for TMatrix4x4, TMatrix2x2                *)
 (*               0.18 CalculatePlumbFootPoint                                 *)
+(*               0.19 Convolve                                                *)
+(*                    speedup RectIntersectRect code                          *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uvectormath;
@@ -579,6 +581,14 @@ Function LeastSquares(Points: TVector2Array; Grade: integer): TVectorN;
 // an der Stelle x
 // Die Koeffizienten von a werden als Vector übergben
 Function CalculatePolynom(x: TBaseType; Const a: TVectorN): TBaseType;
+
+// Faltet 2 Vectoren mit einander und gibt das Ergebnis zurück, Achtung,
+// hier wird die "ineffiziente" Quadratische Faltung verwendet,
+// also die Vectoren lieber nicht zu groß machen!
+// Es gibt auch noch die Variante, bei der man zuerst die beiden Vektoren
+// durch eine FFT jagt, dann komponentenweise multipliziert und dann wieder
+// zurück transformiert, das ist bei Großen Vektoren tatsächlich schneller (siehe hier: https://www.youtube.com/watch?v=KuXjwB4LzSA )
+Function Convolve(Const a, b: tvectorN): TVectorN;
 
 Implementation
 
@@ -2969,24 +2979,22 @@ Begin
 End;
 
 Function RectIntersectRect(Const TL1, BR1, TL2, BR2: TVector2): Boolean;
+Var
+  min1, max1, min2, max2: TVector2;
 Begin
-  result :=
-    PointInRect(tl1, tl2, br2) Or
-    PointInRect(BR1, tl2, br2) Or
-    PointInRect(v2(tl1.x, br1.y), tl2, br2) Or
-    PointInRect(v2(br1.x, tl1.y), tl2, br2) Or
-    (*
-* Diese Fälle Hier Treten nur auf, wenn alle Punkte des Rechtecks 1 auserhalb des Ersten liegen
-* Dann muss das Rechteck 2 mindestens mit 2 Punkten Innerhalb des 1 Liegen (wäre es nur einer, dann
-* wäre wieder ein Fall von oben gekommen.
-* Den Test auf "Enthalten" sein kann man also mit nur 2 Prüfungen machen. Wichtig die beiden
-* Prüfpunkte müssen sich diagonal gegenüberliegen !
-*)
-  PointInRect(tl2, tl1, br1) Or
-    PointInRect(BR2, tl1, br1)
-    //    Or PointInRect(v2(tl2.x, br2.y), tl1, br1) // Diese Beiden Fälle kann man sich sparen
-//    Or PointInRect(v2(br2.x, tl2.y), tl1, br1) // Diese Beiden Fälle kann man sich sparen
-  ;
+  // Inspired by https://www.youtube.com/watch?app=desktop&v=QQx_NmCIuCY&t=0s
+  // 1. Sort points
+  min1 := minV2(TL1, BR1);
+  max1 := maxV2(TL1, BR1);
+  min2 := minV2(TL2, BR2);
+  max2 := maxV2(TL2, BR2);
+  // 2. do the inverted compare ;)
+  result := Not (
+    (max1.x < min2.x) Or
+    (min1.x > max2.x) Or
+    (max1.y < min2.y) Or
+    (min1.y > max2.y)
+    );
 End;
 
 Function PointInCube(Const P, TL, BR: Tvector3): Boolean;
@@ -3299,6 +3307,21 @@ Begin
   For i := 1 To high(a) Do Begin
     result := result + xx * a[i];
     xx := xx * x;
+  End;
+End;
+
+Function Convolve(Const a, b: tvectorN): TVectorN;
+Var
+  i, j: Integer;
+Begin
+  result := Nil;
+  setlength(result, length(a) + length(b) - 1);
+  For i := 0 To High(Result) Do Begin
+    Result[i] := 0;
+    For j := 0 To High(a) Do Begin
+      If (i - j >= 0) And (i - j <= High(b)) Then
+        Result[i] := Result[i] + a[j] * b[i - j];
+    End;
   End;
 End;
 
