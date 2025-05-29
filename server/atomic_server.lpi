@@ -56,6 +56,7 @@
             <CompilerMessages>
               <IgnoredMessages idx5024="True"/>
             </CompilerMessages>
+            <CustomOptions Value="-dServer"/>
           </Other>
         </CompilerOptions>
       </Item2>
@@ -127,8 +128,8 @@
     </SearchPaths>
     <Linking>
       <Debugging>
-        <GenerateDebugInfo Value="False"/>
         <RunWithoutDebug Value="True"/>
+        <DebugInfoType Value="dsDwarf3"/>
       </Debugging>
     </Linking>
     <Other>

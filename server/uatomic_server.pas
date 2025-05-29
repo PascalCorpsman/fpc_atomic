@@ -1770,12 +1770,16 @@ Begin
       If fPLayer[i].Info.Dying Then Begin
         If fPLayer[i].Info.Counter > AtomicDietimeout Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
+          fPLayer[i].Info.Dying := false;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
         End;
       End
       Else Begin
         inc(alive[fPLayer[i].Team]);
       End;
+    End
+    Else Begin
+      fPLayer[i].Info.Dying := false;
     End;
   End;
   If fSettings.TeamPlay Then Begin
@@ -1942,7 +1946,11 @@ Begin
         // Draw Game, aber es laufen noch Todesanimationen,
         // -> Damit der Code unten nicht direkt das DrawGame triggert mus cnt
         //    manipuliert werden ;)
-        cnt := 1; // Egal hauptsache <> 0
+        For i := 0 To high(fPLayer) Do Begin
+          If (fPLayer[i].Team = WinnerTeamIndex) And (fPLayer[i].Info.Dying) Then Begin
+            cnt := 1; // Egal hauptsache <> 0
+          End;
+        End;
       End;
     End;
   End

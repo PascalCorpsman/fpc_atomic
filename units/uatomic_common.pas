@@ -110,7 +110,7 @@ Const
    *                       ADD: Feature Request #8 load remote IP / Port Settings in "J" Dialog
    *                       FIX: "Slow" bug under Windows #7
    * -releaseG - 0.12007 = FIX: made Windows version more robust (start game did not really work ...)
-   *           - 0.12008 =
+   *           - 0.12008 = FIX: Drawgame in Teamsplay -> no finish detected
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden

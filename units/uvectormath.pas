@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uvectormat.pas                                                  12.11.2014 *)
 (*                                                                            *)
-(* Version     : 0.19                                                         *)
+(* Version     : 0.20                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -62,6 +62,8 @@
 (*               0.18 CalculatePlumbFootPoint                                 *)
 (*               0.19 Convolve                                                *)
 (*                    speedup RectIntersectRect code                          *)
+(*               0.20 PointsToConvexHull for Tvertex3Array                    *)
+(*                    IsLinearDependent                                       *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uvectormath;
@@ -166,10 +168,22 @@ Type
 
   TCircle = Record // Ein Kreis
     Center: TVector2; // Kreismittelpunkt
-    radius: TBaseType; // Sein Radius
+    Radius: TBaseType; // Sein Radius
   End;
 
   TMapFunction = Function(x: Single): Single; // Funktionsprototyp für MapFunction
+
+  TFace = Record
+    a, b, c: integer; // Index in TVector3Array
+    Normal: TVector3;
+  End;
+
+  TFaceArray = Array Of TFace;
+
+  TSphere = Record // Eine Kugel
+    Center: TVector3;
+    Radius: TBaseType;
+  End;
 
   { TVector2helper }
 
@@ -383,6 +397,9 @@ Function HadamardNxM(Const a, b: TMatrixNxM): TMatrixNxM; // Komponentenweise Mu
 Function CrossV2(Const a, b: Tvector2): Tvector2;
 Function CrossV3(Const a, b: Tvector3): Tvector3;
 
+Function IsLinearDependent(Const a, b: TVector2): Boolean; overload;
+Function IsLinearDependent(Const a, b: TVector3): Boolean; overload;
+
 Function MulVectorMatrix(Const V: TVector2; Const M: TMatrix2x2): TVector2; overload;
 Function MulVectorMatrix(Const V: TVector3; Const M: TMatrix3x3): TVector3; overload;
 Function MulVectorMatrix(Const V: TVector4; Const M: TMatrix4x4): TVector4; overload;
@@ -496,7 +513,9 @@ Function Map(Value, fromLow, fromHigh: TBaseType; toLow, toHigh: TBaseType): TBa
 Function PointArrIsConvexPolygon(Const Points: TVector2Array): Boolean;
 
 // Berechnet aus einer Punktwolke die Convexe Hülle und gibt diese zurück
-Function PointsToConvexHull(Const Points: TVector2Array): TVector2Array;
+Function PointsToConvexHull(Const Points: TVector2Array): TVector2Array; overload;
+// Berechnet aus einer Punktwolke die 3ecke die die Hülle bilden und gibt diese als Array zurück (alle Normalen zeigen nach außen)
+Function PointsToConvexHull(Const Points: TVector3Array): TFaceArray; overload;
 
 // Gibt eine Dreiecksliste zu Points zurück, welcher einer Delaunay Triangulierung entspricht
 Function PointsToDelaunayTriangleList(Const Points: TVector2Array; CheckForDoublePoints: Boolean = True): TTriangleArray;
@@ -2145,6 +2164,22 @@ Begin
   End;
 End;
 
+Function IsLinearDependent(Const a, b: TVector2): Boolean;
+Var
+  Cross: TVector2;
+Begin
+  Cross := CrossV2(a, b);
+  Result := (Cross.x = 0) And (Cross.y = 0);
+End;
+
+Function IsLinearDependent(Const a, b: TVector3): Boolean;
+Var
+  Cross: TVector3;
+Begin
+  Cross := CrossV3(a, b);
+  Result := (Cross.x = 0) And (Cross.y = 0) And (Cross.z = 0);
+End;
+
 Function MulVectorMatrix(Const V: TVector2; Const M: TMatrix2x2): TVector2;
 Begin
   Result.x := m[0, 0] * v.x + m[0, 1] * v.y;
@@ -2435,6 +2470,345 @@ Begin
     // Kopieren wenn wir weniger als 4 Punkte haben
     For i := 0 To high(Points) Do
       result[i] := points[i];
+    setlength(result, length(Points));
+  End;
+End;
+
+(*
+ * Inspired by:
+ *   https://github.com/Dung-Han-Lee/Convexhull-3D-Implementation-of-incremental-convexhull-algorithm/tree/master
+ * which comes from:
+ *    Computational Geometry in C by O'Rourke Page 117 to 154
+ *)
+
+Function PointsToConvexHull(Const Points: TVector3Array): TFaceArray;
+Type
+  TKey = Record
+    a, b: Integer; // index in Points
+  End;
+
+  TFace = Record
+    Visible: Boolean;
+    Vertices: Array[0..2] Of Integer; // index in Points
+  End;
+
+  TEdge = Record
+    remove: boolean;
+    adjface1, adjface2: integer; // -1 = nil, sonst index in faces
+    endpoints: Array[0..1] Of Integer; // index in Points
+  End;
+
+  Tmap_Edge = Record
+    key: tKey;
+    edge: integer; // index in edges
+  End;
+
+  Function ToFace(a, b, c: Integer): TFace;
+  Begin
+    result.Vertices[0] := a;
+    result.Vertices[1] := b;
+    result.Vertices[2] := c;
+    result.Visible := false;
+  End;
+
+  Function Key2Edge(Const a, b: Integer): tKey;
+  Begin
+    result.a := a;
+    result.b := b;
+  End;
+
+  Function opcomp(Const a, b: tKey): Boolean;
+  Begin
+    result :=
+      ((a.a = b.a) And (a.b = b.b)) Or
+      ((a.a = b.b) And (a.b = b.a));
+  End;
+
+  Function Colinear(Const a, b, c: Integer): Boolean;
+  Begin
+    result :=
+      (((Points[c].z - Points[a].z) * (Points[b].y - Points[a].y) -
+      (Points[b].z - Points[a].z) * (Points[c].y - Points[a].y)) = 0) And (
+      ((Points[b].z - Points[a].z) * (Points[c].x - Points[a].x) -
+      (Points[b].x - Points[a].x) * (Points[c].z - Points[a].z)) = 0) And (
+      ((Points[b].x - Points[a].x) * (Points[c].y - Points[a].y) -
+      (Points[b].y - Points[a].y) * (Points[c].x - Points[a].x)) = 0);
+  End;
+
+  Function VolumeSign(Const face: TFace; Const p: Integer): integer;
+  Var
+    vol: TBaseType;
+    ax, ay, az, bx, by, bz, cx, cy, cz: TBaseType;
+  Begin
+    ax := Points[face.vertices[0]].x - Points[p].x;
+    ay := Points[face.vertices[0]].y - Points[p].y;
+    az := Points[face.vertices[0]].z - Points[p].z;
+    bx := Points[face.vertices[1]].x - Points[p].x;
+    by := Points[face.vertices[1]].y - Points[p].y;
+    bz := Points[face.vertices[1]].z - Points[p].z;
+    cx := Points[face.vertices[2]].x - Points[p].x;
+    cy := Points[face.vertices[2]].y - Points[p].y;
+    cz := Points[face.vertices[2]].z - Points[p].z;
+    vol :=
+      ax * (by * cz - bz * cy) +
+      ay * (bz * cx - bx * cz) +
+      az * (bx * cy - by * cx);
+    If (vol = 0) Then Begin
+      result := 0;
+    End
+    Else Begin
+      If vol < 0 Then Begin
+        result := -1;
+      End
+      Else Begin
+        result := 1;
+      End;
+    End;
+  End;
+
+Var
+  faces: Array Of TFace;
+  map_edges: Array Of Tmap_Edge;
+  edges: Array Of TEdge;
+
+  Procedure AddOneFace(Const a, b, c: integer; Const inner_pt: integer);
+    // Create edges and link them to face pointer
+    Procedure create_edge(Const p1, p2: Integer);
+    Var
+      key: tKey;
+      KeyIndex, i: Integer;
+    Begin
+      key := Key2Edge(p1, p2);
+      KeyIndex := -1;
+      For i := 0 To high(map_edges) Do Begin
+        If opcomp(map_edges[i].key, key) Then Begin
+          KeyIndex := i;
+          break;
+        End;
+      End;
+
+      If (KeyIndex = -1) Then Begin
+        setlength(edges, high(edges) + 2);
+        edges[high(edges)].remove := false;
+        edges[high(edges)].endpoints[0] := p1;
+        edges[high(edges)].endpoints[1] := p2;
+        edges[high(edges)].adjface1 := -1;
+        edges[high(edges)].adjface2 := -1;
+        setlength(map_edges, high(map_edges) + 2);
+        map_edges[high(map_edges)].key := key;
+        map_edges[high(map_edges)].edge := high(edges);
+        KeyIndex := high(map_edges);
+      End;
+
+      If (edges[map_edges[KeyIndex].edge].adjface1 <> -1) And
+        (edges[map_edges[KeyIndex].edge].adjface2 <> -1) Then Begin
+        Raise exception.create('warning: property violated!');
+      End;
+      If edges[map_edges[KeyIndex].edge].adjface1 = -1 Then Begin
+        edges[map_edges[KeyIndex].edge].adjface1 := high(faces);
+      End
+      Else Begin
+        edges[map_edges[KeyIndex].edge].adjface2 := high(faces);
+      End;
+    End;
+
+  Begin
+    // Make sure face is CCW with face normal pointing outward
+    setlength(faces, high(faces) + 2);
+    faces[high(faces)].Visible := false;
+    faces[high(faces)].Vertices[0] := a;
+    faces[high(faces)].Vertices[1] := b;
+    faces[high(faces)].Vertices[2] := c;
+
+    If (VolumeSign(faces[high(faces)], inner_pt) < 0) Then Begin
+      faces[high(faces)].Vertices[2] := a;
+      faces[high(faces)].Vertices[0] := c;
+    End;
+
+    create_edge(a, b);
+    create_edge(a, c);
+    create_edge(b, c);
+  End;
+
+Var
+  processed: Array Of Boolean;
+
+  Function BuildFirstHull(): Boolean;
+  Var
+    n, i, j: integer;
+    fc: TFace;
+  Begin
+    result := false;
+    n := length(Points);
+    If (n <= 3) Then Begin
+      Raise exception.create('Tetrahedron: points.size() < 4');
+      exit;
+    End;
+
+    i := 2;
+    While (Colinear(i, i - 1, i - 2)) Do Begin
+      If (i = n - 1) Then Begin
+        Raise exception.create('Tetrahedron: All points are colinear!');
+        exit;
+      End;
+      i := i + 1;
+    End;
+
+    fc := Toface(i, i - 1, i - 2);
+    j := i;
+    While (VolumeSign(fc, j) = 0) Do Begin
+      If (j = n - 1) Then Begin
+        Raise exception.create('Tetrahedron: All pointcloud are coplanar!');
+        exit;
+      End;
+      j := j + 1;
+    End;
+
+    processed[i] := true;
+    processed[i - 1] := true;
+    processed[i - 2] := true;
+    processed[j] := true;
+
+    AddOneFace(i, i - 1, i - 2, j);
+    AddOneFace(i, i - 1, j, i - 2);
+    AddOneFace(i, i - 2, j, i - 1);
+    AddOneFace(i - 1, i - 2, j, i);
+
+    result := true;
+  End;
+
+  Function FindInnerPoint(Const f: integer; e: integer): integer;
+  Var
+    i: Integer;
+  Begin
+    For i := 0 To 2 Do Begin
+      If (faces[f].vertices[i] = edges[e].endpoints[0]) Then continue;
+      If (faces[f].vertices[i] = edges[e].endpoints[1]) Then continue;
+      result := faces[f].vertices[i];
+      exit;
+    End;
+  End;
+
+  Procedure IncreHull(pt: integer);
+  Var
+    vis: Boolean;
+    face1, face2, it, face, inner_pt: integer;
+  Begin
+    // Find the illuminated faces (which will be removed later)
+    vis := false;
+    For face := 0 To high(faces) Do Begin
+      If (VolumeSign(faces[face], pt) < 0) Then Begin
+        faces[face].visible := true;
+        vis := true;
+      End;
+    End;
+    If (Not vis) Then exit;
+
+    // Find the edges to make new tagent surface or to be removed
+    For it := 0 To high(edges) Do Begin
+      face1 := edges[it].adjface1;
+      face2 := edges[it].adjface2;
+
+      // Newly added edge
+      If (face1 = -1) Or (face2 = -1) Then Begin
+        Continue;
+      End
+      Else Begin
+        // This edge is to be removed because two adjacent faces will be removed
+        If (faces[face1].visible And faces[face2].visible) Then Begin
+          edges[it].remove := true;
+        End
+        Else Begin
+          // Edge on the boundary of visibility, which will be used to extend a tagent
+          // cone surface.
+          If (faces[face1].visible Or faces[face2].visible) Then Begin
+            If (faces[face1].visible) Then Begin
+              face1 := edges[it].adjface2;
+              face2 := edges[it].adjface1;
+            End;
+            inner_pt := FindInnerPoint(face2, it);
+            If edges[it].adjface1 = face2 Then edges[it].adjface1 := -1;
+            If edges[it].adjface2 = face2 Then edges[it].adjface2 := -1;
+            AddOneFace(edges[it].endpoints[0], edges[it].endpoints[1], pt, inner_pt);
+          End;
+        End;
+      End;
+    End;
+  End;
+
+  Procedure CleanUp;
+  Var
+    pt1, pt2, it_edge, j, k, it_face: integer;
+    key_to_evict: TKey;
+  Begin
+    For it_edge := high(edges) Downto 0 Do Begin
+      If (edges[it_edge].remove) Then Begin
+        pt1 := edges[it_edge].endpoints[0];
+        pt2 := edges[it_edge].endpoints[1];
+        key_to_evict := Key2Edge(pt1, pt2);
+        For j := 0 To high(map_edges) Do Begin
+          If opcomp(map_edges[j].key, key_to_evict) Then Begin
+            For k := j To high(map_edges) - 1 Do Begin
+              map_edges[k] := map_edges[k + 1];
+            End;
+            setlength(map_edges, high(map_edges));
+            break;
+          End;
+        End;
+        For j := 0 To high(map_edges) Do Begin
+          If map_edges[j].edge > it_edge Then map_edges[j].edge := map_edges[j].edge - 1;
+        End;
+        For j := it_edge To high(edges) - 1 Do Begin
+          edges[j] := edges[j + 1];
+        End;
+        setlength(edges, high(edges));
+      End;
+    End;
+    For it_face := high(faces) Downto 0 Do Begin
+      If faces[it_face].Visible Then Begin
+        For j := 0 To high(edges) Do Begin
+          If edges[j].adjface1 > it_face Then edges[j].adjface1 := edges[j].adjface1 - 1;
+          If edges[j].adjface2 > it_face Then edges[j].adjface2 := edges[j].adjface2 - 1;
+        End;
+        For j := it_face To high(faces) - 1 Do Begin
+          faces[j] := faces[j + 1];
+        End;
+        setlength(faces, high(faces));
+      End;
+    End;
+  End;
+
+Var
+  pt, i: Integer;
+Begin
+  // init
+  result := Nil;
+  faces := Nil;
+  processed := Nil;
+  map_edges := Nil;
+  edges := Nil;
+  // ConstructHull
+  setlength(processed, length(Points));
+  FillChar(processed[0], length(processed), false);
+  map_edges := Nil;
+  edges := Nil;
+  If (Not BuildFirstHull()) Then exit;
+  For pt := 0 To high(Points) Do Begin
+    If (processed[pt]) Then continue;
+    IncreHull(pt);
+    CleanUp();
+  End;
+  // copy / create results
+  setlength(result, length(faces));
+  For i := 0 To high(faces) Do Begin
+    result[i].a := faces[i].Vertices[0];
+    result[i].b := faces[i].Vertices[1];
+    result[i].c := faces[i].Vertices[2];
+    result[i].Normal := NormV3(
+      CrossV3(
+      Points[faces[i].Vertices[0]] - Points[faces[i].Vertices[1]],
+      Points[faces[i].Vertices[0]] - Points[faces[i].Vertices[2]]
+      ));
   End;
 End;
 
