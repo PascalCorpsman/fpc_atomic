@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uOpenGL_ASCII_Font.pas                                          ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.06                                                         *)
+(* Version     : 0.07                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -31,6 +31,7 @@
 (*               0.04 - Suppurt UTF8 Strings                                  *)
 (*               0.05 - CurrentColor nicht nach Außen ändern                  *)
 (*               0.06 - Umstellen auf Abgeleitet von TOpenGL_Font             *)
+(*               0.07 - TOpenGL_ASCII_BIG_Font = font mit Hintergrund         *)
 (*                                                                            *)
 (******************************************************************************)
 (*                                                                            *)
@@ -78,32 +79,83 @@ Type
      * Freigeben tut sich die Klasse selbständig beim Beenden der Anwendung
      *)
     Constructor Create(Const Bitmap: Tbitmap; CharWidth, CharHeight, CharCount: Integer); virtual; reintroduce; // Alles was Weiß ist, ist sichtbar, der Rest Transparent
-    Destructor destroy; override;
+    Destructor Destroy; override;
     (*
      * Text Dimensionen
      *)
     Function TextWidth(Text: String): single; override; // Breite des Textes in Pixeln  ACHTUNG, Als CRT gillt nur #13 !!
     Function TextHeight(text: String): single; override; // Höhe des Textes in Pixeln   ACHTUNG, Als CRT gillt nur #13 !!
-    Function TextWidth3D(Height: TBaseType; Text: String): TBaseType; // Im 3D-Mode Gibt man die Höhe des gesammten Textes vor, aus dieser Vorgabe lässt sich dann die Breite Ableiten
+    Function TextWidth3D(Height: TBaseType; Text: String): TBaseType; virtual; // Im 3D-Mode Gibt man die Höhe des gesammten Textes vor, aus dieser Vorgabe lässt sich dann die Breite Ableiten
     (*
      * Zeichen Routinen
      *)
     Procedure Textout(x, y: Integer; Text: String); override; // Zeichnet einen Text, unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
-    Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); // Rendert einen Schriftzug (zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
-    Procedure ThreeDTextout(Position, Up, Right: TVector3; Height: TBaseType; Text: String); // Rendert eine  Schriftzug Zentriert auf Position und entsprechend Up und Right, da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
-    Procedure RenderTextToRect(rect: TRect; Text: String); // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
+    Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); virtual; // Rendert einen Schriftzug (zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
+    Procedure ThreeDTextout(Position, Up, Right: TVector3; Height: TBaseType; Text: String); virtual; // Rendert eine  Schriftzug Zentriert auf Position und entsprechend Up und Right, da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
+    Procedure RenderTextToRect(rect: TRect; Text: String); virtual; // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
+  End;
+
+  { TOpenGL_ASCII_BIG_Font }
+
+  TOpenGL_ASCII_BIG_Font = Class(TOpenGL_ASCII_Font)
+  private
+    Font1, Font2: TOpenGL_ASCII_Font;
+    Procedure Clear;
+  protected
+    Function getColor: TColor; override;
+    Function getcolorfp: TFPColor; override;
+    Function getcolorV3: TVector3; override;
+    Function getsize: Single; override;
+    Function getBackColor: TColor; virtual;
+    Procedure setColor(AValue: TColor); override;
+    Procedure setColorV3(AValue: TVector3); override;
+    Procedure setColorfp(AValue: TFPColor); override;
+    Procedure setsize(AValue: Single); override;
+    Procedure setBackColor(AValue: TColor); virtual;
+  public
+    Property BackColor: TColor read getBackColor write setBackColor;
+
+    (*
+     * Die Init und Free Routinen brauchen nicht direkt aufgerufen zu werden. Hier
+     * Genügt ein Aufruf von : Create_ASCII_BigFont
+     * Freigeben tut sich die Klasse selbständig beim Beenden der Anwendung
+     *)
+    Constructor Create(Const Bitmap, Mask: Tbitmap; CharWidth, CharHeight, CharCount: Integer); virtual; reintroduce; // Alles was Weiß ist, ist sichtbar, der Rest Transparent
+    Destructor Destroy; override;
+    (*
+     * Text Dimensionen
+     *)
+    Function TextWidth(Text: String): single; override; // Breite des Textes in Pixeln  ACHTUNG, Als CRT gillt nur #13 !!
+    Function TextHeight(text: String): single; override; // Höhe des Textes in Pixeln   ACHTUNG, Als CRT gillt nur #13 !!
+    Function TextWidth3D(Height: TBaseType; Text: String): TBaseType; override; // Im 3D-Mode Gibt man die Höhe des gesammten Textes vor, aus dieser Vorgabe lässt sich dann die Breite Ableiten
+    (*
+     * Zeichen Routinen
+     *)
+    Procedure Textout(x, y: Integer; Text: String); override; // Zeichnet einen Text, unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
+    Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); override; // Rendert einen Schriftzug (zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
+    Procedure ThreeDTextout(Position, Up, Right: TVector3; Height: TBaseType; Text: String); override; // Rendert eine  Schriftzug Zentriert auf Position und entsprechend Up und Right, da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
+    Procedure RenderTextToRect(rect: TRect; Text: String); override; // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
   End;
 
 Var
   OpenGL_ASCII_Font: TOpenGL_ASCII_Font = Nil;
 
-Procedure Create_ASCII_Font(); // Muss in Make Current aufgerufen werden, da es OpenGLBefehle nutzt.
+  (*
+   * Es stehen 2 Schriftarten als "OpenGL_ASCII_Font" zur Verfügung.
+   *
+   * Create_ASCII_Font(); -> erzeugt eine alte "DOS" like Schrift (8x12)
+   * Create_ASCII_BigFont(); -> erzeugt eine alte "Dos" like schrift, aber mit 1-Pixel Rahmen (10x14) (ist besser for buntem Hintergrund erkennbar)
+   *)
+Procedure Create_ASCII_Font();
+Procedure Create_ASCII_BigFont();
 
-// Switcher zwischen 2D und 3D-Modus
+// Switcher zwischen 2D und 3D-Modus, wenn gemeinsam genutzt mit dem Widgetset, ist die Go2D des Widgetset zu nehmen !
 Procedure Go2d(Width_2D, Height_2d: Integer);
 Procedure Exit2d();
 
 Implementation
+
+Uses sysutils;
 
 Procedure Go2d(Width_2D, Height_2d: Integer);
 Begin
@@ -132,6 +184,20 @@ Begin
   Bitmap := TBitmap.Create;
   bitmap.LoadFromLazarusResource('OpenGLFont');
   OpenGL_ASCII_Font := TOpenGL_ASCII_Font.Create(bitmap, 8, 12, 256);
+  bitmap.Free;
+End;
+
+Procedure Create_ASCII_BigFont(); // Muss in Make Current aufgerufen werden, da es OpenGLBefehle nutzt.
+Var
+  Mask, bitmap: TBitmap;
+Begin
+  If Assigned(OpenGL_ASCII_Font) Then OpenGL_ASCII_Font.free;
+  Bitmap := TBitmap.Create;
+  bitmap.LoadFromLazarusResource('OpenGLBigFont');
+  Mask := TBitmap.Create;
+  Mask.LoadFromLazarusResource('OpenGLBigFontMask');
+  OpenGL_ASCII_Font := TOpenGL_ASCII_BIG_Font.Create(bitmap, Mask, 10, 14, 256);
+  Mask.free;
   bitmap.Free;
 End;
 
@@ -196,7 +262,7 @@ Begin
   TempIntfImg.free;
 End;
 
-Destructor TOpenGL_ASCII_Font.destroy;
+Destructor TOpenGL_ASCII_Font.Destroy;
 Begin
   glDeleteLists(FBaseList, FCharcount); // Delete All Display Lists
 End;
@@ -413,6 +479,134 @@ Procedure TOpenGL_ASCII_Font.RenderChar(Number: integer);
 Begin
   glListBase(FBaseList);
   glCallLists(1, GL_UNSIGNED_BYTE, @Number);
+End;
+
+{ TOpenGL_ASCII_BIG_Font }
+
+Procedure TOpenGL_ASCII_BIG_Font.Clear;
+Begin
+  If assigned(Font1) Then Font1.Free;
+  If assigned(Font2) Then Font2.Free;
+  font1 := Nil;
+  font2 := Nil;
+End;
+
+Function TOpenGL_ASCII_BIG_Font.getColor: TColor;
+Begin
+  Result := font1.getColor;
+End;
+
+Function TOpenGL_ASCII_BIG_Font.getcolorfp: TFPColor;
+Begin
+  Result := font1.getcolorfp;
+End;
+
+Function TOpenGL_ASCII_BIG_Font.getcolorV3: TVector3;
+Begin
+  Result := font1.getcolorV3;
+End;
+
+Function TOpenGL_ASCII_BIG_Font.getsize: Single;
+Begin
+  Result := font1.getsize;
+End;
+
+Function TOpenGL_ASCII_BIG_Font.getBackColor: TColor;
+Begin
+  Result := font2.getColor;
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.setColor(AValue: TColor);
+Begin
+  font1.setColor(AValue);
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.setColorV3(AValue: TVector3);
+Begin
+  font1.setColorV3(AValue);
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.setColorfp(AValue: TFPColor);
+Begin
+  font1.setColorfp(AValue);
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.setsize(AValue: Single);
+Begin
+  font1.setsize(AValue);
+  font2.setsize(AValue);
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.setBackColor(AValue: TColor);
+Begin
+  font2.setColor(AValue);
+End;
+
+Constructor TOpenGL_ASCII_BIG_Font.Create(Const Bitmap, Mask: Tbitmap;
+  CharWidth, CharHeight, CharCount: Integer);
+Begin
+  If (bitmap.Width <> mask.Width) Or
+    (bitmap.Height <> mask.Height) Then Begin
+    Raise exception.Create('TOpenGL_ASCII_BIG_Font.Create: bitmap and mask need to have same size!');
+  End;
+  Font1 := Nil;
+  Font2 := Nil;
+  Clear;
+  Font1 := TOpenGL_ASCII_Font.Create(bitmap, CharWidth, CharHeight, CharCount);
+  Font2 := TOpenGL_ASCII_Font.Create(Mask, CharWidth, CharHeight, CharCount);
+  Font1.Color := clWhite;
+  Font2.Color := clBlack;
+End;
+
+Destructor TOpenGL_ASCII_BIG_Font.Destroy;
+Begin
+  clear;
+End;
+
+Function TOpenGL_ASCII_BIG_Font.TextWidth(Text: String): single;
+Begin
+  result := Font1.TextWidth(Text);
+End;
+
+Function TOpenGL_ASCII_BIG_Font.TextHeight(text: String): single;
+Begin
+  result := Font1.TextHeight(Text);
+End;
+
+Function TOpenGL_ASCII_BIG_Font.TextWidth3D(Height: TBaseType; Text: String
+  ): TBaseType;
+Begin
+  result := Font1.TextWidth3D(Height, Text);
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.Textout(x, y: Integer; Text: String);
+Begin
+  glPushMatrix;
+  font2.Textout(x, y, text);
+  glTranslatef(0, 0, Epsilon);
+  font1.Textout(x, y, text);
+  glPopMatrix;
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.BillboardTextout(Position: TVector3;
+  Height: TBaseType; Text: String);
+Begin
+  Raise Exception.Create('TOpenGL_ASCII_BIG_Font.BillboardTextout: not implemented.');
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.ThreeDTextout(Position, Up, Right: TVector3;
+  Height: TBaseType; Text: String);
+Begin
+  Raise Exception.Create('TOpenGL_ASCII_BIG_Font.ThreeDTextout: not implemented.');
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.RenderTextToRect(rect: TRect; Text: String);
+Begin
+  glPushMatrix;
+  font2.RenderTextToRect(rect, text);
+  glTranslatef(0, 0, Epsilon);
+  font1.RenderTextToRect(rect, text);
+  glPopMatrix;
 End;
 
 Initialization
