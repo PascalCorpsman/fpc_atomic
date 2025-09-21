@@ -50,7 +50,7 @@ By using the launcher you can click the "check for update" feature to check weth
 See the [manual](MANUAL.md) for detailed information.
 
 ## License
-See the license.md file located at https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md for details about the license.
+See the license.md file located at [license.md](license.md) for details about the license.
 
 ## What needs to be done to compile the code ?
 
