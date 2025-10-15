@@ -79,7 +79,7 @@
     </RunParams>
     <RequiredPackages Count="2">
       <Item1>
-        <PackageName Value="LCL"/>
+        <PackageName Value="LCLBase"/>
       </Item1>
       <Item2>
         <PackageName Value="lnetbase"/>

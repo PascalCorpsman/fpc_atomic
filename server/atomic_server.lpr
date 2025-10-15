@@ -28,7 +28,8 @@
 
 Program atomic_server;
 
-Uses Interfaces, sysutils, lazutf8, LazFileUtils
+Uses
+  sysutils, lazutf8, LazFileUtils
   , uatomic_server
   , uatomic_common
   ;
