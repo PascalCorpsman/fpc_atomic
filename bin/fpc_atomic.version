@@ -1,36 +1,56 @@
 {
   "fpc_atomic":  {
-    "Version":0.12007,
+    "Version":0.12008,
     "LauncherVersion":8,
-    "VersionText":"FIX: made Windows version more robust (on some machines it was not possible to start a game, by fpc_atomic.exe)",
+    "VersionText":"FIX: Drawgame in Teamsplay -> no finish detected",
     "Download_core":
     [
       {
         "file":        {
-          "HASH":"29b5899a73ff45ee1ad5c3fb771b62fc",
+          "HASH":"9e50db0f45e43f1bc8bef31e9e0a1c7b",
           "SIZE":"3089920",
-          "HASH2":"55daec2b420fe1beab9521ef86040fc2",
-          "SIZE2":"7762776",
+          "HASH2":"0796650dec76315a65986ad3d7a3ab76",
+          "SIZE2":"7771704",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":        {
-          "HASH":"33197a36c1420ca1678771c09cf755b9",
+          "HASH":"0d5e8f4180f7ef0226b03f9bd083c949",
+          "SIZE":"1337344",
+          "HASH2":"c1a568b7a585fae52ad03136f09c9b10",
+          "SIZE2":"3570704",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
+          "Filename":"atomic_server.exe"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"40cf243a1bafaaf8bd9a34e39be45653",
           "SIZE":"5977088",
-          "HASH2":"95a8e28eebcee981370eec68e71e0706",
-          "SIZE2":"8143208",
+          "HASH2":"0625f5f5cd66531f0aec67fa701868f0",
+          "SIZE2":"8160360",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":        {
-          "HASH":"bb060c7407caf13b2ef7d8658d17ccb0",
-          "SIZE":"4176896",
-          "HASH2":"59071f2170bc2ee2dc60480b91ecc7fc",
-          "SIZE2":"8701352",
+          "HASH":"9674f3f13a06364925fc4c63cccd5384",
+          "SIZE":"2673664",
+          "HASH2":"2d33eb9c87bf5217af00012b707655af",
+          "SIZE2":"6934904",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
+          "Filename":"updater.exe"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"c83b8e899d2c0896bfcab8c6c4fedbfd",
+          "SIZE":"4401152",
+          "HASH2":"3895684467c4dfb2e2b7c66dcf974614",
+          "SIZE2":"8936264",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
@@ -47,27 +67,7 @@
       },
       {
         "file":        {
-          "HASH":"11ba2bb4bcdd29cef8eeaa6b15b97ee8",
-          "SIZE":"2673664",
-          "HASH2":"f1cbc56fd02a0ce69c5b702f42c1bba0",
-          "SIZE2":"6934920",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/updater.exe",
-          "Filename":"updater.exe"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"5227ec2ce3b09a6e29a75533f0ded8f7",
-          "SIZE":"2842112",
-          "HASH2":"b60199beafeeed0bcd7d83365cfe4d29",
-          "SIZE2":"7235672",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/bin\/atomic_server.exe",
-          "Filename":"atomic_server.exe"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"7899fb5c74595bbd8962c2c5995b0dab",
+          "HASH":"fdc78696d206feda8a8c08643aa4bd35",
           "SIZE":"299520",
           "HASH2":"b498c4aa86ee2a2778fc84acd338d4aa",
           "SIZE2":"1191608",
@@ -105,6 +105,94 @@
       },
       {
         "file":        {
+          "HASH":"2d89d10c9b78631c67ab66a1cfc807f6",
+          "SIZE":"116",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field04\/info.txt",
+          "Filename":"data\/maps\/Field04\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"9c8267917f12f4e86cb1b6ff40e9d4a5",
+          "SIZE":"110",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field01\/info.txt",
+          "Filename":"data\/maps\/Field01\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"9edd19d37b302654e7aebeb916260853",
+          "SIZE":"106",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field08\/info.txt",
+          "Filename":"data\/maps\/Field08\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"7fabb51a400fba0ca62c9c3ab828f67c",
+          "SIZE":"97",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field06\/info.txt",
+          "Filename":"data\/maps\/Field06\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"e664ccb13d7afcf544f22d7d59be8b86",
+          "SIZE":"104",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field07\/info.txt",
+          "Filename":"data\/maps\/Field07\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"000610f9d7c518a9eff1df5a32fb561b",
+          "SIZE":"117",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field03\/info.txt",
+          "Filename":"data\/maps\/Field03\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"25fa993928716a72315538d194b738b1",
+          "SIZE":"100",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field05\/info.txt",
+          "Filename":"data\/maps\/Field05\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"ab334f9615579e92e012216c81880feb",
+          "SIZE":"125",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field09\/info.txt",
+          "Filename":"data\/maps\/Field09\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"91620a26b8251361fda17e0e146e16db",
+          "SIZE":"106",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field02\/info.txt",
+          "Filename":"data\/maps\/Field02\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"4e88f27789ad96a399263d912e6b6fbb",
+          "SIZE":"102",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field00\/info.txt",
+          "Filename":"data\/maps\/Field00\/info.txt"
+        }
+      },
+      {
+        "file":        {
+          "HASH":"30beaed6330cf2511fc59535984a3ee5",
+          "SIZE":"123",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field10\/info.txt",
+          "Filename":"data\/maps\/Field10\/info.txt"
+        }
+      },
+      {
+        "file":        {
           "HASH":"a602435c1fe8d9147f6b1bb8aecbf7b8",
           "SIZE":"421",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/locked_in\/files.txt",
@@ -125,94 +213,6 @@
           "SIZE":"1034",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/die\/files.txt",
           "Filename":"data\/atomic\/die\/files.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"e664ccb13d7afcf544f22d7d59be8b86",
-          "SIZE":"104",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field07\/info.txt",
-          "Filename":"data\/maps\/Field07\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"30beaed6330cf2511fc59535984a3ee5",
-          "SIZE":"123",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field10\/info.txt",
-          "Filename":"data\/maps\/Field10\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"7fabb51a400fba0ca62c9c3ab828f67c",
-          "SIZE":"97",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field06\/info.txt",
-          "Filename":"data\/maps\/Field06\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"9c8267917f12f4e86cb1b6ff40e9d4a5",
-          "SIZE":"110",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field01\/info.txt",
-          "Filename":"data\/maps\/Field01\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"91620a26b8251361fda17e0e146e16db",
-          "SIZE":"106",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field02\/info.txt",
-          "Filename":"data\/maps\/Field02\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"000610f9d7c518a9eff1df5a32fb561b",
-          "SIZE":"117",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field03\/info.txt",
-          "Filename":"data\/maps\/Field03\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"9edd19d37b302654e7aebeb916260853",
-          "SIZE":"106",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field08\/info.txt",
-          "Filename":"data\/maps\/Field08\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"4e88f27789ad96a399263d912e6b6fbb",
-          "SIZE":"102",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field00\/info.txt",
-          "Filename":"data\/maps\/Field00\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"ab334f9615579e92e012216c81880feb",
-          "SIZE":"125",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field09\/info.txt",
-          "Filename":"data\/maps\/Field09\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"25fa993928716a72315538d194b738b1",
-          "SIZE":"100",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field05\/info.txt",
-          "Filename":"data\/maps\/Field05\/info.txt"
-        }
-      },
-      {
-        "file":        {
-          "HASH":"2d89d10c9b78631c67ab66a1cfc807f6",
-          "SIZE":"116",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field04\/info.txt",
-          "Filename":"data\/maps\/Field04\/info.txt"
         }
       },
       {
