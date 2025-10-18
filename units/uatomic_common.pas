@@ -110,11 +110,11 @@ Const
    *                       ADD: Feature Request #8 load remote IP / Port Settings in "J" Dialog
    *                       FIX: "Slow" bug under Windows #7
    * -releaseG - 0.12007 = FIX: made Windows version more robust (start game did not really work ...)
-   *           - 0.12008 = FIX: Drawgame in Teamsplay -> no finish detected
+   * -releaseG - 0.12008 = FIX: Drawgame in Teamsplay -> no finish detected
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12008';
+  Version = '0.12009';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
