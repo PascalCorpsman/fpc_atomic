@@ -1339,19 +1339,23 @@ Begin
       akLeft: fPLayer[Player].MoveState := msLeft;
       akRight: fPLayer[Player].MoveState := msRight;
       akFirstAction: Begin
-          If Double Then Begin
-            fPLayer[Player].Action := aaFirstDouble;
-          End
-          Else Begin
-            fPLayer[Player].Action := aaFirst;
+          If (Not (dNoBombs In fPLayer[Player].Disease)) Then Begin
+            If Double Then Begin
+              fPLayer[Player].Action := aaFirstDouble;
+            End
+            Else Begin
+              fPLayer[Player].Action := aaFirst;
+            End;
           End;
         End;
       akSecondAction: Begin
-          If Double Then Begin
-            fPLayer[Player].Action := aaSecondDouble;
-          End
-          Else Begin
-            fPLayer[Player].Action := aaSecond;
+          If (Not (dNoBombs In fPLayer[Player].Disease)) Then Begin
+            If Double Then Begin
+              fPLayer[Player].Action := aaSecondDouble;
+            End
+            Else Begin
+              fPLayer[Player].Action := aaSecond;
+            End;
           End;
         End;
     End;
