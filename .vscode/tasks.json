@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build with FPC",
+      "type": "shell",
+      "command": "fpc",
+      "args": ["-MObjFPC", "-Sh", "launcher/atomic_launcher.lpr"],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}
