@@ -59,6 +59,7 @@ See the license.md file located at [license.md](license.md) for details about th
 3. Download bass.pas from https://www.un4seen.com/ and store it in the "units" folder
    - Linux users: copy libbass.so to "/usr/lib/" or run "Linux_sound_install_script.sh"
    - Windows users: copy bass.dll from the bin folder into the repository root folder
+   - Mac users: copy libbass.dylib from the bass24-osx into macos/lib/arm64 and macos/lib/x86_64
 4. Download synapse from http://www.ararat.cz/synapse/doku.php/download and store it in a new subfolder "synapse"
 5. Install the following packages into the Lazarus IDE:
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet

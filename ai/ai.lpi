@@ -13,8 +13,58 @@
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
-    <BuildModes>
-      <Item Name="Default" Default="True"/>
+    <BuildModes Count="3">
+      <Item1 Name="Default" Default="True"/>
+      <Item2 Name="macos_arm64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="../macos/lib/arm64/libai.dylib"/>
+          </Target>
+          <ConfigAndTarget>
+            <TargetCPU Value="aarch64"/>
+            <TargetOS Value="darwin"/>
+          </ConfigAndTarget>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
+            <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units;../macos/third_party/lnet/lib"/>
+            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <RelocatableUnit Value="True"/>
+          </CodeGeneration>
+          <Linking>
+            <Options>
+              <ExecutableType Value="Library"/>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item2>
+      <Item3 Name="macos_x86_64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="../macos/lib/x86_64/libai.dylib"/>
+          </Target>
+          <ConfigAndTarget>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="darwin"/>
+          </ConfigAndTarget>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
+            <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units;../macos/third_party/lnet/lib"/>
+            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+          </SearchPaths>
+          <CodeGeneration>
+            <RelocatableUnit Value="True"/>
+          </CodeGeneration>
+          <Linking>
+            <Options>
+              <ExecutableType Value="Library"/>
+            </Options>
+          </Linking>
+        </CompilerOptions>
+      </Item3>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -52,8 +102,8 @@
       <Filename Value="../ai"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units"/>
+      <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
+      <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units;../macos/third_party/lnet/lib"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>

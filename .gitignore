@@ -35,3 +35,12 @@ lib/
 server/stats.txt
 stats.txt
 
+# macOS build artifacts and proprietary assets
+macos/bin/
+macos/lib/
+macos/tools/
+macos/data/
+macos/game_assets/
+macos/*.app/
+macos/third_party/lnet/
+macos/third_party/sdl2_for_pascal/
