@@ -62,7 +62,7 @@ Unit uChunkmanager;
 Interface
 
 Uses
-  Classes, SysUtils, lnet, ufifo, synsock
+  Classes, SysUtils, lnet, ufifo
 {$IFDEF UseLogger}
   , ulogger
 {$ENDIF}
@@ -887,9 +887,10 @@ Begin
 {$IFDEF UseLogger}
   log('TChunkManager.SetNoDelay', llTrace);
 {$ENDIF}
-{$IFNDEF DARWIN}
   fconnection.IterReset;
-  fconnection.Iterator.SetState(ssNoDelay, Value);
+{$IFNDEF DARWIN}
+  If Assigned(fconnection.Iterator) Then
+    fconnection.Iterator.SetState(ssNoDelay, Value);
   While fconnection.IterNext Do Begin // Skipt Root Socket
     fconnection.Iterator.SetState(ssNoDelay, Value);
   End;

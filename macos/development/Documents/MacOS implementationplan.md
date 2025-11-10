@@ -3,16 +3,12 @@
 ## 1. Příprava prostředí
 - Nainstalovat FPC ≥ 3.2.2 a Lazarus IDE (Apple Silicon/Intel balíček).
 - Přidat externí jednotky do `units/`: `dglOpenGL.pas`, `bass.pas`, `synapse`, `sdl2_for_pascal`.
-- Připravit runtime knihovny:
-  - `libbass.dylib` zkopírovat do `macos/lib/arm64` a `macos/lib/x86_64`.
-  - `libSDL2.dylib` z `$(brew --prefix sdl2)/lib/` zkopírovat do `macos/lib/<arch>/`.
-  - `libssl.3.dylib` a `libcrypto.3.dylib` z `$(brew --prefix openssl@3)/lib/` zkopírovat do `macos/lib/<arch>/`.
-  - Po zkopírování odstranit atribut karantény a podepsat (viz README_mac.md).
+- Nainstalovat do systému runtime knihovny (`SDL2`, `libbass.dylib`, příp. `libSDL2_mixer.dylib`) a ověřit je přes `otool -L`.
 
 ## 2. Konfigurace projektů
-- V `.lpi` souborech (`client`, `server`, `launcher`, `ai`) nastavit cesty k externím jednotkám a výstupy do `macos/bin/<arch>`.
-- SDL zůstává v režimu runtime load (define `SDL_RUNTIME_LOADING` v `client/` a `launcher/sdl2_cfg.inc`).
-- Synapse komponenty používají `ssl_openssl3`, takže se očekává OpenSSL 3 knihovna (viz výše).
+- V `.lpi` souborech (`client`, `server`, `launcher`, `ai`) nastavit cestu k externím jednotkám.
+- Přidat build mód `macos` s výstupem do `macos/bin/`.
+// - Zajistit, že `sdl2_cfg.inc` používá dynamické linkování (`SDL_RUNTIME_LOADING`).
 
 ## 3. Kompilace
 - Pro arm64 používat `lazbuild --build-mode=macos_arm64 --lazarusdir=/Applications/Lazarus_3.9 <projekt>.lpi`.
@@ -21,10 +17,9 @@
 - Po kompilaci zkontrolovat binárky (`file`, `otool -L`), zda jsou `Mach-O 64-bit` a mají správné závislosti.
 
 ## 4. Knihovny a bundlování
-- V `macos/lib/<arch>/` musí být reálné kopie `libbass.dylib`, `libSDL2.dylib`, `libssl.3.dylib`, `libcrypto.3.dylib` (žádné symlinky na Homebrew cestu).
-- `.lpi` přidávají RPATH (`-k-rpath -k@executable_path/../lib`) a explicitně linkují `libbass.dylib`; ostatní knihovny se načítají dynamicky.
-- Po doplnění knihoven je vhodné spustit ad-hoc podpis (viz README_mac.md).
-- Pro `$(TargetCPU)=aarch64` existuje symlink `macos/lib/aarch64 -> arm64`.
+- Zkopírovat `libbass.dylib` (a případně `libSDL2.dylib`) do `macos/lib/<arch>/`.
+- RPATH je přidán v `.lpi` (`-k-rpath -k@executable_path/../lib`).
+- Pro `$(TargetCPU)=aarch64` je v `macos/lib` vytvořen symlink `aarch64 -> arm64`.
 
 ## 5. Struktura balíčku
 ```

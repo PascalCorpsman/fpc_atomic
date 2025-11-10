@@ -196,7 +196,6 @@ Type
     Procedure StartGame();
     Procedure StartPlayingSong(Filename: String);
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
-    Procedure HandleKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
   End;
 
 Var
@@ -2304,12 +2303,6 @@ Begin
   End;
   fSoundInfo.Render;
   Exit2d();
-End;
-
-Procedure TGame.HandleKeyDown(Sender: TObject; Var Key: Word;
-  Shift: TShiftState);
-Begin
-  FOnKeyDown(Sender, Key, Shift);
 End;
 
 Procedure TGame.OnIdle;

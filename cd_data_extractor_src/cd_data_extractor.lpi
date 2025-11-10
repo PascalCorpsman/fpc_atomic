@@ -12,50 +12,8 @@
         <DpiAware Value="True"/>
       </XPManifest>
     </General>
-    <BuildModes Count="3">
-      <Item1 Name="Default" Default="True"/>
-      <Item2 Name="macos_arm64">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <Target>
-            <Filename Value="../macos/bin/arm64/cd_data_extractor"/>
-          </Target>
-          <ConfigAndTarget>
-            <TargetCPU Value="aarch64"/>
-            <TargetOS Value="darwin"/>
-          </ConfigAndTarget>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/DatenSteuerung;../../Sample/OpenGL;../units;../units/sdl2_for_pascal;../synapse"/>
-            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-            <Libraries Value="../macos/lib/$(TargetCPU)"/>
-          </SearchPaths>
-          <Other>
-            <CustomOptions Value="-k-L/Users/pavelzverina/AiProjects/fpc_atomic_macos/macos/lib/aarch64 -k-ld_classic -k-rpath -k@executable_path/../lib"/>
-          </Other>
-        </CompilerOptions>
-      </Item2>
-      <Item3 Name="macos_x86_64">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <Target>
-            <Filename Value="../macos/bin/x86_64/cd_data_extractor"/>
-          </Target>
-          <ConfigAndTarget>
-            <TargetCPU Value="x86_64"/>
-            <TargetOS Value="darwin"/>
-          </ConfigAndTarget>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/DatenSteuerung;../../Sample/OpenGL;../units;../units/sdl2_for_pascal;../synapse"/>
-            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-            <Libraries Value="../macos/lib/$(TargetCPU)"/>
-          </SearchPaths>
-          <Other>
-            <CustomOptions Value="-k-L/Users/pavelzverina/AiProjects/fpc_atomic_macos/macos/lib/x86_64 -k-ld_classic -k-rpath -k@executable_path/../lib"/>
-          </Other>
-        </CompilerOptions>
-      </Item3>
+    <BuildModes>
+      <Item Name="Default" Default="True"/>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -143,13 +101,9 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/DatenSteuerung;../../Sample/OpenGL;../units;../units/sdl2_for_pascal;../synapse"/>
+      <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/DatenSteuerung;../../Sample/OpenGL;../units"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-      <Libraries Value="../macos/lib/$(TargetCPU)"/>
     </SearchPaths>
-    <Other>
-      <CustomOptions Value="-k-L/Users/pavelzverina/AiProjects/fpc_atomic_macos/macos/lib/aarch64 -k-L/Users/pavelzverina/AiProjects/fpc_atomic_macos/macos/lib/x86_64 -k-ld_classic -k-rpath -k@executable_path/../lib"/>
-    </Other>
     <Linking>
       <Options>
         <Win32>

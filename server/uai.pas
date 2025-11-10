@@ -77,18 +77,48 @@ Var
 
 Function LoadAiLib(): Boolean;
 Var
-  Filename: String;
+  Filename, BasePath: String;
+{$IFDEF Darwin}
+  ArchDir: String = '';
+{$ENDIF}
+
+  Function TryLoad(const BasePath: String): Boolean;
+  Var
+    Candidate: String;
+  Begin
+    Candidate := IncludeTrailingPathDelimiter(BasePath) + Filename;
+    If Not FileExists(Candidate) Then Exit(False);
+    Lib := LoadLibrary(Candidate);
+    TryLoad := Lib <> 0;
+  End;
 Begin
 {$IFDEF Windows}
   Filename := 'ai.dll';
 {$ELSE}
+  {$IFDEF DARWIN}
+  Filename := 'libai.dylib';
+  {$ELSE}
   Filename := 'libai.so';
+  {$ENDIF}
 {$ENDIF}
-  Filename := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
-  result := false;
+  Result := False;
   If lib <> 0 Then UnloadLibrary(lib);
-  If Not FileExists(Filename) Then exit;
-  lib := LoadLibrary(Filename);
+  Lib := 0;
+
+  BasePath := ExtractFilePath(ParamStr(0));
+  If Not TryLoad(BasePath) Then
+  Begin
+{$IFDEF Darwin}
+    {$IFDEF CPUAARCH64}
+    ArchDir := 'arm64';
+    {$ENDIF}
+    {$IFDEF CPUX86_64}
+    ArchDir := 'x86_64';
+    {$ENDIF}
+    If ArchDir <> '' Then
+      TryLoad(ExpandFileName(IncludeTrailingPathDelimiter(BasePath) + '../../lib/' + ArchDir));
+{$ENDIF}
+  End;
   If lib = 0 Then exit;
   AiInterfaceVersion := TAiInterfaceVersion(GetProcAddress(lib, 'AiInterfaceVersion'));
   If Not assigned(AiInterfaceVersion) Then Begin

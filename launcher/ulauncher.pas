@@ -103,13 +103,7 @@ Function CheckForFiles(): TStringList;
 
 Implementation
 
-Uses unit1, unit2,
-{$IFDEF DARWIN}
-  ssl_openssl3,
-{$ELSE}
-  ssl_openssl,
-{$ENDIF}
-  httpsend, synautil, uJSON, LazFileUtils, ucdextractor;
+Uses unit1, unit2, ssl_openssl3, synautil, uJSON, LazFileUtils, ucdextractor;
 
 Procedure ClearLog();
 Begin

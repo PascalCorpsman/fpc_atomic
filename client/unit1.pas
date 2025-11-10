@@ -37,9 +37,6 @@
 Unit Unit1;
 
 {$MODE objfpc}{$H+}
-{$IFDEF DARWIN}
-  {$modeswitch objectivec1}
-{$ENDIF}
 
 {$I globaldefines.inc}
 
@@ -95,7 +92,6 @@ Type
     Procedure FormDestroy(Sender: TObject);
     Procedure FormResize(Sender: TObject);
     Procedure FormShow(Sender: TObject);
-    Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure IniPropStorage1SavingProperties(Sender: TObject);
     Procedure OpenGLControl1KeyDown(Sender: TObject; Var Key: Word;
       Shift: TShiftState);
@@ -148,9 +144,6 @@ Uses lazfileutils, LazUTF8, LCLType
 {$IFDEF AUTOMODE}
   , uscreens
 {$ENDIF}
-{$IFDEF DARWIN}
-  , CocoaAll
-{$ENDIF}
   ;
 
 Var
@@ -178,7 +171,7 @@ Begin
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
   End;
-  If (allowcnt >= 1) And (Not Initialized) Then Begin
+  If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
     OpenGL_GraphikEngine.clear;
     Create_ASCII_Font;
     AtomicFont.CreateFont;
@@ -192,7 +185,6 @@ Begin
     OpenGLControl1Resize(Nil);
     Game.initialize(OpenGLControl1);
     Timer1.Enabled := true;
-    allowcnt := 2;
   End;
   Form1.Invalidate;
 End;
@@ -254,11 +246,6 @@ Begin
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
   Form1ShowOnce := true;
   IniPropStorage1.IniFileName := 'fpc_atomic.ini';
-{$IFDEF DARWIN}
-  IniPropStorage1.IniFileName :=
-    IncludeTrailingPathDelimiter(GetAppConfigDirUTF8(False)) + 'fpc_atomic.ini';
-  ForceDirectoriesUTF8(ExtractFilePath(IniPropStorage1.IniFileName));
-{$ENDIF}
   DefFormat := DefaultFormatSettings;
   DefFormat.DecimalSeparator := '.';
   LogShowHandler := @ShowUserMessage;
@@ -368,27 +355,9 @@ Procedure TForm1.FormShow(Sender: TObject);
 Var
   i: integer;
 {$ENDIF}
-{$IFDEF DARWIN}
-var
-  View: NSView;
-{$ENDIF}
 Begin
   If Form1ShowOnce Then Begin
     Form1ShowOnce := false;
-    {$IFDEF DARWIN}
-    // ensure OpenGL control receives keyboard focus on macOS
-    ActiveControl := OpenGLControl1;
-    OpenGLControl1.SetFocus;
-    if (OpenGLControl1.HandleAllocated) then
-    begin
-      View := NSView(OpenGLControl1.Handle);
-      if Assigned(View) and Assigned(View.window) then
-      begin
-        View.window.makeFirstResponder(View);
-        View.window.orderFrontRegardless;
-      end;
-    end;
-    {$ENDIF}
     Game.RegisterTCPConnection(LTCPComponent1);
     Game.RegisterUDPConnection(LUDPComponent1);
 {$IFDEF AUTOMODE}
@@ -403,13 +372,6 @@ Begin
     End;
 {$ENDIF}
   End;
-End;
-
-Procedure TForm1.FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-Begin
-  // fallback only when OpenGL control is not the active widget
-  If Assigned(Game) And (ActiveControl <> OpenGLControl1) Then
-    Game.HandleKeyDown(Sender, Key, Shift);
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);

@@ -14,7 +14,7 @@
       <ResourceType Value="res"/>
     </General>
     <BuildModes Count="3">
-      <Item1 Name="Default" Default="True"/>
+      <Item1 Name="default" Default="True"/>
       <Item2 Name="macos_arm64">
         <CompilerOptions>
           <Version Value="11"/>
@@ -26,19 +26,10 @@
             <TargetOS Value="darwin"/>
           </ConfigAndTarget>
           <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
-            <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../macos/third_party/lnet/lib"/>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-            <Libraries Value="../macos/lib/$(TargetCPU)"/>
           </SearchPaths>
-          <CodeGeneration>
-            <RelocatableUnit Value="True"/>
-          </CodeGeneration>
-          <Linking>
-            <Options>
-              <ExecutableType Value="Library"/>
-            </Options>
-          </Linking>
           <Other>
             <CustomOptions Value="-k-ld_classic"/>
           </Other>
@@ -55,19 +46,10 @@
             <TargetOS Value="darwin"/>
           </ConfigAndTarget>
           <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
-            <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../macos/third_party/lnet/lib"/>
+            <IncludeFiles Value="$(ProjOutDir)"/>
+            <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-            <Libraries Value="../macos/lib/$(TargetCPU)"/>
           </SearchPaths>
-          <CodeGeneration>
-            <RelocatableUnit Value="True"/>
-          </CodeGeneration>
-          <Linking>
-            <Options>
-              <ExecutableType Value="Library"/>
-            </Options>
-          </Linking>
           <Other>
             <CustomOptions Value="-k-ld_classic"/>
           </Other>
@@ -110,10 +92,9 @@
       <Filename Value="../ai"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
-      <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../macos/third_party/lnet/lib"/>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="../server;../../Sample/DatenSteuerung;../units"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-      <Libraries Value="../macos/lib/$(TargetCPU)"/>
     </SearchPaths>
     <CodeGeneration>
       <RelocatableUnit Value="True"/>
@@ -123,9 +104,6 @@
         <ExecutableType Value="Library"/>
       </Options>
     </Linking>
-    <Other>
-      <CustomOptions Value="-k-ld_classic"/>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions>
