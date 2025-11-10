@@ -27,8 +27,9 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir);..;../macos/third_party/lnet/lib/sys"/>
-            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
+            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+            <Libraries Value="../macos/lib/$(TargetCPU)"/>
           </SearchPaths>
           <Parsing>
             <SyntaxOptions>
@@ -56,7 +57,7 @@
             <CompilerMessages>
               <IgnoredMessages idx5024="True"/>
             </CompilerMessages>
-            <CustomOptions Value="-dServer"/>
+            <CustomOptions Value="-dServer -k-ld_classic"/>
           </Other>
         </CompilerOptions>
       </Item2>
@@ -72,11 +73,12 @@
           </ConfigAndTarget>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir);..;../macos/third_party/lnet/lib/sys"/>
-            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
+            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+            <Libraries Value="../macos/lib/$(TargetCPU)"/>
           </SearchPaths>
           <Other>
-            <CustomOptions Value="-dServer"/>
+            <CustomOptions Value="-dServer -k-ld_classic"/>
           </Other>
         </CompilerOptions>
       </Item3>
@@ -92,11 +94,12 @@
           </ConfigAndTarget>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir);..;../macos/third_party/lnet/lib/sys"/>
-            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
+            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+            <Libraries Value="../macos/lib/$(TargetCPU)"/>
           </SearchPaths>
           <Other>
-            <CustomOptions Value="-dServer"/>
+            <CustomOptions Value="-dServer -k-ld_classic"/>
           </Other>
         </CompilerOptions>
       </Item4>
@@ -160,8 +163,9 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);..;../macos/third_party/lnet/lib/sys"/>
-      <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
+      <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../../Sample/Graphik;../macos/third_party/lnet/lib;../synapse"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      <Libraries Value="../macos/lib/$(TargetCPU)"/>
     </SearchPaths>
     <Linking>
       <Debugging>
@@ -173,7 +177,7 @@
       <CompilerMessages>
         <IgnoredMessages idx5024="True"/>
       </CompilerMessages>
-      <CustomOptions Value="-dServer"/>
+      <CustomOptions Value="-dServer -k-ld_classic"/>
     </Other>
   </CompilerOptions>
   <Debugging>

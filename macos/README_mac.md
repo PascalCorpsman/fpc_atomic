@@ -42,25 +42,36 @@ macos/
 ### Spuštění kompilace
 ```
 # ARM64 (Apple Silicon)
-lazbuild --build-mode=macos_arm64 launcher/atomic_launcher.lpi
-lazbuild --build-mode=macos_arm64 client/fpc_atomic.lpi
-lazbuild --build-mode=macos_arm64 server/atomic_server.lpi
-lazbuild --build-mode=macos_arm64 ai/ai.lpi
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_arm64 launcher/atomic_launcher.lpi
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_arm64 client/fpc_atomic.lpi
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_arm64 server/atomic_server.lpi
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_arm64 ai/ai.lpi
 
-# Intel (x86_64) – lze spustit z Apple Silicon díky cross-kompilátoru
-lazbuild --build-mode=macos_x86_64 launcher/atomic_launcher.lpi
-lazbuild --build-mode=macos_x86_64 client/fpc_atomic.lpi
-lazbuild --build-mode=macos_x86_64 server/atomic_server.lpi
-lazbuild --build-mode=macos_x86_64 ai/ai.lpi
+# Intel (x86_64) – po doplnění LCL jednotek pro x86_64
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_x86_64 launcher/atomic_launcher.lpi
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_x86_64 client/fpc_atomic.lpi
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_x86_64 server/atomic_server.lpi
+lazbuild --lazarusdir=/Applications/Lazarus_3.9 --build-mode=macos_x86_64 ai/ai.lpi
 ```
 
-> **Poznámka:** Pokud kompilace pro x86_64 hlásí chybějící SDK, přidej do příkazů parametry `--lazarusdir=/Applications/Lazarus_3.9` a pro FPC `-XR/path/k/SDK` (např. `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`).
+> **Poznámka:** Cross-build pro x86_64 vyžaduje přeložené Lazarus/LCL balíčky pro `x86_64-darwin` (např. `Tools → Configure Build Lazarus`). Pokud lazbuild hlásí chybějící SDK, přidej `-XR/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`.
 
 ## Runtime knihovny
-- Zkopíruj `libbass.dylib` do `macos/lib/arm64` a `macos/lib/x86_64`. Pokud máš univerzální `dylib`, může být stejný soubor v obou adresářích.
-- `SDL2.framework`/`libSDL2.dylib` umísti do `macos/lib/<arch>` nebo ponech v systému. Pokud používáš `.dylib`, ujisti se, že `DYLD_LIBRARY_PATH` ukazuje na `macos/lib/<arch>`.
+- `libbass.dylib` patří do `macos/lib/arm64` a `macos/lib/x86_64` (pokud existuje univerzální dylib, stačí kopie do obou). Linker používá explicitní cestu `-k <path>/libbass.dylib`, proto musí být soubor reálně přítomen (nikoli symlink na systémovou cestu).
+- `libSDL2.dylib` stačí pro runtime načítání (SDL je kompilované s `SDL_RUNTIME_LOADING`). Zkopíruj reálný soubor (např. z `$(brew --prefix sdl2)/lib/libSDL2.dylib`) do `macos/lib/<arch>/`.
+- `libssl.3.dylib` a `libcrypto.3.dylib` – zkopíruj z `$(brew --prefix openssl@3)/lib/` do `macos/lib/<arch>/`. Projekt nyní používá Synapse plugin `ssl_openssl3`.
+- Po zkopírování knihovny doporučuji odstranit atribut karantény a podepsat je ad-hoc:
+  ```zsh
+  xattr -dr com.apple.quarantine macos/lib/arm64 macos/bin/arm64
+  codesign --force --sign - macos/lib/arm64/libbass.dylib
+  codesign --force --sign - macos/lib/arm64/libSDL2.dylib
+  codesign --force --sign - macos/lib/arm64/libssl.3.dylib
+  codesign --force --sign - macos/lib/arm64/libcrypto.3.dylib
+  codesign --force --deep --sign - macos/bin/arm64/atomic_launcher
+  ```
 - lNet knihovna: po stažení `https://github.com/PascalCorpsman/lnet` spusť `make lib` a obsah `lib/` synchronizuj do `macos/third_party/lnet/`. Build módy již obsahují cesty `../macos/third_party/lnet/lib` a `lib/sys`.
 - SDL2 Pascal headers: `git clone https://github.com/PascalCorpsman/SDL2-for-Pascal.git macos/third_party/sdl2_for_pascal`, poté zkopíruj `macos/third_party/sdl2_for_pascal/units/*` do `units/sdl2_for_pascal/`.
+- Kvůli `$(TargetCPU)` existuje symlink `macos/lib/aarch64 -> arm64`.
 
 ## Spouštěcí skripty
 - `macos/tools/run_launcher.command`

@@ -58,7 +58,11 @@ Type
 Implementation
 
 Uses
+{$IFDEF DARWIN}
+  ssl_openssl3;
+{$ELSE}
   ssl_openssl;
+{$ENDIF}
 
 (*
  * Verfolgt 302 und 301 Weiterleitungen

@@ -125,7 +125,9 @@ const
     {$IFDEF DARWIN}
       SDL_LibName = 'libSDL2.dylib';
       {$IFDEF FPC}
-        {$LINKLIB libSDL2}
+        {$IFNDEF SDL_RUNTIME_LOADING}
+          {$LINKLIB libSDL2}
+        {$ENDIF}
       {$ENDIF}
     {$ELSE}
       {$IFDEF FPC}
@@ -140,7 +142,9 @@ const
   {$IFDEF MACOS}
     SDL_LibName = 'SDL2';
     {$IFDEF FPC}
-      {$linklib libSDL2}
+      {$IFNDEF SDL_RUNTIME_LOADING}
+        {$linklib libSDL2}
+      {$ENDIF}
     {$ENDIF}
   {$ENDIF}
 

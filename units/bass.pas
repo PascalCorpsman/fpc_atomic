@@ -879,21 +879,16 @@ type
 
 // Functions
 const
-{$IFDEF MSWINDOWS}
+{$IF Defined(MSWINDOWS)}
   bassdll = 'bass.dll';
-{$ENDIF}
-{$IFDEF LINUX}
+{$ELSEIF Defined(LINUX) or Defined(ANDROID)}
   bassdll = 'libbass.so';
-{$ENDIF}
-{$IFDEF ANDROID}
+{$ELSEIF Defined(IOS)}
+  bassdll = 'bass.framework/bass';
+{$ELSEIF Defined(DARWIN)}
+  bassdll = 'libbass.dylib';
+{$ELSE}
   bassdll = 'libbass.so';
-{$ENDIF}
-{$IFDEF MACOS}
-  {$IFDEF IOS}
-    bassdll = 'bass.framework/bass';
-  {$ELSE}
-    bassdll = 'libbass.dylib';
-  {$ENDIF}
 {$ENDIF}
 
 function BASS_SetConfig(option, value: DWORD): BOOL; {$IFDEF MSWINDOWS}stdcall{$ELSE}cdecl{$ENDIF}; external bassdll;
