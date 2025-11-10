@@ -1,0 +1,33 @@
+#!/bin/zsh
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+SERVER_BIN="${APP_DIR}/atomic_server"
+
+if [[ ! -x "${SERVER_BIN}" ]]; then
+  /usr/bin/osascript <<EOF
+display dialog "atomic_server executable is missing. Run build_app_bundles.command to rebuild the app bundle." buttons {"OK"} default button 1 with icon stop
+EOF
+  exit 1
+fi
+
+if [[ -n "${TERM_PROGRAM:-}" ]]; then
+  exec "${SERVER_BIN}" "$@"
+fi
+
+ESC_APP_DIR="$(printf "%q" "${APP_DIR}")"
+ESC_BIN="$(printf "%q" "${SERVER_BIN}")"
+
+ARGS=()
+for arg in "$@"; do
+  ARGS+=("$(printf "%q" "${arg}")")
+done
+ARG_STRING="${ARGS[*]}"
+
+/usr/bin/osascript <<EOF
+tell application "Terminal"
+  activate
+  do script "cd ${ESC_APP_DIR}; ${ESC_BIN} ${ARG_STRING}"
+end tell
+EOF
+

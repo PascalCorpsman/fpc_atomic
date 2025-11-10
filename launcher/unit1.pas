@@ -266,6 +266,7 @@ Procedure TForm1.Button2Click(Sender: TObject);
 Var
   P: TProcessUTF8;
   sl: TStringList;
+  exePath, serverPath, workDir: String;
 Begin
   // Launch
   StoreSettings();
@@ -280,14 +281,21 @@ Begin
   End;
   sl.free;
   // Short Prechecks
-  If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
+  workDir := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  exePath := workDir + 'fpc_atomic';
+  serverPath := workDir + 'atomic_server';
+{$IFDEF Windows}
+  exePath := exePath + '.exe';
+  serverPath := serverPath + '.exe';
+{$ENDIF}
+  If (Not FileExists(exePath)) Or (Not FileExists(serverPath)) Then Begin
     showmessage('Error, installation not complete, please run "Check for updates"');
     exit;
   End;
   // Run the App ;)
   p := TProcessUTF8.Create(Nil);
-  p.Executable := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
+  p.Executable := exePath;
+  p.CurrentDirectory := ExcludeTrailingPathDelimiter(workDir);
   If CheckBox3.Checked Then Begin
     p.Parameters.Add('-ip');
     p.Parameters.Add(Edit2.Text);

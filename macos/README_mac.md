@@ -69,6 +69,19 @@ lazbuild --build-mode=macos_x86_64 ai/ai.lpi
 
 Skript zjistí architekturu (`uname -m`), nastaví `DYLD_LIBRARY_PATH` na odpovídající podsložku a spustí binárku. V případě Apple Silicon můžeš použít Rosettu pro x86_64 build: `arch -x86_64 macos/tools/run_client.command`.
 
+## Vytvoření `.app` balíčků
+- Spusť `macos/tools/build_app_bundles.command` (po dokončení kompilace a přípravě dat).
+- Skript vytvoří / aktualizuje tři balíčky v `macos/app/`:
+  - `FPCAtomic.app` (klient)
+  - `FPCAtomicLauncher.app` (launcher + klient + server)
+  - `FPCAtomicServer.app` (samostatný server s wrapperem pro Terminal)
+- Do `Contents/lib` se automaticky zkopírují všechny `dylib` z `macos/lib/<arch>`, do `Contents/MacOS/data` se přibalí extrahovaná data.
+- Balíčky jsou podepsané ad-hoc podpisem (`codesign --force --deep --sign -`), takže Gatekeeper nebude protestovat po přidání výjimek pro jednotlivé knihovny.
+
+Tipy k použití:
+- Launcher spuštěný z `.app` používá interní kopii klienta/serveru a nastavený pracovní adresář.
+- Server `.app` při dvojkliku otevře Terminal a spustí `atomic_server`; parametry můžeš přidat přes `open macos/app/FPCAtomicServer.app --args -p 1234`.
+
 ## Integrace originálních dat
 1. Zkopíruj obsah CD a (volitelně) expansion pack do `macos/game_assets/`.
 2. Spusť `macos/tools/run_launcher.command` nebo samostatný nástroj `bin/<arch>/cd_data_extractor` (po dořešení buildů) a nasměruj výstup do `macos/data/`.
