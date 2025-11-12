@@ -75,12 +75,14 @@ Skript zjistí architekturu (`uname -m`), nastaví `DYLD_LIBRARY_PATH` na odpov�
   - `FPCAtomic.app` (klient)
   - `FPCAtomicLauncher.app` (launcher + klient + server)
   - `FPCAtomicServer.app` (samostatný server s wrapperem pro Terminal)
-- Do `Contents/lib` se automaticky zkopírují všechny `dylib` z `macos/lib/<arch>`, do `Contents/MacOS/data` se přibalí extrahovaná data.
+- Sdílená data jsou uložená pouze jednou v `macos/app/data`. V každém `.app` vznikne symlink `Contents/MacOS/data -> ../../../data`, takže klient/server stále najdou soubory relativně k vlastnímu adresáři.
+- Do `Contents/lib` se automaticky zkopírují všechny `dylib` z `macos/lib/<arch>`.
 - Balíčky jsou podepsané ad-hoc podpisem (`codesign --force --deep --sign -`), takže Gatekeeper nebude protestovat po přidání výjimek pro jednotlivé knihovny.
 
 Tipy k použití:
 - Launcher spuštěný z `.app` používá interní kopii klienta/serveru a nastavený pracovní adresář.
 - Server `.app` při dvojkliku otevře Terminal a spustí `atomic_server`; parametry můžeš přidat přes `open macos/app/FPCAtomicServer.app --args -p 1234`.
+- `macos/tools/run_server.command` i `.app` varianta serveru automaticky doplní `-p 5521` a `-t 0`, pokud nejsou předané – server tak zůstane běžet neomezeně dlouho. Vlastní port nebo timeout nastavíš přidáním `-p`/`-t` argumentů.
 
 ## Integrace originálních dat
 1. Zkopíruj obsah CD a (volitelně) expansion pack do `macos/game_assets/`.

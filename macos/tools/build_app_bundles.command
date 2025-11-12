@@ -21,6 +21,7 @@ esac
 BIN_DIR="${PROJECT_ROOT}/bin/${TARGET_ARCH}"
 LIB_DIR="${PROJECT_ROOT}/lib/${TARGET_ARCH}"
 APP_ROOT="${PROJECT_ROOT}/app"
+SHARED_DATA_DIR="${APP_ROOT}/data"
 TEMPLATE_ROOT="${PROJECT_ROOT}/app_templates"
 
 if [[ ! -x "${BIN_DIR}/fpc_atomic" ]]; then
@@ -54,16 +55,26 @@ function sync_libs() {
   rsync -a --delete "${LIB_DIR}/" "${dest_dir}/"
 }
 
-function sync_data() {
-  local dest_dir="$1"
-  mkdir -p "${dest_dir}"
-  rsync -a --delete "${BIN_DIR}/data/" "${dest_dir}/"
+function ensure_shared_data() {
+  mkdir -p "${SHARED_DATA_DIR}"
+  rsync -a --delete "${BIN_DIR}/data/" "${SHARED_DATA_DIR}/"
 }
 
 function copy_binary() {
   local source_path="$1"
   local dest_path="$2"
   install -m 755 "${source_path}" "${dest_path}"
+}
+
+function link_shared_data() {
+  local macos_dir="$1"
+  local link_path="${macos_dir}/data"
+
+  if [[ -e "${link_path}" || -L "${link_path}" ]]; then
+    rm -rf "${link_path}"
+  fi
+
+  ln -s "../../../data" "${link_path}"
 }
 
 function ensure_template() {
@@ -88,8 +99,8 @@ GAME_LIB_DIR="${GAME_APP}/Contents/lib"
 
 mkdir -p "${GAME_MACOS_DIR}" "${GAME_LIB_DIR}"
 copy_binary "${BIN_DIR}/fpc_atomic" "${GAME_MACOS_DIR}/fpc_atomic"
-sync_data "${GAME_MACOS_DIR}/data"
 sync_libs "${GAME_LIB_DIR}"
+link_shared_data "${GAME_MACOS_DIR}"
 
 echo "Preparing FPCAtomicLauncher.app (${TARGET_ARCH})"
 ensure_template "Launcher" "FPCAtomicLauncher.app"
@@ -101,8 +112,8 @@ mkdir -p "${LAUNCHER_MACOS_DIR}" "${LAUNCHER_LIB_DIR}"
 copy_binary "${BIN_DIR}/atomic_launcher" "${LAUNCHER_MACOS_DIR}/atomic_launcher"
 copy_binary "${BIN_DIR}/fpc_atomic" "${LAUNCHER_MACOS_DIR}/fpc_atomic"
 copy_binary "${BIN_DIR}/atomic_server" "${LAUNCHER_MACOS_DIR}/atomic_server"
-sync_data "${LAUNCHER_MACOS_DIR}/data"
 sync_libs "${LAUNCHER_LIB_DIR}"
+link_shared_data "${LAUNCHER_MACOS_DIR}"
 
 echo "Preparing FPCAtomicServer.app (${TARGET_ARCH})"
 ensure_template "Server" "FPCAtomicServer.app"
@@ -114,14 +125,10 @@ mkdir -p "${SERVER_MACOS_DIR}" "${SERVER_LIB_DIR}"
 copy_binary "${BIN_DIR}/atomic_server" "${SERVER_MACOS_DIR}/atomic_server"
 chmod +x "${SERVER_MACOS_DIR}/run_server"
 sync_libs "${SERVER_LIB_DIR}"
+link_shared_data "${SERVER_MACOS_DIR}"
 
-echo "Copying shared dynamic libraries"
-for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
-  if [[ ! -d "${app}" ]]; then
-    echo "Expected bundle ${app} is missing after packaging." >&2
-    exit 1
-  fi
-done
+echo "Synchronising shared data directory"
+ensure_shared_data
 
 echo "Signing app bundles"
 for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
@@ -132,4 +139,5 @@ echo "Done. Bundles are in ${APP_ROOT}:"
 echo "  - FPCAtomic.app"
 echo "  - FPCAtomicLauncher.app"
 echo "  - FPCAtomicServer.app"
+
 

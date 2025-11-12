@@ -24,4 +24,33 @@ if [ ! -x "$BIN_PATH" ]; then
 fi
 
 export DYLD_LIBRARY_PATH="${LIB_PATH}:${DYLD_LIBRARY_PATH}"
-exec "$BIN_PATH" "$@"
+
+ARGS=("$@")
+HAS_PORT=0
+HAS_TIMEOUT=0
+
+i=0
+while [ $i -lt ${#ARGS[@]} ]; do
+  case "${ARGS[$i]}" in
+    -p)
+      HAS_PORT=1
+      i=$((i + 2))
+      continue
+      ;;
+    -t)
+      HAS_TIMEOUT=1
+      i=$((i + 2))
+      continue
+      ;;
+  esac
+  i=$((i + 1))
+done
+
+if [ $HAS_PORT -eq 0 ]; then
+  ARGS+=("-p" "5521")
+fi
+if [ $HAS_TIMEOUT -eq 0 ]; then
+  ARGS+=("-t" "0")
+fi
+
+exec "$BIN_PATH" "${ARGS[@]}"

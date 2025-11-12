@@ -117,6 +117,8 @@ Begin
     {$ENDIF}
     If ArchDir <> '' Then
       TryLoad(ExpandFileName(IncludeTrailingPathDelimiter(BasePath) + '../../lib/' + ArchDir));
+    If (Lib = 0) Then
+      TryLoad(ExpandFileName(IncludeTrailingPathDelimiter(BasePath) + '../lib'));
 {$ENDIF}
   End;
   If lib = 0 Then exit;
