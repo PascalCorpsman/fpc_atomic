@@ -97,9 +97,9 @@ Begin
 {$ELSE}
   {$IFDEF DARWIN}
   Filename := 'libai.dylib';
-  {$ELSE}
+{$ELSE}
   Filename := 'libai.so';
-  {$ENDIF}
+{$ENDIF}
 {$ENDIF}
   Result := False;
   If lib <> 0 Then UnloadLibrary(lib);

@@ -2025,6 +2025,7 @@ Begin
   Owner.OnKeyUp := @FOnKeyUp;
 
   p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  log('Assets root: ' + p, llInfo);
   AtomicBigFont.CreateFont(p + 'data' + PathDelim + 'res' + PathDelim);
 
   // Laden aller Screens
@@ -2043,6 +2044,7 @@ Begin
   fScreens[sOptions] := TOptionsMenu.Create(self);
   fScreens[sExitBomberman] := Nil;
 
+  log('Loading UI screens from ' + p + 'data' + PathDelim + 'res', llInfo);
   For i In TScreenEnum Do Begin
     If Not assigned(fScreens[i]) Then Continue;
     fScreens[i].LoadFromDisk(p + 'data' + PathDelim + 'res' + PathDelim);
@@ -2055,42 +2057,110 @@ Begin
 
   fPowerUpsTex[puNone] := 0; // Das Gibts ja net -> Weg
   fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smStretchHard);
-  If fPowerUpsTex[puExtraBomb] = 0 Then exit;
+  If fPowerUpsTex[puExtraBomb] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puLongerFlameLength] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powflame.png', smStretchHard);
-  If fPowerUpsTex[puLongerFlameLength] = 0 Then exit;
+  If fPowerUpsTex[puLongerFlameLength] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powflame.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puDisease] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powdisea.png', smStretchHard);
-  If fPowerUpsTex[puDisease] = 0 Then exit;
+  If fPowerUpsTex[puDisease] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powdisea.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puCanCick] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powkick.png', smStretchHard);
-  If fPowerUpsTex[puCanCick] = 0 Then exit;
+  If fPowerUpsTex[puCanCick] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powkick.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powskate.png', smStretchHard);
-  If fPowerUpsTex[puExtraSpeed] = 0 Then exit;
+  If fPowerUpsTex[puExtraSpeed] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powskate.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', smStretchHard);
-  If fPowerUpsTex[puCanPunch] = 0 Then exit;
+  If fPowerUpsTex[puCanPunch] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', smStretchHard);
-  If fPowerUpsTex[puCanGrab] = 0 Then exit;
+  If fPowerUpsTex[puCanGrab] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', smStretchHard);
-  If fPowerUpsTex[puCanSpooger] = 0 Then exit;
+  If fPowerUpsTex[puCanSpooger] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgold.png', smStretchHard);
-  If fPowerUpsTex[puGoldFlame] = 0 Then exit;
+  If fPowerUpsTex[puGoldFlame] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powgold.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png', smStretchHard);
-  If fPowerUpsTex[puTrigger] = 0 Then exit;
+  If fPowerUpsTex[puTrigger] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', smStretchHard);
-  If fPowerUpsTex[puCanJelly] = 0 Then exit;
+  If fPowerUpsTex[puCanJelly] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powebola.png', smStretchHard);
-  If fPowerUpsTex[puSuperBadDisease] = 0 Then exit;
+  If fPowerUpsTex[puSuperBadDisease] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powebola.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powslow.png', smStretchHard);
-  If fPowerUpsTex[puSlow] = 0 Then exit;
+  If fPowerUpsTex[puSlow] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powslow.png', llError);
+    logleave;
+    exit;
+  End;
   fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powrand.png', smStretchHard);
-  If fPowerUpsTex[purandom] = 0 Then exit;
+  If fPowerUpsTex[purandom] = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'powrand.png', llError);
+    logleave;
+    exit;
+  End;
   // Load PlayerDead Tex correct.
   fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
   fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png');
-  If fPlayerdeadTex.Image = 0 Then exit;
+  If fPlayerdeadTex.Image = 0 Then Begin
+    log('Failed to locate texture handle for playerdead.png', llError);
+    logleave;
+    exit;
+  End;
   fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
-  If fhurry.Texture.Image = 0 Then exit;
+  If fhurry.Texture.Image = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', llError);
+    logleave;
+    exit;
+  End;
   fhurry.Texture := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png');
   hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smStretchHard);
-  If hohletex.Image = 0 Then exit;
+  If hohletex.Image = 0 Then Begin
+    log('Failed to load texture ' + p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', llError);
+    logleave;
+    exit;
+  End;
   hohletex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png');
 {$IFDEF ShowInitTime}
   TimePoint(3);
@@ -2099,14 +2169,20 @@ Begin
   // Laden der Felder
   fArrows := TOpenGL_Animation.Create;
   If Not fArrows.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'arrows.ani', true) Then Begin
+    log('Failed to load animation ' + p + 'data' + PathDelim + 'res' + PathDelim + 'arrows.ani', llError);
+    logleave;
     Exit;
   End;
   fConveyors := TOpenGL_Animation.Create;
   If Not fConveyors.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
+    log('Failed to load animation ' + p + 'data' + PathDelim + 'res' + PathDelim + 'conveyor.ani', llError);
+    logleave;
     Exit;
   End;
   fTramp := TOpenGL_Animation.Create;
   If Not fTramp.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', true) Then Begin
+    log('Failed to load animation ' + p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', llError);
+    logleave;
     Exit;
   End;
 {$IFDEF ShowInitTime}
@@ -2135,6 +2211,7 @@ Begin
 {$IFDEF ShowInitTime}
   TimePoint(5);
 {$ENDIF}
+  log('Scanning map directories in ' + p + 'data' + PathDelim + 'maps', llInfo);
   sl := FindAllDirectories(p + 'data' + PathDelim + 'maps', false);
   sl.Sorted := true;
   sl.Sort;
@@ -2145,17 +2222,18 @@ Begin
 {$ENDIF}
   setlength(fFields, sl.Count);
   If sl.count = 0 Then Begin
-    LogShow('Error, no fields to load found', llFatal);
+    LogShow('Error, no fields to load found in ' + p + 'data' + PathDelim + 'maps', llFatal);
     LogLeave;
     exit;
   End;
+  log('Found ' + inttostr(sl.Count) + ' map directories', llInfo);
 {$IFDEF ShowInitTime}
   TimePoint(6);
 {$ENDIF}
   For j := 0 To sl.count - 1 Do Begin
     fFields[j] := TAtomicField.Create();
     If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, fTramp, hohletex.Image, fTrampStatic) Then Begin
-      LogShow('Error, unable to load field:' + sl[j], llFatal);
+      LogShow('Error, unable to load field: ' + sl[j], llFatal);
       LogLeave;
       exit;
     End;
@@ -2181,7 +2259,7 @@ Begin
     Loader.Render();
     fAtomics[j] := TAtomic.Create;
     If Not fAtomics[j].InitAsColor(p + 'data' + PathDelim + 'atomic' + PathDelim, PlayerColors[j]) Then Begin
-      LogShow('Error, unable to load atomic.', llFatal);
+      LogShow('Error, unable to load atomic from ' + p + 'data' + PathDelim + 'atomic' + PathDelim, llFatal);
       LogLeave;
       exit;
     End;

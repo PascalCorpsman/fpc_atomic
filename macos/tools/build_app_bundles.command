@@ -93,6 +93,7 @@ function ensure_template() {
 }
 
 echo "Preparing FPCAtomic.app (${TARGET_ARCH})"
+ensure_template "Game" "FPCAtomic.app"
 GAME_APP="${APP_ROOT}/FPCAtomic.app"
 GAME_MACOS_DIR="${GAME_APP}/Contents/MacOS"
 GAME_LIB_DIR="${GAME_APP}/Contents/lib"

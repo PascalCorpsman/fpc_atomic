@@ -161,6 +161,7 @@ Var
 
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
+  log('OpenGLControl1MakeCurrent allowcnt=' + inttostr(allowcnt), llInfo);
   If allowcnt > 2 Then Begin
     exit;
   End;
@@ -171,7 +172,8 @@ Begin
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
   End;
-  If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
+  If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
+    log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
     Create_ASCII_Font;
     AtomicFont.CreateFont;
@@ -183,6 +185,7 @@ Begin
     // Der Anwendung erlauben zu Rendern.
     Initialized := True;
     OpenGLControl1Resize(Nil);
+    log('Calling Game.Initialize', llInfo);
     Game.initialize(OpenGLControl1);
     Timer1.Enabled := true;
   End;
@@ -240,19 +243,37 @@ Procedure TForm1.FormCreate(Sender: TObject);
 Var
   FileloggingDir: String;
   i: integer;
+  AutoLogFile: String;
+  ConfigDirUsed: String;
+{$IFDEF DARWIN}
+  ConfigDir: String;
+{$ENDIF}
 Begin
   Randomize;
   ConnectParamsHandled := false;
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
   Form1ShowOnce := true;
-  IniPropStorage1.IniFileName := 'fpc_atomic.ini';
+  FileloggingDir := '';
+  AutoLogFile := '';
+  ConfigDirUsed := '';
+{$IFDEF DARWIN}
+  ConfigDir := IncludeTrailingPathDelimiter(GetUserDir) + 'Library/Application Support/fpc_atomic/';
+  If Not ForceDirectoriesUTF8(ConfigDir) Then
+    ConfigDir := IncludeTrailingPathDelimiter(GetAppConfigDirUTF8(False));
+  If (ConfigDir <> '') And ForceDirectoriesUTF8(ConfigDir) Then Begin
+    IniPropStorage1.IniFileName := ConfigDir + 'fpc_atomic.ini';
+    ConfigDirUsed := ConfigDir;
+    AutoLogFile := ConfigDir + 'debug.log';
+  End
+  Else
+{$ENDIF}
+    IniPropStorage1.IniFileName := 'fpc_atomic.ini';
   DefFormat := DefaultFormatSettings;
   DefFormat.DecimalSeparator := '.';
   LogShowHandler := @ShowUserMessage;
   fUserMessages := Nil;
   DefaultFormatSettings.DecimalSeparator := '.';
   InitLogger();
-  FileloggingDir := '';
   For i := 1 To Paramcount Do Begin
 {$IFDEF Windows}
     If lowercase(ParamStrUTF8(i)) = '-c' Then Begin
@@ -283,10 +304,19 @@ Begin
       End;
     End;
   End;
+  If (FileloggingDir = '') And (AutoLogFile <> '') Then Begin
+    FileloggingDir := AutoLogFile;
+    SetLoggerLogFile(FileloggingDir);
+  End;
+  If ConfigDirUsed <> '' Then
+    log('Using config dir: ' + ConfigDirUsed, llInfo);
   log('TForm1.FormCreate', llInfo);
   log('TForm1.FormCreate', lltrace);
   If FileloggingDir = '' Then Begin
     log('Disabled, file logging.', llWarning);
+  End
+  Else Begin
+    log('Writing log to: ' + FileloggingDir, llInfo);
   End;
   caption := defCaption;
 

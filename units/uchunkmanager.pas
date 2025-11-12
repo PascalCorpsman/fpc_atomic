@@ -890,7 +890,7 @@ Begin
   fconnection.IterReset;
 {$IFNDEF DARWIN}
   If Assigned(fconnection.Iterator) Then
-    fconnection.Iterator.SetState(ssNoDelay, Value);
+  fconnection.Iterator.SetState(ssNoDelay, Value);
   While fconnection.IterNext Do Begin // Skipt Root Socket
     fconnection.Iterator.SetState(ssNoDelay, Value);
   End;
