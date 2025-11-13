@@ -44,7 +44,7 @@ Interface
 
 Uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ExtCtrls, IniPropStorage,
+  Math, ExtCtrls, IniPropStorage,
   OpenGlcontext, lNetComponents, lNet,
   (*
    * Kommt ein Linkerfehler wegen OpenGL dann: sudo apt-get install freeglut3-dev
@@ -108,6 +108,7 @@ Type
     FPS_Counter, LastFPS_Counter: integer;
     LastFPSTime: int64;
     FWishFullscreen: Boolean;
+    FAdjustingSize: Boolean;
 {$IFDEF AUTOMODE}
     AutomodeData: TAutomodeData;
 {$ENDIF}
@@ -204,6 +205,8 @@ Begin
    *)
   If Not Timer1.Enabled Then exit;
   If Not Initialized Then Exit;
+  // Ensure viewport is set before rendering
+  OpenGLControl1Resize(Nil);
   // Render Szene
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
@@ -229,14 +232,45 @@ Begin
 End;
 
 Procedure TForm1.OpenGLControl1Resize(Sender: TObject);
+Var
+  ControlW, ControlH: Integer;
+  ScaleX, ScaleY, UniformScale: Double;
+  ViewportWidth, ViewportHeight: Integer;
+  OffsetX, OffsetY: Integer;
 Begin
-  If Initialized Then Begin
+  ControlW := OpenGLControl1.ClientWidth;
+  ControlH := OpenGLControl1.ClientHeight;
+  If ControlW <= 0 Then ControlW := GameWidth;
+  If ControlH <= 0 Then ControlH := GameHeight;
+
+  ScaleX := ControlW / GameWidth;
+  ScaleY := ControlH / GameHeight;
+  UniformScale := Min(ScaleX, ScaleY);
+  If UniformScale <= 0 Then
+    UniformScale := 1;
+
+  ViewportWidth := Round(GameWidth * UniformScale);
+  ViewportHeight := Round(GameHeight * UniformScale);
+  If ViewportWidth < 1 Then ViewportWidth := 1;
+  If ViewportHeight < 1 Then ViewportHeight := 1;
+  If ViewportWidth > ControlW Then ViewportWidth := ControlW;
+  If ViewportHeight > ControlH Then ViewportHeight := ControlH;
+
+  OffsetX := (ControlW - ViewportWidth) div 2;
+  OffsetY := (ControlH - ViewportHeight) div 2;
+
+  // Always set viewport if OpenGL context is available
+  If Initialized And OpenGLControl1.MakeCurrent Then Begin
+    glViewport(OffsetX, OffsetY, ViewportWidth, ViewportHeight);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glViewport(0, 0, OpenGLControl1.Width, OpenGLControl1.Height);
-    gluPerspective(45.0, OpenGLControl1.Width / OpenGLControl1.Height, 0.1, 100.0);
     glMatrixMode(GL_MODELVIEW);
   End;
+
+  // Update game viewport metrics even before initialization
+  If Assigned(Game) Then
+    Game.SetViewportMetrics(ControlW, ControlH, OffsetX, OffsetY,
+      ViewportWidth, ViewportHeight);
 End;
 
 Procedure TForm1.FormCreate(Sender: TObject);
@@ -253,6 +287,7 @@ Begin
   ConnectParamsHandled := false;
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
   Form1ShowOnce := true;
+  FAdjustingSize := false;
   FileloggingDir := '';
   AutoLogFile := '';
   ConfigDirUsed := '';
@@ -712,9 +747,32 @@ Begin
 End;
 
 Procedure TForm1.FormResize(Sender: TObject);
+Const
+  DesiredWidth = GameWidth;
+  DesiredHeight = GameHeight;
+Var
+  TargetHeight, TargetWidth: Integer;
 Begin
   If fWishFullscreen Then Begin
     WindowState := wsFullScreen;
+  End;
+  If FAdjustingSize Then
+    Exit;
+  If WindowState <> wsNormal Then
+    Exit;
+  FAdjustingSize := true;
+  Try
+    TargetHeight := Round(ClientWidth * DesiredHeight / DesiredWidth);
+    If Abs(TargetHeight - ClientHeight) > 1 Then Begin
+      ClientHeight := TargetHeight;
+    End
+    Else Begin
+      TargetWidth := Round(ClientHeight * DesiredWidth / DesiredHeight);
+      If Abs(TargetWidth - ClientWidth) > 1 Then
+        ClientWidth := TargetWidth;
+    End;
+  Finally
+    FAdjustingSize := false;
   End;
 End;
 

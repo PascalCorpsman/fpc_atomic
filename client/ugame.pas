@@ -99,6 +99,14 @@ Type
 
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
+    FViewportOffsetX: Integer;
+    FViewportOffsetY: Integer;
+    FViewportWidth: Integer;
+    FViewportHeight: Integer;
+    FControlWidth: Integer;
+    FControlHeight: Integer;
+    FViewportScale: Double;
+    fDataPath: String; // Base path to data directory
 
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     Procedure FOnMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -114,10 +122,14 @@ Type
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
+    Function ResolveResourceBase(BasePath: String): String;
 
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
+    Function PointInsideViewport(ScreenX, ScreenY: Integer): Boolean;
+    Function ScreenToGameX(ScreenX: Integer): Integer;
+    Function ScreenToGameY(ScreenY: Integer): Integer;
 
     Procedure Connection_Connect(aSocket: TLSocket);
     Procedure Connection_Disconnect(aSocket: TLSocket);
@@ -196,6 +208,8 @@ Type
     Procedure StartGame();
     Procedure StartPlayingSong(Filename: String);
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
+    Procedure SetViewportMetrics(ControlWidth, ControlHeight, OffsetX, OffsetY,
+      ViewportWidth, ViewportHeight: Integer);
   End;
 
 Var
@@ -360,7 +374,10 @@ Begin
     sExitBomberman: Begin
         NeedFormClose := true;
         StartPlayingSong(''); // Disable the Background musik if playing, that speeds up the shutdown process or at least stop making noises
-        PlaySoundEffect('data' + pathdelim + 'res' + PathDelim + 'quitgame.wav', @OnQuitGameSoundFinished);
+        If fDataPath = '' Then Begin
+          fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+        End;
+        PlaySoundEffect(fDataPath + 'res' + PathDelim + 'quitgame.wav', @OnQuitGameSoundFinished);
       End;
     sHost: Begin
         fParamJoinIP := '';
@@ -412,7 +429,7 @@ Begin
       exit;
     End
     Else Begin
-      If FileExists('data' + PathDelim + 'schemes' + PathDelim + Settings.SchemeFile) Then Begin
+      If (fDataPath <> '') And FileExistsUTF8(fDataPath + 'schemes' + PathDelim + Settings.SchemeFile) Then Begin
         StartPingingForGames;
       End
       Else Begin
@@ -469,9 +486,13 @@ Procedure TGame.FOnMouseDown(Sender: TObject; Button: TMouseButton;
 Var
   xx, yy: Integer;
 Begin
-  // Umrechnen der Echten Koords in die Screencoords
-  xx := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
-  yy := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
+  If Not PointInsideViewport(X, Y) Then Begin
+    If Assigned(FOnMouseDownCapture) Then
+      FOnMouseDownCapture(Sender, Button, Shift, X, Y);
+    exit;
+  End;
+  xx := ScreenToGameX(X);
+  yy := ScreenToGameY(Y);
   Case fgameState Of
     gs_MainMenu: Begin
         If assigned(fActualScreen) Then Begin
@@ -755,12 +776,77 @@ Function TGame.StartHost: Boolean;
 Var
   serv: String;
   p: TProcessUTF8;
+  basePath, clientPath: String;
+{$IFDEF DARWIN}
+  serverAppPath: String;
+{$ENDIF}
 Begin
   //Begin
   log('TGame.StartHost', llTrace);
   result := false;
   // Starten des Atomic_servers, dann als Client verbinden
-  serv := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'atomic_server';
+  clientPath := ExtractFilePath(ParamStrUTF8(0));
+  basePath := IncludeTrailingPathDelimiter(clientPath);
+{$IFDEF DARWIN}
+  // On macOS, check if we're in an .app bundle
+  // If so, look for FPCAtomicServer.app in the same directory as FPCAtomic.app
+  If Pos('.app/Contents/MacOS/', clientPath) > 0 Then Begin
+    // We're in an .app bundle (e.g., FPCAtomic.app/Contents/MacOS/)
+    // Go up to the app bundle directory (../../ from MacOS)
+    serverAppPath := ExpandFileName(IncludeTrailingPathDelimiter(clientPath) + '../../');
+    // Replace FPCAtomic.app with FPCAtomicServer.app
+    If Pos('FPCAtomic.app', serverAppPath) > 0 Then Begin
+      serverAppPath := StringReplace(serverAppPath, 'FPCAtomic.app', 'FPCAtomicServer.app', []);
+    End
+    Else Begin
+      // Fallback: try relative to MacOS directory
+      serverAppPath := ExpandFileName(IncludeTrailingPathDelimiter(clientPath) + '../../../FPCAtomicServer.app');
+    End;
+    log('Looking for server app at: ' + serverAppPath, llInfo);
+    If DirectoryExistsUTF8(serverAppPath) Then Begin
+      // Try to use run_server script first
+      serv := IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS/run_server';
+      If FileExistsUTF8(serv) Then Begin
+        log('Using run_server script: ' + serv, llInfo);
+        p := TProcessUTF8.Create(Nil);
+        p.Options := [poDetached];
+        p.Executable := '/bin/zsh';
+        p.Parameters.Add('-c');
+        p.Parameters.Add('"' + serv + '" -p ' + inttostr(settings.Port) + 
+          ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()));
+        p.Execute;
+        p.free;
+        result := true;
+        LogLeave;
+        exit;
+      End;
+      // Fallback: try to launch the .app bundle directly with open
+      log('Using open command for server app', llInfo);
+      p := TProcessUTF8.Create(Nil);
+      p.Options := [poDetached];
+      p.Executable := '/usr/bin/open';
+      p.Parameters.Add('-a');
+      p.Parameters.Add(serverAppPath);
+      p.Parameters.Add('--args');
+      p.Parameters.Add('-p');
+      p.Parameters.Add(inttostr(settings.Port));
+      p.Parameters.Add('-t');
+      p.Parameters.Add('0');
+      p.Parameters.Add('-l');
+      p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
+      p.Execute;
+      p.free;
+      result := true;
+      LogLeave;
+      exit;
+    End
+    Else Begin
+      log('Server app not found at: ' + serverAppPath, llWarning);
+    End;
+  End;
+{$ENDIF}
+  // Fallback: look for atomic_server binary in the same directory
+  serv := basePath + 'atomic_server';
 {$IFDEF Windows}
   serv := serv + '.exe';
 {$ENDIF}
@@ -770,6 +856,8 @@ Begin
     p.Executable := serv;
     p.Parameters.Add('-p');
     p.Parameters.Add(inttostr(settings.Port));
+    p.Parameters.Add('-t');
+    p.Parameters.Add('0');
     p.Parameters.Add('-l');
     p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
     p.Parameters.Add('-f');
@@ -1443,35 +1531,52 @@ End;
 Procedure TGame.HandlePlaySoundEffekt(Const Stream: TMemoryStream);
 Var
   se: TSoundEffect;
-  s: String;
+  s, soundFile: String;
 Begin
   se := seNone;
   stream.Read(se, SizeOf(TSoundEffect));
-  s := '';
+  soundFile := '';
   Case se Of
     seNone: Begin // Nix
       End;
-    seBombDrop: s := SelectRandomSound(BombDrops);
-    seBombKick: s := SelectRandomSound(BombKick);
-    seBombStop: s := SelectRandomSound(BombStop);
-    seBombJelly: s := SelectRandomSound(BombJelly);
-    seBombBounce: s := SelectRandomSound(BombBounce);
-    seBombGrab: s := SelectRandomSound(BombGrab);
-    seBombPunch: s := SelectRandomSound(BombPunch);
-    seBombExplode: s := SelectRandomSound(BombExplode);
-    seAtomicDie: s := SelectRandomSound(AtomicDie);
-    seWinner: s := SelectRandomSound(Winner);
-    seGetGoodPowerUp: s := SelectRandomSound(GetGoodPowerUp);
-    seGetBadPowerUp: s := SelectRandomSound(GetBadPowerUp);
-    seZen: s := SelectRandomSound(AtomicZen);
-    seOtherPlayerDied: s := SelectRandomSound(OtherPlayerDie);
-    seHurryBrick: s := SelectRandomSound(HurryBrick);
-    seHurry: s := SelectRandomSound(Hurry);
-    seWrapHohle: s := SelectRandomSound(AtomicWrapHole);
-    seTrampoline: s := SelectRandomSound(AtomicJump);
+    seBombDrop: soundFile := SelectRandomSound(BombDrops);
+    seBombKick: soundFile := SelectRandomSound(BombKick);
+    seBombStop: soundFile := SelectRandomSound(BombStop);
+    seBombJelly: soundFile := SelectRandomSound(BombJelly);
+    seBombBounce: soundFile := SelectRandomSound(BombBounce);
+    seBombGrab: soundFile := SelectRandomSound(BombGrab);
+    seBombPunch: soundFile := SelectRandomSound(BombPunch);
+    seBombExplode: soundFile := SelectRandomSound(BombExplode);
+    seAtomicDie: soundFile := SelectRandomSound(AtomicDie);
+    seWinner: soundFile := SelectRandomSound(Winner);
+    seGetGoodPowerUp: soundFile := SelectRandomSound(GetGoodPowerUp);
+    seGetBadPowerUp: soundFile := SelectRandomSound(GetBadPowerUp);
+    seZen: soundFile := SelectRandomSound(AtomicZen);
+    seOtherPlayerDied: soundFile := SelectRandomSound(OtherPlayerDie);
+    seHurryBrick: soundFile := SelectRandomSound(HurryBrick);
+    seHurry: soundFile := SelectRandomSound(Hurry);
+    seWrapHohle: soundFile := SelectRandomSound(AtomicWrapHole);
+    seTrampoline: soundFile := SelectRandomSound(AtomicJump);
   End;
-  If s <> '' Then s := 'data' + PathDelim + 'sounds' + PathDelim + s;
-  PlaySoundEffect(s);
+  If soundFile <> '' Then Begin
+    If fDataPath = '' Then Begin
+      fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+      log('fDataPath was empty, resolved to: ' + fDataPath, llInfo);
+    End;
+    s := fDataPath + 'sounds' + PathDelim + soundFile;
+    log('Sound effect path: ' + s, llInfo);
+    If Not FileExistsUTF8(s) Then Begin
+      log('Sound effect file not found: ' + s + ', trying to re-resolve data path', llWarning);
+      // Try to re-resolve data path
+      fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+      s := fDataPath + 'sounds' + PathDelim + soundFile;
+      log('Retrying with resolved path: ' + s, llInfo);
+      If Not FileExistsUTF8(s) Then Begin
+        log('Sound effect file still not found: ' + s, llError);
+      End;
+    End;
+    PlaySoundEffect(s);
+  End;
 End;
 
 Procedure TGame.HandleUpdateMasterId(Const Stream: TMemoryStream);
@@ -1663,7 +1768,10 @@ Var
 Begin
   log('TGame.LoadScheme: ' + SchemeFileName, llTrace);
   result := false;
-  fn := 'data' + PathDelim + 'schemes' + PathDelim + SchemeFileName;
+  If fDataPath = '' Then Begin
+    fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  End;
+  fn := fDataPath + 'schemes' + PathDelim + SchemeFileName;
   If Not FileExistsUTF8(fn) Then Begin
     logshow('Error, could not find scheme file:' + SchemeFileName, llCritical);
     LogLeave;
@@ -1901,6 +2009,14 @@ Begin
   fLastIdleTick := GetTickCount64;
   OnNeedHideCursor := Nil;
   OnNeedShowCursor := Nil;
+  FViewportOffsetX := 0;
+  FViewportOffsetY := 0;
+  FViewportWidth := GameWidth;
+  FViewportHeight := GameHeight;
+  FControlWidth := GameWidth;
+  FControlHeight := GameHeight;
+  FViewportScale := 1;
+  fDataPath := ''; // Will be set in Initialize
 End;
 
 Destructor TGame.Destroy;
@@ -2025,8 +2141,11 @@ Begin
   Owner.OnKeyUp := @FOnKeyUp;
 
   p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  // Resolve data directory path - check multiple locations for .app bundle compatibility
+  fDataPath := ResolveResourceBase(p);
   log('Assets root: ' + p, llInfo);
-  AtomicBigFont.CreateFont(p + 'data' + PathDelim + 'res' + PathDelim);
+  log('Data path: ' + fDataPath, llInfo);
+  AtomicBigFont.CreateFont(fDataPath + 'res' + PathDelim);
 
   // Laden aller Screens
   fScreens[sMainScreen] := TMainMenu.Create(self);
@@ -2325,6 +2444,7 @@ Var
   i: Integer;
   n: QWORD;
 Begin
+  // Viewport is set in OpenGLControl1Resize, don't override it here
   Go2d(GameWidth, GameHeight);
   If Not fInitialized Then Begin
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -2383,6 +2503,65 @@ Begin
   Exit2d();
 End;
 
+Function TGame.PointInsideViewport(ScreenX, ScreenY: Integer): Boolean;
+Begin
+  If (FViewportWidth <= 0) Or (FViewportHeight <= 0) Then
+    exit(true);
+  Result :=
+    (ScreenX >= FViewportOffsetX) And
+    (ScreenX <= FViewportOffsetX + FViewportWidth) And
+    (ScreenY >= FViewportOffsetY) And
+    (ScreenY <= FViewportOffsetY + FViewportHeight);
+End;
+
+Function TGame.ScreenToGameX(ScreenX: Integer): Integer;
+Var
+  Local: Double;
+Begin
+  If (FViewportWidth <= 0) Or (FViewportScale <= 0) Then
+    exit(ScreenX);
+  Local := (ScreenX - FViewportOffsetX) / FViewportScale;
+  If Local < 0 Then
+    Local := 0
+  Else If Local > GameWidth Then
+    Local := GameWidth;
+  Result := round(Local);
+End;
+
+Function TGame.ScreenToGameY(ScreenY: Integer): Integer;
+Var
+  Local: Double;
+Begin
+  If (FViewportHeight <= 0) Or (FViewportScale <= 0) Then
+    exit(ScreenY);
+  Local := (ScreenY - FViewportOffsetY) / FViewportScale;
+  If Local < 0 Then
+    Local := 0
+  Else If Local > GameHeight Then
+    Local := GameHeight;
+  Result := round(Local);
+End;
+
+Procedure TGame.SetViewportMetrics(ControlWidth, ControlHeight, OffsetX,
+  OffsetY, ViewportWidth, ViewportHeight: Integer);
+Begin
+  FControlWidth := ControlWidth;
+  FControlHeight := ControlHeight;
+  FViewportOffsetX := OffsetX;
+  FViewportOffsetY := OffsetY;
+  FViewportWidth := ViewportWidth;
+  FViewportHeight := ViewportHeight;
+  If (ViewportWidth > 0) Then
+    FViewportScale := ViewportWidth / GameWidth
+  Else
+    FViewportScale := 1;
+  If FViewportScale <= 0 Then
+    FViewportScale := 1;
+  log(Format('Viewport metrics: control=%dx%d viewport=%dx%d scale=%.4f offset=(%d,%d)',
+    [FControlWidth, FControlHeight, FViewportWidth, FViewportHeight, FViewportScale,
+    FViewportOffsetX, FViewportOffsetY]), llInfo);
+End;
+
 Procedure TGame.OnIdle;
 Begin
   PingForOpenGames;
@@ -2393,6 +2572,48 @@ Begin
   If fNeedDisconnect Then Begin
     DoDisconnect();
   End;
+End;
+
+Function TGame.ResolveResourceBase(BasePath: String): String;
+Var
+  testPath: String;
+Begin
+  // Normalize base path to absolute path
+  BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
+  log('ResolveResourceBase: BasePath=' + BasePath, llInfo);
+  
+  // Try multiple locations for data directory
+  // 1. Direct relative to executable (works with symlinks)
+  testPath := BasePath + 'data';
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // 2. Relative path from MacOS directory in .app bundle
+  testPath := ExpandFileName(BasePath + '../Resources/data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // 3. Try symlink path (../../data from MacOS) - for shared data directory
+  testPath := ExpandFileName(BasePath + '../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
+  testPath := ExpandFileName(BasePath + '../../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // Fallback: use base path (may not exist, but at least we tried)
+  Result := BasePath + 'data' + PathDelim;
+  log('Warning: Could not resolve data directory, using fallback: ' + Result, llWarning);
 End;
 
 End.

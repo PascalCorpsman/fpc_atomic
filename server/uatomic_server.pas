@@ -457,23 +457,29 @@ Begin
   fFrameLog.AccumulatedSize := fFrameLog.AccumulatedSize + dataLen;
   fFrameLog.Count := fFrameLog.Count + 1;
   If Not result Then Begin
-    For i := low(fPLayer) To high(fPLayer) Do Begin
-      If fPLayer[i].UID = UID Then Begin
-        log('Could not send to player : ' + fPLayer[i].UserName, llCritical);
-        LogLeave;
-        exit;
-      End;
-    End;
     If uid < 0 Then Begin
       (*
+       * Ein Broadcast (negativer UID) zu allen außer einem Spieler
        * Ein Broadcast bringt nur was wenn wir mehr als 1 Spieler haben ;)
        *)
       If GetActivePlayerCount() > 1 Then Begin
-        log('Could not send, maybe no more clients connected.', llWarning);
+        log('Could not send broadcast (uid=' + inttostr(uid) + '), maybe no more clients connected.', llWarning);
+      End
+      Else Begin
+        log('Could not send broadcast (uid=' + inttostr(uid) + '), only one or no active players.', llWarning);
       End;
     End
     Else Begin
-      log('Could not send to player : ' + inttostr(uid), llCritical);
+      // Try to find the player with this UID
+      For i := low(fPLayer) To high(fPLayer) Do Begin
+        If fPLayer[i].UID = UID Then Begin
+          log('Could not send to player : ' + fPLayer[i].UserName + ' (uid=' + inttostr(uid) + ')', llCritical);
+          LogLeave;
+          exit;
+        End;
+      End;
+      // Player not found
+      log('Could not send to player with uid=' + inttostr(uid) + ' (player not found)', llCritical);
     End;
   End;
 {$IFDEF DoNotLog_CyclicMessages}
@@ -1214,16 +1220,79 @@ End;
 Procedure TServer.HandlePlaySoundEffect(PlayerIndex: integer;
   Effect: TSoundEffect);
 Var
-  m: TMemoryStream;
+  m, m2: TMemoryStream;
+  targetUID: Integer;
+  i: Integer;
+  playerUID: Integer;
 Begin
   log('TServer.HandlePlaySoundEffect', llTrace);
+  // Check if player is valid
+  If (PlayerIndex < 0) Or (PlayerIndex > high(fPLayer)) Then Begin
+    log('Invalid PlayerIndex: ' + inttostr(PlayerIndex), llError);
+    LogLeave;
+    exit;
+  End;
+  
+  playerUID := fPLayer[PlayerIndex].UID;
+  
+  // Skip inactive slots (UID = NoPlayer = 0)
+  If playerUID = NoPlayer Then Begin
+    log('Skipping sound for inactive player slot: ' + inttostr(PlayerIndex), llTrace);
+    LogLeave;
+    exit;
+  End;
+  
   m := TMemoryStream.Create;
   m.Write(Effect, sizeof(Effect));
-  If Effect = seOtherPlayerDied Then Begin
-    SendChunk(miPlaySoundEffekt, m, -fPLayer[PlayerIndex].UID);
+  
+  // Handle AI players (UID = AIPlayer = -1) - send sounds to all other players
+  If playerUID = AIPlayer Then Begin
+    // For AI players, send sounds to all connected players (broadcast)
+    // Use negative UID to indicate broadcast to all except sender (but sender is AI, so send to all)
+    If GetActivePlayerCount() > 0 Then Begin
+      // Send to all connected players (UID > 0)
+      targetUID := 0; // 0 means broadcast to all connected players
+      // Actually, we need to send to each connected player individually
+      // because SendChunk with negative UID excludes the sender, but we want to include all
+      For i := 0 To high(fPLayer) Do Begin
+        If fPLayer[i].UID > 0 Then Begin
+          // Create a new stream for each player
+          m2 := TMemoryStream.Create;
+          m2.Write(Effect, sizeof(Effect));
+          SendChunk(miPlaySoundEffekt, m2, fPLayer[i].UID);
+        End;
+      End;
+      m.Free; // Free the original stream
+    End
+    Else Begin
+      log('Skipping AI sound - no connected players', llInfo);
+      m.Free;
+    End;
+  End
+  Else If playerUID > 0 Then Begin
+    // Normal player (UID > 0)
+    If Effect = seOtherPlayerDied Then Begin
+      // Send to all players except this one (broadcast with negative UID)
+      // Only send if there are at least 2 active players
+      If GetActivePlayerCount() > 1 Then Begin
+        targetUID := -playerUID;
+        SendChunk(miPlaySoundEffekt, m, targetUID);
+      End
+      Else Begin
+        log('Skipping seOtherPlayerDied sound - only one player connected', llInfo);
+        m.Free;
+      End;
+    End
+    Else Begin
+      // Send to this specific player
+      targetUID := playerUID;
+      SendChunk(miPlaySoundEffekt, m, targetUID);
+    End;
   End
   Else Begin
-    SendChunk(miPlaySoundEffekt, m, fPLayer[PlayerIndex].UID);
+    // Unknown UID value
+    log('Unknown player UID: ' + inttostr(playerUID) + ' for player index: ' + inttostr(PlayerIndex), llWarning);
+    m.Free;
   End;
   LogLeave;
 End;
