@@ -37,7 +37,10 @@ stats.txt
 
 macos/data
 macos/bin/arm64/data
+macos/bin/x86_64/data
 macos/app/data
+macos/app_arm64/data
+macos/app_x86_64/data
 
 # Icon files - contains copyrighted material, do not commit to repository
 macos/assets/AtomicBomberIcon.icns

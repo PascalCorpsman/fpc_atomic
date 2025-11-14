@@ -4,23 +4,42 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-ARCH="$(uname -m)"
-case "${ARCH}" in
-  arm64|aarch64)
-    TARGET_ARCH="arm64"
-    ;;
-  x86_64)
-    TARGET_ARCH="x86_64"
-    ;;
-  *)
-    echo "Unsupported architecture: ${ARCH}" >&2
-    exit 1
-    ;;
-esac
+# Allow architecture to be specified as first argument
+if [[ $# -gt 0 ]]; then
+  REQUESTED_ARCH="$1"
+  case "${REQUESTED_ARCH}" in
+    arm64|aarch64)
+      TARGET_ARCH="arm64"
+      ;;
+    x86_64|intel)
+      TARGET_ARCH="x86_64"
+      ;;
+    *)
+      echo "Unsupported architecture: ${REQUESTED_ARCH}" >&2
+      echo "Usage: $0 [arm64|x86_64]" >&2
+      exit 1
+      ;;
+  esac
+else
+  # Detect architecture automatically
+  ARCH="$(uname -m)"
+  case "${ARCH}" in
+    arm64|aarch64)
+      TARGET_ARCH="arm64"
+      ;;
+    x86_64)
+      TARGET_ARCH="x86_64"
+      ;;
+    *)
+      echo "Unsupported architecture: ${ARCH}" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 BIN_DIR="${PROJECT_ROOT}/bin/${TARGET_ARCH}"
 LIB_DIR="${PROJECT_ROOT}/lib/${TARGET_ARCH}"
-APP_ROOT="${PROJECT_ROOT}/app"
+APP_ROOT="${PROJECT_ROOT}/app_${TARGET_ARCH}"
 SHARED_DATA_DIR="${APP_ROOT}/data"
 TEMPLATE_ROOT="${PROJECT_ROOT}/app_templates"
 # Assets directory relative to macos/ directory (where PROJECT_ROOT points)

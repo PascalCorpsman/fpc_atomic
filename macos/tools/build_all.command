@@ -7,22 +7,42 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# Detect architecture
-ARCH="$(uname -m)"
-case "${ARCH}" in
-  arm64|aarch64)
-    TARGET_ARCH="arm64"
-    BUILD_MODE="macos_arm64"
-    ;;
-  x86_64)
-    TARGET_ARCH="x86_64"
-    BUILD_MODE="macos_x86_64"
-    ;;
-  *)
-    echo "Unsupported architecture: ${ARCH}" >&2
-    exit 1
-    ;;
-esac
+# Allow architecture to be specified as first argument
+if [[ $# -gt 0 ]]; then
+  REQUESTED_ARCH="$1"
+  case "${REQUESTED_ARCH}" in
+    arm64|aarch64)
+      TARGET_ARCH="arm64"
+      BUILD_MODE="macos_arm64"
+      ;;
+    x86_64|intel)
+      TARGET_ARCH="x86_64"
+      BUILD_MODE="macos_x86_64"
+      ;;
+    *)
+      echo "Unsupported architecture: ${REQUESTED_ARCH}" >&2
+      echo "Usage: $0 [arm64|x86_64]" >&2
+      exit 1
+      ;;
+  esac
+else
+  # Detect architecture automatically
+  ARCH="$(uname -m)"
+  case "${ARCH}" in
+    arm64|aarch64)
+      TARGET_ARCH="arm64"
+      BUILD_MODE="macos_arm64"
+      ;;
+    x86_64)
+      TARGET_ARCH="x86_64"
+      BUILD_MODE="macos_x86_64"
+      ;;
+    *)
+      echo "Unsupported architecture: ${ARCH}" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 BIN_DIR="${PROJECT_ROOT}/macos/bin/${TARGET_ARCH}"
 
@@ -57,27 +77,49 @@ if [[ -n "${LAZARUS_DIR}" ]]; then
   echo "Using Lazarus directory: ${LAZARUS_DIR}"
 fi
 
+# Set compiler for cross-compilation if needed
+if [[ "${TARGET_ARCH}" == "x86_64" && "$(uname -m)" == "arm64" ]]; then
+  # Try to find x86_64 compiler
+  X86_64_COMPILER=""
+  if command -v ppcx64 &> /dev/null; then
+    X86_64_COMPILER="$(which ppcx64)"
+  elif [[ -f "/usr/local/bin/ppcx64" ]]; then
+    X86_64_COMPILER="/usr/local/bin/ppcx64"
+  fi
+  
+  if [[ -n "${X86_64_COMPILER}" ]]; then
+    export PP="${X86_64_COMPILER}"
+    LAZBUILD_ARGS="${LAZBUILD_ARGS} --compiler=${X86_64_COMPILER}"
+    echo "Using x86_64 compiler: ${X86_64_COMPILER}"
+  else
+    echo "Warning: x86_64 compiler (ppcx64) not found, lazbuild may use wrong compiler" >&2
+  fi
+fi
+
+# Build applications - use eval to properly handle arguments with spaces
+EVAL_CMD="lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\""
+
 # Build applications
 echo "Building client (fpc_atomic)..."
-lazbuild ${LAZBUILD_ARGS} --build-mode="${BUILD_MODE}" "${PROJECT_ROOT}/client/fpc_atomic.lpi" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/client/fpc_atomic.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
   echo "Error: Failed to build client" >&2
   exit 1
 }
 
 echo "Building launcher (atomic_launcher)..."
-lazbuild ${LAZBUILD_ARGS} --build-mode="${BUILD_MODE}" "${PROJECT_ROOT}/launcher/atomic_launcher.lpi" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/launcher/atomic_launcher.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
   echo "Error: Failed to build launcher" >&2
   exit 1
 }
 
 echo "Building server (atomic_server)..."
-lazbuild ${LAZBUILD_ARGS} --build-mode="${BUILD_MODE}" "${PROJECT_ROOT}/server/atomic_server.lpi" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/server/atomic_server.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
   echo "Error: Failed to build server" >&2
   exit 1
 }
 
 echo "Building AI library (ai)..."
-lazbuild ${LAZBUILD_ARGS} --build-mode="${BUILD_MODE}" "${PROJECT_ROOT}/ai/ai.lpi" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/ai/ai.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
   echo "Warning: Failed to build AI library (may not be critical)" >&2
 }
 
@@ -88,7 +130,7 @@ echo "========================================="
 echo ""
 
 # Build app bundles
-"${SCRIPT_DIR}/build_app_bundles.command"
+"${SCRIPT_DIR}/build_app_bundles.command" "${TARGET_ARCH}"
 
 echo ""
 echo "========================================="
