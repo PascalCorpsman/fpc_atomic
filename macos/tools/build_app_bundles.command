@@ -23,6 +23,46 @@ LIB_DIR="${PROJECT_ROOT}/lib/${TARGET_ARCH}"
 APP_ROOT="${PROJECT_ROOT}/app"
 SHARED_DATA_DIR="${APP_ROOT}/data"
 TEMPLATE_ROOT="${PROJECT_ROOT}/app_templates"
+# Assets directory relative to macos/ directory (where PROJECT_ROOT points)
+ASSETS_DIR="${PROJECT_ROOT}/assets"
+# Check for Icon Composer .icon format first (new format from 2025)
+ICON_DIR="${ASSETS_DIR}/AtomicBomberIcon.icon"
+ICON_FILE="${ASSETS_DIR}/AtomicBomberIcon.icns"
+ICON_USE_FORMAT=""
+
+# Priority 1: Use existing .icns file if it exists
+if [[ -f "${ICON_FILE}" ]]; then
+  ICON_USE_FORMAT="icns"
+# Priority 2: Use .icon format directly (Icon Composer format)
+elif [[ -d "${ICON_DIR}" ]] && [[ -f "${ICON_DIR}/icon.json" ]]; then
+  ICON_USE_FORMAT="icon"
+  # Try to generate .icns from .icon format if .iconset exists
+  if [[ -d "${ASSETS_DIR}/AtomicBomberIcon.iconset" ]] && command -v iconutil &> /dev/null; then
+    iconutil -c icns "${ASSETS_DIR}/AtomicBomberIcon.iconset" -o "${ICON_FILE}" &>/dev/null
+    if [[ -f "${ICON_FILE}" ]]; then
+      ICON_USE_FORMAT="icns"
+    fi
+  fi
+# Priority 3: Generate .icns from PNG source
+elif [[ -d "${ICON_DIR}" ]] && [[ -f "${ICON_DIR}/Assets/bomberman-ikona-2.png" ]] && command -v iconutil &> /dev/null && command -v sips &> /dev/null; then
+  local iconset_dir="${ASSETS_DIR}/AtomicBomberIcon.iconset"
+  mkdir -p "${iconset_dir}"
+  local source_img="${ICON_DIR}/Assets/bomberman-ikona-2.png"
+  sips -z 16 16 "${source_img}" --out "${iconset_dir}/icon_16x16.png" &>/dev/null
+  sips -z 32 32 "${source_img}" --out "${iconset_dir}/icon_16x16@2x.png" &>/dev/null
+  sips -z 32 32 "${source_img}" --out "${iconset_dir}/icon_32x32.png" &>/dev/null
+  sips -z 64 64 "${source_img}" --out "${iconset_dir}/icon_32x32@2x.png" &>/dev/null
+  sips -z 128 128 "${source_img}" --out "${iconset_dir}/icon_128x128.png" &>/dev/null
+  sips -z 256 256 "${source_img}" --out "${iconset_dir}/icon_128x128@2x.png" &>/dev/null
+  sips -z 256 256 "${source_img}" --out "${iconset_dir}/icon_256x256.png" &>/dev/null
+  sips -z 512 512 "${source_img}" --out "${iconset_dir}/icon_256x256@2x.png" &>/dev/null
+  sips -z 512 512 "${source_img}" --out "${iconset_dir}/icon_512x512.png" &>/dev/null
+  sips -z 1024 1024 "${source_img}" --out "${iconset_dir}/icon_512x512@2x.png" &>/dev/null
+  iconutil -c icns "${iconset_dir}" -o "${ICON_FILE}" &>/dev/null
+  if [[ -f "${ICON_FILE}" ]]; then
+    ICON_USE_FORMAT="icns"
+  fi
+fi
 
 if [[ ! -x "${BIN_DIR}/fpc_atomic" ]]; then
   echo "Missing client binary at ${BIN_DIR}/fpc_atomic. Build it first (lazbuild --build-mode=macos_${TARGET_ARCH})." >&2
@@ -77,6 +117,50 @@ function link_shared_data() {
   ln -s "../../../data" "${link_path}"
 }
 
+function copy_icon() {
+  local app_bundle="$1"
+  local resources_dir="${app_bundle}/Contents/Resources"
+  
+  mkdir -p "${resources_dir}"
+  local info_plist="${app_bundle}/Contents/Info.plist"
+  
+  # Use the format determined at the top of the script
+  if [[ "${ICON_USE_FORMAT}" == "icon" ]] && [[ -d "${ICON_DIR}" ]]; then
+    # Use .icon format directly (Icon Composer format from 2025)
+    # Copy the entire .icon directory to Resources
+    local icon_bundle_name="AppIcon.icon"
+    local icon_bundle_path="${resources_dir}/${icon_bundle_name}"
+    
+    # Remove old icon bundle if it exists
+    if [[ -d "${icon_bundle_path}" ]] || [[ -L "${icon_bundle_path}" ]]; then
+      rm -rf "${icon_bundle_path}"
+    fi
+    
+    # Copy .icon directory
+    cp -R "${ICON_DIR}" "${icon_bundle_path}"
+    echo "  ✓ Copied .icon bundle from ${ICON_DIR} to ${icon_bundle_path}"
+    
+    # Set CFBundleIconFile to .icon (new format - may require macOS Sequoia 15.1+)
+    if [[ -f "${info_plist}" ]] && command -v plutil &> /dev/null; then
+      plutil -replace CFBundleIconFile -string "${icon_bundle_name}" "${info_plist}" 2>/dev/null || \
+      plutil -insert CFBundleIconFile -string "${icon_bundle_name}" "${info_plist}" 2>/dev/null || true
+    fi
+  elif [[ "${ICON_USE_FORMAT}" == "icns" ]] && [[ -f "${ICON_FILE}" ]]; then
+    # Use traditional .icns format
+    cp "${ICON_FILE}" "${resources_dir}/AppIcon.icns"
+    echo "  ✓ Copied .icns icon from ${ICON_FILE} to ${resources_dir}/AppIcon.icns"
+    
+    # Set CFBundleIconFile to AppIcon (without extension - macOS requirement for Dock icon)
+    if [[ -f "${info_plist}" ]] && command -v plutil &> /dev/null; then
+      plutil -replace CFBundleIconFile -string "AppIcon" "${info_plist}" 2>/dev/null || \
+      plutil -insert CFBundleIconFile -string "AppIcon" "${info_plist}" 2>/dev/null || true
+    fi
+  else
+    # Icon is optional - silently skip if not found
+    return 0
+  fi
+}
+
 function ensure_template() {
   local template_name="$1"
   local bundle_name="$2"
@@ -102,6 +186,7 @@ mkdir -p "${GAME_MACOS_DIR}" "${GAME_LIB_DIR}"
 copy_binary "${BIN_DIR}/fpc_atomic" "${GAME_MACOS_DIR}/fpc_atomic"
 sync_libs "${GAME_LIB_DIR}"
 link_shared_data "${GAME_MACOS_DIR}"
+copy_icon "${GAME_APP}"
 
 echo "Preparing FPCAtomicLauncher.app (${TARGET_ARCH})"
 ensure_template "Launcher" "FPCAtomicLauncher.app"
@@ -115,6 +200,7 @@ copy_binary "${BIN_DIR}/fpc_atomic" "${LAUNCHER_MACOS_DIR}/fpc_atomic"
 copy_binary "${BIN_DIR}/atomic_server" "${LAUNCHER_MACOS_DIR}/atomic_server"
 sync_libs "${LAUNCHER_LIB_DIR}"
 link_shared_data "${LAUNCHER_MACOS_DIR}"
+copy_icon "${LAUNCHER_APP}"
 
 echo "Preparing FPCAtomicServer.app (${TARGET_ARCH})"
 ensure_template "Server" "FPCAtomicServer.app"
@@ -127,6 +213,7 @@ copy_binary "${BIN_DIR}/atomic_server" "${SERVER_MACOS_DIR}/atomic_server"
 chmod +x "${SERVER_MACOS_DIR}/run_server"
 sync_libs "${SERVER_LIB_DIR}"
 link_shared_data "${SERVER_MACOS_DIR}"
+copy_icon "${SERVER_APP}"
 
 echo "Synchronising shared data directory"
 ensure_shared_data
