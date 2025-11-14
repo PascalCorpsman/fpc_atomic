@@ -116,7 +116,7 @@ Type
     Procedure FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
 
-    Procedure CheckKeyDown(Key: Word; Keys: TKeySet);
+    Function CheckKeyDown(Key: Word; Keys: TKeySet): Boolean;
     Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
     Procedure CheckSDLKeys();
 
@@ -534,6 +534,7 @@ End;
 Procedure TGame.FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
 Var
   aVolume: Dword;
+  KeyProcessed: Boolean;
 Begin
   (*
    * Der Hack zum Beenden von Atomic Bomberman im Fehlerfall ;)
@@ -543,18 +544,21 @@ Begin
     SwitchToScreen(sExitBomberman);
     exit;
   End;
+  KeyProcessed := false;
   If Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin // Sonst wird das VK_Return ggf unsinnig ausgewertet
     If key = VK_ADD Then Begin
       aVolume := fSoundManager.IncVolume;
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
       fSoundInfo.Volume := aVolume;
+      KeyProcessed := true;
     End;
     If key = VK_SUBTRACT Then Begin
       aVolume := fSoundManager.DecVolume();
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
       fSoundInfo.Volume := aVolume;
+      KeyProcessed := true;
     End;
     If key = VK_M Then Begin // Toggle Musik an aus
       Settings.PlaySounds := Not Settings.PlaySounds;
@@ -570,38 +574,67 @@ Begin
             StartPlayingSong(fActualField.Sound);
           End;
       End;
+      KeyProcessed := true;
     End;
     Case fgameState Of
       gs_MainMenu: Begin
           If assigned(fActualScreen) Then Begin
+            // Save original key value before menu processes it
+            // Check if this is a key that menu typically processes
+            KeyProcessed := (key In [VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_RETURN, VK_BACK, VK_ESCAPE]) Or
+                           ((fPlayerIndex[ks0] <> -1) And (key In [Settings.Keys[ks0].KeyPrimary, Settings.Keys[ks0].KeySecondary])) Or
+                           ((fPlayerIndex[ks1] <> -1) And (key In [Settings.Keys[ks1].KeyPrimary, Settings.Keys[ks1].KeySecondary]));
+            // Let menu process the key first - menu will play sounds and handle the key
+            // Menu needs Key to remain unchanged during OnKeyDown to properly process it
             fActualScreen.OnKeyDown(Sender, Key, Shift);
+            // If menu set key to 0, it was definitely processed and consumed
+            If (key = 0) Then KeyProcessed := true;
+            // After menu processed the key, we need to mark it as handled to prevent system beep
+            // but we do this at the end, after menu had chance to play sounds
           End;
         End;
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
             SwitchToScreen(sMainScreen);
+            KeyProcessed := true;
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
+            KeyProcessed := true;
           End;
-          If fPlayerIndex[ks0] <> -1 Then CheckKeyDown(key, ks0);
-          If fPlayerIndex[ks1] <> -1 Then CheckKeyDown(key, ks1);
+          If fPlayerIndex[ks0] <> -1 Then Begin
+            If CheckKeyDown(key, ks0) Then KeyProcessed := true;
+          End;
+          If fPlayerIndex[ks1] <> -1 Then Begin
+            If CheckKeyDown(key, ks1) Then KeyProcessed := true;
+          End;
         End;
     End;
   End;
   If assigned(FOnKeyDownCapture) Then Begin
     FOnKeyDownCapture(sender, key, shift);
   End;
+  // Mark key as handled to prevent system beep on macOS
+  // For gaming state, always set Key := 0 if processed
+  If KeyProcessed And (fgameState = gs_Gaming) Then Begin
+    Key := 0;
+  End;
+  // For menu: don't set Key := 0 to allow menu sounds to play properly
+  // Menu needs Key unchanged to process it and play sounds
+  // The menu OnKeyDown handlers should process keys and prevent system beep naturally
+  // by consuming the key events they handle
 End;
 
-Procedure TGame.CheckKeyDown(Key: Word; Keys: TKeySet);
+Function TGame.CheckKeyDown(Key: Word; Keys: TKeySet): Boolean;
 Var
   m: TMemoryStream;
   db, b: Boolean;
   ak: TAtomicKey;
   n: QWORD;
 Begin
+  result := false;
   If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary] Then Begin
+    result := true;
     m := TMemoryStream.Create;
     b := true;
     db := false;
