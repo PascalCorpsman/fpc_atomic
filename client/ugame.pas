@@ -183,6 +183,8 @@ Type
 
     OnNeedHideCursor: TNotifyEvent;
     OnNeedShowCursor: TNotifyEvent;
+    
+    Property PlayingTime_s: Integer Read fPlayingTime_s;
 
     Constructor Create();
     Destructor Destroy; override;

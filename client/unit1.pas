@@ -108,6 +108,8 @@ Type
     FPS_Counter, LastFPS_Counter: integer;
     LastFPSTime: int64;
     fLastControlWidth, fLastControlHeight: Integer; // Track last control size to detect resize
+    fLevelStartTime: int64; // Time when current level started (for elapsed time tracking)
+    fLastPlayingTime_s: integer; // Last known playing time to detect level start
     FWishFullscreen: Boolean;
     FAdjustingSize: Boolean;
 {$IFDEF AUTOMODE}
@@ -198,6 +200,8 @@ End;
 Procedure TForm1.OpenGLControl1Paint(Sender: TObject);
 Var
   s: String;
+  CurrentPlayingTime: Integer;
+  ElapsedMs, ElapsedSeconds, Minutes, Seconds: Integer;
 Begin
   (*
    * Unter Windows kann es vorkommen, dass dieses OnPaint ausgelöst wird obwohl wir noch am Laden in OpenGLControl1MakeCurrent sind
@@ -222,6 +226,19 @@ Begin
   glBindTexture(GL_TEXTURE_2D, 0);
   Game.Render();
   If Game.Settings.ShowFPS Then Begin
+    // Track level start time - detect when level begins (playing time resets to 0 or jumps up)
+    If Assigned(Game) Then Begin
+      CurrentPlayingTime := Game.PlayingTime_s;
+      // Detect level start: playing time reset to 0 (or -1 for infinity) when level begins
+      // or when playing time suddenly increases (new round starts)
+      If (CurrentPlayingTime >= 0) And ((fLastPlayingTime_s < 0) Or 
+         (fLastPlayingTime_s > CurrentPlayingTime + 5)) Then Begin
+        // Level started (reset detected or time jumped backwards significantly)
+        fLevelStartTime := GetTickCount64();
+      End;
+      fLastPlayingTime_s := CurrentPlayingTime;
+    End;
+    
     Go2d(OpenGLControl1.Width, OpenGLControl1.Height);
     glBindTexture(GL_TEXTURE_2D, 0);
     OpenGL_ASCII_Font.Color := clwhite;
@@ -236,6 +253,14 @@ Begin
       s := s + format(' Scale: %.2f', [Game.DebugViewportScale]);
     End;
     {$ENDIF}
+    // Show elapsed time since level start
+    {If Assigned(Game) And (fLevelStartTime > 0) And (Game.PlayingTime_s >= 0) Then Begin
+      ElapsedMs := Integer(GetTickCount64() - fLevelStartTime);
+      ElapsedSeconds := ElapsedMs Div 1000;
+      Minutes := ElapsedSeconds Div 60;
+      Seconds := ElapsedSeconds Mod 60;
+      s := s + ' | Elapsed time: ' + format('%d:%02d', [Minutes, Seconds]);
+    End;}
 {$IFDEF DebuggMode}
     If game.fPlayer[1].UID = -1 Then Begin // Wenn der Spieler 1 eine AI ist ..
       s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
@@ -426,6 +451,8 @@ Begin
   OpenGLControl1.Align := alClient;
   fLastControlWidth := 0;
   fLastControlHeight := 0;
+  fLevelStartTime := 0;
+  fLastPlayingTime_s := -1;
   Game := TGame.Create();
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
