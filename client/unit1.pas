@@ -107,6 +107,7 @@ Type
     Form1ShowOnce: Boolean;
     FPS_Counter, LastFPS_Counter: integer;
     LastFPSTime: int64;
+    fLastControlWidth, fLastControlHeight: Integer; // Track last control size to detect resize
     FWishFullscreen: Boolean;
     FAdjustingSize: Boolean;
 {$IFDEF AUTOMODE}
@@ -183,6 +184,7 @@ Begin
     glDepthFunc(gl_less);
     glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
 
+
     // Der Anwendung erlauben zu Rendern.
     Initialized := True;
     OpenGLControl1Resize(Nil);
@@ -205,8 +207,13 @@ Begin
    *)
   If Not Timer1.Enabled Then exit;
   If Not Initialized Then Exit;
-  // Ensure viewport is set before rendering
-  OpenGLControl1Resize(Nil);
+  
+  // Check if window size changed and update viewport if needed
+  If (OpenGLControl1.ClientWidth <> fLastControlWidth) Or 
+     (OpenGLControl1.ClientHeight <> fLastControlHeight) Then Begin
+    OpenGLControl1Resize(Nil);
+  End;
+  
   // Render Szene
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
@@ -220,6 +227,15 @@ Begin
     OpenGL_ASCII_Font.Color := clwhite;
     glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
     s := 'FPS : ' + inttostr(LastFPS_Counter);
+    // Debug: Show viewport resolution
+    s := s + ' | Viewport: ' + inttostr(OpenGLControl1.ClientWidth) + 'x' + inttostr(OpenGLControl1.ClientHeight);
+    // Show game viewport metrics if available (check if properties exist)
+    {$IFDEF DebuggMode}
+    If Assigned(Game) Then Begin
+      s := s + ' | Game: ' + inttostr(Game.DebugViewportWidth) + 'x' + inttostr(Game.DebugViewportHeight);
+      s := s + format(' Scale: %.2f', [Game.DebugViewportScale]);
+    End;
+    {$ENDIF}
 {$IFDEF DebuggMode}
     If game.fPlayer[1].UID = -1 Then Begin // Wenn der Spieler 1 eine AI ist ..
       s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
@@ -260,10 +276,17 @@ Begin
   OffsetY := (ControlH - ViewportHeight) div 2;
 
   // Always set viewport if OpenGL context is available
+  // CRITICAL: Set projection matrix to fixed logical dimensions (GameWidth x GameHeight)
+  // This ensures game coordinates are always the same regardless of viewport size
+  // Without this, changing viewport size changes the logical coordinate system,
+  // which affects animation timing and game speed
   If Initialized And OpenGLControl1.MakeCurrent Then Begin
     glViewport(OffsetX, OffsetY, ViewportWidth, ViewportHeight);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+    // Set orthographic projection with fixed logical dimensions (GameWidth x GameHeight)
+    // This ensures that game coordinates are always the same, regardless of viewport size
+    glOrtho(0, GameWidth, GameHeight, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
   End;
 
@@ -271,6 +294,10 @@ Begin
   If Assigned(Game) Then
     Game.SetViewportMetrics(ControlW, ControlH, OffsetX, OffsetY,
       ViewportWidth, ViewportHeight);
+  
+  // Track current control size to detect resize changes
+  fLastControlWidth := ControlW;
+  fLastControlHeight := ControlH;
 End;
 
 Procedure TForm1.FormCreate(Sender: TObject);
@@ -378,6 +405,11 @@ Begin
   ClientHeight := 480;
   Tform(self).Constraints.MinHeight := 480;
   Tform(self).Constraints.Minwidth := 640;
+{$IFDEF Darwin}
+  // Prevent fullscreen mode by limiting window size (prevents "Game Mode" activation)
+  Tform(self).Constraints.MaxWidth := Screen.Width - 1;
+  Tform(self).Constraints.MaxHeight := Screen.Height - 1;
+{$ENDIF}
   // Init dglOpenGL.pas , Teil 1
   If Not InitOpenGl Then Begin
     LogShow('Error, could not init dglOpenGL.pas', llfatal);
@@ -392,6 +424,8 @@ Begin
   *)
   Timer1.Interval := 17;
   OpenGLControl1.Align := alClient;
+  fLastControlWidth := 0;
+  fLastControlHeight := 0;
   Game := TGame.Create();
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
@@ -466,7 +500,26 @@ Var
   p: Pchar;
 {$ENDIF}
   t: int64;
+{$IFDEF Darwin}
+  MaxWidth, MaxHeight: Integer;
+{$ENDIF}
 Begin
+{$IFDEF Darwin}
+  // Convert fullscreen attempt (green button click) to large windowed mode
+  If WindowState = wsFullScreen Then Begin
+    WindowState := wsNormal;
+    MaxWidth := Screen.Width - 1;
+    MaxHeight := Screen.Height - 1;
+    Tform(self).Constraints.MaxWidth := MaxWidth;
+    Tform(self).Constraints.MaxHeight := MaxHeight;
+    Left := (Screen.Width - MaxWidth) div 2;
+    Top := (Screen.Height - MaxHeight) div 2;
+    Width := MaxWidth;
+    Height := MaxHeight;
+    fWishFullscreen := True;
+    Game.Settings.Fullscreen := True;
+  End;
+{$ENDIF}
   If Initialized Then Begin
     inc(FPS_Counter);
     t := GetTickCount64();
@@ -715,17 +768,33 @@ Begin
 End;
 
 Procedure TForm1.SetFullScreen(Value: Boolean);
+Var
+  MaxWidth, MaxHeight: Integer;
 Begin
   If value Then Begin
-    // TODO: Klären ob man unter Windows wirklich die Differenzierung braucht
-{$IFDEF Windows}
-    WindowState := wsMaximized;
-{$ELSE}
-    WindowState := wsFullScreen;
+    // On macOS: use large windowed mode instead of true fullscreen to avoid "Game Mode"
+    MaxWidth := Screen.Width - 1;
+    MaxHeight := Screen.Height - 1;
+{$IFDEF Darwin}
+    Tform(self).Constraints.MaxWidth := MaxWidth;
+    Tform(self).Constraints.MaxHeight := MaxHeight;
 {$ENDIF}
+    Left := (Screen.Width - MaxWidth) div 2;
+    Top := (Screen.Height - MaxHeight) div 2;
+    Width := MaxWidth;
+    Height := MaxHeight;
+    WindowState := wsNormal;
   End
   Else Begin
+{$IFDEF Darwin}
+    Tform(self).Constraints.MaxWidth := Screen.Width - 1;
+    Tform(self).Constraints.MaxHeight := Screen.Height - 1;
+{$ENDIF}
     WindowState := wsNormal;
+    Left := (Screen.Width - 640) div 2;
+    Top := (Screen.Height - 480) div 2;
+    Width := 640;
+    Height := 480;
   End;
   Game.Settings.Fullscreen := value;
   fWishFullscreen := value;
@@ -752,10 +821,32 @@ Const
   DesiredHeight = GameHeight;
 Var
   TargetHeight, TargetWidth: Integer;
+{$IFDEF Darwin}
+  MaxWidth, MaxHeight: Integer;
+{$ENDIF}
 Begin
+{$IFDEF Darwin}
+  // Convert fullscreen attempt (green button click) to large windowed mode
+  If WindowState = wsFullScreen Then Begin
+    WindowState := wsNormal;
+    MaxWidth := Screen.Width - 1;
+    MaxHeight := Screen.Height - 1;
+    Tform(self).Constraints.MaxWidth := MaxWidth;
+    Tform(self).Constraints.MaxHeight := MaxHeight;
+    Left := (Screen.Width - MaxWidth) div 2;
+    Top := (Screen.Height - MaxHeight) div 2;
+    Width := MaxWidth;
+    Height := MaxHeight;
+    fWishFullscreen := True;
+    Game.Settings.Fullscreen := True;
+    Exit;
+  End;
+{$ENDIF}
+{$IFDEF Windows}
   If fWishFullscreen Then Begin
     WindowState := wsFullScreen;
   End;
+{$ENDIF}
   If FAdjustingSize Then
     Exit;
   If WindowState <> wsNormal Then

@@ -178,6 +178,18 @@ function copy_icon() {
     # Icon is optional - silently skip if not found
     return 0
   fi
+  
+  # Disable fullscreen capability to prevent "Game Mode" / "Capture Display" issues
+  # This prevents macOS from automatically switching to fullscreen when window is maximized
+  if [[ -f "${info_plist}" ]] && command -v plutil &> /dev/null; then
+    # Set LSUIElement to false (if not set) - ensure app appears in dock
+    plutil -replace LSUIElement -bool false "${info_plist}" 2>/dev/null || true
+    # Note: Unfortunately, macOS doesn't provide a direct Info.plist key to disable
+    # fullscreen mode. We prevent it in code by:
+    # 1. Setting Constraints.MaxWidth/Height to Screen.Width/Height - 1 (prevents fullscreen trigger)
+    # 2. Never using wsFullScreen/wsMaximized WindowState
+    # 3. Monitoring WindowState in Timer1Timer and FormResize to immediately revert any fullscreen attempts
+  fi
 }
 
 function ensure_template() {
