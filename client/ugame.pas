@@ -965,8 +965,8 @@ Var
   numJoy: Integer;
   i: Integer;
 Begin
-  // If menu input is blocked, skip reinit to avoid resetting button states
-  If fBlockMenuInputUntilRelease And Assigned(fsdlJoysticks[ks0]) Then Begin
+  // If menu or game input is blocked, skip reinit to avoid resetting button states
+  If (fBlockMenuInputUntilRelease Or fBlockGameInputUntilRelease) And Assigned(fsdlJoysticks[ks0]) Then Begin
     exit;
   End;
   
@@ -1767,8 +1767,16 @@ Begin
   End;
   fLastKeyDown[akFirstAction] := 0;
   fLastKeyDown[akSecondAction] := 0;
-  // Block game input until all buttons are released to prevent menu actions triggering game actions
-  fBlockGameInputUntilRelease := true;
+  // Transfer menu blocking to game blocking if menu input was blocked (button still pressed)
+  // Otherwise set game blocking anyway to be safe
+  If fBlockMenuInputUntilRelease Then Begin
+    // Button was pressed in menu and is still blocked - transfer to game blocking
+    fBlockGameInputUntilRelease := true;
+    fBlockMenuInputUntilRelease := false;
+  End Else Begin
+    // Set game blocking anyway to prevent any stray presses
+    fBlockGameInputUntilRelease := true;
+  End;
   fActualField.Reset;
   // TODO: What ever da noch alles so fehlt
   StartPlayingSong(fActualField.Sound);
