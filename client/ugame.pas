@@ -874,11 +874,10 @@ Begin
       // Axes: 1 = Up/Down (Y), 0 = Left/Right (X)
       Settings.Keys[ks0].AchsisIndex[0] := 1;
       Settings.Keys[ks0].AchsisIdle[0] := 0;
-      // Back to the original direction (this gave funkční, ale obrácené směry)
-      Settings.Keys[ks0].AchsisDirection[0] := -1;
+      Settings.Keys[ks0].AchsisDirection[0] := 1;  // positive = up when axis < idle
       Settings.Keys[ks0].AchsisIndex[1] := 0;
       Settings.Keys[ks0].AchsisIdle[1] := 0;
-      Settings.Keys[ks0].AchsisDirection[1] := -1;
+      Settings.Keys[ks0].AchsisDirection[1] := 1;  // positive = left when axis < idle
       // Buttons: primary = button 0 (X / A), secondary = button 2 (Square / X)
       Settings.Keys[ks0].ButtonIndex[0] := 0;
       Settings.Keys[ks0].ButtonsIdle[0] := false;
@@ -900,10 +899,10 @@ Begin
       Settings.Keys[ks1].NameIndex := 0;
       Settings.Keys[ks1].AchsisIndex[0] := 1;
       Settings.Keys[ks1].AchsisIdle[0] := 0;
-      Settings.Keys[ks1].AchsisDirection[0] := -1;
+      Settings.Keys[ks1].AchsisDirection[0] := 1;
       Settings.Keys[ks1].AchsisIndex[1] := 0;
       Settings.Keys[ks1].AchsisIdle[1] := 0;
-      Settings.Keys[ks1].AchsisDirection[1] := -1;
+      Settings.Keys[ks1].AchsisDirection[1] := 1;
       Settings.Keys[ks1].ButtonIndex[0] := 0;
       Settings.Keys[ks1].ButtonsIdle[0] := false;
       Settings.Keys[ks1].ButtonIndex[1] := 2;
