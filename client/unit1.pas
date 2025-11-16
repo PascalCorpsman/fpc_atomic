@@ -165,7 +165,8 @@ Var
 
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
-  log('OpenGLControl1MakeCurrent allowcnt=' + inttostr(allowcnt), llInfo);
+  // Changed to llTrace to reduce log spam
+  // log('OpenGLControl1MakeCurrent allowcnt=' + inttostr(allowcnt), llTrace);
   If allowcnt > 2 Then Begin
     exit;
   End;

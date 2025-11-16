@@ -22,7 +22,7 @@ Interface
 
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
-  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick;
+  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick, usdl_gamecontroller;
 
 Type
   TUDPPingData = Record
@@ -60,6 +60,8 @@ Type
   private
     fsdl_Loaded: Boolean;
     fsdlJoysticks: Array[TKeySet] Of TSDL_Joystick;
+    fsdlControllers: Array[TKeySet] Of TSDL_GameControllerEx;
+    fControllerLogged: Array[TKeySet] Of Boolean; // Track if we've logged controller usage
     fTramp, fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
     fSoundManager: TSoundManager;
@@ -119,6 +121,7 @@ Type
     Function CheckKeyDown(Key: Word; Keys: TKeySet): Boolean;
     Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
     Procedure CheckSDLKeys();
+    Procedure ReinitControllersWithLogs();
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
@@ -201,6 +204,8 @@ Type
     Procedure OnIdle; // Wird von Application.OnIdle aufgerufen
     Procedure JoinViaParams(ip: String; Port: integer); // Nur 1 mal direkt nach dem Start erlaubt (siehe TForm1.OnIdle)
 
+    Function GetControllerCount: Integer;
+
     (*
      * Werden und dürfen nur aus uScreens heraus aufgerufen werden
      *)
@@ -212,6 +217,7 @@ Type
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
     Procedure SetViewportMetrics(ControlWidth, ControlHeight, OffsetX, OffsetY,
       ViewportWidth, ViewportHeight: Integer);
+    Function GetKeySetDisplayName(Keys: TKeySet): String;
   End;
 
 Var
@@ -325,39 +331,14 @@ End;
 
 Procedure TGame.SwitchToScreen(TargetScreen: TScreenEnum);
 Var
-  index: integer;
+  index, index2: integer;
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   log('TGame.SwitchToScreen', llTrace);
   // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
   If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
     If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
-    If (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
-      If (Not fsdl_Loaded) Then Begin
-        fsdl_Loaded := SDL_LoadLib('');
-        If fsdl_Loaded Then Begin
-          fsdl_Loaded := SDL_Init(SDL_INIT_JOYSTICK) = 0;
-        End;
-      End;
-      If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].Free;
-      If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].Free;
-      fsdlJoysticks[ks0] := Nil;
-      fsdlJoysticks[ks1] := Nil;
-      If fsdl_Loaded Then Begin
-        If Settings.Keys[ks0].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name, Settings.Keys[ks0].NameIndex);
-          If index <> -1 Then Begin
-            fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
-          End;
-        End;
-        If Settings.Keys[ks1].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name, Settings.Keys[ks1].NameIndex);
-          If index <> -1 Then Begin
-            fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
-          End;
-        End;
-      End;
-    End;
+    ReinitControllersWithLogs();
   End;
   (*
    * Wenn es "individuell" noch was zu tun gibt ...
@@ -400,6 +381,7 @@ Begin
       End;
     sPlayerSetup: Begin
         // Den Screen mit den Aktuellsten Daten versorgen
+        ReinitControllersWithLogs(); // ensure detection fresh in setup
         TPlayerSetupMenu(fScreens[sPlayerSetup]).TeamPlay := Settings.TeamPlay;
         TPlayerSetupMenu(fScreens[sPlayerSetup]).LoadPlayerdata(fPlayer, fUserID);
       End;
@@ -720,9 +702,11 @@ Procedure TGame.CheckSDLKeys();
     d: Integer;
     up, down, left, right, first, second: Boolean;
   Begin
+    If fPlayerIndex[keys] = AIPlayer Then exit;
+    If fPlayerIndex[keys] = -1 Then exit;
+    // Use legacy joystick mapping if configured
     If Not Settings.Keys[keys].UseSDL2 Then exit;
     If Not assigned(fsdlJoysticks[keys]) Then exit;
-    If fPlayerIndex[keys] = AIPlayer Then exit;
     // 1. Ermitteln des Aktuellen "Gedrückt" stati
     up := false;
     down := false;
@@ -798,14 +782,170 @@ Var
   event: TSDL_Event;
 Begin
   If Not fsdl_Loaded Then exit;
+  // If neither joystick is present and UseSDL2 not configured, nothing to do
   If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then exit;
   SDL_PumpEvents();
-  While SDL_PollEvent(@event) <> 0 Do Begin // TODO: Braucht man das wirklich ?
+  While SDL_PollEvent(@event) <> 0 Do Begin // Process SDL events
   End;
 
   CheckKeys(ks0);
   CheckKeys(ks1);
 End;
+
+Function TGame.GetControllerCount: Integer;
+begin
+  result := 0;
+  if Assigned(fsdlJoysticks[ks0]) then inc(result);
+  if Assigned(fsdlJoysticks[ks1]) then inc(result);
+end;
+
+Procedure TGame.ReinitControllersWithLogs();
+Var
+  index, index2: integer;
+  numJoy: Integer;
+  i: Integer;
+Begin
+  log('TGame.ReinitControllersWithLogs: Starting controller detection', llInfo);
+  // Always try to init SDL and detect controllers
+  If (Not fsdl_Loaded) Then Begin
+    log('TGame.ReinitControllersWithLogs: SDL not loaded, attempting SDL_LoadLib', llInfo);
+    fsdl_Loaded := SDL_LoadLib('');
+    If fsdl_Loaded Then Begin
+      log('TGame.ReinitControllersWithLogs: SDL_LoadLib succeeded', llInfo);
+      // Initialize with GAMECONTROLLER (implies JOYSTICK)
+      fsdl_Loaded := SDL_Init(SDL_INIT_GAMECONTROLLER) = 0;
+      If fsdl_Loaded Then Begin
+        log('TGame.ReinitControllersWithLogs: SDL_Init(SDL_INIT_GAMECONTROLLER) succeeded', llInfo);
+      End Else Begin
+        log('TGame.ReinitControllersWithLogs: SDL_Init(SDL_INIT_GAMECONTROLLER) failed', llError);
+      End;
+    End Else Begin
+      log('TGame.ReinitControllersWithLogs: SDL_LoadLib failed', llError);
+    End;
+  End Else Begin
+    log('TGame.ReinitControllersWithLogs: SDL already loaded', llInfo);
+  End;
+  
+  // Clean up old instances
+  If assigned(fsdlJoysticks[ks0]) Then Begin
+    fsdlJoysticks[ks0].Free;
+    fsdlJoysticks[ks0] := Nil;
+  End;
+  If assigned(fsdlJoysticks[ks1]) Then Begin
+    fsdlJoysticks[ks1].Free;
+    fsdlJoysticks[ks1] := Nil;
+  End;
+  If assigned(fsdlControllers[ks0]) Then Begin
+    fsdlControllers[ks0].Free;
+    fsdlControllers[ks0] := Nil;
+  End;
+  If assigned(fsdlControllers[ks1]) Then Begin
+    fsdlControllers[ks1].Free;
+    fsdlControllers[ks1] := Nil;
+  End;
+  // Reset logging flags
+  fControllerLogged[ks0] := false;
+  fControllerLogged[ks1] := false;
+  
+  If fsdl_Loaded Then Begin
+    // Try to detect and configure joystick-based controls (SDL_Joystick + existing mapping)
+    try
+      numJoy := SDL_NumJoysticks();
+      log(format('TGame.ReinitControllersWithLogs: SDL_NumJoysticks() = %d', [numJoy]), llInfo);
+    except
+      log('TGame.ReinitControllersWithLogs: Exception calling SDL_NumJoysticks()', llError);
+      numJoy := 0;
+    end;
+    
+    // Auto-configure ks0/ks1 to use first/second joystick via existing SDL2 joystick mapping
+    if numJoy > 0 then begin
+      // Configure Keyboard 0 (ks0) to use joystick 0
+      Settings.Keys[ks0].UseSDL2 := true;
+      // Defensive: SDL_JoystickNameForIndex can return nil
+      try
+        if SDL_JoystickNameForIndex(0) <> nil then
+          Settings.Keys[ks0].Name := SDL_JoystickNameForIndex(0)
+        else
+          Settings.Keys[ks0].Name := '';
+      except
+        Settings.Keys[ks0].Name := '';
+      end;
+      Settings.Keys[ks0].NameIndex := 0;
+      // Axes: 1 = Up/Down (Y), 0 = Left/Right (X)
+      Settings.Keys[ks0].AchsisIndex[0] := 1;
+      Settings.Keys[ks0].AchsisIdle[0] := 0;
+      // Back to the original direction (this gave funkční, ale obrácené směry)
+      Settings.Keys[ks0].AchsisDirection[0] := -1;
+      Settings.Keys[ks0].AchsisIndex[1] := 0;
+      Settings.Keys[ks0].AchsisIdle[1] := 0;
+      Settings.Keys[ks0].AchsisDirection[1] := -1;
+      // Buttons: primary = button 0 (X / A), secondary = button 2 (Square / X)
+      Settings.Keys[ks0].ButtonIndex[0] := 0;
+      Settings.Keys[ks0].ButtonsIdle[0] := false;
+      Settings.Keys[ks0].ButtonIndex[1] := 2;
+      Settings.Keys[ks0].ButtonsIdle[1] := false;
+      log(format('TGame.ReinitControllersWithLogs: Auto-configured joystick 0 (%s) for ks0', [Settings.Keys[ks0].Name]), llInfo);
+    end;
+    if numJoy > 1 then begin
+      // Configure Keyboard 1 (ks1) to use joystick 1
+      Settings.Keys[ks1].UseSDL2 := true;
+      try
+        if SDL_JoystickNameForIndex(1) <> nil then
+          Settings.Keys[ks1].Name := SDL_JoystickNameForIndex(1)
+        else
+          Settings.Keys[ks1].Name := '';
+      except
+        Settings.Keys[ks1].Name := '';
+      end;
+      Settings.Keys[ks1].NameIndex := 0;
+      Settings.Keys[ks1].AchsisIndex[0] := 1;
+      Settings.Keys[ks1].AchsisIdle[0] := 0;
+      Settings.Keys[ks1].AchsisDirection[0] := -1;
+      Settings.Keys[ks1].AchsisIndex[1] := 0;
+      Settings.Keys[ks1].AchsisIdle[1] := 0;
+      Settings.Keys[ks1].AchsisDirection[1] := -1;
+      Settings.Keys[ks1].ButtonIndex[0] := 0;
+      Settings.Keys[ks1].ButtonsIdle[0] := false;
+      Settings.Keys[ks1].ButtonIndex[1] := 2;
+      Settings.Keys[ks1].ButtonsIdle[1] := false;
+      log(format('TGame.ReinitControllersWithLogs: Auto-configured joystick 1 (%s) for ks1', [Settings.Keys[ks1].Name]), llInfo);
+    end;
+
+    // Open legacy joystick instances according to configured names
+    If Settings.Keys[ks0].UseSDL2 Then Begin
+      index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name, Settings.Keys[ks0].NameIndex);
+      If index <> -1 Then Begin
+        log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ks0 at index %d', [index]), llInfo);
+        fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
+      End;
+    End;
+    If Settings.Keys[ks1].UseSDL2 Then Begin
+      index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name, Settings.Keys[ks1].NameIndex);
+      If index <> -1 Then Begin
+        log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ks1 at index %d', [index]), llInfo);
+        fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
+      End;
+    End;
+    
+    log(format('TGame.ReinitControllersWithLogs: Final state - Controller count (joysticks) = %d', [GetControllerCount()]), llInfo);
+  End Else Begin
+    log('TGame.ReinitControllersWithLogs: SDL not loaded, skipping controller detection', llWarning);
+  End;
+End;
+
+Function TGame.GetKeySetDisplayName(Keys: TKeySet): String;
+begin
+	// If SDL is loaded and joysticks detected, show Game Controller label
+	if fsdl_Loaded and assigned(fsdlJoysticks[keys]) then begin
+		if SDL_NumJoysticks() > 1 then begin
+			if keys = ks0 then exit('Game Controller 0') else exit('Game Controller 1');
+		end else begin
+			exit('Game Controller');
+		end;
+	end;
+	// Fallback to keyboard labels
+	if keys = ks0 then exit('Keyboard 0') else exit('Keyboard 1');
+end;
 
 Function TGame.StartHost: Boolean;
 Var
@@ -2029,6 +2169,8 @@ Begin
   fsdl_Loaded := false;
   fsdlJoysticks[ks0] := Nil;
   fsdlJoysticks[ks1] := Nil;
+  fControllerLogged[ks0] := false;
+  fControllerLogged[ks1] := false;
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
@@ -2607,6 +2749,8 @@ Begin
   If fNeedDisconnect Then Begin
     DoDisconnect();
   End;
+  // Poll controllers/joysticks each idle tick for input (both menu and game)
+  CheckSDLKeys();
 End;
 
 Function TGame.ResolveResourceBase(BasePath: String): String;

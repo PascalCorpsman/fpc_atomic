@@ -738,28 +738,20 @@ Begin
    * Siehe TPlayer.UID
    *)
   For i := 0 To high(fPlayerDetails) Do Begin
-    If PlayerData[i].UID = Uid Then Begin
-      If PlayerData[i].Keyboard = ks0 Then Begin
-        fPlayerDetails[i].PlayerData := 'key 0';
-      End
-      Else Begin
-        fPlayerDetails[i].PlayerData := 'key 1';
-      End;
-      //fCursorPos := i; // Das geht leider nicht, da sonst der Cursor merkwürdig Springt wenn der Spieler 2 mal eingestellt ist..
+    // Always show the input method label for ks0/ks1; OFF/AI for special states
+    If PlayerData[i].UID = NoPlayer Then Begin
+      fPlayerDetails[i].PlayerData := 'OFF';
+    End
+    Else If PlayerData[i].UID = AIPlayer Then Begin
+      fPlayerDetails[i].PlayerData := 'AI';
     End
     Else Begin
-      If PlayerData[i].UID > 0 Then Begin
-        fPlayerDetails[i].PlayerData := PlayerData[i].UserName; // 'NET'; -- The Orig Game shows at this place only a "NET" entry
+      // Player assigned; display the control mapping label (keyboard or game controller)
+      If PlayerData[i].Keyboard = ks0 Then Begin
+        fPlayerDetails[i].PlayerData := TGame(fOwner).GetKeySetDisplayName(ks0);
       End
       Else Begin
-        If PlayerData[i].UID = NoPlayer Then Begin
-          fPlayerDetails[i].PlayerData := 'OFF';
-        End
-        Else Begin
-          If PlayerData[i].UID = AIPlayer Then Begin
-            fPlayerDetails[i].PlayerData := 'AI';
-          End;
-        End;
+        fPlayerDetails[i].PlayerData := TGame(fOwner).GetKeySetDisplayName(ks1);
       End;
     End;
   End;

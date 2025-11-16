@@ -94,25 +94,31 @@ End;
 
 Function TSDL_Joystick.GetAxisValue(index: integer): integer;
 Begin
+  // Defensive: avoid out-of-range or nil access
+  If (Not Assigned(fInstance)) Or (index < 0) Or (index >= fAxisCount) Then Begin
+    result := 0;
+    exit;
+  End;
   result := SDL_JoystickGetAxis(fInstance, index);
 End;
 
 Function TSDL_Joystick.GetButtonValue(index: integer): boolean;
 Begin
+  If (Not Assigned(fInstance)) Or (index < 0) Or (index >= fButtonCount) Then Begin
+    result := false;
+    exit;
+  End;
   result := SDL_JoystickGetButton(fInstance, index) = SDL_PRESSED;
 End;
 
 Constructor TSDL_Joystick.Create(Index: integer);
 Begin
   Inherited create;
-  If (SDL_WasInit(SDL_INIT_JOYSTICK) And SDL_INIT_JOYSTICK) = 0 Then Begin
-    Raise Exception.create('Error SDL subsystem for joystick is not initialized.');
-  End;
-  SDL_JoystickEventState(SDL_ENABLE);
   fInstance := SDL_JoystickOpen(Index);
   If Not assigned(fInstance) Then Begin
-    Raise Exception.create('Error could not create joystick instance.');
+    Raise Exception.Create('Error, could not open Joystick : ' + inttostr(index));
   End;
+  SDL_JoystickEventState(SDL_ENABLE);
   fAxisCount := SDL_JoystickNumAxes(fInstance);
   fButtonCount := SDL_JoystickNumButtons(fInstance);
 End;
