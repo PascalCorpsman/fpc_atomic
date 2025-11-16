@@ -62,6 +62,11 @@ Type
     fsdlJoysticks: Array[TKeySet] Of TSDL_Joystick;
     fsdlControllers: Array[TKeySet] Of TSDL_GameControllerEx;
     fControllerLogged: Array[TKeySet] Of Boolean; // Track if we've logged controller usage
+    fMenuDpadState: record
+      up, down, left, right, buttonA, buttonB: Boolean;
+    end; // Track previous D-pad state for menu navigation
+    fBlockGameInputUntilRelease: Boolean; // Block game input until all buttons released
+    fBlockMenuInputUntilRelease: Boolean; // Block menu input until all buttons released
     fTramp, fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
     fSoundManager: TSoundManager;
@@ -121,6 +126,9 @@ Type
     Function CheckKeyDown(Key: Word; Keys: TKeySet): Boolean;
     Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
     Procedure CheckSDLKeys();
+    Procedure ReadCurrentButtonState(var up, down, left, right, buttonA, buttonB: Boolean);
+    Function AreAllGamepadButtonsReleased(): Boolean;
+    Procedure CheckSDLKeysForMenu();
     Procedure ReinitControllersWithLogs();
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
@@ -335,8 +343,13 @@ Var
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   log('TGame.SwitchToScreen', llTrace);
+  
+  // Blocking is now done immediately when button is pressed in CheckSDLKeysForMenu
+  // Don't reset fMenuDpadState here - let the blocking mechanism handle it
   // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
-  If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
+  // Also initialize for main menu and options to enable gamepad navigation
+  If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Or 
+     (TargetScreen = sMainScreen) Or (TargetScreen = sOptions) Then Begin
     If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
     ReinitControllersWithLogs();
   End;
@@ -797,18 +810,146 @@ Procedure TGame.CheckSDLKeys();
     fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] := second;
   End;
 
-Var
-  event: TSDL_Event;
 Begin
   If Not fsdl_Loaded Then exit;
   // If neither joystick is present and UseSDL2 not configured, nothing to do
   If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then exit;
-  SDL_PumpEvents();
-  While SDL_PollEvent(@event) <> 0 Do Begin // Process SDL events
+  
+  // If we're blocking input until buttons are released, skip input processing
+  If fBlockGameInputUntilRelease Then Begin
+    exit;
   End;
+  
+  // SDL_PumpEvents is now called in OnIdle before this function
 
   CheckKeys(ks0);
   CheckKeys(ks1);
+End;
+
+Procedure TGame.ReadCurrentButtonState(var up, down, left, right, buttonA, buttonB: Boolean);
+Var
+  d: Integer;
+Begin
+  up := false;
+  down := false;
+  left := false;
+  right := false;
+  buttonA := false;
+  buttonB := false;
+  
+  try
+    // Try ks0 first
+    if Assigned(fsdlJoysticks[ks0]) then begin
+      // Check analog stick
+      d := fsdlJoysticks[ks0].Axis[1]; // Y axis
+      if d < -12000 then up := true;
+      if d > 12000 then down := true;
+      d := fsdlJoysticks[ks0].Axis[0]; // X axis
+      if d < -12000 then left := true;
+      if d > 12000 then right := true;
+      
+      // Check D-pad buttons (DualSense style)
+      if fsdlJoysticks[ks0].ButtonCount > 14 then begin
+        if fsdlJoysticks[ks0].Button[11] then up := true;
+        if fsdlJoysticks[ks0].Button[12] then down := true;
+        if fsdlJoysticks[ks0].Button[13] then left := true;
+        if fsdlJoysticks[ks0].Button[14] then right := true;
+      end;
+      // Check HAT (classic joysticks)
+      if fsdlJoysticks[ks0].HatCount > 0 then begin
+        d := fsdlJoysticks[ks0].Hat[0];
+        if (d and SDL_HAT_UP) <> 0 then up := true;
+        if (d and SDL_HAT_DOWN) <> 0 then down := true;
+        if (d and SDL_HAT_LEFT) <> 0 then left := true;
+        if (d and SDL_HAT_RIGHT) <> 0 then right := true;
+      end;
+      
+      // Buttons: X = button 0 (Enter), Circle = button 1 (Esc)
+      if fsdlJoysticks[ks0].ButtonCount > 0 then buttonA := fsdlJoysticks[ks0].Button[0];
+      if fsdlJoysticks[ks0].ButtonCount > 1 then buttonB := fsdlJoysticks[ks0].Button[1];
+    end;
+  except
+    // Ignore errors
+  end;
+End;
+
+Function TGame.AreAllGamepadButtonsReleased(): Boolean;
+Var
+  up, down, left, right, buttonA, buttonB: Boolean;
+Begin
+  // Read current button state
+  ReadCurrentButtonState(up, down, left, right, buttonA, buttonB);
+  
+  // Return true only if ALL buttons are released
+  result := not (up or down or left or right or buttonA or buttonB);
+End;
+
+Procedure TGame.CheckSDLKeysForMenu();
+Var
+  up, down, left, right, buttonA, buttonB: Boolean;
+  d, i: Integer;
+  key: Word;
+  shift: TShiftState;
+Begin
+  // Only process in menu, not during gameplay
+  If fgameState = gs_Gaming Then exit;
+  If Not fsdl_Loaded Then exit;
+  If Not assigned(fActualScreen) Then exit;
+  
+  // If we're blocking menu input until buttons are released, skip input processing
+  If fBlockMenuInputUntilRelease Then Begin
+    exit;
+  End;
+  
+  // Check if any joystick is available
+  If Not (Assigned(fsdlJoysticks[ks0]) Or Assigned(fsdlJoysticks[ks1])) Then exit;
+  
+  // Read D-pad and button state from first available controller
+  ReadCurrentButtonState(up, down, left, right, buttonA, buttonB);
+  
+  shift := [];
+  
+  // Generate key events on state change (press only)
+  if up and not fMenuDpadState.up then begin
+    key := VK_UP;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if down and not fMenuDpadState.down then begin
+    key := VK_DOWN;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if left and not fMenuDpadState.left then begin
+    key := VK_LEFT;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if right and not fMenuDpadState.right then begin
+    key := VK_RIGHT;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if buttonA and not fMenuDpadState.buttonA then begin
+    key := VK_RETURN;
+    // Mark button as pressed AND block menu input BEFORE calling OnKeyDown to prevent double-trigger
+    fMenuDpadState.buttonA := true;
+    fBlockMenuInputUntilRelease := true;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if buttonB and not fMenuDpadState.buttonB then begin
+    key := VK_ESCAPE;
+    // Mark button as pressed AND block menu input BEFORE calling OnKeyDown to prevent double-trigger
+    fMenuDpadState.buttonB := true;
+    fBlockMenuInputUntilRelease := true;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  
+  // Save state for next frame
+  fMenuDpadState.up := up;
+  fMenuDpadState.down := down;
+  fMenuDpadState.left := left;
+  fMenuDpadState.right := right;
+  // buttonA and buttonB are already set above if they were just pressed,
+  // otherwise update them normally
+  if not buttonA then fMenuDpadState.buttonA := false;
+  if not buttonB then fMenuDpadState.buttonB := false;
 End;
 
 Function TGame.GetControllerCount: Integer;
@@ -824,6 +965,11 @@ Var
   numJoy: Integer;
   i: Integer;
 Begin
+  // If menu input is blocked, skip reinit to avoid resetting button states
+  If fBlockMenuInputUntilRelease And Assigned(fsdlJoysticks[ks0]) Then Begin
+    exit;
+  End;
+  
   log('TGame.ReinitControllersWithLogs: Starting controller detection', llInfo);
   // Always try to init SDL and detect controllers
   If (Not fsdl_Loaded) Then Begin
@@ -1621,6 +1767,8 @@ Begin
   End;
   fLastKeyDown[akFirstAction] := 0;
   fLastKeyDown[akSecondAction] := 0;
+  // Block game input until all buttons are released to prevent menu actions triggering game actions
+  fBlockGameInputUntilRelease := true;
   fActualField.Reset;
   // TODO: What ever da noch alles so fehlt
   StartPlayingSong(fActualField.Sound);
@@ -2193,6 +2341,14 @@ Begin
   fsdlJoysticks[ks1] := Nil;
   fControllerLogged[ks0] := false;
   fControllerLogged[ks1] := false;
+  fMenuDpadState.up := false;
+  fMenuDpadState.down := false;
+  fMenuDpadState.left := false;
+  fMenuDpadState.right := false;
+  fMenuDpadState.buttonA := false;
+  fMenuDpadState.buttonB := false;
+  fBlockGameInputUntilRelease := false;
+  fBlockMenuInputUntilRelease := false;
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
@@ -2771,8 +2927,30 @@ Begin
   If fNeedDisconnect Then Begin
     DoDisconnect();
   End;
+  
+  // Always pump SDL events first to update button states
+  If fsdl_Loaded And (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
+    SDL_PumpEvents();
+  End;
+  
+  // Check if we need to unblock game input (waiting for all buttons to be released)
+  If fBlockGameInputUntilRelease Then Begin
+    If AreAllGamepadButtonsReleased() Then Begin
+      fBlockGameInputUntilRelease := false;
+    End;
+  End;
+  
+  // Check if we need to unblock menu input (waiting for all buttons to be released)
+  If fBlockMenuInputUntilRelease Then Begin
+    If AreAllGamepadButtonsReleased() Then Begin
+      fBlockMenuInputUntilRelease := false;
+    End;
+  End;
+  
   // Poll controllers/joysticks each idle tick for input (both menu and game)
   CheckSDLKeys();
+  // Also poll for menu navigation via gamepad
+  CheckSDLKeysForMenu();
 End;
 
 Function TGame.ResolveResourceBase(BasePath: String): String;
