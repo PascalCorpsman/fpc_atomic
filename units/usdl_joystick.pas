@@ -50,15 +50,20 @@ Type
   private
     fAxisCount: integer;
     fButtonCount: integer;
+    fHatCount: integer;
     fInstance: Pointer;
     Function GetAxisValue(index: integer): integer;
     Function GetButtonValue(index: integer): boolean;
+    Function GetHatValue(index: integer): byte;
   public
     Property ButtonCount: integer read fButtonCount;
     Property Button[index: integer]: boolean read GetButtonValue;
 
     Property AxisCount: integer read fAxisCount;
     Property Axis[index: integer]: integer read GetAxisValue; // ranging from -32768 to 32767
+
+    Property HatCount: integer read fHatCount;
+    Property Hat[index: integer]: byte read GetHatValue;
 
     Constructor Create(Index: integer);
     Destructor Destroy; override;
@@ -111,6 +116,20 @@ Begin
   result := SDL_JoystickGetButton(fInstance, index) = SDL_PRESSED;
 End;
 
+Function TSDL_Joystick.GetHatValue(index: integer): byte;
+Begin
+  // Defensive: avoid out-of-range or nil access
+  If (Not Assigned(fInstance)) Or (index < 0) Or (index >= fHatCount) Then Begin
+    result := SDL_HAT_CENTERED;
+    exit;
+  End;
+  try
+    result := SDL_JoystickGetHat(fInstance, index);
+  except
+    result := SDL_HAT_CENTERED;
+  end;
+End;
+
 Constructor TSDL_Joystick.Create(Index: integer);
 Begin
   Inherited create;
@@ -121,6 +140,11 @@ Begin
   SDL_JoystickEventState(SDL_ENABLE);
   fAxisCount := SDL_JoystickNumAxes(fInstance);
   fButtonCount := SDL_JoystickNumButtons(fInstance);
+  try
+    fHatCount := SDL_JoystickNumHats(fInstance);
+  except
+    fHatCount := 0;
+  end;
 End;
 
 Destructor TSDL_Joystick.Destroy;

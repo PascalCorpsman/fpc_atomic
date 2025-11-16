@@ -730,6 +730,25 @@ Procedure TGame.CheckSDLKeys();
         right := true;
       End;
     End;
+    // D-Pad support: some controllers (like DualSense) map D-pad as buttons instead of HAT
+    try
+      if fsdlJoysticks[keys].HatCount > 0 then begin
+        // Classic HAT-based D-pad
+        d := fsdlJoysticks[keys].Hat[0];
+        if (d and SDL_HAT_UP) <> 0 then up := true;
+        if (d and SDL_HAT_DOWN) <> 0 then down := true;
+        if (d and SDL_HAT_LEFT) <> 0 then left := true;
+        if (d and SDL_HAT_RIGHT) <> 0 then right := true;
+      end else if fsdlJoysticks[keys].ButtonCount > 14 then begin
+        // DualSense/modern controllers: D-pad as buttons 11-14
+        if fsdlJoysticks[keys].Button[11] then up := true;
+        if fsdlJoysticks[keys].Button[12] then down := true;
+        if fsdlJoysticks[keys].Button[13] then left := true;
+        if fsdlJoysticks[keys].Button[14] then right := true;
+      end;
+    except
+      // Ignore D-pad errors, analog stick still works
+    end;
     first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
     second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
     // 2. Rauskriegen ob ein Event abgeleitet werden muss
@@ -916,6 +935,8 @@ Begin
       If index <> -1 Then Begin
         log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ks0 at index %d', [index]), llInfo);
         fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
+        log(format('TGame.ReinitControllersWithLogs: ks0 joystick: Axes=%d, Buttons=%d, Hats=%d', 
+          [fsdlJoysticks[ks0].AxisCount, fsdlJoysticks[ks0].ButtonCount, fsdlJoysticks[ks0].HatCount]), llInfo);
       End;
     End;
     If Settings.Keys[ks1].UseSDL2 Then Begin
@@ -923,6 +944,8 @@ Begin
       If index <> -1 Then Begin
         log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ks1 at index %d', [index]), llInfo);
         fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
+        log(format('TGame.ReinitControllersWithLogs: ks1 joystick: Axes=%d, Buttons=%d, Hats=%d', 
+          [fsdlJoysticks[ks1].AxisCount, fsdlJoysticks[ks1].ButtonCount, fsdlJoysticks[ks1].HatCount]), llInfo);
       End;
     End;
     
