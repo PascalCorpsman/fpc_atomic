@@ -1,4 +1,6 @@
-# Build Instructions
+# Build Instructions - Quick Reference
+
+> **Pro kompletní návod viz [BUILD_GUIDE.md](BUILD_GUIDE.md)**
 
 ## Quick Build
 
@@ -78,4 +80,14 @@ a pro x86_64:
 - Lazarus IDE s `lazbuild` v PATH
 - macOS development tools
 - Ikona v `macos/assets/AtomicBomberIcon.icns` (nebo PNG pro generování)
+- **Pro x86_64:** Rosetta Homebrew (instaluje se automaticky)
+
+## Detailní dokumentace
+
+Viz **[BUILD_GUIDE.md](BUILD_GUIDE.md)** pro:
+- Kompletní seznam požadavků
+- Přípravu knihoven (SDL2, BASS, OpenSSL)
+- Instalaci Rosetta Homebrew
+- Řešení problémů
+- Code signing a distribuci
 

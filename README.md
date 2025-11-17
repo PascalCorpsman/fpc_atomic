@@ -54,18 +54,31 @@ See the license.md file located at [license.md](license.md) for details about th
 
 ## What needs to be done to compile the code ?
 
+### General Requirements
+
 1. Install Lazarus IDE from https://www.lazarus-ide.org/
 2. Download dglopengl.pas from https://github.com/saschawillems/dglopengl and store it in the "units" folder
 3. Download bass.pas from https://www.un4seen.com/ and store it in the "units" folder
-   - Linux users: copy libbass.so to "/usr/lib/" or run "Linux_sound_install_script.sh"
-   - Windows users: copy bass.dll from the bin folder into the repository root folder
-   - Mac users: copy libbass.dylib from the bass24-osx into macos/lib/arm64 and macos/lib/x86_64
 4. Download synapse from http://www.ararat.cz/synapse/doku.php/download and store it in a new subfolder "synapse"
 5. Install the following packages into the Lazarus IDE:
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
 6. Download SDL2-Header from https://github.com/PascalCorpsman/SDL2-for-Pascal and store the content its "units" folder in a new subfolder "sdl2_for_pascal"
 7. Add the paths from 4. and 6. as searchpaths for all .lpi files (at least client, launcher and server) (in the IDE project -> settings -> compilersettings -> paths). Ignore the not resolvable searchpaths.
+
+### Platform-Specific Instructions
+
+#### Linux
+- Copy libbass.so to "/usr/lib/" or run "Linux_sound_install_script.sh"
+
+#### Windows
+- Copy bass.dll from the bin folder into the repository root folder
+
+#### macOS
+- **See [macos/README_mac.md](macos/README_mac.md) for detailed macOS build instructions**
+- **Quick start:** `./macos/tools/build_all_arm64.command` (ARM64) or `./macos/tools/build_all_x86_64.command` (x86_64)
+- Copy libbass.dylib from the bass24-osx into macos/lib/arm64 and macos/lib/x86_64
+- For x86_64 builds, Rosetta Homebrew is required (installed automatically via `install_rosetta_homebrew.command`)
 
 !! Attention !!
 

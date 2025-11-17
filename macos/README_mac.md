@@ -1,4 +1,16 @@
-# FPC Atomic – macOS build instrukce
+# FPC Atomic – macOS Overview
+
+Tento dokument obsahuje přehled macOS build systému. Pro detailní návod na kompilaci viz **[BUILD_GUIDE.md](tools/BUILD_GUIDE.md)**.
+
+## Rychlý start
+
+```bash
+# ARM64 (Apple Silicon)
+./macos/tools/build_all_arm64.command
+
+# x86_64 (Intel Macs)
+./macos/tools/build_all_x86_64.command
+```
 
 ## Požadované nástroje
 - Xcode Command Line Tools (`xcode-select --install`)
@@ -6,6 +18,7 @@
 - Lazarus IDE 3.9 (nebo novější) – zkompilovaný s podporou `lazbuild`
 - SDL2 runtime (např. `brew install sdl2` nebo `SDL2.framework` z oficiálního DMG)
 - BASS knihovna (`libbass.dylib` z https://www.un4seen.com/)
+- **Pro x86_64 build:** Rosetta Homebrew (instaluje se automaticky přes `install_rosetta_homebrew.command`)
 - Další Pascal jednotky umístěné do `units/`:
   - `dglOpenGL.pas`
   - `bass.pas`
@@ -39,28 +52,38 @@ macos/
 - Výstupy se generují do `macos/bin/<arch>` a `macos/lib/<arch>`.
 - Jednotky se stále kompilují do `lib/<cpu>-<os>` v rámci projektu.
 
-### Spuštění kompilace
-```
+### Automatická kompilace (doporučeno)
+
+```bash
 # ARM64 (Apple Silicon)
-lazbuild --build-mode=macos_arm64 launcher/atomic_launcher.lpi
-lazbuild --build-mode=macos_arm64 client/fpc_atomic.lpi
-lazbuild --build-mode=macos_arm64 server/atomic_server.lpi
-lazbuild --build-mode=macos_arm64 ai/ai.lpi
+./macos/tools/build_all_arm64.command
 
-# Intel (x86_64) – lze spustit z Apple Silicon díky cross-kompilátoru
-lazbuild --build-mode=macos_x86_64 launcher/atomic_launcher.lpi
-lazbuild --build-mode=macos_x86_64 client/fpc_atomic.lpi
-lazbuild --build-mode=macos_x86_64 server/atomic_server.lpi
-lazbuild --build-mode=macos_x86_64 ai/ai.lpi
+# x86_64 (Intel Macs) - automaticky připraví knihovny
+./macos/tools/build_all_x86_64.command
 ```
 
-> **Poznámka:** Pokud kompilace pro x86_64 hlásí chybějící SDK, přidej do příkazů parametry `--lazarusdir=/Applications/Lazarus_3.9` a pro FPC `-XR/path/k/SDK` (např. `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`).
+### Ruční kompilace
+
+Viz detailní návod v [BUILD_GUIDE.md](tools/BUILD_GUIDE.md).
 
 ## Runtime knihovny
-- Zkopíruj `libbass.dylib` do `macos/lib/arm64` a `macos/lib/x86_64`. Pokud máš univerzální `dylib`, může být stejný soubor v obou adresářích.
-- `SDL2.framework`/`libSDL2.dylib` umísti do `macos/lib/<arch>` nebo ponech v systému. Pokud používáš `.dylib`, ujisti se, že `DYLD_LIBRARY_PATH` ukazuje na `macos/lib/<arch>`.
-- lNet knihovna: po stažení `https://github.com/PascalCorpsman/lnet` spusť `make lib` a obsah `lib/` synchronizuj do `macos/third_party/lnet/`. Build módy již obsahují cesty `../macos/third_party/lnet/lib` a `lib/sys`.
-- SDL2 Pascal headers: `git clone https://github.com/PascalCorpsman/SDL2-for-Pascal.git macos/third_party/sdl2_for_pascal`, poté zkopíruj `macos/third_party/sdl2_for_pascal/units/*` do `units/sdl2_for_pascal/`.
+
+### ARM64
+- `libbass.dylib` → `macos/lib/arm64/`
+- `libSDL2.dylib` → `macos/lib/arm64/` (nebo použij framework)
+- OpenSSL knihovny → automaticky z Homebrew
+
+### x86_64
+- **Automatická příprava:** Skript `prepare_x86_64_libs.command` automaticky:
+  - Ověří architektury všech knihoven
+  - Zkopíruje x86_64 OpenSSL z Rosetta Homebrew
+  - Vytvoří `libSDL2.dylib` z frameworku
+- **Ruční příprava:** Viz [BUILD_GUIDE.md](tools/BUILD_GUIDE.md)
+
+### Poznámky
+- SDL2 se načítá runtime (`SDL_RUNTIME_LOADING`), není potřeba explicitní linkování
+- lNet knihovna: po stažení `https://github.com/PascalCorpsman/lnet` spusť `make lib` a obsah `lib/` synchronizuj do `macos/third_party/lnet/`
+- SDL2 Pascal headers: `git clone https://github.com/PascalCorpsman/SDL2-for-Pascal.git macos/third_party/sdl2_for_pascal`, poté zkopíruj `macos/third_party/sdl2_for_pascal/units/*` do `units/sdl2_for_pascal/`
 
 ## Spouštěcí skripty
 - `macos/tools/run_launcher.command`
@@ -70,14 +93,22 @@ lazbuild --build-mode=macos_x86_64 ai/ai.lpi
 Skript zjistí architekturu (`uname -m`), nastaví `DYLD_LIBRARY_PATH` na odpovídající podsložku a spustí binárku. V případě Apple Silicon můžeš použít Rosettu pro x86_64 build: `arch -x86_64 macos/tools/run_client.command`.
 
 ## Vytvoření `.app` balíčků
-- Spusť `macos/tools/build_app_bundles.command` (po dokončení kompilace a přípravě dat).
-- Skript vytvoří / aktualizuje tři balíčky v `macos/app/`:
-  - `FPCAtomic.app` (klient)
-  - `FPCAtomicLauncher.app` (launcher + klient + server)
-  - `FPCAtomicServer.app` (samostatný server s wrapperem pro Terminal)
-- Sdílená data jsou uložená pouze jednou v `macos/app/data`. V každém `.app` vznikne symlink `Contents/MacOS/data -> ../../../data`, takže klient/server stále najdou soubory relativně k vlastnímu adresáři.
-- Do `Contents/lib` se automaticky zkopírují všechny `dylib` z `macos/lib/<arch>`.
-- Balíčky jsou podepsané ad-hoc podpisem (`codesign --force --deep --sign -`), takže Gatekeeper nebude protestovat po přidání výjimek pro jednotlivé knihovny.
+
+App bundly se vytvoří automaticky při použití `build_all_*.command` skriptů.
+
+### Výstup
+- `macos/app_arm64/` - App bundly pro Apple Silicon
+- `macos/app_x86_64/` - App bundly pro Intel Macs
+
+Každý obsahuje:
+- `FPCAtomic.app` (klient)
+- `FPCAtomicLauncher.app` (launcher + klient + server)
+- `FPCAtomicServer.app` (samostatný server)
+
+### Code signing
+- App bundly jsou automaticky podepsané ad-hoc podpisem
+- Pro distribuci je potřeba Developer ID podpis a notarizace
+- Viz [BUILD_GUIDE.md](tools/BUILD_GUIDE.md) pro detailní informace
 
 Tipy k použití:
 - Launcher spuštěný z `.app` používá interní kopii klienta/serveru a nastavený pracovní adresář.
@@ -94,7 +125,12 @@ Tipy k použití:
 - Spusť klienta: `macos/tools/run_client.command --some-option` (parametry dle `MANUAL.md`).
 - Launcher ověří dostupnost dat a aktualizací.
 
+## Dokumentace
+
+- **[BUILD_GUIDE.md](tools/BUILD_GUIDE.md)** - Kompletní návod na kompilaci
+- **[BUILD_README.md](tools/BUILD_README.md)** - Rychlý přehled build skriptů
+- **[MacOS implementationplan.md](development/Documents/MacOS%20implementationplan.md)** - Technický plán implementace
+
 ## Další kroky
-- Přidat případné skripty pro nastavení RPATH (`install_name_tool`) po kompilaci.
-- Zvážit vytvoření `.dmg` nebo `.pkg` pro distribuci.
-- Udržovat `macos/development/Documents/MacOS implementationplan.md` jako living dokument.
+- Zvážit vytvoření `.dmg` nebo `.pkg` pro distribuci
+- Udržovat dokumentaci aktuální
