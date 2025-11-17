@@ -144,7 +144,57 @@ Type
 
 Implementation
 
-Uses FileUtil, uvectormath, math, IniFiles, uai;
+Uses FileUtil, LazUTF8, LazFileUtils, uvectormath, math, IniFiles, uai;
+
+{ Helper function to resolve data directory path }
+
+Function ResolveResourceBase(BasePath: String): String;
+Var
+  testPath: String;
+  appBundlePath: String;
+Begin
+  // Normalize base path to absolute path
+  BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
+  
+  // Try multiple locations for data directory
+  // 1. Direct relative to executable (works with symlinks)
+  testPath := BasePath + 'data';
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 2. Relative path from MacOS directory in .app bundle
+  testPath := ExpandFileName(BasePath + '../Resources/data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 3. Try symlink path (../../data from MacOS) - for shared data directory
+  testPath := ExpandFileName(BasePath + '../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
+  testPath := ExpandFileName(BasePath + '../../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 5. Try path next to .app bundle (for cases where data is outside the bundle)
+  // If BasePath contains ".app/Contents/MacOS/", try going up to the .app bundle's parent directory
+  If Pos('.app/Contents/MacOS/', BasePath) > 0 Then Begin
+    appBundlePath := Copy(BasePath, 1, Pos('.app/Contents/MacOS/', BasePath) + 4); // Get path up to ".app"
+    appBundlePath := ExtractFilePath(ExcludeTrailingPathDelimiter(appBundlePath)); // Get parent directory of .app
+    testPath := ExpandFileName(appBundlePath + 'data');
+    If DirectoryExistsUTF8(testPath) Then Begin
+      Result := IncludeTrailingPathDelimiter(testPath);
+      exit;
+    End;
+  End;
+  // Fallback: use base path (may not exist, but at least we tried)
+  Result := BasePath + 'data' + PathDelim;
+End;
 
 { TServer }
 
@@ -178,7 +228,8 @@ Begin
   fTCPPort := Port;
 
   // Laden aller Felder
-  sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
+  // Resolve data directory path - check multiple locations for .app bundle compatibility
+  sl := FindAllDirectories(ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))) + 'maps', false);
   sl.Sorted := true;
   sl.Sort; // Ist beim Client wichtig, beim Server wäre es theoretisch egal, so ists aber leichter zum debuggen
   setlength(fFields, sl.Count);

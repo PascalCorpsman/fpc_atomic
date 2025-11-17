@@ -74,7 +74,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3, LCLType
+Uses UTF8Process, process, Unit2, Unit3, LCLType, LazFileUtils, LazUTF8
   , ukeyboarddialog, uatomic_common, usynapsedownloader
 {$IFDEF Windows}
   , LResources
@@ -368,13 +368,66 @@ Begin
   form2.Hide;
 End;
 
+Function ResolveResourceBase(BasePath: String): String;
+Var
+  testPath: String;
+  appBundlePath: String;
+Begin
+  // Normalize base path to absolute path
+  BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
+  
+  // Try multiple locations for data directory
+  // 1. Direct relative to executable (works with symlinks)
+  testPath := BasePath + 'data';
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 2. Relative path from MacOS directory in .app bundle
+  testPath := ExpandFileName(BasePath + '../Resources/data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 3. Try symlink path (../../data from MacOS) - for shared data directory
+  testPath := ExpandFileName(BasePath + '../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
+  testPath := ExpandFileName(BasePath + '../../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 5. Try path next to .app bundle (for cases where data is outside the bundle)
+  // If BasePath contains ".app/Contents/MacOS/", try going up to the .app bundle's parent directory
+  If Pos('.app/Contents/MacOS/', BasePath) > 0 Then Begin
+    appBundlePath := Copy(BasePath, 1, Pos('.app/Contents/MacOS/', BasePath) + 4); // Get path up to ".app"
+    appBundlePath := ExtractFilePath(ExcludeTrailingPathDelimiter(appBundlePath)); // Get parent directory of .app
+    testPath := ExpandFileName(appBundlePath + 'data');
+    If DirectoryExistsUTF8(testPath) Then Begin
+      Result := IncludeTrailingPathDelimiter(testPath);
+      exit;
+    End;
+  End;
+  // Fallback: use base path (may not exist, but at least we tried)
+  Result := BasePath + 'data' + PathDelim;
+End;
+
 Procedure TForm1.LoadSideImage;
 Var
   p: TPortableNetworkGraphic;
+  dataPath: String;
+  imagePath: String;
 Begin
-  If FileExists('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png') Then Begin
+  // Resolve data directory path
+  dataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  imagePath := dataPath + 'res' + PathDelim + 'mainmenu.png';
+  If FileExistsUTF8(imagePath) Then Begin
     p := TPortableNetworkGraphic.Create;
-    p.LoadFromFile('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png');
+    p.LoadFromFile(imagePath);
     p.Width := p.Width Div 2;
     Image1.Picture.Assign(p);
     p.free;

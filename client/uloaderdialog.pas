@@ -33,7 +33,7 @@ Type
     fTextures: Array[0..8] Of Integer; // Die 9 Einzeltextruren des Hintergrunds
   public
     Percent: integer;
-    Constructor Create(Const Owner: TOpenGLControl);
+    Constructor Create(Const Owner: TOpenGLControl; Const DataPath: String = '');
     Destructor Destroy(); override;
     (*
      * !Achtung!
@@ -50,6 +50,7 @@ Uses
   , dglOpenGL
   , Forms
   , LazUTF8
+  , LazFileUtils
   , uatomic_common
   , uopengl_graphikengine
   , uOpenGL_ASCII_Font
@@ -75,7 +76,7 @@ End;
 
 { TLoaderDialog }
 
-Constructor TLoaderDialog.Create(Const Owner: TOpenGLControl);
+Constructor TLoaderDialog.Create(Const Owner: TOpenGLControl; Const DataPath: String = '');
 Var
   p: String;
   png: TPortableNetworkGraphic;
@@ -86,8 +87,17 @@ Begin
   fHeight := 5 * 24;
   fOwner := Owner;
   Percent := 0;
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png';
+  // Use provided DataPath if available, otherwise fall back to old method
+  If DataPath <> '' Then Begin
+    p := IncludeTrailingPathDelimiter(DataPath) + 'res' + PathDelim + 'loaddialog.png';
+  End Else Begin
+    p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png';
+  End;
   png := TPortableNetworkGraphic.Create;
+  If Not FileExistsUTF8(p) Then Begin
+    png.Free;
+    Raise Exception.Create('TLoaderDialog.Create: Could not find loaddialog.png at ' + p);
+  End;
   png.LoadFromFile(p);
   b := TBitmap.create;
   b.Assign(png);

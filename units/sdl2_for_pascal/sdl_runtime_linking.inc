@@ -1134,8 +1134,13 @@ Begin
         SDL_GL_DeleteContext := TSDL_GL_DeleteContext_proc(GetProcAddress(LibHandle, 'SDL_GL_DeleteContext'));
         If Not assigned(SDL_GL_DeleteContext) Then result := false;
         *)
+  End
+  Else Begin
+    // Library load failed
   End;
-  If Not result Then SDL_UnLoadLib();
+  If Not result Then Begin
+    SDL_UnLoadLib();
+  End;
 End;
 
 Procedure SDL_UnLoadLib();

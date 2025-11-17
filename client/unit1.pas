@@ -148,6 +148,7 @@ Uses lazfileutils, LazUTF8, LCLType
 {$IFDEF AUTOMODE}
   , uscreens
 {$ENDIF}
+  , uearlylog
   ;
 
 Var
@@ -165,19 +166,34 @@ Var
 
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
+{$IFDEF DARWIN}
+  EarlyLog('OpenGLControl1MakeCurrent: Start (allowcnt=' + inttostr(allowcnt) + ')');
+{$ENDIF}
   // Changed to llTrace to reduce log spam
   // log('OpenGLControl1MakeCurrent allowcnt=' + inttostr(allowcnt), llTrace);
   If allowcnt > 2 Then Begin
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: allowcnt > 2, exiting');
+{$ENDIF}
     exit;
   End;
   inc(allowcnt);
   // Sollen Dialoge beim Starten ausgeführt werden ist hier der Richtige Zeitpunkt
   If allowcnt = 1 Then Begin
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: allowcnt=1, reading OpenGL extensions');
+{$ENDIF}
     // Init dglOpenGL.pas , Teil 2
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: ReadExtensions and ReadImplementationProperties completed');
+{$ENDIF}
   End;
   If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')');
+{$ENDIF}
     log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
     Create_ASCII_Font;
@@ -186,14 +202,25 @@ Begin
     glEnable(GL_DEPTH_TEST); // Tiefentest
     glDepthFunc(gl_less);
     glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
-
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: OpenGL state configured');
+{$ENDIF}
 
     // Der Anwendung erlauben zu Rendern.
     Initialized := True;
     OpenGLControl1Resize(Nil);
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: Calling Game.Initialize');
+{$ENDIF}
     log('Calling Game.Initialize', llInfo);
     Game.initialize(OpenGLControl1);
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: Game.Initialize completed');
+{$ENDIF}
     Timer1.Enabled := true;
+{$IFDEF DARWIN}
+    EarlyLog('OpenGLControl1MakeCurrent: Initialization complete');
+{$ENDIF}
   End;
   Form1.Invalidate;
 End;
@@ -336,6 +363,9 @@ Var
   ConfigDir: String;
 {$ENDIF}
 Begin
+{$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: Start');
+{$ENDIF}
   Randomize;
   ConnectParamsHandled := false;
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
@@ -345,6 +375,7 @@ Begin
   AutoLogFile := '';
   ConfigDirUsed := '';
 {$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: Setting up config directory');
   ConfigDir := IncludeTrailingPathDelimiter(GetUserDir) + 'Library/Application Support/fpc_atomic/';
   If Not ForceDirectoriesUTF8(ConfigDir) Then
     ConfigDir := IncludeTrailingPathDelimiter(GetAppConfigDirUTF8(False));
@@ -352,6 +383,7 @@ Begin
     IniPropStorage1.IniFileName := ConfigDir + 'fpc_atomic.ini';
     ConfigDirUsed := ConfigDir;
     AutoLogFile := ConfigDir + 'debug.log';
+    EarlyLog('TForm1.FormCreate: Config dir: ' + ConfigDir);
   End
   Else
 {$ENDIF}
@@ -361,6 +393,9 @@ Begin
   LogShowHandler := @ShowUserMessage;
   fUserMessages := Nil;
   DefaultFormatSettings.DecimalSeparator := '.';
+{$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: Initializing logger');
+{$ENDIF}
   InitLogger();
   For i := 1 To Paramcount Do Begin
 {$IFDEF Windows}
@@ -400,6 +435,9 @@ Begin
     log('Using config dir: ' + ConfigDirUsed, llInfo);
   log('TForm1.FormCreate', llInfo);
   log('TForm1.FormCreate', lltrace);
+{$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: Logger initialized, logging to: ' + FileloggingDir);
+{$ENDIF}
   If FileloggingDir = '' Then Begin
     log('Disabled, file logging.', llWarning);
   End
@@ -408,7 +446,13 @@ Begin
   End;
   caption := defCaption;
 
+{$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: Initializing BASS');
+{$ENDIF}
   If (BASS_GetVersion() Shr 16) <> Bassversion Then Begin
+{$IFDEF DARWIN}
+    EarlyLog('TForm1.FormCreate: BASS version mismatch!');
+{$ENDIF}
     showmessage('Unable to init the Bass Library ver. :' + BASSVERSIONTEXT);
     halt;
   End;
@@ -423,9 +467,15 @@ Begin
   // Steht der Compiler auf Object Pascal mus diese Zeile genommen werden.
   If Not Bass_init(-1, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
 {$ENDIF}
+{$IFDEF DARWIN}
+    EarlyLog('TForm1.FormCreate: BASS_init failed!');
+{$ENDIF}
     showmessage('Unable to init the device, Error code :' + inttostr(BASS_ErrorGetCode));
     halt;
   End;
+{$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: BASS initialized successfully');
+{$ENDIF}
 
   ClientWidth := 640;
   ClientHeight := 480;
@@ -437,11 +487,20 @@ Begin
   Tform(self).Constraints.MaxHeight := Screen.Height - 1;
 {$ENDIF}
   // Init dglOpenGL.pas , Teil 1
+{$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: Calling InitOpenGL');
+{$ENDIF}
   If Not InitOpenGl Then Begin
+{$IFDEF DARWIN}
+    EarlyLog('TForm1.FormCreate: InitOpenGL FAILED!');
+{$ENDIF}
     LogShow('Error, could not init dglOpenGL.pas', llfatal);
     LogLeave;
     Halt(1);
   End;
+{$IFDEF DARWIN}
+  EarlyLog('TForm1.FormCreate: InitOpenGL succeeded');
+{$ENDIF}
   (*
   60 - FPS entsprechen
   0.01666666 ms

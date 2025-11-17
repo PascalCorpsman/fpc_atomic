@@ -251,7 +251,34 @@ ensure_shared_data
 
 echo "Signing app bundles"
 for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
-  /usr/bin/codesign --force --deep --sign - "${app}"
+  # Sign all libraries first (required for proper bundle signing)
+  echo "Signing libraries in $(basename "${app}")..."
+  if [[ -d "${app}/Contents/lib" ]]; then
+    for lib in "${app}/Contents/lib"/*.dylib; do
+      if [[ -f "${lib}" ]]; then
+        /usr/bin/codesign --force --sign - "${lib}" 2>&1 | grep -v "already signed" || true
+      fi
+    done
+  fi
+  
+  # Sign all executables in MacOS directory (skip symlinks and directories)
+  if [[ -d "${app}/Contents/MacOS" ]]; then
+    for exe in "${app}/Contents/MacOS"/*; do
+      if [[ -f "${exe}" ]] && [[ -x "${exe}" ]] && ! [[ -L "${exe}" ]]; then
+        /usr/bin/codesign --force --sign - "${exe}" 2>&1 | grep -v "already signed" || true
+      fi
+    done
+  fi
+  
+  # Check if entitlements file exists for this app
+  ENTITLEMENTS_FILE="${app}/Contents/entitlements.plist"
+  if [[ -f "${ENTITLEMENTS_FILE}" ]]; then
+    echo "Signing $(basename "${app}") bundle with entitlements..."
+    /usr/bin/codesign --force --deep --sign - --entitlements "${ENTITLEMENTS_FILE}" "${app}"
+  else
+    echo "Signing $(basename "${app}") bundle without entitlements..."
+    /usr/bin/codesign --force --deep --sign - "${app}"
+  fi
 done
 
 echo "Done. Bundles are in ${APP_ROOT}:"
