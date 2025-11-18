@@ -1716,14 +1716,14 @@ Begin
   // Mindestens 1 Client ist asynchron, wir leiten eine Zwangspause ein / aus
   If b Then Begin
     If Not fSyncPause Then Begin // Positive Flanke der SyncPausierung
-      log(format('Activate synchronising pause. %s is out of sync', [s]), llInfo);
+      log(format('Activate synchronising pause. %s is out of sync', [s]), llTrace);
       fSyncPause := true;
       ApplyPause(fpausing);
     End;
   End
   Else Begin
     If fSyncPause Then Begin // Negative Flanke der SyncPausierung
-      log('Deactivate synchronising pause.', llInfo);
+      log('Deactivate synchronising pause.', llTrace);
       fSyncPause := false;
       ApplyPause(fpausing);
     End;

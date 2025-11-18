@@ -972,45 +972,24 @@ Begin
   End;
   
   log('TGame.ReinitControllersWithLogs: Starting controller detection', llInfo);
-{$IFDEF DARWIN}
-  EarlyLog('TGame.ReinitControllersWithLogs: Starting controller detection');
-{$ENDIF}
   // Always try to init SDL and detect controllers
   If (Not fsdl_Loaded) Then Begin
     log('TGame.ReinitControllersWithLogs: SDL not loaded, attempting SDL_LoadLib', llInfo);
-{$IFDEF DARWIN}
-    EarlyLog('TGame.ReinitControllersWithLogs: SDL not loaded, attempting SDL_LoadLib');
-{$ENDIF}
     fsdl_Loaded := SDL_LoadLib('');
     If fsdl_Loaded Then Begin
       log('TGame.ReinitControllersWithLogs: SDL_LoadLib succeeded', llInfo);
-{$IFDEF DARWIN}
-      EarlyLog('TGame.ReinitControllersWithLogs: SDL_LoadLib succeeded, calling SDL_Init');
-{$ENDIF}
       // Initialize with GAMECONTROLLER (implies JOYSTICK)
       fsdl_Loaded := SDL_Init(SDL_INIT_GAMECONTROLLER) = 0;
       If fsdl_Loaded Then Begin
         log('TGame.ReinitControllersWithLogs: SDL_Init(SDL_INIT_GAMECONTROLLER) succeeded', llInfo);
-{$IFDEF DARWIN}
-        EarlyLog('TGame.ReinitControllersWithLogs: SDL_Init(SDL_INIT_GAMECONTROLLER) succeeded');
-{$ENDIF}
       End Else Begin
         log('TGame.ReinitControllersWithLogs: SDL_Init(SDL_INIT_GAMECONTROLLER) failed', llError);
-{$IFDEF DARWIN}
-        EarlyLog('TGame.ReinitControllersWithLogs: SDL_Init(SDL_INIT_GAMECONTROLLER) FAILED!');
-{$ENDIF}
       End;
     End Else Begin
       log('TGame.ReinitControllersWithLogs: SDL_LoadLib failed', llError);
-{$IFDEF DARWIN}
-      EarlyLog('TGame.ReinitControllersWithLogs: SDL_LoadLib FAILED!');
-{$ENDIF}
     End;
   End Else Begin
     log('TGame.ReinitControllersWithLogs: SDL already loaded', llInfo);
-{$IFDEF DARWIN}
-    EarlyLog('TGame.ReinitControllersWithLogs: SDL already loaded');
-{$ENDIF}
   End;
   
   // Clean up old instances
@@ -1939,7 +1918,7 @@ Begin
       log('fDataPath was empty, resolved to: ' + fDataPath, llInfo);
     End;
     s := fDataPath + 'sounds' + PathDelim + soundFile;
-    log('Sound effect path: ' + s, llInfo);
+    log('Sound effect path: ' + s, llTrace);
     If Not FileExistsUTF8(s) Then Begin
       log('Sound effect file not found: ' + s + ', trying to re-resolve data path', llWarning);
       // Try to re-resolve data path
@@ -2488,9 +2467,6 @@ Var
   End;
 {$ENDIF}
 Begin
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Start');
-{$ENDIF}
 {$IFDEF ShowInitTime}
   t := GetTickCount64;
 {$ENDIF}
@@ -2499,17 +2475,10 @@ Begin
   
   // Resolve data path BEFORE creating Loader dialog (Loader needs it)
   p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Resolving data path, base=' + p);
-{$ENDIF}
   // Resolve data directory path - check multiple locations for .app bundle compatibility
   fDataPath := ResolveResourceBase(p);
   log('Assets root: ' + p, llInfo);
   log('Data path: ' + fDataPath, llInfo);
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Data path resolved to: ' + fDataPath);
-  EarlyLog('TGame.Initialize: Creating Loader dialog');
-{$ENDIF}
   Loader := TLoaderDialog.create(Owner, fDataPath);
   (*
    * Lade Prozente
@@ -2522,22 +2491,13 @@ Begin
 {$IFDEF ShowInitTime}
   TimePoint(1);
 {$ENDIF}
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Setting up sound');
-{$ENDIF}
   fSoundInfo.Musik := Settings.PlaySounds;
   fSoundInfo.Volume := Settings.VolumeValue;
   If Not fSoundManager.SetVolumeValue(Settings.VolumeValue) Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - Could not adjust sound volume');
-{$ENDIF}
     log('Could not adjust sound volume.', llError);
     logleave;
     exit;
   End;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Setting up event handlers');
-{$ENDIF}
   FOnMouseMoveCapture := Owner.OnMousemove;
   Owner.OnMousemove := @FOnMouseMove;
   FOnMouseDownCapture := Owner.OnMouseDown;
@@ -2551,18 +2511,9 @@ Begin
   FOnKeyUpCapture := Owner.OnKeyUp;
   Owner.OnKeyUp := @FOnKeyUp;
 
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Creating AtomicBigFont');
-{$ENDIF}
   AtomicBigFont.CreateFont(fDataPath + 'res' + PathDelim);
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: AtomicBigFont created');
-{$ENDIF}
 
   // Laden aller Screens
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Creating screen objects');
-{$ENDIF}
   fScreens[sMainScreen] := TMainMenu.Create(self);
   fScreens[sHost] := Nil;
   fScreens[sJoinNetwork] := TJoinMenu.Create(self);
@@ -2577,34 +2528,19 @@ Begin
   fScreens[sMatchStatistik] := TMatchStatistikMenu.create(self);
   fScreens[sOptions] := TOptionsMenu.Create(self);
   fScreens[sExitBomberman] := Nil;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Screen objects created, loading from disk');
-{$ENDIF}
 
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading screens from ' + fDataPath + 'res');
-{$ENDIF}
   log('Loading UI screens from ' + fDataPath + 'res', llInfo);
   For i In TScreenEnum Do Begin
     If Not assigned(fScreens[i]) Then Continue;
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: Loading screen ' + inttostr(Ord(i)));
-{$ENDIF}
     fScreens[i].LoadFromDisk(fDataPath + 'res' + PathDelim);
   End;
   Loader.Percent := 10;
   Loader.Render();
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Screens loaded, loading textures');
-{$ENDIF}
 {$IFDEF ShowInitTime}
   TimePoint(2);
 {$ENDIF}
 
   fPowerUpsTex[puNone] := 0; // Das Gibts ja net -> Weg
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading power-up textures');
-{$ENDIF}
   fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powbomb.png', smStretchHard);
   If fPowerUpsTex[puExtraBomb] = 0 Then Begin
     log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powbomb.png', llError);
@@ -2690,92 +2626,50 @@ Begin
     exit;
   End;
   // Load PlayerDead Tex correct.
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading playerdead texture');
-{$ENDIF}
   fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fDataPath + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
   fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(fDataPath + 'res' + PathDelim + 'playerdead.png');
   If fPlayerdeadTex.Image = 0 Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - Failed to locate texture handle for playerdead.png');
-{$ENDIF}
     log('Failed to locate texture handle for playerdead.png', llError);
     logleave;
     exit;
   End;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading hurry texture');
-{$ENDIF}
   fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fDataPath + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
   If fhurry.Texture.Image = 0 Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - Failed to load hurry.png');
-{$ENDIF}
     log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'hurry.png', llError);
     logleave;
     exit;
   End;
   fhurry.Texture := OpenGL_GraphikEngine.FindItem(fDataPath + 'res' + PathDelim + 'hurry.png');
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading hole texture');
-{$ENDIF}
   hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fDataPath + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smStretchHard);
   If hohletex.Image = 0 Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - Failed to load hole.png');
-{$ENDIF}
     log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'hole.png', llError);
     logleave;
     exit;
   End;
   hohletex := OpenGL_GraphikEngine.FindItem(fDataPath + 'res' + PathDelim + 'hole.png');
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Textures loaded, loading animations');
-{$ENDIF}
 {$IFDEF ShowInitTime}
   TimePoint(3);
 {$ENDIF}
 
   // Laden der Felder
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading arrows animation');
-{$ENDIF}
   fArrows := TOpenGL_Animation.Create;
   If Not fArrows.LoadFromFile(fDataPath + 'res' + PathDelim + 'arrows.ani', true) Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - Failed to load arrows.ani');
-{$ENDIF}
     log('Failed to load animation ' + fDataPath + 'res' + PathDelim + 'arrows.ani', llError);
     logleave;
     Exit;
   End;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading conveyor animation');
-{$ENDIF}
   fConveyors := TOpenGL_Animation.Create;
   If Not fConveyors.LoadFromFile(fDataPath + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - Failed to load conveyor.ani');
-{$ENDIF}
     log('Failed to load animation ' + fDataPath + 'res' + PathDelim + 'conveyor.ani', llError);
     logleave;
     Exit;
   End;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading tramp animation');
-{$ENDIF}
   fTramp := TOpenGL_Animation.Create;
   If Not fTramp.LoadFromFile(fDataPath + 'res' + PathDelim + 'tramp.ani', true) Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - Failed to load tramp.ani');
-{$ENDIF}
     log('Failed to load animation ' + fDataPath + 'res' + PathDelim + 'tramp.ani', llError);
     logleave;
     Exit;
   End;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Animations loaded');
-{$ENDIF}
 {$IFDEF ShowInitTime}
   TimePoint(4);
 {$ENDIF}
@@ -2802,9 +2696,6 @@ Begin
 {$IFDEF ShowInitTime}
   TimePoint(5);
 {$ENDIF}
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Scanning map directories');
-{$ENDIF}
   log('Scanning map directories in ' + fDataPath + 'maps', llInfo);
   sl := FindAllDirectories(fDataPath + 'maps', false);
   sl.Sorted := true;
@@ -2816,17 +2707,11 @@ Begin
 {$ENDIF}
   setlength(fFields, sl.Count);
   If sl.count = 0 Then Begin
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: ERROR - No fields to load found');
-{$ENDIF}
     LogShow('Error, no fields to load found in ' + fDataPath + 'maps', llFatal);
     LogLeave;
     exit;
   End;
   log('Found ' + inttostr(sl.Count) + ' map directories', llInfo);
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Found ' + inttostr(sl.Count) + ' map directories, loading fields');
-{$ENDIF}
 {$IFDEF ShowInitTime}
   TimePoint(6);
 {$ENDIF}
@@ -2854,20 +2739,11 @@ Begin
   TimePoint(20);
 {$ENDIF}
   // Laden aller Atomic's in ihren Farben --> Das ist was Ladetechnisch richtig weh tut, alles andere ist eigentlich "erträglich"
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Loading atomics');
-{$ENDIF}
   For j := 0 To high(fAtomics) Do Begin
     Loader.Percent := 50 + round(50 * j / length(fAtomics));
     Loader.Render();
-{$IFDEF DARWIN}
-    EarlyLog('TGame.Initialize: Loading atomic ' + inttostr(j));
-{$ENDIF}
     fAtomics[j] := TAtomic.Create;
     If Not fAtomics[j].InitAsColor(fDataPath + 'atomic' + PathDelim, PlayerColors[j]) Then Begin
-{$IFDEF DARWIN}
-      EarlyLog('TGame.Initialize: ERROR - Unable to load atomic ' + inttostr(j));
-{$ENDIF}
       LogShow('Error, unable to load atomic from ' + fDataPath + 'atomic' + PathDelim, llFatal);
       LogLeave;
       exit;
@@ -2876,20 +2752,11 @@ Begin
     TimePoint(21 + j);
 {$ENDIF}
   End;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: All atomics loaded, finishing initialization');
-{$ENDIF}
   Loader.Percent := 100;
   Loader.Render(); // Als letztes kriegt der User zu sehen, dass wir fertig sind :-)
   Loader.free;
   fInitialized := true;
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: Calling SwitchToScreen(sMainScreen)');
-{$ENDIF}
   SwitchToScreen(sMainScreen);
-{$IFDEF DARWIN}
-  EarlyLog('TGame.Initialize: SwitchToScreen completed, initialization finished');
-{$ENDIF}
 {$IFDEF ShowInitTime}
   logshow('Initialisation took ' + inttostr((GetTickCount64 - t) Div 1000) + ' seconds.', llInfo);
 {$ENDIF}
@@ -3104,61 +2971,34 @@ Var
 Begin
   // Normalize base path to absolute path
   BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
-{$IFDEF DARWIN}
-  EarlyLog('ResolveResourceBase: BasePath=' + BasePath);
-{$ENDIF}
   log('ResolveResourceBase: BasePath=' + BasePath, llInfo);
   
   // Try multiple locations for data directory
   // 1. Direct relative to executable (works with symlinks)
   testPath := BasePath + 'data';
-{$IFDEF DARWIN}
-  EarlyLog('ResolveResourceBase: Checking ' + testPath);
-{$ENDIF}
   If DirectoryExistsUTF8(testPath) Then Begin
     Result := IncludeTrailingPathDelimiter(testPath);
-{$IFDEF DARWIN}
-    EarlyLog('ResolveResourceBase: Found data at ' + Result);
-{$ENDIF}
     log('ResolveResourceBase: Found data at ' + Result, llInfo);
     exit;
   End;
   // 2. Relative path from MacOS directory in .app bundle
   testPath := ExpandFileName(BasePath + '../Resources/data');
-{$IFDEF DARWIN}
-  EarlyLog('ResolveResourceBase: Checking ' + testPath);
-{$ENDIF}
   If DirectoryExistsUTF8(testPath) Then Begin
     Result := IncludeTrailingPathDelimiter(testPath);
-{$IFDEF DARWIN}
-    EarlyLog('ResolveResourceBase: Found data at ' + Result);
-{$ENDIF}
     log('ResolveResourceBase: Found data at ' + Result, llInfo);
     exit;
   End;
   // 3. Try symlink path (../../data from MacOS) - for shared data directory
   testPath := ExpandFileName(BasePath + '../../data');
-{$IFDEF DARWIN}
-  EarlyLog('ResolveResourceBase: Checking ' + testPath);
-{$ENDIF}
   If DirectoryExistsUTF8(testPath) Then Begin
     Result := IncludeTrailingPathDelimiter(testPath);
-{$IFDEF DARWIN}
-    EarlyLog('ResolveResourceBase: Found data at ' + Result);
-{$ENDIF}
     log('ResolveResourceBase: Found data at ' + Result, llInfo);
     exit;
   End;
   // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
   testPath := ExpandFileName(BasePath + '../../../data');
-{$IFDEF DARWIN}
-  EarlyLog('ResolveResourceBase: Checking ' + testPath);
-{$ENDIF}
   If DirectoryExistsUTF8(testPath) Then Begin
     Result := IncludeTrailingPathDelimiter(testPath);
-{$IFDEF DARWIN}
-    EarlyLog('ResolveResourceBase: Found data at ' + Result);
-{$ENDIF}
     log('ResolveResourceBase: Found data at ' + Result, llInfo);
     exit;
   End;
@@ -3168,23 +3008,14 @@ Begin
     appBundlePath := Copy(BasePath, 1, Pos('.app/Contents/MacOS/', BasePath) + 4); // Get path up to ".app"
     appBundlePath := ExtractFilePath(ExcludeTrailingPathDelimiter(appBundlePath)); // Get parent directory of .app
     testPath := ExpandFileName(appBundlePath + 'data');
-{$IFDEF DARWIN}
-    EarlyLog('ResolveResourceBase: Checking path next to .app bundle: ' + testPath);
-{$ENDIF}
     If DirectoryExistsUTF8(testPath) Then Begin
       Result := IncludeTrailingPathDelimiter(testPath);
-{$IFDEF DARWIN}
-      EarlyLog('ResolveResourceBase: Found data at ' + Result);
-{$ENDIF}
       log('ResolveResourceBase: Found data at ' + Result, llInfo);
       exit;
     End;
   End;
   // Fallback: use base path (may not exist, but at least we tried)
   Result := BasePath + 'data' + PathDelim;
-{$IFDEF DARWIN}
-  EarlyLog('ResolveResourceBase: WARNING - Could not resolve data directory, using fallback: ' + Result);
-{$ENDIF}
   log('Warning: Could not resolve data directory, using fallback: ' + Result, llWarning);
 End;
 
