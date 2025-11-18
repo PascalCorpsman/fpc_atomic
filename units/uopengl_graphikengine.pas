@@ -178,6 +178,7 @@ Procedure RenderAlphaQuad(Middle: Tpoint; Width, Height, Angle: Integer; Texture
 Procedure RenderAlphaRQuad(TopLeft, BottomRight: TPoint; Angle: Integer; RotatebyOrigin: Boolean = False; Texture: Integer = 0); overload; // Fertig Getestet
 Procedure RenderAlphaRQuad(TopLeft, BottomRight: TVector2; Angle: Integer; RotatebyOrigin: Boolean = False; Texture: Integer = 0); overload; // Fertig Getestet
 Procedure RenderAlphaImage(Value: TSubImage);
+Procedure RenderAlphaTiledQuad(Left, Top: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
 
 Procedure RenderQuad(Top, Left: Single; Image: TGraphikItem); overload; // WTF: warum ist hier top und left vertauscht ?
 Procedure RenderQuad(Middle: TVector2; Angle: Single; Image: TGraphikItem); overload;
@@ -186,6 +187,8 @@ Procedure RenderQuad(Middle: TVector2; Width, Height, Angle: Single; Texture: in
 
 Procedure RenderQuad(TopLeft, BottomRight: TPoint; Angle: Integer; RotatebyOrigin: Boolean = False; Texture: Integer = 0); overload; // Fertig Getestet
 Procedure RenderQuad(TopLeft, BottomRight: TVector2; Angle: Integer; RotatebyOrigin: Boolean = False; Texture: Integer = 0); overload; // Fertig Getestet
+Procedure RenderTiledQuad(Left, Top: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
+
 (*
 Rendert einen Kreis, ohne Füllung
 *)
@@ -377,6 +380,20 @@ Begin
     gldisable(gl_blend);
 End;
 
+Procedure RenderAlphaTiledQuad(Left, Top: Single; Index, TilesPerRow,
+  TilesPerCol: integer; Const Image: TGraphikItem);
+Var
+  b: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
+Begin
+  B := glIsEnabled(gl_Blend);
+  If Not (b{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    glenable(gl_Blend);
+  glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+  RenderTiledQuad(Left, Top, Index, TilesPerRow, TilesPerCol, Image);
+  If Not (b{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    gldisable(gl_blend);
+End;
+
 Function IsPowerOfTwo(Value: Integer): Boolean;
 Var
   i: Integer;
@@ -493,6 +510,49 @@ Begin
     //    RenderQuad(point((TopLeft.x + BottomRight.x) Shr 1, (TopLeft.y + BottomRight.y) Shr 1), BottomRight.x - TopLeft.x, TopLeft.y - BottomRight.y, angle, Texture);
     //    RenderQuad(Fpoint((TopLeft.x + BottomRight.x) / 2, (TopLeft.y + BottomRight.y) / 2), abs(BottomRight.x - TopLeft.x), abs(TopLeft.y - BottomRight.y), angle, Texture);
     RenderQuad(v2((TopLeft.x + BottomRight.x) / 2, (TopLeft.y + BottomRight.y) / 2), abs(BottomRight.x - TopLeft.x), abs(TopLeft.y - BottomRight.y), angle, Texture);
+End;
+
+(*
+ * Die Idee, ist dass wir die Textur betrachten als "Collection" von vielen Tiles
+ * Diese collection wird zu einer Rechteckfläche von TilesPerRow und TilesPerCol
+ * in die wir via Index zugreifen, und dann immer nur das passende "teilstück"
+ * Rendern ;).
+ *)
+
+Procedure RenderTiledQuad(Left, Top: Single; Index, TilesPerRow,
+  TilesPerCol: integer; Const Image: TGraphikItem);
+Var
+  w, h, tw, th: Single;
+  ix, iy: integer;
+Begin
+  ix := index Mod TilesPerRow;
+  iy := index Div TilesPerRow;
+  w := Image.OrigWidth / TilesPerRow;
+  h := Image.OrigHeight / TilesPerCol;
+  Case Image.Stretched Of
+    smClamp: Begin
+        tw := w / Image.StretchedWidth;
+        th := h / Image.StretchedHeight;
+      End;
+    smNone, smStretch, smStretchHard: Begin
+        tw := w;
+        th := h;
+      End;
+  End;
+  glBindTexture(gl_texture_2d, image.Image);
+  glpushmatrix;
+  gltranslatef(left, top, 0);
+  glbegin(gl_quads);
+  glTexCoord2f(tw * ix, th * (iy + 1));
+  glvertex3f(0, h, 0);
+  glTexCoord2f(tw * (ix + 1), th * (iy + 1));
+  glvertex3f(w, h, 0);
+  glTexCoord2f(tw * (ix + 1), th * iy);
+  glvertex3f(w, 0, 0);
+  glTexCoord2f(tw * ix, th * iy);
+  glvertex3f(0, 0, 0);
+  glend;
+  glpopmatrix;
 End;
 
 Procedure RenderQuad(TopLeft, BottomRight: TPoint; Angle: Integer; RotatebyOrigin: Boolean = False; Texture: Integer = 0);
@@ -1260,7 +1320,7 @@ Begin
       exit;
     End;
   End;
-  raise exception.Create('TOpenGL_GraphikEngine.LoadAlphaColorGraphikItem: Unable to load');
+  Raise exception.Create('TOpenGL_GraphikEngine.LoadAlphaColorGraphikItem: Unable to load');
 End;
 
 Function TOpenGL_GraphikEngine.LoadAlphaColorGraphik(Filename: String; Color: TRGB; Stretch: TStretchmode): Integer; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
