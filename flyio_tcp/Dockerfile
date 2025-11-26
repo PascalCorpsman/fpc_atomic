@@ -5,7 +5,7 @@ FROM ubuntu:22.04 AS builder
 
 WORKDIR /build
 
-# Install Lazarus and dependencies
+# Install Lazarus and dependencies (including gcc for AI library)
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     fpc \
     fp-compiler \
@@ -13,6 +13,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     lazarus-ide-gtk2 \
     libgtk2.0-dev \
     build-essential \
+    gcc \
+    make \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
@@ -21,6 +23,14 @@ COPY units /build/units
 COPY client /build/client
 COPY macos/third_party/lnet_src /build/lnet_src
 COPY macos/data /build/data
+COPY ai_c /build/ai_c
+
+# Build AI library
+WORKDIR /build/ai_c
+RUN echo "=== Building AI library ===" && \
+    make && \
+    ls -la ../libai.so && \
+    file ../libai.so
 
 # Modify .lpi to use correct search paths for Docker build and compile
 WORKDIR /build/server
@@ -29,8 +39,9 @@ RUN sed -i 's|../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sam
     lazbuild --lazarusdir=/usr/lib/lazarus/default --build-mode="Default" atomic_server.lpi && \
     mkdir -p /app && \
     mv /build/atomic_server /app/atomic_server && \
-    ls -la /app/atomic_server && \
-    file /app/atomic_server
+    mv /build/libai.so /app/libai.so && \
+    ls -la /app/atomic_server /app/libai.so && \
+    file /app/atomic_server /app/libai.so
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -42,8 +53,9 @@ RUN apt-get update && apt-get install -y \
     libc6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy compiled server and data
+# Copy compiled server, AI library, and data
 COPY --from=builder /app/atomic_server /app/atomic_server
+COPY --from=builder /app/libai.so /app/libai.so
 COPY --from=builder /build/data /app/data
 
 # Make executable

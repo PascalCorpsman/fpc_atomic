@@ -885,16 +885,16 @@ End;
 Procedure TChunkManager.SetNoDelay(Value: Boolean);
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.SetNoDelay', llTrace);
+  log('TChunkManager.SetNoDelay : ' + BoolToStr(Value, True), llTrace);
 {$ENDIF}
   fconnection.IterReset;
-{$IFNDEF DARWIN}
+  // Enable TCP_NODELAY on all platforms (including macOS/Darwin)
+  // This disables Nagle's algorithm to reduce latency for real-time games
   If Assigned(fconnection.Iterator) Then
-  fconnection.Iterator.SetState(ssNoDelay, Value);
-  While fconnection.IterNext Do Begin // Skipt Root Socket
+    fconnection.Iterator.SetState(ssNoDelay, Value);
+  While fconnection.IterNext Do Begin // Skip Root Socket
     fconnection.Iterator.SetState(ssNoDelay, Value);
   End;
-{$ENDIF}
 {$IFDEF UseLogger}
   logleave;
 {$ENDIF}

@@ -889,7 +889,7 @@ Var
   a: Array Of Integer;
   b: Boolean;
 Begin
-  log('TServer.HandleSwitchToMapProperties', llTrace);
+  log(format('TServer.HandleSwitchToMapProperties (UID=%d)', [UID]), llInfo);
   aicnt := 0;
   pcnt := 0;
   t1 := 0;
@@ -932,31 +932,19 @@ Begin
     End;
   End;
 
-  // Sind auch Alle Clients noch wenigstens 1 mal mit dabei ?
-  (*
-   * Zählen der Spieler mit unterschiedlicher Uid
-   *)
-  a := Nil;
+  // Debug logging: Show all active player slots
   For i := 0 To high(fPLayer) Do Begin
     If fPLayer[i].UID > NoPlayer Then Begin
-      b := false;
-      For j := 0 To high(a) Do Begin
-        If a[j] = fPLayer[i].UID Then Begin
-          b := true;
-          break;
-        End;
-      End;
-      If Not b Then Begin
-        setlength(a, high(a) + 2);
-        a[high(a)] := fPLayer[i].UID;
-      End;
+      log(format('  Slot %d: UID=%d, Username=%s, Keyboard=%d', 
+        [i, fPLayer[i].UID, fPLayer[i].UserName, Ord(fPLayer[i].Keyboard)]), llInfo);
     End;
   End;
-  If length(a) <> fConnectedClientCount Then Begin
-    SendSplashMessage('Error, not all connected clients are connected to at least one playerslot.', UID);
-    LogLeave;
-    exit;
-  End;
+  
+  // Note: The check "all connected clients have at least one slot" was removed
+  // because it incorrectly flagged local co-op as an error (one UID with multiple keyboards).
+  // The existing checks are sufficient:
+  // 1. Duplicate slot check (line 925-933) prevents same UID + same Keyboard
+  // 2. Minimum player check (line 910-914) ensures enough players to start
   // Alle Checks gut -> Umschalten auf die Karteneigenschaften
   fGameState := gsMapSetup;
   SendChunk(miSwitchToFieldSetup, Nil, 0);
@@ -1925,7 +1913,9 @@ Var
   m: TMemoryStream;
   i: Integer;
   DiseasedInfo: TAtomicInfo;
+  StartTime: QWord;
 Begin
+  StartTime := GetTickCount64;
   // Gesendet werden immer 3 Datensätze
   m := TMemoryStream.Create;
   // Die Rundenzeit mit übertragen
@@ -1962,6 +1952,11 @@ Begin
   End;
   // 2. Alles was das zu Rendernde Feld angeht
   fActualField.AppendGamingData(m);
+  
+  // Performance logging: track packet size and send frequency
+  log(format('UpdateAllClients: Sending %d bytes, elapsed=%dms', 
+    [m.Size, GetTickCount64 - StartTime]), llTrace);
+  
   SendChunk(miUpdateGameData, m, 0);
 End;
 

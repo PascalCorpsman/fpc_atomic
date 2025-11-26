@@ -72,6 +72,7 @@ Type
     fSoundManager: TSoundManager;
     fSoundInfo: TSoundInfo;
     fLastIdleTick: QWord;
+    fLastUpdateTimestamp: QWord; // For network performance monitoring
     fLastKeyDown: Array[akFirstAction..akSecondAction] Of QWORD;
     fPlayerdeadTex: TGraphikItem;
     fPowerUpsTex: TPowerTexArray;
@@ -1796,7 +1797,22 @@ Var
   i: Integer;
   OldValue: UInt16; // Bei Die, Zen, Locked in braucht es ebenfalls den Index
   OldAnim: TRenderAnimation;
+  CurrentTime, TimeSinceLastUpdate: QWord;
+  PacketSize: Int64;
 Begin
+  CurrentTime := GetTickCount64;
+  PacketSize := Stream.Size;
+  
+  // Measure time since last update (for network performance monitoring)
+  If fLastUpdateTimestamp > 0 Then Begin
+    TimeSinceLastUpdate := CurrentTime - fLastUpdateTimestamp;
+    If (TimeSinceLastUpdate > 50) Then Begin // Log if update interval > 50ms (problematic)
+      log(format('HandleUpdateGameData: Delayed update! interval=%dms, size=%d bytes', 
+        [TimeSinceLastUpdate, PacketSize]), llWarning);
+    End;
+  End;
+  fLastUpdateTimestamp := CurrentTime;
+  
   stream.Read(fPlayingTime_s, sizeof(fPlayingTime_s));
   For i := 0 To high(fPlayer) Do Begin
     OldValue := fPlayer[i].Info.Value;
@@ -2350,6 +2366,7 @@ Begin
   fsdlJoysticks[ks1] := Nil;
   fControllerLogged[ks0] := false;
   fControllerLogged[ks1] := false;
+  fLastUpdateTimestamp := 0; // Initialize network performance monitoring
   fMenuDpadState.up := false;
   fMenuDpadState.down := false;
   fMenuDpadState.left := false;
