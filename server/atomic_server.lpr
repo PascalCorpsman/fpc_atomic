@@ -29,7 +29,7 @@
 Program atomic_server;
 
 Uses
-  sysutils, lazutf8, LazFileUtils
+  sysutils  // Standard Pascal units (no Lazarus dependencies)
   , uatomic_server
   , uatomic_common
   ;
@@ -107,11 +107,11 @@ Begin
       Params[i + 1] := true;
     End;
     If lowercase(paramstr(i)) = '-f' Then Begin
-      s := ExtractFilePath(ParamStrutf8(i + 1));
+      s := ExtractFilePath(ParamStr(i + 1));
       Params[i] := true;
       Params[i + 1] := true;
-      If Not DirectoryExistsutf8(s) Then Begin
-        If Not CreateDirUTF8(s) Then Begin
+      If Not DirectoryExists(s) Then Begin
+        If Not CreateDir(s) Then Begin
           Log('Could not create : ' + s, llWarning);
           Continue;
         End;
@@ -127,7 +127,7 @@ Begin
   s := '';
   For i := 1 To high(Params) Do Begin
     If Not params[i] Then Begin
-      s := s + ' ' + ParamStrUTF8(i);
+      s := s + ' ' + ParamStr(i);
     End;
   End;
   If s <> '' Then Begin

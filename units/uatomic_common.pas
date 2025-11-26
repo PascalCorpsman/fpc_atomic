@@ -21,7 +21,19 @@ Interface
 {$I ../client/globaldefines.inc}
 
 Uses
-  Classes, SysUtils, ulogger, Graphics, ugraphics, uvectormath;
+  Classes, SysUtils, ulogger, uvectormath
+{$IFNDEF Server}
+  , Graphics, ugraphics
+{$ENDIF}
+  ;
+
+{$IFDEF Server}
+Type
+  TColor = LongWord;
+  TRGB = Record
+    r, g, b: Byte;
+  End;
+{$ENDIF}
 
 Const
   (*
@@ -245,7 +257,9 @@ Const
    * Diese Farben sind nur im Range 0..100
    * Wenn sie als TColor genutzt werden sollen, müssen sie noch durch
    *
-   * Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+   * {$IFNDEF Server}
+Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+{$ENDIF}
    *
    *)
 {$IFDEF Only3Player}
@@ -630,7 +644,9 @@ Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speic
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
 
+{$IFNDEF Server}
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+{$ENDIF}
 
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
 Function AtomicDefaultKeys(Index: TKeySet): TKeys;
@@ -721,7 +737,10 @@ Begin
 End;
 {$ENDIF}
 
+{$IFNDEF Server}
+{$IFNDEF Server}
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+{$ENDIF}
 Var
   r, g, b: integer;
 Begin
@@ -730,6 +749,7 @@ Begin
   b := min(255, round(aColor.b * 2.55));
   result := Graphics.RGBToColor(r, g, b);
 End;
+{$ENDIF}
 
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme);
 Begin
