@@ -46,3 +46,4 @@ macos/app_x86_64/data
 macos/assets/AtomicBomberIcon.icns
 macos/assets/*.icns
 macos/assets/*.iconset
+.env
