@@ -1105,10 +1105,7 @@ Begin
   fFrameLog.AccumulatedSize := 0;
   If assigned(AiNewRound) Then Begin
     // TODO: diese 100% müssen noch einstellbar gemacht werden
-    logshow('AI: StartNewRound - calling AiNewRound(100)', llInfo);
     AiNewRound(100);
-  End Else Begin
-    logshow('AI: StartNewRound - AiNewRound NOT assigned!', llError);
   End;
   UpdateAllClients(); // Sofort alle Clients informieren, auf dass die auch gleich was sinnvolles sehen ..
   LogLeave;
@@ -1957,10 +1954,7 @@ Begin
   // 2. Alles was das zu Rendernde Feld angeht
   fActualField.AppendGamingData(m);
   
-  // Performance logging: track packet size and send frequency
-  log(format('UpdateAllClients: Sending %d bytes, elapsed=%dms', 
-    [m.Size, GetTickCount64 - StartTime]), llTrace);
-  
+  // Removed performance logging - was causing log spam and potential stack overflow
   SendChunk(miUpdateGameData, m, 0);
 End;
 
@@ -2125,15 +2119,11 @@ End;
 Procedure TServer.LoadAi;
 Begin
   log('TServer.LoadAi', lltrace);
-  WriteLn(StdErr, '[AI_DEBUG] TServer.LoadAi: Starting AI initialization...');
-  Flush(StdErr);
-  logshow('TServer.LoadAi: Starting AI initialization...', llInfo);
   If Not LoadAiLib() Then Begin
     logshow('Could not load ai, ai functions are not available.', llError);
     LogLeave;
     exit;
   End;
-  logshow('TServer.LoadAi: Calling AiInit()...', llInfo);
   If AiInit() Then Begin
     logshow(format('Ai "%s" loaded successfully!', [AiVersion()]), llInfo);
   End
@@ -2143,10 +2133,7 @@ Begin
   End;
   If fGameState = gsPlaying Then Begin
     // TODO: Diese 100% müssen noch einstellbar gemacht werden !
-    logshow('AI: Game is playing, calling AiNewRound(100)', llInfo);
     AiNewRound(100);
-  End Else Begin
-    logshow(format('AI: Game state is %d (not playing), AiNewRound not called', [Ord(fGameState)]), llInfo);
   End;
   LogLeave;
 End;
