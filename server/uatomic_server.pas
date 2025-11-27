@@ -1480,7 +1480,7 @@ Var
   j, i: Integer;
   k: TKeySet;
 Begin
-  log('TServer.RefreshAllPlayerStats', llTrace);
+  // Removed log/logleave - was causing stack overflow on frequent calls
   m := TMemoryStream.Create;
   // Einfügen aller Spielerinformationen, dass diese übernommen werden können (z.B. nach Load Game)
   j := length(fPLayer);
@@ -1497,7 +1497,6 @@ Begin
     m.WriteAnsiString(fPLayer[i].UserName);
   End;
   SendChunk(miRefreshPlayerStats, m, UID);
-  LogLeave;
 End;
 
 Procedure TServer.PlayerLeaves(PlayerUid: integer);
@@ -1704,14 +1703,14 @@ Begin
   // Mindestens 1 Client ist asynchron, wir leiten eine Zwangspause ein / aus
   If b Then Begin
     If Not fSyncPause Then Begin // Positive Flanke der SyncPausierung
-      log(format('Activate synchronising pause. %s is out of sync', [s]), llTrace);
+      // Removed logging - was spamming logs on slow clients
       fSyncPause := true;
       ApplyPause(fpausing);
     End;
   End
   Else Begin
     If fSyncPause Then Begin // Negative Flanke der SyncPausierung
-      log('Deactivate synchronising pause.', llTrace);
+      // Removed logging - was spamming logs
       fSyncPause := false;
       ApplyPause(fpausing);
     End;

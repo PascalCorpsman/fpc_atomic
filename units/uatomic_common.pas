@@ -153,7 +153,7 @@ Const
   FrameRate = 10; // Zeit in ms bis ein neues Frame berechnet wird
   UpdateRate = 20; // Zeit in ms bis die Clients wieder Aktualisiert werden (50 FPS for smoother gameplay)
 
-  SynchonizeTimeOut = 400; // Zeit in ms Kommt mehr als 400ms lang keine Heartbeat Message von allen Clients, dann wird eine Zwangspause eingeleitet. (increased for online play over internet)
+  SynchonizeTimeOut = 800; // Zeit in ms Kommt mehr als 800ms lang keine Heartbeat Message von allen Clients, dann wird eine Zwangspause eingeleitet. (Increased for older machines) (increased for online play over internet)
   HeartBeatTime = 100; // Zeit in ms Muss Sinnigerweise << SynchonizeTimeOut sein.
 
   AtomicActionDoubleTime = 200; // Zeit in ms die zwischen 2 Tastendrücken liegen muss damit sie als "Doppelte" erkannt werden.

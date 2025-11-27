@@ -1846,13 +1846,10 @@ Begin
   CurrentTime := GetTickCount64;
   PacketSize := Stream.Size;
   
-  // Measure time since last update (for network performance monitoring)
+  // Measure time since last update (for debug stats only, no logging)
   If fLastUpdateTimestamp > 0 Then Begin
     TimeSinceLastUpdate := CurrentTime - fLastUpdateTimestamp;
-    If (TimeSinceLastUpdate > 50) Then Begin // Log if update interval > 50ms (problematic)
-      log(format('HandleUpdateGameData: Delayed update! interval=%dms, size=%d bytes', 
-        [TimeSinceLastUpdate, PacketSize]), llWarning);
-    End;
+    // Removed logging - was slowing down client on older machines
   End;
   // Calculate RTT for debug stats
   If fLastUpdateTimestamp > 0 Then Begin
