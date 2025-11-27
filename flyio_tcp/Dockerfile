@@ -23,14 +23,20 @@ COPY units /build/units
 COPY client /build/client
 COPY macos/third_party/lnet_src /build/lnet_src
 COPY macos/data /build/data
-COPY ai_c /build/ai_c
+COPY ai /build/ai
 
-# Build AI library
-WORKDIR /build/ai_c
-RUN echo "=== Building AI library ===" && \
-    make && \
+# Build AI library (Pascal version - fully functional!)
+WORKDIR /build/ai
+RUN echo "=== Building Pascal AI library ===" && \
+    cp /build/server/uai_types.pas . && \
+    cp /build/units/ufifo.pas . && \
+    fpc -Tlinux -Px86_64 -O3 -CX -XX -Xs -vw ai.lpr && \
+    mv libai.so ../libai.so && \
+    echo "=== AI library built, checking..." && \
     ls -la ../libai.so && \
-    file ../libai.so
+    file ../libai.so && \
+    nm -D ../libai.so | grep -E "(AiInit|AiHandlePlayer|AiVersion)" && \
+    echo "=== Pascal AI library OK ==="
 
 # Modify .lpi to use correct search paths for Docker build and compile
 WORKDIR /build/server
@@ -66,7 +72,7 @@ EXPOSE 5521/tcp
 
 # Run server
 # -p 5521 = port
-# -t 0 = no time limit
+# -t 30000 = auto-shutdown after 30s with no players (for clean restart)
 # -l 2 = log level Info
-CMD ["/app/atomic_server", "-p", "5521", "-t", "0", "-l", "2"]
+CMD ["/app/atomic_server", "-p", "5521", "-t", "30000", "-l", "2"]
 

@@ -17,9 +17,9 @@ primary_region = "fra"  # Frankfurt (closest to Czech Republic)
   protocol = "tcp"
   internal_port = 5521
   processes = ["app"]
-  auto_stop_machines = false
-  auto_start_machines = false
-  min_machines_running = 1
+  auto_stop_machines = true   # Stop machine when server exits (after 30s timeout)
+  auto_start_machines = true  # Auto-start when new connection arrives
+  min_machines_running = 0    # No machine running when no players connected
 
   [[services.ports]]
     port = 5521
@@ -34,6 +34,6 @@ primary_region = "fra"  # Frankfurt (closest to Czech Republic)
   [[services.tcp_checks]]
     interval = "15s"
     timeout = "10s"
-    grace_period = "30s"
+    grace_period = "45s"  # Wait for server auto-shutdown (30s) + buffer
     restart_limit = 6
 

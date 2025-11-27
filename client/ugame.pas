@@ -116,6 +116,27 @@ Type
     FViewportScale: Double;
     fDataPath: String; // Base path to data directory
 
+    // === CLIENT-SIDE INTERPOLATION ===
+    // Snapshots of server state
+    fServerSnapshots: Array[0..1] Of Record
+      Timestamp: QWord;          // GetTickCount64 when received
+      ServerTime_ms: Integer;    // fPlayingTime_s * 1000
+      PlayerInfos: Array[0..9] Of TAtomicInfo;
+      Valid: Boolean;            // Is this snapshot valid?
+    End;
+    fCurrentSnapshot: Integer;   // Index of current snapshot (0 or 1)
+    
+    // Interpolated state (calculated each frame)
+    fInterpolatedState: Record
+      PlayingTime_ms: Integer;
+      PlayerInfos: Array[0..9] Of TAtomicInfo;
+    End;
+    
+    // Interpolation parameters
+    fExtrapolationLimit: Integer;   // Max extrapolation time (default 100ms)
+    
+    // Note: fInterpolationDelay and fDebugStats are now in public section for debug overlay access
+
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     Procedure FOnMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     Procedure FOnMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -142,6 +163,9 @@ Type
     Function PointInsideViewport(ScreenX, ScreenY: Integer): Boolean;
     Function ScreenToGameX(ScreenX: Integer): Integer;
     Function ScreenToGameY(ScreenY: Integer): Integer;
+    
+    // Client-side interpolation
+    Procedure InterpolateGameState();
 
     Procedure Connection_Connect(aSocket: TLSocket);
     Procedure Connection_Disconnect(aSocket: TLSocket);
@@ -192,6 +216,16 @@ Type
     fPlayer: TPlayers;
 {$ENDIF}
     Settings: TAtomicSettings; // für uscreens
+    
+    // Expose interpolation fields for debug overlay (must be before properties!)
+    fDebugStats: Record
+      LastRTT: Integer;
+      AvgRTT: Single;
+      InterpolationFactor: Single;
+      IsExtrapolating: Boolean;
+      SnapshotAge: Integer;
+    End;
+    fInterpolationDelay: Integer;
 
     OnNeedHideCursor: TNotifyEvent;
     OnNeedShowCursor: TNotifyEvent;
@@ -1784,6 +1818,15 @@ Begin
   StartPlayingSong(fActualField.Sound);
   HandleSetPause(false); // Pause auf jeden Fall, aus
   fPlayingTime_s := 0;
+  
+  // Reset interpolation snapshots when game starts
+  fServerSnapshots[0].Valid := False;
+  fServerSnapshots[0].Timestamp := 0;
+  fServerSnapshots[1].Valid := False;
+  fServerSnapshots[1].Timestamp := 0;
+  fCurrentSnapshot := 0;
+  fInterpolatedState.PlayingTime_ms := 0;
+  
   fgameState := gs_Gaming;
 End;
 
@@ -1811,34 +1854,66 @@ Begin
         [TimeSinceLastUpdate, PacketSize]), llWarning);
     End;
   End;
+  // Calculate RTT for debug stats
+  If fLastUpdateTimestamp > 0 Then Begin
+    fDebugStats.LastRTT := CurrentTime - fLastUpdateTimestamp;
+    If fDebugStats.AvgRTT = 0 Then
+      fDebugStats.AvgRTT := fDebugStats.LastRTT
+    Else
+      fDebugStats.AvgRTT := fDebugStats.AvgRTT * 0.9 + fDebugStats.LastRTT * 0.1; // Running average
+  End;
   fLastUpdateTimestamp := CurrentTime;
   
-  stream.Read(fPlayingTime_s, sizeof(fPlayingTime_s));
+  // === NEW: Store data in snapshot instead of directly in fPlayingTime_s ===
+  // Switch to next snapshot buffer
+  fCurrentSnapshot := 1 - fCurrentSnapshot;
+  
+  // Read server data into NEW snapshot
+  stream.Read(fPlayingTime_s, sizeof(fPlayingTime_s)); // Read temporarily
+  fServerSnapshots[fCurrentSnapshot].ServerTime_ms := fPlayingTime_s * 1000; // Convert to ms
+  fServerSnapshots[fCurrentSnapshot].Timestamp := CurrentTime;
+  fServerSnapshots[fCurrentSnapshot].Valid := True;
+  
+  // Read player positions into snapshot
   For i := 0 To high(fPlayer) Do Begin
     OldValue := fPlayer[i].Info.Value;
     OldAnim := fPlayer[i].Info.Animation;
-    Stream.Read(fPlayer[i].Info, sizeof(fPlayer[i].Info));
+    Stream.Read(fServerSnapshots[fCurrentSnapshot].PlayerInfos[i], sizeof(TAtomicInfo));
+    
+    // === IMPORTANT: Only copy NON-POSITION data to fPlayer for Edge detection ===
+    // DO NOT copy Position - that's handled by interpolation!
+    fPlayer[i].Info.Animation := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation;
+    fPlayer[i].Info.Alive := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Alive;
+    fPlayer[i].Info.Dying := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Dying;
+    fPlayer[i].Info.Direction := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Direction;
+    fPlayer[i].Info.Counter := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Counter;
+    fPlayer[i].Info.Value := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Value;
+    fPlayer[i].Info.ColorIndex := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].ColorIndex;
+    // Position is NOT copied here - it's interpolated in InterpolateGameState()!
+    
     (*
      * Der Server sendet die OneTimeAnimations genau 1 mal
      * Wenn der Server aber schneller neu Sendet als der CLient Rendert
      * dann würde der Client diese Flanke beim Rendern gar nicht berücksichtigen
      * -> Hier ein Or und im Rendern dann das False !
      *)
-    fPlayer[i].Edge := (fPlayer[i].Info.Animation In OneTimeAnimations) And (OldAnim <> fPlayer[i].Info.Animation);
+    fPlayer[i].Edge := (fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation In OneTimeAnimations) And 
+                       (OldAnim <> fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation);
     (*
      * Wenn eine neue Animation kommt, stellen wir hier Sicher, dass die neue die alte
      * überschreiben kann z.B. "Zen" -> Die
      * Die Zen Animation, kann zusätzlich aber auch vom Laufen unterbrochen werden, da
      * diese ja nur kommt wenn der Spieler AtomicZenTime lang keine Eingaben gemacht hat.
      *)
-    If (fPlayer[i].Edge) Or (((OldAnim = raZen) Or (oldAnim = raLockedIn)) And (fPlayer[i].Info.Animation = raWalk)) Then Begin
+    If (fPlayer[i].Edge) Or (((OldAnim = raZen) Or (oldAnim = raLockedIn)) And 
+       (fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation = raWalk)) Then Begin
       OldAnim := raStandStill; // -- Egal es soll ja nur die OldAnim In OneTimeAnimations verhindert werden
     End;
     (*
      * Wenn die Alte Animation eine einmal ablaufen Animation ist.
      *)
     If OldAnim In OneTimeAnimations Then Begin
-      If fPlayer[i].Info.Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
+      If fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
         fPlayer[i].Info.Animation := OldAnim;
         fPlayer[i].Info.Value := OldValue;
       End;
@@ -2230,9 +2305,10 @@ Begin
   AtomicFont.BackColor := clBlack; // Auf Jeden Fall die BackColor wieder Resetten
   (*
    * Die Verbleibende Spielzeit
+   * === CHANGED: Use interpolated time instead of raw server time ===
    *)
   glColor3f(1, 1, 1);
-  AtomicBigFont.Textout(500, 10, fPlayingTime_s);
+  AtomicBigFont.Textout(500, 10, fInterpolatedState.PlayingTime_ms div 1000);
   glPopMatrix;
 End;
 
@@ -2367,6 +2443,21 @@ Begin
   fControllerLogged[ks0] := false;
   fControllerLogged[ks1] := false;
   fLastUpdateTimestamp := 0; // Initialize network performance monitoring
+  
+  // Initialize interpolation
+  fServerSnapshots[0].Valid := False;
+  fServerSnapshots[0].Timestamp := 0;
+  fServerSnapshots[1].Valid := False;
+  fServerSnapshots[1].Timestamp := 0;
+  fCurrentSnapshot := 0;
+  fInterpolationDelay := 0;     // 0ms delay - interpolate between last 2 snapshots immediately
+  fExtrapolationLimit := 50;    // Max 50ms extrapolation (reduced from 100ms)
+  fDebugStats.LastRTT := 0;
+  fDebugStats.AvgRTT := 0;
+  fDebugStats.InterpolationFactor := 0;
+  fDebugStats.IsExtrapolating := False;
+  fDebugStats.SnapshotAge := 0;
+  
   fMenuDpadState.up := false;
   fMenuDpadState.down := false;
   fMenuDpadState.left := false;
@@ -2822,6 +2913,142 @@ Begin
   logleave;
 End;
 
+// Client-side interpolation implementation
+Procedure TGame.InterpolateGameState();
+Var
+  CurrentTime, RenderTime: QWord;
+  OldSnapIndex, NewSnapIndex: Integer;
+  T, Extrapolation: Single;
+  i: Integer;
+  TimeDiff, SnapAge: Int64;
+  VelX, VelY: Single;
+  PlayerSpeed: Single;
+  
+  // Linear interpolation
+  Function Lerp(A, B, T: Single): Single;
+  Begin
+    Result := A + (B - A) * T;
+  End;
+  
+  // Interpolate 2D vector
+  Function LerpVector2(Const A, B: TVector2; T: Single): TVector2;
+  Begin
+    Result.x := Lerp(A.x, B.x, T);
+    Result.y := Lerp(A.y, B.y, T);
+  End;
+  
+Begin
+  CurrentTime := GetTickCount64;
+  
+  // Get the snapshot indices
+  OldSnapIndex := 1 - fCurrentSnapshot;  // Older
+  NewSnapIndex := fCurrentSnapshot;      // Newer
+  
+  // If we don't have 2 valid snapshots yet, use the latest one
+  If (Not fServerSnapshots[OldSnapIndex].Valid) Or (Not fServerSnapshots[NewSnapIndex].Valid) Then Begin
+    If fServerSnapshots[NewSnapIndex].Valid Then Begin
+      fInterpolatedState.PlayingTime_ms := fServerSnapshots[NewSnapIndex].ServerTime_ms;
+      fInterpolatedState.PlayerInfos := fServerSnapshots[NewSnapIndex].PlayerInfos;
+      fDebugStats.InterpolationFactor := 1.0;
+      fDebugStats.IsExtrapolating := False;
+      fDebugStats.SnapshotAge := CurrentTime - fServerSnapshots[NewSnapIndex].Timestamp;
+    End;
+    Exit;
+  End;
+  
+  // Calculate snapshot age
+  SnapAge := CurrentTime - fServerSnapshots[NewSnapIndex].Timestamp;
+  fDebugStats.SnapshotAge := SnapAge;
+  
+  // Calculate time since last snapshot (for interpolation/extrapolation)
+  TimeDiff := fServerSnapshots[NewSnapIndex].Timestamp - fServerSnapshots[OldSnapIndex].Timestamp;
+  
+  // If snapshots are too far apart (> 150ms), don't interpolate - just use newest
+  If TimeDiff > 150 Then Begin
+    fInterpolatedState.PlayingTime_ms := fServerSnapshots[NewSnapIndex].ServerTime_ms;
+    fInterpolatedState.PlayerInfos := fServerSnapshots[NewSnapIndex].PlayerInfos;
+    fDebugStats.InterpolationFactor := 1.0;
+    fDebugStats.IsExtrapolating := False;
+    Exit;
+  End;
+  
+  // Calculate interpolation factor based on time between snapshots
+  // We want to render at the "latest safe time" which is the newest snapshot + elapsed time
+  If TimeDiff > 0 Then Begin
+    T := (CurrentTime - fServerSnapshots[OldSnapIndex].Timestamp) / TimeDiff;
+  End Else Begin
+    T := 1.0;  // Use newest if timestamps are same
+  End;
+  
+  // === INTERPOLATION (T between 0 and 1) ===
+  If (T >= 0.0) And (T <= 1.0) Then Begin
+    fDebugStats.InterpolationFactor := T;
+    fDebugStats.IsExtrapolating := False;
+    
+    // Interpolate playing time
+    fInterpolatedState.PlayingTime_ms := Round(
+      Lerp(fServerSnapshots[OldSnapIndex].ServerTime_ms, fServerSnapshots[NewSnapIndex].ServerTime_ms, T)
+    );
+    
+    // Interpolate player positions
+    For i := 0 To 9 Do Begin
+      fInterpolatedState.PlayerInfos[i].Position := LerpVector2(
+        fServerSnapshots[OldSnapIndex].PlayerInfos[i].Position,
+        fServerSnapshots[NewSnapIndex].PlayerInfos[i].Position,
+        T
+      );
+      
+      // Don't interpolate these - use newest values
+      fInterpolatedState.PlayerInfos[i].Direction := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Direction;
+      fInterpolatedState.PlayerInfos[i].Animation := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Animation;
+      fInterpolatedState.PlayerInfos[i].Alive := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Alive;
+      fInterpolatedState.PlayerInfos[i].Dying := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Dying;
+      fInterpolatedState.PlayerInfos[i].Counter := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Counter;
+      fInterpolatedState.PlayerInfos[i].Value := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Value;
+      fInterpolatedState.PlayerInfos[i].ColorIndex := fServerSnapshots[NewSnapIndex].PlayerInfos[i].ColorIndex;
+    End;
+  End
+  // === EXTRAPOLATION (T > 1.0 - we're ahead of last snapshot) ===
+  Else If T > 1.0 Then Begin
+    // Calculate how much time has elapsed since last snapshot
+    Extrapolation := (CurrentTime - fServerSnapshots[NewSnapIndex].Timestamp) / 1000.0; // in seconds
+    
+    // Limit extrapolation aggressively to prevent jitter
+    If Extrapolation > (fExtrapolationLimit / 1000.0) Then Begin
+      Extrapolation := fExtrapolationLimit / 1000.0;
+    End;
+    
+    fDebugStats.InterpolationFactor := T;
+    fDebugStats.IsExtrapolating := True;
+    
+    // Extrapolate playing time smoothly
+    fInterpolatedState.PlayingTime_ms := fServerSnapshots[NewSnapIndex].ServerTime_ms + Round(Extrapolation * 1000);
+    
+    // For positions: DON'T extrapolate - just use latest snapshot to avoid jitter!
+    // Extrapolation causes "jittery" movement when predictions are wrong
+    For i := 0 To 9 Do Begin
+      // Just use the latest snapshot position (no prediction)
+      fInterpolatedState.PlayerInfos[i].Position := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Position;
+      
+      // Copy other fields
+      fInterpolatedState.PlayerInfos[i].Direction := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Direction;
+      fInterpolatedState.PlayerInfos[i].Animation := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Animation;
+      fInterpolatedState.PlayerInfos[i].Alive := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Alive;
+      fInterpolatedState.PlayerInfos[i].Dying := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Dying;
+      fInterpolatedState.PlayerInfos[i].Counter := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Counter;
+      fInterpolatedState.PlayerInfos[i].Value := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Value;
+      fInterpolatedState.PlayerInfos[i].ColorIndex := fServerSnapshots[NewSnapIndex].PlayerInfos[i].ColorIndex;
+    End;
+  End
+  // === FALLBACK (T < 0 - should not happen, but handle it) ===
+  Else Begin
+    fDebugStats.InterpolationFactor := 0.0;
+    fDebugStats.IsExtrapolating := False;
+    fInterpolatedState.PlayingTime_ms := fServerSnapshots[OldSnapIndex].ServerTime_ms;
+    fInterpolatedState.PlayerInfos := fServerSnapshots[OldSnapIndex].PlayerInfos;
+  End;
+End;
+
 Procedure TGame.Render;
 Var
   i: Integer;
@@ -2845,12 +3072,16 @@ Begin
         If assigned(fActualScreen) Then fActualScreen.Render;
       End;
     gs_Gaming: Begin
+        // === NEW: Interpolate game state before rendering ===
+        InterpolateGameState();
+        
         CheckSDLKeys;
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
         For i := 0 To high(fPlayer) Do Begin
-          If fPlayer[i].Info.Alive Then Begin
-            RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
+          // Use interpolated positions instead of raw server data
+          If fInterpolatedState.PlayerInfos[i].Alive Then Begin
+            RenderPlayerbyInfo(fInterpolatedState.PlayerInfos[i], fPlayer[i].edge);
             fPlayer[i].edge := false;
           End;
         End;

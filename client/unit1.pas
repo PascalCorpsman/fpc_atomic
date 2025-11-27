@@ -242,32 +242,46 @@ Begin
     
     Go2d(OpenGLControl1.Width, OpenGLControl1.Height);
     glBindTexture(GL_TEXTURE_2D, 0);
-    OpenGL_ASCII_Font.Color := clwhite;
     glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
-    s := 'FPS : ' + inttostr(LastFPS_Counter);
-    // Debug: Show viewport resolution
-    s := s + ' | Viewport: ' + inttostr(OpenGLControl1.ClientWidth) + 'x' + inttostr(OpenGLControl1.ClientHeight);
-    // Show game viewport metrics if available (check if properties exist)
+    
+    // === ENHANCED DEBUG OVERLAY - BOTTOM OF SCREEN ===
+    // Use AtomicFont for larger, more readable text
+    AtomicFont.Color := clWhite;
+    
+    // First line: FPS and Network stats (bottom of screen)
+    s := 'FPS: ' + inttostr(LastFPS_Counter);
+    If Assigned(Game) Then Begin
+      s := s + format(' | RTT: %dms (avg %.0fms)', [Game.fDebugStats.LastRTT, Game.fDebugStats.AvgRTT]);
+      s := s + format(' | Snap: %dms', [Game.fDebugStats.SnapshotAge]);
+    End;
+    AtomicFont.Textout(10, OpenGLControl1.Height - 60, s);
+    
+    // Second line: Interpolation stats
+    If Assigned(Game) Then Begin
+      s := format('Interp: %.2f', [Game.fDebugStats.InterpolationFactor]);
+      If Game.fDebugStats.IsExtrapolating Then
+        s := s + ' [EXTRAPOLATING]'
+      Else
+        s := s + ' [interpolating]';
+      s := s + format(' | Delay: %dms', [Game.fInterpolationDelay]);
+      AtomicFont.Textout(10, OpenGLControl1.Height - 40, s);
+    End;
+    
+    // Third line: Viewport info (if in debug mode)
     {$IFDEF DebuggMode}
     If Assigned(Game) Then Begin
+      s := 'Viewport: ' + inttostr(OpenGLControl1.ClientWidth) + 'x' + inttostr(OpenGLControl1.ClientHeight);
       s := s + ' | Game: ' + inttostr(Game.DebugViewportWidth) + 'x' + inttostr(Game.DebugViewportHeight);
       s := s + format(' Scale: %.2f', [Game.DebugViewportScale]);
+      AtomicFont.Textout(10, OpenGLControl1.Height - 20, s);
+      
+      // AI position debug
+      If game.fPlayer[1].UID = -1 Then Begin
+        s := format('AI: %.2f, %.2f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
+        OpenGL_ASCII_Font.Textout(10, OpenGLControl1.Height - 5, s);
+      End;
     End;
     {$ENDIF}
-    // Show elapsed time since level start
-    {If Assigned(Game) And (fLevelStartTime > 0) And (Game.PlayingTime_s >= 0) Then Begin
-      ElapsedMs := Integer(GetTickCount64() - fLevelStartTime);
-      ElapsedSeconds := ElapsedMs Div 1000;
-      Minutes := ElapsedSeconds Div 60;
-      Seconds := ElapsedSeconds Mod 60;
-      s := s + ' | Elapsed time: ' + format('%d:%02d', [Minutes, Seconds]);
-    End;}
-{$IFDEF DebuggMode}
-    If game.fPlayer[1].UID = -1 Then Begin // Wenn der Spieler 1 eine AI ist ..
-      s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
-    End;
-{$ENDIF}
-    OpenGL_ASCII_Font.Textout(5, 5, s);
     Exit2d();
   End;
   OpenGLControl1.SwapBuffers;

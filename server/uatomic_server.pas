@@ -1105,7 +1105,10 @@ Begin
   fFrameLog.AccumulatedSize := 0;
   If assigned(AiNewRound) Then Begin
     // TODO: diese 100% müssen noch einstellbar gemacht werden
+    logshow('AI: StartNewRound - calling AiNewRound(100)', llInfo);
     AiNewRound(100);
+  End Else Begin
+    logshow('AI: StartNewRound - AiNewRound NOT assigned!', llError);
   End;
   UpdateAllClients(); // Sofort alle Clients informieren, auf dass die auch gleich was sinnvolles sehen ..
   LogLeave;
@@ -1787,6 +1790,7 @@ Begin
       fPLayer[i].IdleTimer := fPLayer[i].IdleTimer + FrameRate; // Wir zählen den immer hoch, der läuft erst nach 41 Tagen über...
       If fPLayer[i].UID = AIPlayer Then Begin
         If assigned(AiHandlePlayer) Then Begin
+          // Removed debug logging - was causing stack overflow due to frequency
           Try
             AiCommand := AiHandlePlayer(i, aiInfo);
           Except
@@ -2121,21 +2125,28 @@ End;
 Procedure TServer.LoadAi;
 Begin
   log('TServer.LoadAi', lltrace);
+  WriteLn(StdErr, '[AI_DEBUG] TServer.LoadAi: Starting AI initialization...');
+  Flush(StdErr);
+  logshow('TServer.LoadAi: Starting AI initialization...', llInfo);
   If Not LoadAiLib() Then Begin
     logshow('Could not load ai, ai functions are not available.', llError);
     LogLeave;
     exit;
   End;
+  logshow('TServer.LoadAi: Calling AiInit()...', llInfo);
   If AiInit() Then Begin
-    log(format('Ai "%s" loaded..', [AiVersion()]), llInfo);
+    logshow(format('Ai "%s" loaded successfully!', [AiVersion()]), llInfo);
   End
   Else Begin
-    log('Failure on Ai load.', llInfo);
+    logshow('Failure on Ai load (AiInit returned false).', llError);
     UnLoadAiLib;
   End;
   If fGameState = gsPlaying Then Begin
     // TODO: Diese 100% müssen noch einstellbar gemacht werden !
+    logshow('AI: Game is playing, calling AiNewRound(100)', llInfo);
     AiNewRound(100);
+  End Else Begin
+    logshow(format('AI: Game state is %d (not playing), AiNewRound not called', [Ord(fGameState)]), llInfo);
   End;
   LogLeave;
 End;
@@ -2211,7 +2222,10 @@ Begin
         // Egal, welcher Speedup, das Spiel wird mit konstanter Rate Aktualisiert
         If fLastClientUpdateTimestamp + UpdateRate <= n Then Begin
           fLastClientUpdateTimestamp := n; // fLastClientUpdateTimestamp + UpdateRate; Verhindern von oben beschriebener Situation
-          UpdateAllClients;
+          // Only send updates if there are connected clients
+          If GetActivePlayerCount() > 0 Then Begin
+            UpdateAllClients;
+          End;
         End;
       End;
     End;
