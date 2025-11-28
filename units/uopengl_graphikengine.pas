@@ -1541,12 +1541,15 @@ Begin
             OpenGLData[c, 3] := 255 - AlphaMask[i, j];
           End
           Else Begin
-            If (OpenGLData[c, 0] = Fuchsia.r) And
-              (OpenGLData[c, 1] = Fuchsia.g) And
-              (OpenGLData[c, 2] = Fuchsia.b) Then
-              OpenGLData[c, 3] := 255
+            // Chroma key with tolerance to remove magenta/fuchsia border artifacts
+            // Check if pixel is close enough to fuchsia (magenta) to be considered transparent
+            // Tolerance: ±10 for each RGB component to handle antialiasing and compression artifacts
+            If (Abs(OpenGLData[c, 0] - Fuchsia.r) <= 10) And
+              (Abs(OpenGLData[c, 1] - Fuchsia.g) <= 10) And
+              (Abs(OpenGLData[c, 2] - Fuchsia.b) <= 10) Then
+              OpenGLData[c, 3] := 255 // Fully transparent
             Else
-              OpenGLData[c, 3] := 0;
+              OpenGLData[c, 3] := 0; // Fully opaque
           End;
           inc(c);
         End;
