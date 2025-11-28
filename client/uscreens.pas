@@ -95,6 +95,7 @@ Type
   TJoinMenu = Class(TScreen)
   private
     fPlayerInfoString: String; // Die Spieler die Gerade auch eingewählt sind.
+    fServerIP: String; // Server IP address (for display when hosting)
 
   public
     Connected: Boolean;
@@ -102,6 +103,7 @@ Type
 
     Constructor Create(Owner: TObject); override;
     Procedure LoadPlayerdata(Const PlayerData: Array Of TPlayer);
+    Procedure SetServerIP(Const IP: String); // Set server IP address for display
     Procedure Render; override;
     Procedure Reset; override;
   End;
@@ -227,6 +229,7 @@ Uses LCLType, Math, Graphics, Dialogs, forms, StdCtrls, fileutil, StrUtils
   , ugraphics
   , ugame
   , ukeyboarddialog
+  , uip // For GetLocalIPs() to get server IP address
   ;
 
 Type
@@ -879,6 +882,7 @@ Begin
   fBackFile := 'join.png';
   fSoundFile := 'join_sound.wav';
   fCursorFile := '';
+  fServerIP := '';
 End;
 
 Procedure TJoinMenu.LoadPlayerdata(Const PlayerData: Array Of TPlayer);
@@ -893,7 +897,14 @@ Begin
   End;
 End;
 
+Procedure TJoinMenu.SetServerIP(Const IP: String);
+Begin
+  fServerIP := IP;
+End;
+
 Procedure TJoinMenu.Render;
+Var
+  serverInfo: String;
 Begin
   Inherited Render;
   glPushMatrix;
@@ -902,6 +913,14 @@ Begin
   AtomicFont.color := $00EAE556;
   AtomicFont.BackColor := clBlack;
   AtomicFont.Textout(100, 50, 'Our Nodename is: ''' + Tgame(fOwner).Settings.NodeName + '''');
+  
+  // Display server IP address if available (when hosting)
+  If fServerIP <> '' Then Begin
+    serverInfo := 'Server IP: ' + fServerIP + ':' + Tgame(fOwner).Settings.Router_Port;
+    AtomicFont.color := clLime; // Green color for server IP
+    AtomicFont.Textout(100, 75, serverInfo);
+  End;
+  
   If Connected Then Begin
     // Der Server hat unseren Login Versuch Grundsätzlich aktzeptiert
     // Wir zeigen nun die Infos der Spieler an, bis der 1. Spieler in den Nächsten Screen umschaltet

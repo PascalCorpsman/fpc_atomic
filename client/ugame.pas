@@ -197,6 +197,7 @@ Type
      * Routinen die der Master Spieler Aufruft um den Rest zu Aktualisieren
      *)
     Function StartHost: Boolean;
+    Function GetServerIPAddress(): String; // Get local network IP address for server display
     Procedure SendSettings();
     Procedure UpdateFieldSetup(FieldName: String; FieldHash: Uint64; NeededWins: integer);
     Procedure SwitchToPlayerSetup;
@@ -421,10 +422,19 @@ Begin
           LogLeave;
           exit;
         End;
+        // After starting server, automatically connect to localhost
+        // This is faster and more reliable than UDP broadcast
+        fParamJoinIP := '127.0.0.1';
+        fParamJoinPort := Settings.Port;
+        log('Server started, will connect to localhost:' + inttostr(fParamJoinPort), llInfo);
+        
+        // Get and display server IP address for other players to connect
+        If Assigned(fScreens[sJoinNetwork]) Then Begin
+          TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(GetServerIPAddress());
+        End;
+        
         TargetScreen := sJoinNetwork;
-        //Als nächstes muss es einen Server zum Drauf verbinden geben
-        // -> Der Server Startet und macht den UDP Auf
-        //    Sobald der Client den finden verbindet er direkt, PW gibt es keins !
+        // The client will automatically connect via JoinViaParams in sJoinNetwork handler
       End;
     sPlayerSetupRequest: Begin
         SwitchToPlayerSetup;
@@ -1155,6 +1165,32 @@ begin
 	if keys = ks0 then exit('Keyboard 0') else exit('Keyboard 1');
 end;
 
+Function TGame.GetServerIPAddress(): String;
+Var
+  adapters: TNetworkAdapterList;
+  i: Integer;
+Begin
+  Result := '127.0.0.1'; // Default to localhost
+  Try
+    adapters := GetLocalIPs();
+    // Find first non-localhost IP address (prefer network IP over localhost)
+    For i := 0 To High(adapters) Do Begin
+      If (adapters[i].IpAddress <> '127.0.0.1') And (adapters[i].IpAddress <> '') Then Begin
+        Result := adapters[i].IpAddress;
+        log('Server IP address: ' + Result, llInfo);
+        exit;
+      End;
+    End;
+    // If no network IP found, use localhost
+    log('No network IP found, using localhost: ' + Result, llInfo);
+  Except
+    On E: Exception Do Begin
+      log('Error getting server IP address: ' + E.Message + ', using localhost', llWarning);
+      Result := '127.0.0.1';
+    End;
+  End;
+End;
+
 Function TGame.StartHost: Boolean;
 Var
   serv: String;
@@ -1162,6 +1198,10 @@ Var
   basePath, clientPath: String;
 {$IFDEF DARWIN}
   serverAppPath: String;
+  portCheck: TProcessUTF8;
+  portCheckOutput: String;
+  portCheckCount: Integer;
+  portListening: Boolean;
 {$ENDIF}
 Begin
   //Begin
@@ -1187,41 +1227,29 @@ Begin
     End;
     log('Looking for server app at: ' + serverAppPath, llInfo);
     If DirectoryExistsUTF8(serverAppPath) Then Begin
-      // Try to use run_server script first
-      serv := IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS/run_server';
+      // Launch server directly with atomic_server binary (like run_server script does)
+      // This ensures DYLD_LIBRARY_PATH is set correctly and parameters are passed
+      serv := IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS/atomic_server';
       If FileExistsUTF8(serv) Then Begin
-        log('Using run_server script: ' + serv, llInfo);
+        log('Launching server directly: ' + serv, llInfo);
         p := TProcessUTF8.Create(Nil);
         p.Options := [poDetached];
         p.Executable := '/bin/zsh';
         p.Parameters.Add('-c');
-        p.Parameters.Add('"' + serv + '" -p ' + inttostr(settings.Port) + 
+        // Set DYLD_LIBRARY_PATH and run atomic_server with parameters
+        p.Parameters.Add('cd ' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS' +
+          ' && export DYLD_LIBRARY_PATH=' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/lib:$DYLD_LIBRARY_PATH' +
+          ' && ' + serv + ' -p ' + inttostr(settings.Port) +
           ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()));
         p.Execute;
         p.free;
         result := true;
         LogLeave;
         exit;
+      End
+      Else Begin
+        log('Server binary not found at: ' + serv, llWarning);
       End;
-      // Fallback: try to launch the .app bundle directly with open
-      log('Using open command for server app', llInfo);
-      p := TProcessUTF8.Create(Nil);
-      p.Options := [poDetached];
-      p.Executable := '/usr/bin/open';
-      p.Parameters.Add('-a');
-      p.Parameters.Add(serverAppPath);
-      p.Parameters.Add('--args');
-      p.Parameters.Add('-p');
-      p.Parameters.Add(inttostr(settings.Port));
-      p.Parameters.Add('-t');
-      p.Parameters.Add('0');
-      p.Parameters.Add('-l');
-      p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
-      p.Execute;
-      p.free;
-      result := true;
-      LogLeave;
-      exit;
     End
     Else Begin
       log('Server app not found at: ' + serverAppPath, llWarning);
@@ -1254,10 +1282,46 @@ Begin
     exit;
   End;
   // Bis der Server Steht dauerts ein bischen, also warten wir
+  // On macOS, .app bundles take longer to start, especially with network thread initialization
+  // Also need time for the server to initialize and start listening on the port
 {$IFDEF Windows}
-  sleep(1500); // Unter Windows scheint es deutlich "länger" zu dauern, wie lange genau wäre gut zu wissen ..
+  sleep(3000); // Unter Windows scheint es deutlich "länger" zu dauern
 {$ELSE}
-  sleep(500);
+{$IFDEF DARWIN}
+  // Wait for server to start and check if port is listening
+  sleep(2000); // Initial wait for .app bundle to start
+  // Check if server is actually listening on the port (up to 5 seconds)
+  portListening := false;
+  portCheckCount := 0;
+  While (portCheckCount < 10) And (Not portListening) Do Begin
+    sleep(500); // Check every 500ms
+    Inc(portCheckCount);
+    
+    // Use lsof to check if port is listening
+    portCheck := TProcessUTF8.Create(Nil);
+    portCheck.Options := [poUsePipes, poWaitOnExit];
+    portCheck.Executable := '/usr/sbin/lsof';
+    portCheck.Parameters.Add('-i');
+    portCheck.Parameters.Add(':' + inttostr(settings.Port));
+    portCheck.Execute;
+    
+    SetLength(portCheckOutput, 1024);
+    SetLength(portCheckOutput, portCheck.Output.Read(portCheckOutput[1], Length(portCheckOutput)));
+    portCheck.Free;
+    
+    // If lsof found something, port is listening
+    If Length(portCheckOutput) > 0 Then Begin
+      portListening := true;
+      log('Server is listening on port ' + inttostr(settings.Port), llInfo);
+    End;
+  End;
+  
+  If Not portListening Then Begin
+    log('Warning: Server port not detected after ' + inttostr(portCheckCount * 500) + 'ms, will try to connect anyway', llWarning);
+  End;
+{$ELSE}
+  sleep(3000); // For other Unix-like systems
+{$ENDIF}
 {$ENDIF}
   // StartClientGame; --> Das Verbinden macht der SwitchToScreen schon ;)
   Application.Restore;
@@ -2428,18 +2492,48 @@ Begin
 End;
 
 Procedure TGame.Join(IP: String; Port: Integer);
+Var
+  retryCount: Integer;
+  maxRetries: Integer;
+  retryDelay: Integer;
+  isLocalhost: Boolean;
 Begin
   log('TGame.Join', lltrace);
   log(format('Joining to %s on port %d as %s', [ip, port, Settings.NodeName]));
-  (*
-   * Sollte aus welchem Grund auch immer der Chunkmanager nicht verbinden können (ggf weil er schon verbunden ist),
-   * fliegt er hier über den Wechsel in den MainScreen raus und wird dann automatisch disconnected
-   * -> Spätestens wenn der User es nun erneut versucht kommt er wieder rein.
-   *)
-  If Not fChunkManager.Connect(ip, port) Then Begin
-    LogShow('Error could not connect to server', llError);
-    SwitchToScreen(sMainScreen);
+  
+  // Check if connecting to localhost (after starting server)
+  isLocalhost := (ip = '127.0.0.1') Or (ip = 'localhost');
+  
+  If isLocalhost Then Begin
+    // For localhost, retry more times (server might still be starting)
+    // Server needs time to: 1) Start .app bundle, 2) Initialize, 3) Start listening on port
+    maxRetries := 10;
+    retryDelay := 1000; // 1000ms (1 second) between retries - server needs time to start
+  End
+  Else Begin
+    // For remote servers, try only once
+    maxRetries := 1;
+    retryDelay := 0;
   End;
+  
+  retryCount := 0;
+  While retryCount < maxRetries Do Begin
+    If fChunkManager.Connect(ip, port) Then Begin
+      log('Successfully connected to server', llInfo);
+      logleave;
+      exit;
+    End;
+    
+    Inc(retryCount);
+    If retryCount < maxRetries Then Begin
+      log(format('Connection attempt %d/%d failed, retrying in %dms...', [retryCount, maxRetries, retryDelay]), llInfo);
+      Sleep(retryDelay);
+    End;
+  End;
+  
+  // All retries failed
+  LogShow('Error could not connect to server after ' + inttostr(maxRetries) + ' attempts', llError);
+  SwitchToScreen(sMainScreen);
   logleave;
 End;
 
