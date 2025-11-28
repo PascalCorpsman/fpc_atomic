@@ -29,6 +29,9 @@
 Program atomic_server;
 
 Uses
+{$IFDEF UNIX}
+  cthreads,  // Thread support for Unix-like systems
+{$ENDIF}
   sysutils  // Standard Pascal units (no Lazarus dependencies)
   , uatomic_server
   , uatomic_common

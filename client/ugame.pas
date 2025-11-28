@@ -234,6 +234,7 @@ Type
     OnNeedShowCursor: TNotifyEvent;
     
     Property PlayingTime_s: Integer Read fPlayingTime_s;
+    Property ChunkManager: TChunkManager Read fChunkManager; // For network thread access
 
     Constructor Create();
     Destructor Destroy; override;
@@ -2543,6 +2544,9 @@ Begin
   Connection.OnError := @Connection_Error;
   fChunkManager.OnReceivedChunk := @OnReceivedChunk;
   fChunkManager.RegisterConnection(Connection);
+  // Start network thread for non-blocking network processing
+  fChunkManager.StartNetworkThread();
+  log('Network thread started for client', llInfo);
   LogLeave;
 End;
 

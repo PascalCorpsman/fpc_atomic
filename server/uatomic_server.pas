@@ -223,6 +223,9 @@ Begin
   fChunkManager := TChunkManager.create;
   fChunkManager.RegisterConnection(fTCP);
   fChunkManager.OnReceivedChunk := @OnReceivedChunk;
+  // Start network thread for non-blocking network processing
+  fChunkManager.StartNetworkThread();
+  log('Network thread started for server', llInfo);
 
   fLastActiveTickTimestamp := GetTickCount64;
   fTCPPort := Port;
@@ -2159,7 +2162,8 @@ Begin
   log('TServer.Execute', lltrace);
   // Loop in einer Endlosschleife, so lange bis 1000ms lang kein Client mehr connected ist, dann raus
   While factive Do Begin
-    fChunkManager.CallAction(); // Alle Aktuellen Aufgaben des TCP-Stacks Abbarbeiten
+    // Process incoming network chunks from network thread
+    fChunkManager.ProcessIncomingChunks();
     fUDP.CallAction();
     If fKickAllPlayer Then Begin
       log('KickAllPlayer', lltrace);

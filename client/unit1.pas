@@ -589,6 +589,11 @@ Var
   i, port: Integer;
   msg, ip: String;
 Begin
+  // Process incoming network chunks from network thread
+  If Assigned(Game) Then Begin
+    Game.ChunkManager.ProcessIncomingChunks();
+  End;
+  
 {$IFDEF AUTOMODE}
   Case AutomodeData.State Of
     AM_Idle: Begin
