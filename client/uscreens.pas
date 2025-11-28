@@ -256,6 +256,8 @@ Type
     Label2: TLabel;
     Button1: TButton;
     Button2: TButton;
+    Procedure EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
   public
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
   End;
@@ -309,6 +311,7 @@ Begin
   Button1.Parent := self;
   Button1.caption := 'OK';
   Button1.ModalResult := mrOK;
+  Button1.Default := True; // Make Enter key trigger this button (when focus is on button)
   Button1.Top := 128;
   Button1.Left := 229;
 
@@ -317,8 +320,46 @@ Begin
   Button2.Parent := self;
   Button2.caption := 'Cancel';
   Button2.ModalResult := mrCancel;
+  Button2.Cancel := True; // Make Esc key trigger this button
   Button2.Top := 128;
   Button2.Left := 16;
+  
+  // Add keyboard support: Enter = OK everywhere
+  // Set handlers on Edit fields to catch Enter when focus is in Edit
+  Edit1.OnKeyDown := @EditKeyDown;
+  Edit2.OnKeyDown := @EditKeyDown;
+  // Set handler on form to catch Enter when focus is on form (not on Edit or Button)
+  OnKeyDown := @FormKeyDown;
+  KeyPreview := True; // Enable form-level key handling
+End;
+
+Procedure TJoinQuestionForm.EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Begin
+  If key = VK_RETURN Then Begin
+    // Enter in Edit field = OK button
+    // Strategy: Set focus to OK button, then trigger it programmatically
+    Key := 0; // Prevent default behavior (newline in Edit)
+    Button1.SetFocus; // Focus the OK button first
+    // Now trigger the button click programmatically
+    Button1.Click; // This will set ModalResult := mrOK and close the form
+  End;
+  // Esc is handled automatically by Button2.Cancel := True
+End;
+
+Procedure TJoinQuestionForm.FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Begin
+  If key = VK_RETURN Then Begin
+    // Enter on form (when focus is NOT on Button1) = OK button
+    // Strategy: Set focus to OK button, then trigger it programmatically
+    If ActiveControl <> Button1 Then Begin
+      Key := 0; // Prevent default behavior
+      Button1.SetFocus; // Focus the OK button first
+      // Now trigger the button click programmatically
+      Button1.Click; // This will set ModalResult := mrOK and close the form
+    End;
+    // If focus is on Button1, let default behavior (Default := True) handle it
+  End;
+  // Esc is handled automatically by Button2.Cancel := True
 End;
 
 { TVictoryMenu }
@@ -1099,7 +1140,16 @@ Begin
     Case fCursorPos Of
       0: logshow('Not yet implemented.', llinfo); // TAtomic(fOwner).SwitchToScreen(); -- Single Player
       1: TGame(fOwner).SwitchToScreen(sHost);
-      2: TGame(fOwner).SwitchToScreen(sJoinNetwork);
+      2: Begin
+          // Join Network Game - open IP/Port dialog (same as pressing J)
+          f := TJoinQuestionForm.CreateNew(Nil, 0);
+          f.Edit1.Text := TGame(fOwner).Settings.Router_IP;
+          f.Edit2.Text := TGame(fOwner).Settings.Router_Port;
+          If f.ShowModal = mrOK Then Begin
+            TGame(fOwner).JoinViaParams(f.Edit1.Text, strtointdef(f.Edit2.Text, 9876));
+          End;
+          f.free;
+        End;
       3: TGame(fOwner).SwitchToScreen(sOptions);
       4: logshow('Not yet implemented.', llinfo); //TGame(fOwner).SwitchToScreen(); -- About Bomberman
       5: logshow('Not yet implemented.', llinfo); //TGame(fOwner).SwitchToScreen(); -- Online Manual
