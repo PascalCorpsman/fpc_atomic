@@ -248,22 +248,21 @@ Begin
     // Use AtomicFont for larger, more readable text
     AtomicFont.Color := clWhite;
     
-    // First line: FPS and Network stats (bottom of screen)
+    // First line: FPS and Network stats with MAX values
     s := 'FPS: ' + inttostr(LastFPS_Counter);
     If Assigned(Game) Then Begin
-      s := s + format(' | RTT: %dms (avg %.0fms)', [Game.fDebugStats.LastRTT, Game.fDebugStats.AvgRTT]);
-      s := s + format(' | Snap: %dms', [Game.fDebugStats.SnapshotAge]);
+      s := s + format(' | RTT: %dms (max %dms)', [Game.fDebugStats.LastRTT, Game.fDebugStats.MaxRTT]);
+      s := s + format(' | Snap: %dms (max %dms)', [Game.fDebugStats.SnapshotAge, Game.fDebugStats.MaxSnapAge]);
     End;
     AtomicFont.Textout(10, OpenGLControl1.Height - 60, s);
     
-    // Second line: Interpolation stats
+    // Second line: Interpolation stats with MAX
     If Assigned(Game) Then Begin
-      s := format('Interp: %.2f', [Game.fDebugStats.InterpolationFactor]);
+      s := format('Interp: %.2f (max %.2f)', [Game.fDebugStats.InterpolationFactor, Game.fDebugStats.MaxInterpFactor]);
       If Game.fDebugStats.IsExtrapolating Then
         s := s + ' [EXTRAPOLATING]'
       Else
         s := s + ' [interpolating]';
-      s := s + format(' | Delay: %dms', [Game.fInterpolationDelay]);
       AtomicFont.Textout(10, OpenGLControl1.Height - 40, s);
     End;
     

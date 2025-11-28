@@ -221,9 +221,12 @@ Type
     fDebugStats: Record
       LastRTT: Integer;
       AvgRTT: Single;
+      MaxRTT: Integer;             // Worst RTT since game start
       InterpolationFactor: Single;
+      MaxInterpFactor: Single;     // Worst interpolation factor
       IsExtrapolating: Boolean;
       SnapshotAge: Integer;
+      MaxSnapAge: Integer;         // Worst snapshot age
     End;
     fInterpolationDelay: Integer;
 
@@ -1827,6 +1830,11 @@ Begin
   fCurrentSnapshot := 0;
   fInterpolatedState.PlayingTime_ms := 0;
   
+  // Reset MAX stats for new game
+  fDebugStats.MaxRTT := 0;
+  fDebugStats.MaxSnapAge := 0;
+  fDebugStats.MaxInterpFactor := 0;
+  
   fgameState := gs_Gaming;
 End;
 
@@ -1858,6 +1866,9 @@ Begin
       fDebugStats.AvgRTT := fDebugStats.LastRTT
     Else
       fDebugStats.AvgRTT := fDebugStats.AvgRTT * 0.9 + fDebugStats.LastRTT * 0.1; // Running average
+    // Track MAX RTT
+    If fDebugStats.LastRTT > fDebugStats.MaxRTT Then
+      fDebugStats.MaxRTT := fDebugStats.LastRTT;
   End;
   fLastUpdateTimestamp := CurrentTime;
   
@@ -2451,9 +2462,12 @@ Begin
   fExtrapolationLimit := 50;    // Max 50ms extrapolation (reduced from 100ms)
   fDebugStats.LastRTT := 0;
   fDebugStats.AvgRTT := 0;
+  fDebugStats.MaxRTT := 0;
   fDebugStats.InterpolationFactor := 0;
+  fDebugStats.MaxInterpFactor := 0;
   fDebugStats.IsExtrapolating := False;
   fDebugStats.SnapshotAge := 0;
+  fDebugStats.MaxSnapAge := 0;
   
   fMenuDpadState.up := false;
   fMenuDpadState.down := false;
@@ -2956,6 +2970,9 @@ Begin
   // Calculate snapshot age
   SnapAge := CurrentTime - fServerSnapshots[NewSnapIndex].Timestamp;
   fDebugStats.SnapshotAge := SnapAge;
+  // Track MAX snapshot age
+  If SnapAge > fDebugStats.MaxSnapAge Then
+    fDebugStats.MaxSnapAge := SnapAge;
   
   // Calculate time since last snapshot (for interpolation/extrapolation)
   TimeDiff := fServerSnapshots[NewSnapIndex].Timestamp - fServerSnapshots[OldSnapIndex].Timestamp;
@@ -2981,6 +2998,9 @@ Begin
   If (T >= 0.0) And (T <= 1.0) Then Begin
     fDebugStats.InterpolationFactor := T;
     fDebugStats.IsExtrapolating := False;
+    // Track MAX interpolation factor
+    If T > fDebugStats.MaxInterpFactor Then
+      fDebugStats.MaxInterpFactor := T;
     
     // Interpolate playing time
     fInterpolatedState.PlayingTime_ms := Round(
@@ -3017,6 +3037,9 @@ Begin
     
     fDebugStats.InterpolationFactor := T;
     fDebugStats.IsExtrapolating := True;
+    // Track MAX interpolation factor (extrapolation)
+    If T > fDebugStats.MaxInterpFactor Then
+      fDebugStats.MaxInterpFactor := T;
     
     // Extrapolate playing time smoothly
     fInterpolatedState.PlayingTime_ms := fServerSnapshots[NewSnapIndex].ServerTime_ms + Round(Extrapolation * 1000);
