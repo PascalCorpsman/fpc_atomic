@@ -88,6 +88,11 @@ Begin
   fHeight := 5 * 24;
   fOwner := Owner;
   Percent := 0;
+  // CRITICAL: Ensure OpenGL context is active before loading textures
+  // This is required because LoadGraphik uses glGenTextures and glTexImage2D
+  If Not Owner.MakeCurrent Then Begin
+    Raise Exception.Create('TLoaderDialog.Create: OpenGL context is not active');
+  End;
   // Use provided DataPath if available, otherwise fall back to old method
   If DataPath <> '' Then Begin
     p := IncludeTrailingPathDelimiter(DataPath) + 'res' + PathDelim + 'loaddialog.png';

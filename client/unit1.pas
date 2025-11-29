@@ -604,8 +604,17 @@ Begin
   // CRITICAL: On macOS, Game.Initialize must be called from OnIdle (after Application.Run starts)
   // This ensures OnPaint can be called during initialization to show the loading dialog
   If Not fGameInitialized And Initialized And Assigned(Game) Then Begin
+    // Ensure OpenGL context is active before initializing (required for texture loading)
+    // On macOS, context might not be ready immediately after Application.Run starts
+    If Not OpenGLControl1.MakeCurrent Then Begin
+      // Context not ready yet, try again next time
+      exit;
+    End;
     fGameInitialized := true; // Set flag first to prevent re-entry
+    // Initialize game - this will load textures and create loading dialog
+    // All texture loading happens here, so context must be active
     Game.initialize(OpenGLControl1);
+    // Process messages to allow OnPaint to render loading dialog
     Application.ProcessMessages;
   End;
   
