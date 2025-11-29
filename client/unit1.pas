@@ -110,6 +110,7 @@ Type
     fLastControlWidth, fLastControlHeight: Integer; // Track last control size to detect resize
     fLevelStartTime: int64; // Time when current level started (for elapsed time tracking)
     fLastPlayingTime_s: integer; // Last known playing time to detect level start
+    fGameInitialized: Boolean; // Flag to track if Game.Initialize has been called
     FWishFullscreen: Boolean;
     FAdjustingSize: Boolean;
 {$IFDEF AUTOMODE}
@@ -191,9 +192,10 @@ Begin
     // Der Anwendung erlauben zu Rendern.
     Initialized := True;
     OpenGLControl1Resize(Nil);
-    log('Calling Game.Initialize', llInfo);
-    Game.initialize(OpenGLControl1);
     Timer1.Enabled := true;
+    // NOTE: Game.Initialize is now called from Application.OnIdle
+    // This ensures Application.Run is active, so OnPaint can be called during initialization
+    fGameInitialized := false; // Will be set to true in OnIdle after Game.Initialize completes
   End;
   Form1.Invalidate;
 End;
@@ -209,9 +211,12 @@ Begin
    * Wenn das Passiert, bekommt der User eine Fehlermeldung die nicht stimmt.
    *
    * Zum Glück kann man das Abfangen in dem man hier den Timer1 abprüft und das so verhindert ;)
+   * 
+   * NOTE: Allow rendering during initialization to show loading dialog (critical on macOS)
    *)
   If Not Timer1.Enabled Then exit;
-  If Not Initialized Then Exit;
+  // Allow rendering loading dialog even if Initialized is false (during Game.Initialize)
+  If Not Initialized And (Not Assigned(Game) Or Not Assigned(Game.LoaderDialog) Or Game.IsInitialized) Then Exit;
   
   // Check if window size changed and update viewport if needed
   If (OpenGLControl1.ClientWidth <> fLastControlWidth) Or 
@@ -225,8 +230,14 @@ Begin
   glLoadIdentity();
   glcolor4f(1, 1, 1, 1);
   glBindTexture(GL_TEXTURE_2D, 0);
-  Game.Render();
-  If Game.Settings.ShowFPS Then Begin
+  // Render loading dialog during initialization, otherwise render game
+  If Assigned(Game) And Assigned(Game.LoaderDialog) And Not Game.IsInitialized Then Begin
+    // Render loading dialog directly during initialization (critical for macOS visibility)
+    Game.LoaderDialog.RenderDirect();
+  End Else If Assigned(Game) And Game.IsInitialized Then Begin
+    Game.Render();
+  End;
+  If Assigned(Game) And Game.IsInitialized And Game.Settings.ShowFPS Then Begin
     // Track level start time - detect when level begins (playing time resets to 0 or jumps up)
     If Assigned(Game) Then Begin
       CurrentPlayingTime := Game.PlayingTime_s;
@@ -354,6 +365,7 @@ Begin
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
   Form1ShowOnce := true;
   FAdjustingSize := false;
+  fGameInitialized := false; // Game.Initialize will be called from OnIdle
   FileloggingDir := '';
   AutoLogFile := '';
   ConfigDirUsed := '';
@@ -589,6 +601,14 @@ Var
   i, port: Integer;
   msg, ip: String;
 Begin
+  // CRITICAL: On macOS, Game.Initialize must be called from OnIdle (after Application.Run starts)
+  // This ensures OnPaint can be called during initialization to show the loading dialog
+  If Not fGameInitialized And Initialized And Assigned(Game) Then Begin
+    fGameInitialized := true; // Set flag first to prevent re-entry
+    Game.initialize(OpenGLControl1);
+    Application.ProcessMessages;
+  End;
+  
   // Process incoming network chunks from network thread
   If Assigned(Game) Then Begin
     Game.ChunkManager.ProcessIncomingChunks();

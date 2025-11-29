@@ -22,7 +22,8 @@ Interface
 
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
-  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick, usdl_gamecontroller;
+  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick, usdl_gamecontroller,
+  uloaderdialog;
 
 Type
   TUDPPingData = Record
@@ -88,6 +89,7 @@ Type
     fAtomics: TAtomics;
     fBackupSettings: TAtomicSettings; // Sind wir nicht der Master Spieler, dann müssen wir unsere Settings Sichern
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
+    fLoaderDialog: TLoaderDialog; // Reference to loading dialog during initialization
     fFields: Array Of TAtomicField;
     fScheme: TScheme;
 {$IFNDEF DebuggMode}
@@ -236,6 +238,8 @@ Type
     
     Property PlayingTime_s: Integer Read fPlayingTime_s;
     Property ChunkManager: TChunkManager Read fChunkManager; // For network thread access
+    Property LoaderDialog: TLoaderDialog Read fLoaderDialog; // For OnPaint to render loading dialog during initialization
+    Property IsInitialized: Boolean Read fInitialized; // Check if game is initialized
 
     Constructor Create();
     Destructor Destroy; override;
@@ -284,7 +288,6 @@ Uses dglopengl
   , sdl2
   , uip
   , uOpenGL_ASCII_Font
-  , uloaderdialog
   , uvectormath
   , LCLType
   , process
@@ -2700,6 +2703,7 @@ Begin
   log('Assets root: ' + p, llInfo);
   log('Data path: ' + fDataPath, llInfo);
   Loader := TLoaderDialog.create(Owner, fDataPath);
+  fLoaderDialog := Loader; // Store reference for OnPaint
   (*
    * Lade Prozente
    * 0..10 : Screens
@@ -2975,6 +2979,7 @@ Begin
   Loader.Percent := 100;
   Loader.Render(); // Als letztes kriegt der User zu sehen, dass wir fertig sind :-)
   Loader.free;
+  fLoaderDialog := Nil; // Clear reference after initialization
   fInitialized := true;
   SwitchToScreen(sMainScreen);
 {$IFDEF ShowInitTime}
