@@ -642,7 +642,10 @@ Begin
         End;
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
-            SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
+{$ENDIF}
+              SwitchToScreen(sMainScreen);
             KeyProcessed := true;
           End;
           If key = VK_P Then Begin
