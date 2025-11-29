@@ -401,8 +401,8 @@ Begin
   FlameEnd := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [20, 5, 10, 15]); // right, up, left, down
   If Not assigned(FlameEnd) Then exit;
   // FlameMiddle: 4 ranges for 4 directions, each with 5-frame animation
-  // Frame offsets: 35=right(0°), 25=up(90°), 40=left(180°), 30=down(270°)
-  FlameMiddle := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [35, 25, 40, 30]);
+  // Frame offsets: 40=right(0°), 30=up(90°), 35=left(180°), 25=down(270°) - swapped right/left and up/down
+  FlameMiddle := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [40, 30, 35, 25]);
   If Not assigned(FlameEnd) Then exit;
   If Not LoadDir(Path + 'idle' + PathDelim, fZenAnimations) Then exit;
   If Not LoadDir(Path + 'locked_in' + PathDelim, fLockedInAnimations) Then exit;
