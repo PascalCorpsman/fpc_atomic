@@ -503,8 +503,42 @@ End;
 Procedure TGame.ChangePlayerKey(PlayerIndex, Direction: Integer);
 Var
   m: TMemoryStream;
+  numJoy: Integer;
+  currentKeySet: TKeySet;
+  skipJoy1, skipJoy2: Boolean;
+  nextKeySet: TKeySet;
 Begin
   log('TGame.ChangePlayerKey', llTrace);
+  
+  // Check which joysticks are available
+  numJoy := 0;
+  skipJoy1 := false;
+  skipJoy2 := false;
+  try
+    If fsdl_Loaded And Assigned(SDL_NumJoysticks) Then Begin
+      numJoy := SDL_NumJoysticks();
+      // Joy 1 is available only if at least 1 joystick is detected
+      skipJoy1 := (numJoy < 1);
+      // Joy 2 is available only if at least 2 joysticks are detected
+      skipJoy2 := (numJoy < 2);
+    End
+    Else Begin
+      // SDL not loaded, skip both joysticks
+      skipJoy1 := true;
+      skipJoy2 := true;
+    End;
+  except
+    // On error, skip both joysticks
+    skipJoy1 := true;
+    skipJoy2 := true;
+  end;
+  
+  // If joysticks need to be skipped, we need to send multiple change requests
+  // to skip unavailable joysticks. But this is complex and could cause issues.
+  // Instead, we'll let the server cycle through all options, and the client
+  // will handle skipping unavailable joysticks in HandleRefreshPlayerStats.
+  // This is simpler and more reliable.
+  
   m := TMemoryStream.Create;
   m.Write(PlayerIndex, SizeOf(PlayerIndex));
   m.Write(Direction, SizeOf(Direction));
@@ -1217,43 +1251,12 @@ Begin
 End;
 
 Function TGame.GetKeySetDisplayName(Keys: TKeySet): String;
-Var
-  joyName: PAnsiChar;
-  joyIndex: Integer;
 begin
-	// Handle joystick-specific keysets - show name from detected joysticks
+	// Handle joystick-specific keysets - show just "Joy 1" or "Joy 2" without controller name
 	if keys = ksJoy1 then begin
-		if fsdl_Loaded and assigned(fsdlJoysticks[ksJoy1]) then begin
-			try
-				if Assigned(SDL_JoystickNameForIndex) then begin
-					joyIndex := 0; // ksJoy1 maps to joystick 0
-					joyName := SDL_JoystickNameForIndex(joyIndex);
-					if Assigned(joyName) then
-						exit('Joy 1 - ' + String(joyName))
-					else
-						exit('Joy 1');
-				end;
-			except
-				// Ignore errors
-			end;
-		end;
 		exit('Joy 1');
 	end;
 	if keys = ksJoy2 then begin
-		if fsdl_Loaded and assigned(fsdlJoysticks[ksJoy2]) then begin
-			try
-				if Assigned(SDL_JoystickNameForIndex) then begin
-					joyIndex := 1; // ksJoy2 maps to joystick 1
-					joyName := SDL_JoystickNameForIndex(joyIndex);
-					if Assigned(joyName) then
-						exit('Joy 2 - ' + String(joyName))
-					else
-						exit('Joy 2');
-				end;
-			except
-				// Ignore errors
-			end;
-		end;
 		exit('Joy 2');
 	end;
 	
@@ -1761,7 +1764,7 @@ End;
 
 Procedure TGame.HandleRefreshPlayerStats(Const Stream: TMemoryStream);
 Var
-  cnt, i, uid, j, index: integer;
+  cnt, i, uid, j, index, numJoy: integer;
   found: Boolean;
   k: TKeySet;
 Begin
@@ -1784,6 +1787,50 @@ Begin
     fPlayer[i].UID := uid;
     k := ks0;
     stream.Read(k, sizeof(k));
+    
+    // Check if selected joystick is available, if not, skip to next available option
+    numJoy := 0;
+    try
+      If fsdl_Loaded And Assigned(SDL_NumJoysticks) Then Begin
+        numJoy := SDL_NumJoysticks();
+      End;
+    except
+      numJoy := 0;
+    end;
+    
+    // If server set Joy 1 but no joysticks are available, skip to next option
+    If (k = ksJoy1) And (numJoy < 1) Then Begin
+      log(format('TGame.HandleRefreshPlayerStats: Player %d selected Joy 1 but no joysticks available, skipping to next option', [i]), llInfo);
+      // Skip to next option by sending another change request
+      If (uid = fUserID) And (fPlayer[i].UID = uid) Then Begin
+        // This is our player, send change request to skip unavailable joystick
+        ChangePlayerKey(i, 1);
+        // Don't process this update, wait for next refresh
+        LogLeave;
+        exit;
+      End
+      Else Begin
+        // Not our player, just set to Keyboard 1 as fallback
+        k := ks1;
+      End;
+    End
+    // If server set Joy 2 but only 0-1 joysticks are available, skip to next option
+    Else If (k = ksJoy2) And (numJoy < 2) Then Begin
+      log(format('TGame.HandleRefreshPlayerStats: Player %d selected Joy 2 but only %d joystick(s) available, skipping to next option', [i, numJoy]), llInfo);
+      // Skip to next option by sending another change request
+      If (uid = fUserID) And (fPlayer[i].UID = uid) Then Begin
+        // This is our player, send change request to skip unavailable joystick
+        ChangePlayerKey(i, 1);
+        // Don't process this update, wait for next refresh
+        LogLeave;
+        exit;
+      End
+      Else Begin
+        // Not our player, just set to Keyboard 1 as fallback
+        k := ks1;
+      End;
+    End;
+    
     // Reset UseSDL2 based on selected input type
     // If player selected keyboard (ks0 or ks1), disable SDL2 and close joystick
     // If player selected joystick (ksJoy1 or ksJoy2), enable SDL2

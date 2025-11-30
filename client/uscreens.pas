@@ -841,31 +841,37 @@ Begin
     AtomicFont.Textout(60 + 20, 37 + (i + 1) * 28 + 50, s);
   End;
   
-  // Display available joysticks on the right side
+  // Display available joysticks on the right side (moved left, formatted on multiple lines)
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
-  AtomicFont.Textout(400, 37 + 40, 'Available Joysticks:');
+  AtomicFont.Textout(300, 37 + 40, 'Available Joysticks:');
   try
     If Assigned(SDL_NumJoysticks) Then Begin
       numJoy := SDL_NumJoysticks();
       For joyIndex := 0 To numJoy - 1 Do Begin
         try
+          // Display "Joy X" on one line
+          s := format('Joy %d', [joyIndex + 1]);
+          AtomicFont.Textout(300 + 20, 37 + (joyIndex * 2 + 2) * 28 + 50, s);
+          // Display controller name on next line
           If Assigned(SDL_JoystickNameForIndex) Then Begin
             joyName := SDL_JoystickNameForIndex(joyIndex);
             If Assigned(joyName) Then Begin
-              s := format('Joy %d - %s', [joyIndex + 1, String(joyName)]);
+              s := String(joyName);
             End
             Else Begin
-              s := format('Joy %d - Unknown', [joyIndex + 1]);
+              s := 'Unknown';
             End;
           End
           Else Begin
-            s := format('Joy %d', [joyIndex + 1]);
+            s := 'Unknown';
           End;
+          AtomicFont.Textout(300 + 20, 37 + (joyIndex * 2 + 3) * 28 + 50, s);
         except
+          // On error, still show "Joy X"
           s := format('Joy %d', [joyIndex + 1]);
+          AtomicFont.Textout(300 + 20, 37 + (joyIndex * 2 + 2) * 28 + 50, s);
         end;
-        AtomicFont.Textout(400 + 20, 37 + (joyIndex + 1) * 28 + 50, s);
       End;
     End;
   except
