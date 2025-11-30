@@ -1260,8 +1260,8 @@ begin
 		exit('Joy 2');
 	end;
 	
-	// Keyboard labels - always show as keyboard, never as "Game Controller"
-	if keys = ks0 then exit('Keyboard 0') else exit('Keyboard 1');
+	// Keyboard labels - shortened to "Key 0" and "Key 1" for consistency with "Joy 1" and "Joy 2"
+	if keys = ks0 then exit('Key 0') else exit('Key 1');
 end;
 
 Function TGame.GetServerIPAddress(): String;

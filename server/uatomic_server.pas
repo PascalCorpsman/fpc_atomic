@@ -144,7 +144,7 @@ Type
 
 Implementation
 
-Uses FileUtil, LazUTF8, LazFileUtils, uvectormath, math, IniFiles, uai;
+Uses FileUtil, LazUTF8, LazFileUtils, uvectormath, math, IniFiles, uai, uip;
 
 { Helper function to resolve data directory path }
 
@@ -202,6 +202,9 @@ Constructor TServer.Create(Port, AutoTimeOut: Integer);
 Var
   sl: TStringList;
   i: Integer;
+  adapters: TNetworkAdapterList;
+  serverIP: String;
+  j: Integer;
 Begin
   log('TServer.create', lltrace);
   Inherited create;
@@ -246,6 +249,7 @@ Begin
   setlength(fFields, high(fFields) + 2);
   fFields[high(fFields)] := TAtomicRandomField.Create(Nil, Nil); // Die initialisiert sich bereits richtig ;)
   LoadAi();
+  
   If Not fUDP.Listen(UDPPingPort) Then Begin
     log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
     LogLeave;
