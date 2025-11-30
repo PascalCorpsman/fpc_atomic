@@ -779,107 +779,184 @@ End;
 
 Procedure TServer.HandleChangePlayerKey(PlayerIndex, Direction: Integer;
   PlayerName: String; UID: Integer);
+  
+  // Helper function to get next input method in cycle
+  Function GetNextKeySet(Current: TKeySet; IsMaster: Boolean): TKeySet;
+  Begin
+    Case Current Of
+      ks0: result := ks1;
+      ks1: result := ksJoy1;
+      ksJoy1: result := ksJoy2;
+      ksJoy2: Begin
+          If IsMaster Then Begin
+            result := ks0; // Will be set to AI, this is just a placeholder
+          End
+          Else Begin
+            result := ks0; // Will be set to NoPlayer, this is just a placeholder
+          End;
+        End;
+    Else
+      result := ks0;
+    End;
+  End;
+  
+  // Helper function to get previous input method in cycle
+  Function GetPrevKeySet(Current: TKeySet; IsMaster: Boolean): TKeySet;
+  Begin
+    Case Current Of
+      ks0: Begin
+          If IsMaster Then Begin
+            result := ksJoy2; // Will be set to AI, this is just a placeholder
+          End
+          Else Begin
+            result := ksJoy2; // Will be set to NoPlayer, this is just a placeholder
+          End;
+        End;
+      ks1: result := ks0;
+      ksJoy1: result := ks1;
+      ksJoy2: result := ksJoy1;
+    Else
+      result := ks0;
+    End;
+  End;
+  
 Begin
   log(format('TServer.HandleChangePlayerKey (%d, %d, %s)', [PlayerIndex, Direction, PlayerName]), llTrace);
   If (PlayerIndex = -1) Or (Direction = 0) Or (UID = 0) Then Begin
     LogLeave;
     exit;
   End;
+  
+  // Master cycle: Off -> Keyboard 0 -> Keyboard 1 -> Joy 1 -> Joy 2 -> AI -> Off
+  // Non-Master cycle: Off -> Keyboard 0 -> Keyboard 1 -> Joy 1 -> Joy 2 -> Off
+  
   If Direction > 0 Then Begin
+    // Forward cycle
     If UID = fSettings.MasterUid Then Begin
+      // Master player
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> Keyboard 0
         fPLayer[PlayerIndex].UID := UID;
         fPLayer[PlayerIndex].Keyboard := ks0;
         fPLayer[PlayerIndex].UserName := PlayerName;
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = uid Then Begin
-          If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
-            fPLayer[PlayerIndex].Keyboard := ks1;
-          End
-          Else Begin
-            fPLayer[PlayerIndex].UID := AIPlayer;
-            fPLayer[PlayerIndex].UserName := '';
-          End;
-          RefreshAllPlayerStats(0);
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle through input methods
+        If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks1;
         End
-        Else Begin
-          If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
-            fPLayer[PlayerIndex].UID := NoPlayer;
-            fPLayer[PlayerIndex].UserName := '';
-            RefreshAllPlayerStats(0);
-          End;
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy2;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          // Joy 2 -> AI
+          fPLayer[PlayerIndex].UID := AIPlayer;
+          fPLayer[PlayerIndex].UserName := '';
         End;
+        RefreshAllPlayerStats(0);
+      End
+      Else If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
+        // AI -> Off
+        fPLayer[PlayerIndex].UID := NoPlayer;
+        fPLayer[PlayerIndex].UserName := '';
+        RefreshAllPlayerStats(0);
       End;
     End
     Else Begin
+      // Non-Master player
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> Keyboard 0
         fPLayer[PlayerIndex].UID := UID;
         fPLayer[PlayerIndex].Keyboard := ks0;
         fPLayer[PlayerIndex].UserName := PlayerName;
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = UID Then Begin
-          If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
-            fPLayer[PlayerIndex].Keyboard := ks1;
-          End
-          Else Begin
-            fPLayer[PlayerIndex].UID := NoPlayer;
-            fPLayer[PlayerIndex].UserName := '';
-          End;
-          RefreshAllPlayerStats(0);
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle through input methods
+        If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy2;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          // Joy 2 -> Off
+          fPLayer[PlayerIndex].UID := NoPlayer;
+          fPLayer[PlayerIndex].UserName := '';
         End;
+        RefreshAllPlayerStats(0);
       End;
     End;
   End
   Else Begin
+    // Backward cycle
     If UID = fSettings.MasterUid Then Begin
+      // Master player
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> AI
         fPLayer[PlayerIndex].UID := AIPlayer;
         fPLayer[PlayerIndex].UserName := '';
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
-          fPLayer[PlayerIndex].UID := UID;
-          fPLayer[PlayerIndex].Keyboard := ks1;
-          fPLayer[PlayerIndex].UserName := PlayerName;
-          RefreshAllPlayerStats(0);
-        End
-        Else Begin
-          If fPLayer[PlayerIndex].UID = UID Then Begin
-            If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
-              fPLayer[PlayerIndex].Keyboard := ks0;
-            End
-            Else Begin
-              fPLayer[PlayerIndex].UID := NoPlayer;
-              fPLayer[PlayerIndex].UserName := '';
-            End;
-            RefreshAllPlayerStats(0);
-          End;
-        End;
-      End;
-    End
-    Else Begin
-      If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+      Else If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
+        // AI -> Joy 2
         fPLayer[PlayerIndex].UID := UID;
-        fPLayer[PlayerIndex].Keyboard := ks1;
+        fPLayer[PlayerIndex].Keyboard := ksJoy2;
         fPLayer[PlayerIndex].UserName := PlayerName;
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = UID Then Begin
-          If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
-            fPLayer[PlayerIndex].Keyboard := ks0;
-          End
-          Else Begin
-            fPLayer[PlayerIndex].UID := NoPlayer;
-            fPLayer[PlayerIndex].UserName := '';
-          End;
-          RefreshAllPlayerStats(0);
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle backwards through input methods
+        If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks0;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+          // Keyboard 0 -> Off
+          fPLayer[PlayerIndex].UID := NoPlayer;
+          fPLayer[PlayerIndex].UserName := '';
         End;
+        RefreshAllPlayerStats(0);
+      End;
+    End
+    Else Begin
+      // Non-Master player
+      If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> Joy 2
+        fPLayer[PlayerIndex].UID := UID;
+        fPLayer[PlayerIndex].Keyboard := ksJoy2;
+        fPLayer[PlayerIndex].UserName := PlayerName;
+        RefreshAllPlayerStats(0);
+      End
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle backwards through input methods
+        If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks0;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+          // Keyboard 0 -> Off
+          fPLayer[PlayerIndex].UID := NoPlayer;
+          fPLayer[PlayerIndex].UserName := '';
+        End;
+        RefreshAllPlayerStats(0);
       End;
     End;
   End;

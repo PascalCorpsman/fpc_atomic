@@ -529,6 +529,8 @@ Type
   TKeySet = (
     ks0 // Keyboard 0
     , ks1 // Keyboard 1
+    , ksJoy1 // Joystick 1
+    , ksJoy2 // Joystick 2
     );
 
   TPlayer = Record

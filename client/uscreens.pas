@@ -230,6 +230,7 @@ Uses LCLType, Math, Graphics, Dialogs, forms, StdCtrls, fileutil, StrUtils
   , ugame
   , ukeyboarddialog
   , uip // For GetLocalIPs() to get server IP address
+  , sdl2 // For SDL joystick functions
   ;
 
 Type
@@ -782,7 +783,7 @@ Begin
    * Siehe TPlayer.UID
    *)
   For i := 0 To high(fPlayerDetails) Do Begin
-    // Always show the input method label for ks0/ks1; OFF/AI for special states
+    // Always show the input method label for ks0/ks1/ksJoy1/ksJoy2; OFF/AI for special states
     If PlayerData[i].UID = NoPlayer Then Begin
       fPlayerDetails[i].PlayerData := 'OFF';
     End
@@ -790,13 +791,8 @@ Begin
       fPlayerDetails[i].PlayerData := 'AI';
     End
     Else Begin
-      // Player assigned; display the control mapping label (keyboard or game controller)
-      If PlayerData[i].Keyboard = ks0 Then Begin
-        fPlayerDetails[i].PlayerData := TGame(fOwner).GetKeySetDisplayName(ks0);
-      End
-      Else Begin
-        fPlayerDetails[i].PlayerData := TGame(fOwner).GetKeySetDisplayName(ks1);
-      End;
+      // Player assigned; display the control mapping label (keyboard, game controller, or joystick)
+      fPlayerDetails[i].PlayerData := TGame(fOwner).GetKeySetDisplayName(PlayerData[i].Keyboard);
     End;
   End;
 End;
@@ -809,8 +805,9 @@ End;
 
 Procedure TPlayerSetupMenu.Render;
 Var
-  i: Integer;
+  i, numJoy, joyIndex: Integer;
   s: String;
+  joyName: PAnsiChar;
 Begin
   Inherited Render;
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -843,6 +840,38 @@ Begin
     s := format('              %s', [fPlayerDetails[i].PlayerData]);
     AtomicFont.Textout(60 + 20, 37 + (i + 1) * 28 + 50, s);
   End;
+  
+  // Display available joysticks on the right side
+  AtomicFont.Color := clwhite;
+  AtomicFont.BackColor := clBlack;
+  AtomicFont.Textout(400, 37 + 40, 'Available Joysticks:');
+  try
+    If Assigned(SDL_NumJoysticks) Then Begin
+      numJoy := SDL_NumJoysticks();
+      For joyIndex := 0 To numJoy - 1 Do Begin
+        try
+          If Assigned(SDL_JoystickNameForIndex) Then Begin
+            joyName := SDL_JoystickNameForIndex(joyIndex);
+            If Assigned(joyName) Then Begin
+              s := format('Joy %d - %s', [joyIndex + 1, String(joyName)]);
+            End
+            Else Begin
+              s := format('Joy %d - Unknown', [joyIndex + 1]);
+            End;
+          End
+          Else Begin
+            s := format('Joy %d', [joyIndex + 1]);
+          End;
+        except
+          s := format('Joy %d', [joyIndex + 1]);
+        end;
+        AtomicFont.Textout(400 + 20, 37 + (joyIndex + 1) * 28 + 50, s);
+      End;
+    End;
+  except
+    // SDL not loaded or error, don't display joysticks
+  end;
+  
   // Reset am ende
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;

@@ -758,6 +758,8 @@ Begin
   If fgameState = gs_Gaming Then Begin
     If fPlayerIndex[ks0] <> -1 Then CheckKeyUp(Key, ks0);
     If fPlayerIndex[ks1] <> -1 Then CheckKeyUp(key, ks1);
+    If fPlayerIndex[ksJoy1] <> -1 Then CheckKeyUp(key, ksJoy1);
+    If fPlayerIndex[ksJoy2] <> -1 Then CheckKeyUp(key, ksJoy2);
   End;
   If assigned(FOnKeyUpCapture) Then Begin
     FOnKeyUpCapture(sender, key, shift);
@@ -869,7 +871,9 @@ Procedure TGame.CheckSDLKeys();
 Begin
   If Not fsdl_Loaded Then exit;
   // If neither joystick is present and UseSDL2 not configured, nothing to do
-  If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then exit;
+  // Check all possible keysets that might use SDL
+  If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2 Or 
+          Settings.Keys[ksJoy1].UseSDL2 Or Settings.Keys[ksJoy2].UseSDL2) Then exit;
   
   // If we're blocking input until buttons are released, skip input processing
   If fBlockGameInputUntilRelease Then Begin
@@ -880,11 +884,50 @@ Begin
 
   CheckKeys(ks0);
   CheckKeys(ks1);
+  CheckKeys(ksJoy1);
+  CheckKeys(ksJoy2);
 End;
 
 Procedure TGame.ReadCurrentButtonState(var up, down, left, right, buttonA, buttonB: Boolean);
-Var
-  d: Integer;
+  
+  Procedure CheckJoystick(Keys: TKeySet);
+  Var
+    d: Integer;
+  Begin
+    If Not Assigned(fsdlJoysticks[Keys]) Then exit;
+    try
+      // Check analog stick
+      d := fsdlJoysticks[Keys].Axis[1]; // Y axis
+      if d < -12000 then up := true;
+      if d > 12000 then down := true;
+      d := fsdlJoysticks[Keys].Axis[0]; // X axis
+      if d < -12000 then left := true;
+      if d > 12000 then right := true;
+      
+      // Check D-pad buttons (DualSense style)
+      if fsdlJoysticks[Keys].ButtonCount > 14 then begin
+        if fsdlJoysticks[Keys].Button[11] then up := true;
+        if fsdlJoysticks[Keys].Button[12] then down := true;
+        if fsdlJoysticks[Keys].Button[13] then left := true;
+        if fsdlJoysticks[Keys].Button[14] then right := true;
+      end;
+      // Check HAT (classic joysticks)
+      if fsdlJoysticks[Keys].HatCount > 0 then begin
+        d := fsdlJoysticks[Keys].Hat[0];
+        if (d and SDL_HAT_UP) <> 0 then up := true;
+        if (d and SDL_HAT_DOWN) <> 0 then down := true;
+        if (d and SDL_HAT_LEFT) <> 0 then left := true;
+        if (d and SDL_HAT_RIGHT) <> 0 then right := true;
+      end;
+      
+      // Buttons: X = button 0 (Enter), Circle = button 1 (Esc)
+      if fsdlJoysticks[Keys].ButtonCount > 0 then buttonA := fsdlJoysticks[Keys].Button[0];
+      if fsdlJoysticks[Keys].ButtonCount > 1 then buttonB := fsdlJoysticks[Keys].Button[1];
+    except
+      // Ignore errors
+    end;
+  End;
+  
 Begin
   up := false;
   down := false;
@@ -893,40 +936,11 @@ Begin
   buttonA := false;
   buttonB := false;
   
-  try
-    // Try ks0 first
-    if Assigned(fsdlJoysticks[ks0]) then begin
-      // Check analog stick
-      d := fsdlJoysticks[ks0].Axis[1]; // Y axis
-      if d < -12000 then up := true;
-      if d > 12000 then down := true;
-      d := fsdlJoysticks[ks0].Axis[0]; // X axis
-      if d < -12000 then left := true;
-      if d > 12000 then right := true;
-      
-      // Check D-pad buttons (DualSense style)
-      if fsdlJoysticks[ks0].ButtonCount > 14 then begin
-        if fsdlJoysticks[ks0].Button[11] then up := true;
-        if fsdlJoysticks[ks0].Button[12] then down := true;
-        if fsdlJoysticks[ks0].Button[13] then left := true;
-        if fsdlJoysticks[ks0].Button[14] then right := true;
-      end;
-      // Check HAT (classic joysticks)
-      if fsdlJoysticks[ks0].HatCount > 0 then begin
-        d := fsdlJoysticks[ks0].Hat[0];
-        if (d and SDL_HAT_UP) <> 0 then up := true;
-        if (d and SDL_HAT_DOWN) <> 0 then down := true;
-        if (d and SDL_HAT_LEFT) <> 0 then left := true;
-        if (d and SDL_HAT_RIGHT) <> 0 then right := true;
-      end;
-      
-      // Buttons: X = button 0 (Enter), Circle = button 1 (Esc)
-      if fsdlJoysticks[ks0].ButtonCount > 0 then buttonA := fsdlJoysticks[ks0].Button[0];
-      if fsdlJoysticks[ks0].ButtonCount > 1 then buttonB := fsdlJoysticks[ks0].Button[1];
-    end;
-  except
-    // Ignore errors
-  end;
+  // Check all possible joysticks - first available one wins
+  CheckJoystick(ks0);
+  CheckJoystick(ks1);
+  CheckJoystick(ksJoy1);
+  CheckJoystick(ksJoy2);
 End;
 
 Function TGame.AreAllGamepadButtonsReleased(): Boolean;
@@ -957,8 +971,9 @@ Begin
     exit;
   End;
   
-  // Check if any joystick is available
-  If Not (Assigned(fsdlJoysticks[ks0]) Or Assigned(fsdlJoysticks[ks1])) Then exit;
+  // Check if any joystick is available (check all possible keysets)
+  If Not (Assigned(fsdlJoysticks[ks0]) Or Assigned(fsdlJoysticks[ks1]) Or 
+          Assigned(fsdlJoysticks[ksJoy1]) Or Assigned(fsdlJoysticks[ksJoy2])) Then exit;
   
   // Read D-pad and button state from first available controller
   ReadCurrentButtonState(up, down, left, right, buttonA, buttonB);
@@ -1013,6 +1028,8 @@ begin
   result := 0;
   if Assigned(fsdlJoysticks[ks0]) then inc(result);
   if Assigned(fsdlJoysticks[ks1]) then inc(result);
+  if Assigned(fsdlJoysticks[ksJoy1]) then inc(result);
+  if Assigned(fsdlJoysticks[ksJoy2]) then inc(result);
 end;
 
 Procedure TGame.ReinitControllersWithLogs();
@@ -1056,6 +1073,14 @@ Begin
     fsdlJoysticks[ks1].Free;
     fsdlJoysticks[ks1] := Nil;
   End;
+  If assigned(fsdlJoysticks[ksJoy1]) Then Begin
+    fsdlJoysticks[ksJoy1].Free;
+    fsdlJoysticks[ksJoy1] := Nil;
+  End;
+  If assigned(fsdlJoysticks[ksJoy2]) Then Begin
+    fsdlJoysticks[ksJoy2].Free;
+    fsdlJoysticks[ksJoy2] := Nil;
+  End;
   If assigned(fsdlControllers[ks0]) Then Begin
     fsdlControllers[ks0].Free;
     fsdlControllers[ks0] := Nil;
@@ -1064,9 +1089,19 @@ Begin
     fsdlControllers[ks1].Free;
     fsdlControllers[ks1] := Nil;
   End;
+  If assigned(fsdlControllers[ksJoy1]) Then Begin
+    fsdlControllers[ksJoy1].Free;
+    fsdlControllers[ksJoy1] := Nil;
+  End;
+  If assigned(fsdlControllers[ksJoy2]) Then Begin
+    fsdlControllers[ksJoy2].Free;
+    fsdlControllers[ksJoy2] := Nil;
+  End;
   // Reset logging flags
   fControllerLogged[ks0] := false;
   fControllerLogged[ks1] := false;
+  fControllerLogged[ksJoy1] := false;
+  fControllerLogged[ksJoy2] := false;
   
   If fsdl_Loaded Then Begin
     // Try to detect and configure joystick-based controls (SDL_Joystick + existing mapping)
@@ -1078,57 +1113,63 @@ Begin
       numJoy := 0;
     end;
     
-    // Auto-configure ks0/ks1 to use first/second joystick via existing SDL2 joystick mapping
+    // Auto-configure ksJoy1/ksJoy2 to use first/second joystick
+    // Note: We do NOT auto-configure ks0/ks1 anymore - they remain as keyboard inputs
+    // Users can manually select Joy 1 or Joy 2 in the player setup menu
+    // Always configure ksJoy1 and ksJoy2 so they're available for selection
     if numJoy > 0 then begin
-      // Configure Keyboard 0 (ks0) to use joystick 0
-      Settings.Keys[ks0].UseSDL2 := true;
-      // Defensive: SDL_JoystickNameForIndex can return nil
-      try
-        if SDL_JoystickNameForIndex(0) <> nil then
-          Settings.Keys[ks0].Name := SDL_JoystickNameForIndex(0)
-        else
-          Settings.Keys[ks0].Name := '';
-      except
-        Settings.Keys[ks0].Name := '';
+      // Configure Joy 1 (ksJoy1) to use joystick 0
+      // Only set UseSDL2 if not already configured (preserve user settings)
+      if not Settings.Keys[ksJoy1].UseSDL2 then begin
+        Settings.Keys[ksJoy1].UseSDL2 := true;
+        try
+          if SDL_JoystickNameForIndex(0) <> nil then
+            Settings.Keys[ksJoy1].Name := SDL_JoystickNameForIndex(0)
+          else
+            Settings.Keys[ksJoy1].Name := '';
+        except
+          Settings.Keys[ksJoy1].Name := '';
+        end;
+        Settings.Keys[ksJoy1].NameIndex := 0;
+        Settings.Keys[ksJoy1].AchsisIndex[0] := 1;
+        Settings.Keys[ksJoy1].AchsisIdle[0] := 0;
+        Settings.Keys[ksJoy1].AchsisDirection[0] := 1;
+        Settings.Keys[ksJoy1].AchsisIndex[1] := 0;
+        Settings.Keys[ksJoy1].AchsisIdle[1] := 0;
+        Settings.Keys[ksJoy1].AchsisDirection[1] := 1;
+        Settings.Keys[ksJoy1].ButtonIndex[0] := 0;
+        Settings.Keys[ksJoy1].ButtonsIdle[0] := false;
+        Settings.Keys[ksJoy1].ButtonIndex[1] := 2;
+        Settings.Keys[ksJoy1].ButtonsIdle[1] := false;
+        log(format('TGame.ReinitControllersWithLogs: Auto-configured joystick 0 (%s) for ksJoy1', [Settings.Keys[ksJoy1].Name]), llInfo);
       end;
-      Settings.Keys[ks0].NameIndex := 0;
-      // Axes: 1 = Up/Down (Y), 0 = Left/Right (X)
-      Settings.Keys[ks0].AchsisIndex[0] := 1;
-      Settings.Keys[ks0].AchsisIdle[0] := 0;
-      Settings.Keys[ks0].AchsisDirection[0] := 1;  // positive = up when axis < idle
-      Settings.Keys[ks0].AchsisIndex[1] := 0;
-      Settings.Keys[ks0].AchsisIdle[1] := 0;
-      Settings.Keys[ks0].AchsisDirection[1] := 1;  // positive = left when axis < idle
-      // Buttons: primary = button 0 (X / A), secondary = button 2 (Square / X)
-      Settings.Keys[ks0].ButtonIndex[0] := 0;
-      Settings.Keys[ks0].ButtonsIdle[0] := false;
-      Settings.Keys[ks0].ButtonIndex[1] := 2;
-      Settings.Keys[ks0].ButtonsIdle[1] := false;
-      log(format('TGame.ReinitControllersWithLogs: Auto-configured joystick 0 (%s) for ks0', [Settings.Keys[ks0].Name]), llInfo);
     end;
     if numJoy > 1 then begin
-      // Configure Keyboard 1 (ks1) to use joystick 1
-      Settings.Keys[ks1].UseSDL2 := true;
-      try
-        if SDL_JoystickNameForIndex(1) <> nil then
-          Settings.Keys[ks1].Name := SDL_JoystickNameForIndex(1)
-        else
-          Settings.Keys[ks1].Name := '';
-      except
-        Settings.Keys[ks1].Name := '';
+      // Configure Joy 2 (ksJoy2) to use joystick 1
+      // Only set UseSDL2 if not already configured (preserve user settings)
+      if not Settings.Keys[ksJoy2].UseSDL2 then begin
+        Settings.Keys[ksJoy2].UseSDL2 := true;
+        try
+          if SDL_JoystickNameForIndex(1) <> nil then
+            Settings.Keys[ksJoy2].Name := SDL_JoystickNameForIndex(1)
+          else
+            Settings.Keys[ksJoy2].Name := '';
+        except
+          Settings.Keys[ksJoy2].Name := '';
+        end;
+        Settings.Keys[ksJoy2].NameIndex := 0;
+        Settings.Keys[ksJoy2].AchsisIndex[0] := 1;
+        Settings.Keys[ksJoy2].AchsisIdle[0] := 0;
+        Settings.Keys[ksJoy2].AchsisDirection[0] := 1;
+        Settings.Keys[ksJoy2].AchsisIndex[1] := 0;
+        Settings.Keys[ksJoy2].AchsisIdle[1] := 0;
+        Settings.Keys[ksJoy2].AchsisDirection[1] := 1;
+        Settings.Keys[ksJoy2].ButtonIndex[0] := 0;
+        Settings.Keys[ksJoy2].ButtonsIdle[0] := false;
+        Settings.Keys[ksJoy2].ButtonIndex[1] := 2;
+        Settings.Keys[ksJoy2].ButtonsIdle[1] := false;
+        log(format('TGame.ReinitControllersWithLogs: Auto-configured joystick 1 (%s) for ksJoy2', [Settings.Keys[ksJoy2].Name]), llInfo);
       end;
-      Settings.Keys[ks1].NameIndex := 0;
-      Settings.Keys[ks1].AchsisIndex[0] := 1;
-      Settings.Keys[ks1].AchsisIdle[0] := 0;
-      Settings.Keys[ks1].AchsisDirection[0] := 1;
-      Settings.Keys[ks1].AchsisIndex[1] := 0;
-      Settings.Keys[ks1].AchsisIdle[1] := 0;
-      Settings.Keys[ks1].AchsisDirection[1] := 1;
-      Settings.Keys[ks1].ButtonIndex[0] := 0;
-      Settings.Keys[ks1].ButtonsIdle[0] := false;
-      Settings.Keys[ks1].ButtonIndex[1] := 2;
-      Settings.Keys[ks1].ButtonsIdle[1] := false;
-      log(format('TGame.ReinitControllersWithLogs: Auto-configured joystick 1 (%s) for ks1', [Settings.Keys[ks1].Name]), llInfo);
     end;
 
     // Open legacy joystick instances according to configured names
@@ -1150,6 +1191,24 @@ Begin
           [fsdlJoysticks[ks1].AxisCount, fsdlJoysticks[ks1].ButtonCount, fsdlJoysticks[ks1].HatCount]), llInfo);
       End;
     End;
+    If Settings.Keys[ksJoy1].UseSDL2 Then Begin
+      index := ResolveJoystickNameToIndex(Settings.Keys[ksJoy1].Name, Settings.Keys[ksJoy1].NameIndex);
+      If index <> -1 Then Begin
+        log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ksJoy1 at index %d', [index]), llInfo);
+        fsdlJoysticks[ksJoy1] := TSDL_Joystick.Create(index);
+        log(format('TGame.ReinitControllersWithLogs: ksJoy1 joystick: Axes=%d, Buttons=%d, Hats=%d', 
+          [fsdlJoysticks[ksJoy1].AxisCount, fsdlJoysticks[ksJoy1].ButtonCount, fsdlJoysticks[ksJoy1].HatCount]), llInfo);
+      End;
+    End;
+    If Settings.Keys[ksJoy2].UseSDL2 Then Begin
+      index := ResolveJoystickNameToIndex(Settings.Keys[ksJoy2].Name, Settings.Keys[ksJoy2].NameIndex);
+      If index <> -1 Then Begin
+        log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ksJoy2 at index %d', [index]), llInfo);
+        fsdlJoysticks[ksJoy2] := TSDL_Joystick.Create(index);
+        log(format('TGame.ReinitControllersWithLogs: ksJoy2 joystick: Axes=%d, Buttons=%d, Hats=%d', 
+          [fsdlJoysticks[ksJoy2].AxisCount, fsdlJoysticks[ksJoy2].ButtonCount, fsdlJoysticks[ksJoy2].HatCount]), llInfo);
+      End;
+    End;
     
     log(format('TGame.ReinitControllersWithLogs: Final state - Controller count (joysticks) = %d', [GetControllerCount()]), llInfo);
   End Else Begin
@@ -1158,16 +1217,47 @@ Begin
 End;
 
 Function TGame.GetKeySetDisplayName(Keys: TKeySet): String;
+Var
+  joyName: PAnsiChar;
+  joyIndex: Integer;
 begin
-	// If SDL is loaded and joysticks detected, show Game Controller label
-	if fsdl_Loaded and assigned(fsdlJoysticks[keys]) then begin
-		if SDL_NumJoysticks() > 1 then begin
-			if keys = ks0 then exit('Game Controller 0') else exit('Game Controller 1');
-		end else begin
-			exit('Game Controller');
+	// Handle joystick-specific keysets - show name from detected joysticks
+	if keys = ksJoy1 then begin
+		if fsdl_Loaded and assigned(fsdlJoysticks[ksJoy1]) then begin
+			try
+				if Assigned(SDL_JoystickNameForIndex) then begin
+					joyIndex := 0; // ksJoy1 maps to joystick 0
+					joyName := SDL_JoystickNameForIndex(joyIndex);
+					if Assigned(joyName) then
+						exit('Joy 1 - ' + String(joyName))
+					else
+						exit('Joy 1');
+				end;
+			except
+				// Ignore errors
+			end;
 		end;
+		exit('Joy 1');
 	end;
-	// Fallback to keyboard labels
+	if keys = ksJoy2 then begin
+		if fsdl_Loaded and assigned(fsdlJoysticks[ksJoy2]) then begin
+			try
+				if Assigned(SDL_JoystickNameForIndex) then begin
+					joyIndex := 1; // ksJoy2 maps to joystick 1
+					joyName := SDL_JoystickNameForIndex(joyIndex);
+					if Assigned(joyName) then
+						exit('Joy 2 - ' + String(joyName))
+					else
+						exit('Joy 2');
+				end;
+			except
+				// Ignore errors
+			end;
+		end;
+		exit('Joy 2');
+	end;
+	
+	// Keyboard labels - always show as keyboard, never as "Game Controller"
 	if keys = ks0 then exit('Keyboard 0') else exit('Keyboard 1');
 end;
 
@@ -1671,7 +1761,7 @@ End;
 
 Procedure TGame.HandleRefreshPlayerStats(Const Stream: TMemoryStream);
 Var
-  cnt, i, uid, j: integer;
+  cnt, i, uid, j, index: integer;
   found: Boolean;
   k: TKeySet;
 Begin
@@ -1694,6 +1784,52 @@ Begin
     fPlayer[i].UID := uid;
     k := ks0;
     stream.Read(k, sizeof(k));
+    // Reset UseSDL2 based on selected input type
+    // If player selected keyboard (ks0 or ks1), disable SDL2 and close joystick
+    // If player selected joystick (ksJoy1 or ksJoy2), enable SDL2
+    If (k = ks0) Or (k = ks1) Then Begin
+      // Keyboard input selected - disable SDL2 and close joystick
+      If Settings.Keys[k].UseSDL2 Then Begin
+        log(format('TGame.HandleRefreshPlayerStats: Player %d selected keyboard (%s), disabling SDL2', [i, GetKeySetDisplayName(k)]), llInfo);
+        Settings.Keys[k].UseSDL2 := false;
+        // Close joystick if open
+        If assigned(fsdlJoysticks[k]) Then Begin
+          fsdlJoysticks[k].Free;
+          fsdlJoysticks[k] := Nil;
+        End;
+        If assigned(fsdlControllers[k]) Then Begin
+          fsdlControllers[k].Free;
+          fsdlControllers[k] := Nil;
+        End;
+      End;
+    End Else If (k = ksJoy1) Or (k = ksJoy2) Then Begin
+      // Joystick input selected - ensure SDL2 is enabled
+      If Not Settings.Keys[k].UseSDL2 Then Begin
+        log(format('TGame.HandleRefreshPlayerStats: Player %d selected joystick (%s), enabling SDL2', [i, GetKeySetDisplayName(k)]), llInfo);
+        Settings.Keys[k].UseSDL2 := true;
+        // Open joystick if not already open (preserve existing mapping)
+        If Not assigned(fsdlJoysticks[k]) And fsdl_Loaded Then Begin
+          index := ResolveJoystickNameToIndex(Settings.Keys[k].Name, Settings.Keys[k].NameIndex);
+          If index <> -1 Then Begin
+            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at index %d', [GetKeySetDisplayName(k), index]), llInfo);
+            fsdlJoysticks[k] := TSDL_Joystick.Create(index);
+            log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
+              [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+          End;
+        End;
+      End Else Begin
+        // SDL2 already enabled, but make sure joystick is open
+        If Not assigned(fsdlJoysticks[k]) And fsdl_Loaded Then Begin
+          index := ResolveJoystickNameToIndex(Settings.Keys[k].Name, Settings.Keys[k].NameIndex);
+          If index <> -1 Then Begin
+            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at index %d (was already configured)', [GetKeySetDisplayName(k), index]), llInfo);
+            fsdlJoysticks[k] := TSDL_Joystick.Create(index);
+            log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
+              [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+          End;
+        End;
+      End;
+    End;
     fPlayer[i].Keyboard := k;
     j := -1;
     stream.Read(j, SizeOf(j));
@@ -1861,6 +1997,8 @@ Begin
   fHurry.Enabled := false;
   fPlayerIndex[ks0] := -1;
   fPlayerIndex[ks1] := -1;
+  fPlayerIndex[ksJoy1] := -1;
+  fPlayerIndex[ksJoy2] := -1;
   For i := 0 To high(fPlayer) Do Begin
     (*
      * Löschen der ggf. vorherigen Die Animation, sonst beginnt der Spieler das Spiel erst mal sterbend...
@@ -2026,6 +2164,8 @@ Begin
     For ak In TAtomicKey Do Begin
       If fPlayerIndex[ks0] <> -1 Then fPlayer[fPlayerIndex[ks0]].KeysPressed[ak] := false;
       If fPlayerIndex[ks1] <> -1 Then fPlayer[fPlayerIndex[ks1]].KeysPressed[ak] := false;
+      If fPlayerIndex[ksJoy1] <> -1 Then fPlayer[fPlayerIndex[ksJoy1]].KeysPressed[ak] := false;
+      If fPlayerIndex[ksJoy2] <> -1 Then fPlayer[fPlayerIndex[ksJoy2]].KeysPressed[ak] := false;
     End;
   End;
 End;
@@ -2585,6 +2725,8 @@ Begin
   fNeedDisconnect := false;
   fPlayerIndex[ks0] := -1;
   fPlayerIndex[ks1] := -1;
+  fPlayerIndex[ksJoy1] := -1;
+  fPlayerIndex[ksJoy2] := -1;
   fInitialized := false;
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
@@ -2610,8 +2752,12 @@ Var
 Begin
   If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].free;
   If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].free;
+  If assigned(fsdlJoysticks[ksJoy1]) Then fsdlJoysticks[ksJoy1].free;
+  If assigned(fsdlJoysticks[ksJoy2]) Then fsdlJoysticks[ksJoy2].free;
   fsdlJoysticks[ks0] := Nil;
   fsdlJoysticks[ks1] := Nil;
+  fsdlJoysticks[ksJoy1] := Nil;
+  fsdlJoysticks[ksJoy2] := Nil;
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -3314,7 +3460,9 @@ Begin
   End;
   
   // Always pump SDL events first to update button states
-  If fsdl_Loaded And (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
+  // Check all possible keysets that might use SDL
+  If fsdl_Loaded And (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2 Or 
+                      Settings.Keys[ksJoy1].UseSDL2 Or Settings.Keys[ksJoy2].UseSDL2) Then Begin
     SDL_PumpEvents();
   End;
   

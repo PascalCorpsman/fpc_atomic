@@ -750,6 +750,40 @@ Begin
     Game.Settings.Keys[ks1].AchsisIdle[1] := IniPropStorage1.readInteger('SDL_LeftRightIdle2', Game.Settings.Keys[ks1].AchsisIdle[1]);
     Game.Settings.Keys[ks1].AchsisDirection[1] := IniPropStorage1.readInteger('SDL_LeftRightDirection2', Game.Settings.Keys[ks1].AchsisDirection[1]);
   End;
+  // Load joystick mappings for ksJoy1
+  Game.Settings.Keys[ksJoy1] := AtomicDefaultKeys(ksJoy1);
+  Game.Settings.Keys[ksJoy1].UseSDL2 := IniPropStorage1.ReadBoolean('UseSDLJoy1', Game.Settings.Keys[ksJoy1].UseSDL2);
+  If Game.Settings.Keys[ksJoy1].UseSDL2 Then Begin
+    Game.Settings.Keys[ksJoy1].Name := IniPropStorage1.ReadString('SDL_NameJoy1', Game.Settings.Keys[ksJoy1].Name);
+    Game.Settings.Keys[ksJoy1].NameIndex := IniPropStorage1.readInteger('SDL_NameIndexJoy1', Game.Settings.Keys[ksJoy1].NameIndex);
+    Game.Settings.Keys[ksJoy1].ButtonIndex[0] := IniPropStorage1.readInteger('SDL_FirstJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[0]);
+    Game.Settings.Keys[ksJoy1].ButtonsIdle[0] := IniPropStorage1.ReadBoolean('SDL_FirstIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[0]);
+    Game.Settings.Keys[ksJoy1].ButtonIndex[1] := IniPropStorage1.readInteger('SDL_SecondJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[1]);
+    Game.Settings.Keys[ksJoy1].ButtonsIdle[1] := IniPropStorage1.ReadBoolean('SDL_SecondIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[1]);
+    Game.Settings.Keys[ksJoy1].AchsisIndex[0] := IniPropStorage1.readInteger('SDL_UpDownJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[0]);
+    Game.Settings.Keys[ksJoy1].AchsisIdle[0] := IniPropStorage1.readInteger('SDL_UpDownIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[0]);
+    Game.Settings.Keys[ksJoy1].AchsisDirection[0] := IniPropStorage1.readInteger('SDL_UpDownDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[0]);
+    Game.Settings.Keys[ksJoy1].AchsisIndex[1] := IniPropStorage1.readInteger('SDL_LeftRightJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[1]);
+    Game.Settings.Keys[ksJoy1].AchsisIdle[1] := IniPropStorage1.readInteger('SDL_LeftRightIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[1]);
+    Game.Settings.Keys[ksJoy1].AchsisDirection[1] := IniPropStorage1.readInteger('SDL_LeftRightDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[1]);
+  End;
+  // Load joystick mappings for ksJoy2
+  Game.Settings.Keys[ksJoy2] := AtomicDefaultKeys(ksJoy2);
+  Game.Settings.Keys[ksJoy2].UseSDL2 := IniPropStorage1.ReadBoolean('UseSDLJoy2', Game.Settings.Keys[ksJoy2].UseSDL2);
+  If Game.Settings.Keys[ksJoy2].UseSDL2 Then Begin
+    Game.Settings.Keys[ksJoy2].Name := IniPropStorage1.ReadString('SDL_NameJoy2', Game.Settings.Keys[ksJoy2].Name);
+    Game.Settings.Keys[ksJoy2].NameIndex := IniPropStorage1.readInteger('SDL_NameIndexJoy2', Game.Settings.Keys[ksJoy2].NameIndex);
+    Game.Settings.Keys[ksJoy2].ButtonIndex[0] := IniPropStorage1.readInteger('SDL_FirstJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[0]);
+    Game.Settings.Keys[ksJoy2].ButtonsIdle[0] := IniPropStorage1.ReadBoolean('SDL_FirstIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[0]);
+    Game.Settings.Keys[ksJoy2].ButtonIndex[1] := IniPropStorage1.readInteger('SDL_SecondJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[1]);
+    Game.Settings.Keys[ksJoy2].ButtonsIdle[1] := IniPropStorage1.ReadBoolean('SDL_SecondIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[1]);
+    Game.Settings.Keys[ksJoy2].AchsisIndex[0] := IniPropStorage1.readInteger('SDL_UpDownJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[0]);
+    Game.Settings.Keys[ksJoy2].AchsisIdle[0] := IniPropStorage1.readInteger('SDL_UpDownIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[0]);
+    Game.Settings.Keys[ksJoy2].AchsisDirection[0] := IniPropStorage1.readInteger('SDL_UpDownDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[0]);
+    Game.Settings.Keys[ksJoy2].AchsisIndex[1] := IniPropStorage1.readInteger('SDL_LeftRightJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[1]);
+    Game.Settings.Keys[ksJoy2].AchsisIdle[1] := IniPropStorage1.readInteger('SDL_LeftRightIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[1]);
+    Game.Settings.Keys[ksJoy2].AchsisDirection[1] := IniPropStorage1.readInteger('SDL_LeftRightDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[1]);
+  End;
   Game.Settings.ShowFPS := IniPropStorage1.ReadBoolean('ShowFPS', false);
   Game.Settings.CheckForUpdates := IniPropStorage1.ReadBoolean('CheckForUpdates', true);
   Game.Settings.LastPlayedField := IniPropStorage1.ReadString('LastPlayedField', '');
@@ -831,6 +865,38 @@ Begin
   IniPropStorage1.WriteInteger('SDL_LeftRight2', Game.Settings.Keys[ks1].AchsisIndex[1]);
   IniPropStorage1.WriteInteger('SDL_LeftRightIdle2', Game.Settings.Keys[ks1].AchsisIdle[1]);
   IniPropStorage1.WriteInteger('SDL_LeftRightDirection2', Game.Settings.Keys[ks1].AchsisDirection[1]);
+  // Save joystick mappings for ksJoy1
+  IniPropStorage1.WriteBoolean('UseSDLJoy1', Game.Settings.Keys[ksJoy1].UseSDL2);
+  If Game.Settings.Keys[ksJoy1].UseSDL2 Then Begin
+    IniPropStorage1.WriteString('SDL_NameJoy1', Game.Settings.Keys[ksJoy1].Name);
+    IniPropStorage1.WriteInteger('SDL_NameIndexJoy1', Game.Settings.Keys[ksJoy1].NameIndex);
+    IniPropStorage1.WriteInteger('SDL_FirstJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[0]);
+    IniPropStorage1.WriteBoolean('SDL_FirstIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_SecondJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[1]);
+    IniPropStorage1.WriteBoolean('SDL_SecondIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_UpDownJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[0]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[1]);
+  End;
+  // Save joystick mappings for ksJoy2
+  IniPropStorage1.WriteBoolean('UseSDLJoy2', Game.Settings.Keys[ksJoy2].UseSDL2);
+  If Game.Settings.Keys[ksJoy2].UseSDL2 Then Begin
+    IniPropStorage1.WriteString('SDL_NameJoy2', Game.Settings.Keys[ksJoy2].Name);
+    IniPropStorage1.WriteInteger('SDL_NameIndexJoy2', Game.Settings.Keys[ksJoy2].NameIndex);
+    IniPropStorage1.WriteInteger('SDL_FirstJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[0]);
+    IniPropStorage1.WriteBoolean('SDL_FirstIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_SecondJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[1]);
+    IniPropStorage1.WriteBoolean('SDL_SecondIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_UpDownJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[0]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[1]);
+  End;
 
   IniPropStorage1.WriteBoolean('ShowFPS', Game.Settings.ShowFPS);
   IniPropStorage1.WriteBoolean('CheckForUpdates', Game.Settings.CheckForUpdates);
