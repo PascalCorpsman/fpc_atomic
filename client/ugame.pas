@@ -804,31 +804,79 @@ Procedure TGame.CheckSDLKeys();
 
   Procedure CheckKeys(Keys: TKeySet);
   Var
-    d: Integer;
+    d, d0, d1: Integer;
     up, down, left, right, first, second: Boolean;
+    wasUp, wasDown, wasLeft, wasRight: Boolean; // Previous state for hysteresis
+    diagonalThreshold: Integer; // Lower threshold when in diagonal mode
+    wasDiagonal: Boolean; // Was in diagonal mode in previous frame
+    isDiagonal: Boolean;
+    verticalStrength, horizontalStrength: Integer;
+    dominantDirection: TAtomicKey;
+    sendDominant: Boolean;
   Begin
     If fPlayerIndex[keys] = AIPlayer Then exit;
     If fPlayerIndex[keys] = -1 Then exit;
     // Use legacy joystick mapping if configured
     If Not Settings.Keys[keys].UseSDL2 Then exit;
     If Not assigned(fsdlJoysticks[keys]) Then exit;
+    
+    // Remember previous state for hysteresis
+    wasUp := fPlayer[fPlayerIndex[keys]].KeysPressed[akUp];
+    wasDown := fPlayer[fPlayerIndex[keys]].KeysPressed[akDown];
+    wasLeft := fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft];
+    wasRight := fPlayer[fPlayerIndex[keys]].KeysPressed[akRight];
+    
     // 1. Ermitteln des Aktuellen "Gedrückt" stati
     up := false;
     down := false;
     left := false;
     right := false;
-    d := Settings.Keys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[0]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = Settings.Keys[keys].AchsisDirection[0] Then Begin
+    
+    // Calculate axis differences
+    d0 := Settings.Keys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[0]];
+    d1 := Settings.Keys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[1]];
+    
+    // Use hysteresis for diagonal directions: if we were in diagonal mode (both axes active),
+    // use lower threshold to turn off. This prevents flickering when one axis slightly drops below threshold.
+    // Check if we were in diagonal mode in previous frame
+    diagonalThreshold := achsistrigger Div 2; // 50% of normal threshold when in diagonal
+    wasDiagonal := ((wasUp Or wasDown) And (wasLeft Or wasRight));
+    
+    // Check up/down axis with hysteresis
+    If abs(d0) > achsistrigger Then Begin
+      // Normal threshold for activation
+      If sign(d0) = Settings.Keys[keys].AchsisDirection[0] Then Begin
+        up := true;
+      End
+      Else Begin
+        down := true;
+      End;
+    End
+    Else If wasDiagonal And (abs(d1) > achsistrigger) And (abs(d0) > diagonalThreshold) Then Begin
+      // If we were in diagonal mode and horizontal axis is still active,
+      // use lower threshold to keep vertical direction active
+      If sign(d0) = Settings.Keys[keys].AchsisDirection[0] Then Begin
         up := true;
       End
       Else Begin
         down := true;
       End;
     End;
-    d := Settings.Keys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[1]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = Settings.Keys[keys].AchsisDirection[1] Then Begin
+    
+    // Check left/right axis with hysteresis
+    If abs(d1) > achsistrigger Then Begin
+      // Normal threshold for activation
+      If sign(d1) = Settings.Keys[keys].AchsisDirection[1] Then Begin
+        left := true;
+      End
+      Else Begin
+        right := true;
+      End;
+    End
+    Else If wasDiagonal And (abs(d0) > achsistrigger) And (abs(d1) > diagonalThreshold) Then Begin
+      // If we were in diagonal mode and vertical axis is still active,
+      // use lower threshold to keep horizontal direction active
+      If sign(d1) = Settings.Keys[keys].AchsisDirection[1] Then Begin
         left := true;
       End
       Else Begin
@@ -856,37 +904,156 @@ Procedure TGame.CheckSDLKeys();
     end;
     first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
     second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
+    
     // 2. Rauskriegen ob ein Event abgeleitet werden muss
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
-      If up Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
-      End
-      Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+    // For diagonal directions, determine which direction should win based on axis strength
+    // This matches keyboard behavior where the last key pressed determines direction
+    // When in diagonal mode, send the stronger direction last so server processes it correctly
+    
+    // Determine if we're in diagonal mode and which direction should win
+    Begin
+      isDiagonal := ((up Or down) And (left Or right));
+      verticalStrength := 0;
+      horizontalStrength := 0;
+      dominantDirection := akUp; // Default
+      sendDominant := false;
+      
+      // Calculate axis strengths for diagonal mode
+      If isDiagonal Then Begin
+        If up Or down Then verticalStrength := abs(d0);
+        If left Or right Then horizontalStrength := abs(d1);
+        
+        // Determine dominant direction based on axis strength
+        // If vertical is stronger, prioritize up/down; if horizontal is stronger, prioritize left/right
+        If (verticalStrength > horizontalStrength) Then Begin
+          If up Then dominantDirection := akUp
+          Else If down Then dominantDirection := akDown;
+          sendDominant := true;
+        End
+        Else If (horizontalStrength > verticalStrength) Then Begin
+          If left Then dominantDirection := akLeft
+          Else If right Then dominantDirection := akRight;
+          sendDominant := true;
+        End
+        Else Begin
+          // Equal strength - use priority order: Up > Down > Left > Right
+          If up Then dominantDirection := akUp
+          Else If down Then dominantDirection := akDown
+          Else If left Then dominantDirection := akLeft
+          Else If right Then dominantDirection := akRight;
+          sendDominant := true;
+        End;
       End;
-    End;
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> Down Then Begin
-      If Down Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+      
+      // Send direction changes, handling diagonal mode specially
+      If isDiagonal And sendDominant Then Begin
+        // In diagonal mode, send all active directions, but send the dominant one last
+        // This ensures server processes the correct direction
+        
+        // Send non-dominant directions first (if they changed)
+        If (dominantDirection <> akUp) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
+            If up Then CheckKeyDown(Settings.Keys[keys].KeyUp, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+          End;
+        End;
+        If (dominantDirection <> akDown) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> down Then Begin
+            If down Then CheckKeyDown(Settings.Keys[keys].KeyDown, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+          End;
+        End;
+        If (dominantDirection <> akLeft) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
+            If left Then CheckKeyDown(Settings.Keys[keys].KeyLeft, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+          End;
+        End;
+        If (dominantDirection <> akRight) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
+            If right Then CheckKeyDown(Settings.Keys[keys].KeyRight, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+          End;
+        End;
+        
+        // Send dominant direction last so server processes it
+        Case dominantDirection Of
+          akUp: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
+              If up Then CheckKeyDown(Settings.Keys[keys].KeyUp, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+            End
+            Else If up Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+            End;
+          End;
+          akDown: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> down Then Begin
+              If down Then CheckKeyDown(Settings.Keys[keys].KeyDown, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+            End
+            Else If down Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+            End;
+          End;
+          akLeft: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
+              If left Then CheckKeyDown(Settings.Keys[keys].KeyLeft, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+            End
+            Else If left Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+            End;
+          End;
+          akRight: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
+              If right Then CheckKeyDown(Settings.Keys[keys].KeyRight, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+            End
+            Else If right Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+            End;
+          End;
+        End;
       End
       Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
-      End;
-    End;
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
-      If left Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
-      End
-      Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
-      End;
-    End;
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
-      If right Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
-      End
-      Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+        // Normal single-direction mode - send changes as before
+        If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
+          If up Then Begin
+            CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+          End
+          Else Begin
+            CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+          End;
+        End;
+        If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> Down Then Begin
+          If Down Then Begin
+            CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+          End
+          Else Begin
+            CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+          End;
+        End;
+        If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
+          If left Then Begin
+            CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+          End
+          Else Begin
+            CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+          End;
+        End;
+        If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
+          If right Then Begin
+            CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+          End
+          Else Begin
+            CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+          End;
+        End;
       End;
     End;
     // Das Key Up wird bei Action nicht geprüft..
