@@ -813,6 +813,10 @@ Procedure TGame.CheckSDLKeys();
     verticalStrength, horizontalStrength: Integer;
     dominantDirection: TAtomicKey;
     sendDominant: Boolean;
+    dpadUp, dpadDown, dpadLeft, dpadRight: Boolean; // D-Pad state
+    wasDpadUp, wasDpadDown, wasDpadLeft, wasDpadRight: Boolean; // Previous D-Pad state
+    isDpadDiagonal: Boolean; // D-Pad diagonal state
+    dpadActive: Boolean; // Whether D-Pad is currently active
   Begin
     If fPlayerIndex[keys] = AIPlayer Then exit;
     If fPlayerIndex[keys] = -1 Then exit;
@@ -826,6 +830,153 @@ Procedure TGame.CheckSDLKeys();
     wasLeft := fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft];
     wasRight := fPlayer[fPlayerIndex[keys]].KeysPressed[akRight];
     
+    // 1. Check D-Pad first (digital input, should be sent immediately like keyboard)
+    // D-Pad is processed separately from analog stick to ensure smooth diagonal movement
+    dpadUp := false;
+    dpadDown := false;
+    dpadLeft := false;
+    dpadRight := false;
+    dpadActive := false;
+    
+    // Universal approach: Check both HAT and button-based D-Pad
+    // Some controllers use HAT (classic), others use buttons 11-14 (modern controllers like DualSense)
+    try
+      // First check HAT-based D-pad (classic joysticks)
+      if fsdlJoysticks[keys].HatCount > 0 then begin
+        d := fsdlJoysticks[keys].Hat[0];
+        if (d and SDL_HAT_UP) <> 0 then begin
+          dpadUp := true;
+          dpadActive := true;
+        end;
+        if (d and SDL_HAT_DOWN) <> 0 then begin
+          dpadDown := true;
+          dpadActive := true;
+        end;
+        if (d and SDL_HAT_LEFT) <> 0 then begin
+          dpadLeft := true;
+          dpadActive := true;
+        end;
+        if (d and SDL_HAT_RIGHT) <> 0 then begin
+          dpadRight := true;
+          dpadActive := true;
+        end;
+      end;
+      
+      // Also check button-based D-pad (modern controllers like DualSense, some Xbox controllers)
+      // Check if controller has enough buttons and try buttons 11-14
+      // Note: We check both HAT and buttons, so if controller has both, HAT takes priority
+      if (not dpadActive) and (fsdlJoysticks[keys].ButtonCount > 14) then begin
+        // Modern controllers: D-pad as buttons 11-14
+        // Button 11 = Up, 12 = Down, 13 = Left, 14 = Right
+        if fsdlJoysticks[keys].Button[11] then begin
+          dpadUp := true;
+          dpadActive := true;
+        end;
+        if fsdlJoysticks[keys].Button[12] then begin
+          dpadDown := true;
+          dpadActive := true;
+        end;
+        if fsdlJoysticks[keys].Button[13] then begin
+          dpadLeft := true;
+          dpadActive := true;
+        end;
+        if fsdlJoysticks[keys].Button[14] then begin
+          dpadRight := true;
+          dpadActive := true;
+        end;
+      end;
+    except
+      // Ignore D-pad errors, analog stick still works
+    end;
+    
+    // If D-Pad is active, send events immediately (like keyboard) and skip analog stick processing
+    // This ensures D-Pad behaves like keyboard input with smooth diagonal movement
+    if dpadActive then begin
+      // Remember previous D-Pad state
+      wasDpadUp := fPlayer[fPlayerIndex[keys]].KeysPressed[akUp];
+      wasDpadDown := fPlayer[fPlayerIndex[keys]].KeysPressed[akDown];
+      wasDpadLeft := fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft];
+      wasDpadRight := fPlayer[fPlayerIndex[keys]].KeysPressed[akRight];
+      
+      // Send all direction changes (like keyboard - each key is independent)
+      // This allows server to process diagonal movement when multiple directions are active
+      If wasDpadUp <> dpadUp Then Begin
+        If dpadUp Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+        End;
+      End;
+      If wasDpadDown <> dpadDown Then Begin
+        If dpadDown Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+        End;
+      End;
+      If wasDpadLeft <> dpadLeft Then Begin
+        If dpadLeft Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+        End;
+      End;
+      If wasDpadRight <> dpadRight Then Begin
+        If dpadRight Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+        End;
+      End;
+      
+      // Enhanced: When in diagonal mode, send all active directions every frame
+      // This matches keyboard behavior where all pressed keys are sent continuously
+      // Server processes diagonal movement when multiple directions are active
+      isDpadDiagonal := ((dpadUp Or dpadDown) And (dpadLeft Or dpadRight));
+      If isDpadDiagonal Then Begin
+        // Send all active directions every frame (like keyboard - keys are held down)
+        // This ensures smooth diagonal movement like keyboard
+        If dpadUp Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+        End;
+        If dpadDown Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+        End;
+        If dpadLeft Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+        End;
+        If dpadRight Then Begin
+          // Send right last so server processes it (matching keyboard behavior)
+          CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+        End;
+      End;
+      
+      // D-Pad is active, skip analog stick processing
+      // Process buttons and exit early
+      first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
+      second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
+      
+      // Das Key Up wird bei Action nicht geprüft..
+      If (fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] <> first) And first Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyPrimary, keys);
+      End;
+      // Das Key Up wird bei Action nicht geprüft..
+      If (fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] <> second) And Second Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeySecondary, keys);
+      End;
+      // 3. Speichern für die nächste Runde ;)
+      fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] := first;
+      fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] := second;
+      
+      // Exit early - D-Pad processing is complete, analog stick is skipped
+      exit;
+    end;
+    
+    // D-Pad is not active, process analog stick normally (original logic unchanged)
     // 1. Ermitteln des Aktuellen "Gedrückt" stati
     up := false;
     down := false;
@@ -883,25 +1034,6 @@ Procedure TGame.CheckSDLKeys();
         right := true;
       End;
     End;
-    // D-Pad support: some controllers (like DualSense) map D-pad as buttons instead of HAT
-    try
-      if fsdlJoysticks[keys].HatCount > 0 then begin
-        // Classic HAT-based D-pad
-        d := fsdlJoysticks[keys].Hat[0];
-        if (d and SDL_HAT_UP) <> 0 then up := true;
-        if (d and SDL_HAT_DOWN) <> 0 then down := true;
-        if (d and SDL_HAT_LEFT) <> 0 then left := true;
-        if (d and SDL_HAT_RIGHT) <> 0 then right := true;
-      end else if fsdlJoysticks[keys].ButtonCount > 14 then begin
-        // DualSense/modern controllers: D-pad as buttons 11-14
-        if fsdlJoysticks[keys].Button[11] then up := true;
-        if fsdlJoysticks[keys].Button[12] then down := true;
-        if fsdlJoysticks[keys].Button[13] then left := true;
-        if fsdlJoysticks[keys].Button[14] then right := true;
-      end;
-    except
-      // Ignore D-pad errors, analog stick still works
-    end;
     first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
     second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
     
