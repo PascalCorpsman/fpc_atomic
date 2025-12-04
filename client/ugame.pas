@@ -1524,23 +1524,40 @@ Begin
           [fsdlJoysticks[ks1].AxisCount, fsdlJoysticks[ks1].ButtonCount, fsdlJoysticks[ks1].HatCount]), llInfo);
       End;
     End;
-    If Settings.Keys[ksJoy1].UseSDL2 Then Begin
-      index := ResolveJoystickNameToIndex(Settings.Keys[ksJoy1].Name, Settings.Keys[ksJoy1].NameIndex);
-      If index <> -1 Then Begin
-        log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ksJoy1 at index %d', [index]), llInfo);
-        fsdlJoysticks[ksJoy1] := TSDL_Joystick.Create(index);
+    // Universal approach: Always map ksJoy1 and ksJoy2 by physical index, not by name
+    // This ensures any controller works regardless of its name
+    // ksJoy1 always maps to physical joystick index 0, ksJoy2 to index 1
+    If Settings.Keys[ksJoy1].UseSDL2 And (numJoy > 0) Then Begin
+      // Always use physical index 0 for ksJoy1, regardless of saved name
+      // This ensures universal compatibility - any controller at index 0 will work
+      log(format('TGame.ReinitControllersWithLogs: Opening joystick for ksJoy1 at physical index 0 (Name="%s")', 
+        [Settings.Keys[ksJoy1].Name]), llInfo);
+      try
+        fsdlJoysticks[ksJoy1] := TSDL_Joystick.Create(0);
         log(format('TGame.ReinitControllersWithLogs: ksJoy1 joystick: Axes=%d, Buttons=%d, Hats=%d', 
           [fsdlJoysticks[ksJoy1].AxisCount, fsdlJoysticks[ksJoy1].ButtonCount, fsdlJoysticks[ksJoy1].HatCount]), llInfo);
-      End;
+      except
+        On E: Exception Do Begin
+          log(format('TGame.ReinitControllersWithLogs: Failed to open ksJoy1 at index 0: %s', [E.Message]), llError);
+          fsdlJoysticks[ksJoy1] := Nil;
+        End;
+      end;
     End;
-    If Settings.Keys[ksJoy2].UseSDL2 Then Begin
-      index := ResolveJoystickNameToIndex(Settings.Keys[ksJoy2].Name, Settings.Keys[ksJoy2].NameIndex);
-      If index <> -1 Then Begin
-        log(format('TGame.ReinitControllersWithLogs: Opening legacy joystick for ksJoy2 at index %d', [index]), llInfo);
-        fsdlJoysticks[ksJoy2] := TSDL_Joystick.Create(index);
+    If Settings.Keys[ksJoy2].UseSDL2 And (numJoy > 1) Then Begin
+      // Always use physical index 1 for ksJoy2, regardless of saved name
+      // This ensures universal compatibility - any controller at index 1 will work
+      log(format('TGame.ReinitControllersWithLogs: Opening joystick for ksJoy2 at physical index 1 (Name="%s")', 
+        [Settings.Keys[ksJoy2].Name]), llInfo);
+      try
+        fsdlJoysticks[ksJoy2] := TSDL_Joystick.Create(1);
         log(format('TGame.ReinitControllersWithLogs: ksJoy2 joystick: Axes=%d, Buttons=%d, Hats=%d', 
           [fsdlJoysticks[ksJoy2].AxisCount, fsdlJoysticks[ksJoy2].ButtonCount, fsdlJoysticks[ksJoy2].HatCount]), llInfo);
-      End;
+      except
+        On E: Exception Do Begin
+          log(format('TGame.ReinitControllersWithLogs: Failed to open ksJoy2 at index 1: %s', [E.Message]), llError);
+          fsdlJoysticks[ksJoy2] := Nil;
+        End;
+      end;
     End;
     
     log(format('TGame.ReinitControllersWithLogs: Final state - Controller count (joysticks) = %d', [GetControllerCount()]), llInfo);
@@ -2153,25 +2170,68 @@ Begin
       If Not Settings.Keys[k].UseSDL2 Then Begin
         log(format('TGame.HandleRefreshPlayerStats: Player %d selected joystick (%s), enabling SDL2', [i, GetKeySetDisplayName(k)]), llInfo);
         Settings.Keys[k].UseSDL2 := true;
-        // Open joystick if not already open (preserve existing mapping)
+        // Open joystick if not already open
+        // Universal approach: Always map by physical index, not by name
+        // ksJoy1 always maps to physical joystick index 0, ksJoy2 to index 1
         If Not assigned(fsdlJoysticks[k]) And fsdl_Loaded Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[k].Name, Settings.Keys[k].NameIndex);
-          If index <> -1 Then Begin
-            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at index %d', [GetKeySetDisplayName(k), index]), llInfo);
-            fsdlJoysticks[k] := TSDL_Joystick.Create(index);
-            log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
-              [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+          If (k = ksJoy1) And (numJoy > 0) Then Begin
+            // Always use physical index 0 for ksJoy1
+            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at physical index 0', [GetKeySetDisplayName(k)]), llInfo);
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(0);
+              log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
+                [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+            except
+              On E: Exception Do Begin
+                log(format('TGame.HandleRefreshPlayerStats: Failed to open %s at index 0: %s', [GetKeySetDisplayName(k), E.Message]), llError);
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
+          End Else If (k = ksJoy2) And (numJoy > 1) Then Begin
+            // Always use physical index 1 for ksJoy2
+            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at physical index 1', [GetKeySetDisplayName(k)]), llInfo);
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(1);
+              log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
+                [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+            except
+              On E: Exception Do Begin
+                log(format('TGame.HandleRefreshPlayerStats: Failed to open %s at index 1: %s', [GetKeySetDisplayName(k), E.Message]), llError);
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
           End;
         End;
       End Else Begin
         // SDL2 already enabled, but make sure joystick is open
+        // Universal approach: Always map by physical index, not by name
         If Not assigned(fsdlJoysticks[k]) And fsdl_Loaded Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[k].Name, Settings.Keys[k].NameIndex);
-          If index <> -1 Then Begin
-            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at index %d (was already configured)', [GetKeySetDisplayName(k), index]), llInfo);
-            fsdlJoysticks[k] := TSDL_Joystick.Create(index);
-            log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
-              [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+          If (k = ksJoy1) And (numJoy > 0) Then Begin
+            // Always use physical index 0 for ksJoy1
+            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at physical index 0 (was already configured)', [GetKeySetDisplayName(k)]), llInfo);
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(0);
+              log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
+                [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+            except
+              On E: Exception Do Begin
+                log(format('TGame.HandleRefreshPlayerStats: Failed to open %s at index 0: %s', [GetKeySetDisplayName(k), E.Message]), llError);
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
+          End Else If (k = ksJoy2) And (numJoy > 1) Then Begin
+            // Always use physical index 1 for ksJoy2
+            log(format('TGame.HandleRefreshPlayerStats: Opening joystick for %s at physical index 1 (was already configured)', [GetKeySetDisplayName(k)]), llInfo);
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(1);
+              log(format('TGame.HandleRefreshPlayerStats: %s joystick: Axes=%d, Buttons=%d, Hats=%d', 
+                [GetKeySetDisplayName(k), fsdlJoysticks[k].AxisCount, fsdlJoysticks[k].ButtonCount, fsdlJoysticks[k].HatCount]), llInfo);
+            except
+              On E: Exception Do Begin
+                log(format('TGame.HandleRefreshPlayerStats: Failed to open %s at index 1: %s', [GetKeySetDisplayName(k), E.Message]), llError);
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
           End;
         End;
       End;
