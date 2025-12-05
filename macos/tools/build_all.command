@@ -123,6 +123,34 @@ eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/
   echo "Warning: Failed to build AI library (may not be critical)" >&2
 }
 
+echo "Building CD Data Extractor GUI (cd_data_extractor)..."
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/cd_data_extractor_src/cd_data_extractor.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+  echo "Warning: Failed to build CD Data Extractor GUI (may not be critical)" >&2
+}
+
+echo ""
+echo "========================================="
+echo "Checking data directory..."
+echo "========================================="
+echo ""
+
+# Check if data directory exists in bin directory, if not copy from project root
+DATA_SOURCE="${PROJECT_ROOT}/data"
+DATA_TARGET="${BIN_DIR}/data"
+
+if [[ ! -d "${DATA_TARGET}" ]]; then
+  if [[ -d "${DATA_SOURCE}" ]]; then
+    echo "Data directory not found in ${BIN_DIR}, copying from project root..."
+    cp -R "${DATA_SOURCE}" "${DATA_TARGET}"
+    echo "  ✓ Copied data directory to ${DATA_TARGET}"
+  else
+    echo "  ⚠ Warning: Data directory not found at ${DATA_SOURCE}" >&2
+    echo "  ⚠ Warning: Data directory not found at ${DATA_TARGET}" >&2
+  fi
+else
+  echo "  ✓ Data directory already exists at ${DATA_TARGET}"
+fi
+
 echo ""
 echo "========================================="
 echo "Creating app bundles..."

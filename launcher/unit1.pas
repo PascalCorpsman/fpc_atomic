@@ -139,20 +139,31 @@ End;
 Procedure TForm1.Button4Click(Sender: TObject);
 Var
   P: TProcessUTF8;
+  extractorPath: String;
 Begin
   // run cd data extractor
   StoreSettings();
   ini.UpdateFile;
+  // Find cd_data_extractor in the same directory as the launcher (for macOS app bundle)
+  // On macOS, this will be in Contents/MacOS/ of the app bundle
+  extractorPath := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
   // Short Prechecks
-  If (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage('Error, installation not complete, please run "Check for updates"');
+  If Not FileExists(extractorPath) Then Begin
+    showmessage('Error, installation not complete, please run "Check for updates"' + LineEnding +
+                'Missing: ' + extractorPath);
     exit;
   End;
   // Run the App ;)
+  // On macOS, GUI applications need to be run detached to show GUI properly
   p := TProcessUTF8.Create(Nil);
-  p.Executable := 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
+  p.Executable := extractorPath;
+{$IFDEF Darwin}
+  // On macOS, run GUI application detached so it can show its window
+  p.Options := p.Options + [poDetached];
+{$ELSE}
+  // On other platforms, wait for exit
   p.Options := p.Options + [poWaitOnExit];
+{$ENDIF}
   p.Execute;
   p.free;
 End;

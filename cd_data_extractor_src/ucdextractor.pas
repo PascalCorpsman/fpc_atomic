@@ -478,11 +478,17 @@ Function CheckFPCAtomicFolder(aFolder: String): boolean;
 Var
   s: String;
 Begin
+{$IFDEF Darwin}
+  // On macOS, check for FPCAtomic.app bundle
+  s := 'FPCAtomic.app';
+  result := DirectoryExists(IncludeTrailingPathDelimiter(aFolder) + s);
+{$ELSE}
   s := 'fpc_atomic';
 {$IFDEF Windows}
   s := s + '.exe';
 {$ENDIF}
   result := FileExists(IncludeTrailingPathDelimiter(aFolder) + s);
+{$ENDIF}
 End;
 
 (*

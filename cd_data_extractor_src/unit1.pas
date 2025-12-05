@@ -67,6 +67,8 @@ Uses Unit2, ucdextractor;
 { TForm1 }
 
 Procedure TForm1.FormCreate(Sender: TObject);
+Var
+  defaultAtomicFolder: String;
 Begin
   IniPropStorage1.IniFileName := 'settings.ini';
   (*
@@ -74,7 +76,23 @@ Begin
    *)
   caption := DefCaption;
   label1.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('CD-Root', ''));
+  
+  // On macOS, set default FPC Atomic folder to parent directory (where app bundles are)
+  // cd_data_extractor is in Contents/MacOS/, so we need to go up two levels (../../)
+{$IFDEF Darwin}
+  defaultAtomicFolder := IniPropStorage1.ReadString('FPC-Atomic', '');
+  If defaultAtomicFolder = '' Then Begin
+    // Set default to parent directory (where app bundles are)
+    // From Contents/MacOS/ go up two levels
+    defaultAtomicFolder := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + '..' + PathDelim + '..' + PathDelim);
+    // Remove trailing path delimiter for consistency
+    defaultAtomicFolder := ExcludeTrailingPathDelimiter(defaultAtomicFolder);
+  End;
+  label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), defaultAtomicFolder);
+{$ELSE}
   label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('FPC-Atomic', ''));
+{$ENDIF}
+  
   memo1.clear;
   Constraints.MinWidth := Width;
   Constraints.MinHeight := Height;
@@ -109,9 +127,29 @@ Begin
 End;
 
 Procedure TForm1.Button4Click(Sender: TObject);
+Var
+  defaultDir: String;
 Begin
   // Set FPC Atomic Folder
   SelectDirectoryDialog1.Title := button4.caption;
+{$IFDEF Darwin}
+  // On macOS, set initial directory to parent directory (where app bundles are)
+  // if label2 is empty or doesn't exist
+  If (label2.caption = '') Or (Not DirectoryExists(label2.caption)) Then Begin
+    defaultDir := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + '..' + PathDelim + '..' + PathDelim);
+    defaultDir := ExcludeTrailingPathDelimiter(defaultDir);
+    If DirectoryExists(defaultDir) Then Begin
+      SelectDirectoryDialog1.InitialDir := defaultDir;
+    End;
+  End
+  Else Begin
+    SelectDirectoryDialog1.InitialDir := label2.caption;
+  End;
+{$ELSE}
+  If label2.caption <> '' Then Begin
+    SelectDirectoryDialog1.InitialDir := label2.caption;
+  End;
+{$ENDIF}
   If SelectDirectoryDialog1.Execute Then Begin
     If CheckFPCAtomicFolder(SelectDirectoryDialog1.FileName) Then Begin
       label2.Caption := SelectDirectoryDialog1.FileName;
@@ -121,7 +159,11 @@ Begin
       End;
     End
     Else Begin
+{$IFDEF Darwin}
+      showmessage('Error, the folder should at least contain FPCAtomic.app');
+{$ELSE}
       showmessage('Error, the folder should at least contain the executable for fpc_atomic');
+{$ENDIF}
     End;
   End;
 End;

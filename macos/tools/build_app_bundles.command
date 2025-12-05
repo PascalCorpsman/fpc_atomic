@@ -229,6 +229,13 @@ mkdir -p "${LAUNCHER_MACOS_DIR}" "${LAUNCHER_LIB_DIR}"
 copy_binary "${BIN_DIR}/atomic_launcher" "${LAUNCHER_MACOS_DIR}/atomic_launcher"
 copy_binary "${BIN_DIR}/fpc_atomic" "${LAUNCHER_MACOS_DIR}/fpc_atomic"
 copy_binary "${BIN_DIR}/atomic_server" "${LAUNCHER_MACOS_DIR}/atomic_server"
+# Copy CD Data Extractor GUI for launcher
+if [[ -x "${BIN_DIR}/cd_data_extractor" ]]; then
+  copy_binary "${BIN_DIR}/cd_data_extractor" "${LAUNCHER_MACOS_DIR}/cd_data_extractor"
+  echo "  ✓ Copied cd_data_extractor to ${LAUNCHER_MACOS_DIR}/cd_data_extractor"
+else
+  echo "  ⚠ Warning: cd_data_extractor not found at ${BIN_DIR}/cd_data_extractor" >&2
+fi
 sync_libs "${LAUNCHER_LIB_DIR}"
 link_shared_data "${LAUNCHER_MACOS_DIR}"
 copy_icon "${LAUNCHER_APP}"
