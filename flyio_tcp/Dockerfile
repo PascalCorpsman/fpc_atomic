@@ -22,8 +22,8 @@ COPY server /build/server
 COPY units /build/units
 COPY client /build/client
 COPY macos/third_party/lnet_src /build/lnet_src
-COPY macos/data /build/data
 COPY ai /build/ai
+COPY macos/app_arm64/data /build/data
 
 # Build AI library (Pascal version - fully functional!)
 WORKDIR /build/ai
@@ -59,7 +59,7 @@ RUN apt-get update && apt-get install -y \
     libc6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy compiled server, AI library, and data
+# Copy compiled server, AI library, and data directory
 COPY --from=builder /app/atomic_server /app/atomic_server
 COPY --from=builder /app/libai.so /app/libai.so
 COPY --from=builder /build/data /app/data

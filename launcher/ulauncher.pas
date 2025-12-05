@@ -103,7 +103,7 @@ Function CheckForFiles(): TStringList;
 
 Implementation
 
-Uses unit1, unit2, ssl_openssl3, synautil, uJSON, LazFileUtils, ucdextractor;
+Uses unit1, unit2, uJSON, LazFileUtils, ucdextractor;
 
 Procedure ClearLog();
 Begin

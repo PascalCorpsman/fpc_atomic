@@ -78,7 +78,6 @@ Uses UTF8Process, process, Unit2, Unit3, LCLType, LazFileUtils, LazUTF8
   , ukeyboarddialog, uatomic_common, usynapsedownloader
 {$IFDEF Windows}
   , LResources
-  , ssl_openssl_lib, ssl_openssl, blcksock
 {$ENDIF}
   ;
 
