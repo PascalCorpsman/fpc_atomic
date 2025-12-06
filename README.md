@@ -22,15 +22,23 @@ The steps shown here are only needed to be done once (for installation).
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
    1.1 if you want all animations download and merge the expansion pack <del>from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)</del> link is broken use [new link](https://www.geocities.ws/mheid.geo/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
-2. download the atomic_launcher of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin) on your harddisc
-3. run the "atomic_launcher" and follow the instructions<br>
+2. download the atomic_launcher from the latest release [here](https://github.com/PascalCorpsman/fpc_atomic/releases/latest) and store it on your harddisc<br>
+![](documentation/asset_download_preview.png)<br>
+   2.1 Linux users will need to 
+   >
+   > chmod +x atomic_launcher
+   >
+3. run the "atomic_launcher", click "check for updates" and then "Download and update files"<br>
    3.1 Linux users may need to run the following commands:
    >
    > sudo aptitude install libssl-dev
    >
-4. read the [manual](MANUAL.md)  
-4.5 if you are a Linux user run the "Linux_sound_install_script.sh"
-1. start the game by executing "atomic_launcher" and enjoy
+4. click "run cd data extractor"<br>
+   4.1 Click "set atomic cd root folder"<br>
+   4.2 Click "start extraction"  
+5. read the [manual](MANUAL.md)<br>
+   5.5 if you are a Linux user run the "Linux_sound_install_script.sh"
+6. start the game by executing "atomic_launcher" and enjoy
 
 ## How do i get updates ?
 By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates.

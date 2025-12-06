@@ -40,9 +40,14 @@ Const
    *                   ADD: Support for multipla Joysticks with the same name
    * -Released- 0.08 = FIX: add missing SDL_PumpEvents call
    *                   ADD: Parameter "-cti", "-ip", "-port"
-   *            0.09 =
+   * -Released- 0.09 = - No changes
    * Known Bugs :
    *)
+  {
+   !! Achtung !!
+   Die versionsnummer des Launchers, darf nicht wie üblich eins weiter stehen, da beim automatischen FPC_Atomic Release
+   immer die fpc_Atomic Version führend ist -> Die Versionsnummer immer erst hoch ziehen, wenn tatsächlich etwas geändert wurde !
+  }
   LauncherVersion: integer = 9;
 
 Type
