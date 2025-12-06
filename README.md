@@ -22,7 +22,8 @@ The steps shown here are only needed to be done once (for installation).
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
    1.1 if you want all animations download and merge the expansion pack <del>from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)</del> link is broken use [new link](https://www.geocities.ws/mheid.geo/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
-2. download the atomic_launcher from the newest release [tag](https://github.com/PascalCorpsman/fpc_atomic/tags) on your harddisc<br>
+2. download the atomic_launcher from the latest release [here](https://github.com/PascalCorpsman/fpc_atomic/releases/latest) and store it on your harddisc<br>
+![](documentation/asset_download_preview.png)<br>
    2.1 Linux users will need to 
    >
    > chmod +x atomic_launcher
