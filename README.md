@@ -27,14 +27,17 @@ The steps shown here are only needed to be done once (for installation).
    >
    > chmod +x atomic_launcher
    >
-3. run the "atomic_launcher" and follow the instructions<br>
+3. run the "atomic_launcher", click "check for updates" and then "Download and update files"<br>
    3.1 Linux users may need to run the following commands:
    >
    > sudo aptitude install libssl-dev
    >
-4. read the [manual](MANUAL.md)  
-4.5 if you are a Linux user run the "Linux_sound_install_script.sh"
-1. start the game by executing "atomic_launcher" and enjoy
+4. click "run cd data extractor"<br>
+   4.1 Click "set atomic cd root folder"<br>
+   4.2 Click "start extraction"  
+5. read the [manual](MANUAL.md)<br>
+   5.5 if you are a Linux user run the "Linux_sound_install_script.sh"
+6. start the game by executing "atomic_launcher" and enjoy
 
 ## How do i get updates ?
 By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates.
