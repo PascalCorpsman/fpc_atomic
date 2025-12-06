@@ -79,17 +79,17 @@ jobs:
         
         # Create setup.inf to ensure 64-bit is installed
         $setupInfPath = "$env:TEMP\fpc_setup.inf"
-        $setupInfContent = @"
-[Setup]
-Lang=default
-Dir=C:\FPC
-Group=Free Pascal
-NoIcons=1
-SetupType=full
-Components=base,binutils,docs,ide,utils,make,demo,gdb,units,examples
-Tasks=
-"@
-        $setupInfContent | Out-File -FilePath $setupInfPath -Encoding ASCII
+        $setupInfLines = @(
+          "[Setup]",
+          "Lang=default",
+          "Dir=C:\FPC",
+          "Group=Free Pascal",
+          "NoIcons=1",
+          "SetupType=full",
+          "Components=base,binutils,docs,ide,utils,make,demo,gdb,units,examples",
+          "Tasks="
+        )
+        $setupInfLines | Out-File -FilePath $setupInfPath -Encoding ASCII
         
         # Install with setup.inf to ensure all components are installed
         $installProcess = Start-Process -FilePath $fullInstallerPath -ArgumentList "/VERYSILENT /NORESTART /LOADINF=`"$setupInfPath`"" -Wait -PassThru -NoNewWindow
