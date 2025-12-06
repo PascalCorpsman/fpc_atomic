@@ -36,3 +36,7 @@ server/stats.txt
 stats.txt
 
 .env
+macos/app_arm64/data
+macos/app_x86_64/data
+macos/bin/arm64/data
+data
