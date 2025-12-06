@@ -50,15 +50,20 @@ Type
   private
     fAxisCount: integer;
     fButtonCount: integer;
+    fHatCount: integer;
     fInstance: Pointer;
     Function GetAxisValue(index: integer): integer;
     Function GetButtonValue(index: integer): boolean;
+    Function GetHatValue(index: integer): byte;
   public
     Property ButtonCount: integer read fButtonCount;
     Property Button[index: integer]: boolean read GetButtonValue;
 
     Property AxisCount: integer read fAxisCount;
     Property Axis[index: integer]: integer read GetAxisValue; // ranging from -32768 to 32767
+
+    Property HatCount: integer read fHatCount;
+    Property Hat[index: integer]: byte read GetHatValue;
 
     Constructor Create(Index: integer);
     Destructor Destroy; override;
@@ -94,27 +99,52 @@ End;
 
 Function TSDL_Joystick.GetAxisValue(index: integer): integer;
 Begin
+  // Defensive: avoid out-of-range or nil access
+  If (Not Assigned(fInstance)) Or (index < 0) Or (index >= fAxisCount) Then Begin
+    result := 0;
+    exit;
+  End;
   result := SDL_JoystickGetAxis(fInstance, index);
 End;
 
 Function TSDL_Joystick.GetButtonValue(index: integer): boolean;
 Begin
+  If (Not Assigned(fInstance)) Or (index < 0) Or (index >= fButtonCount) Then Begin
+    result := false;
+    exit;
+  End;
   result := SDL_JoystickGetButton(fInstance, index) = SDL_PRESSED;
+End;
+
+Function TSDL_Joystick.GetHatValue(index: integer): byte;
+Begin
+  // Defensive: avoid out-of-range or nil access
+  If (Not Assigned(fInstance)) Or (index < 0) Or (index >= fHatCount) Then Begin
+    result := SDL_HAT_CENTERED;
+    exit;
+  End;
+  try
+    result := SDL_JoystickGetHat(fInstance, index);
+  except
+    result := SDL_HAT_CENTERED;
+  end;
 End;
 
 Constructor TSDL_Joystick.Create(Index: integer);
 Begin
   Inherited create;
-  If (SDL_WasInit(SDL_INIT_JOYSTICK) And SDL_INIT_JOYSTICK) = 0 Then Begin
-    Raise Exception.create('Error SDL subsystem for joystick is not initialized.');
-  End;
-  SDL_JoystickEventState(SDL_ENABLE);
   fInstance := SDL_JoystickOpen(Index);
   If Not assigned(fInstance) Then Begin
-    Raise Exception.create('Error could not create joystick instance.');
+    Raise Exception.Create('Error, could not open Joystick : ' + inttostr(index));
   End;
+  SDL_JoystickEventState(SDL_ENABLE);
   fAxisCount := SDL_JoystickNumAxes(fInstance);
   fButtonCount := SDL_JoystickNumButtons(fInstance);
+  try
+    fHatCount := SDL_JoystickNumHats(fInstance);
+  except
+    fHatCount := 0;
+  end;
 End;
 
 Destructor TSDL_Joystick.Destroy;

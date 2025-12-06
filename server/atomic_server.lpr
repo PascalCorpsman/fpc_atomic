@@ -29,9 +29,13 @@
 Program atomic_server;
 
 Uses
-  sysutils, lazutf8, LazFileUtils
+{$IFDEF UNIX}
+  cthreads,  // Thread support for Unix-like systems
+{$ENDIF}
+  sysutils  // Standard Pascal units (no Lazarus dependencies)
   , uatomic_server
   , uatomic_common
+  , uip  // For GetLocalIPs() to get server IP address
   ;
 
 Procedure PrintHelp;
@@ -57,10 +61,12 @@ Var
   Server: TServer;
   Autotimeout: integer = ServerAutoTimeout;
   Port: integer = -1;
-  i: integer;
+  i, j: integer;
   s: String;
   si: Single;
   Params: Array Of Boolean = Nil; // Zum Prüfen ob auch alle übergebenen Parameter verwendet wurden.
+  adapters: TNetworkAdapterList;
+  serverIP: String;
 Begin
   (*
      OPL: - Alle Krankheiten (Speed Up, Switch Bombermen,  Fast Bomb,  Small Flame, Eject Bomb Fast + Kick)
@@ -107,11 +113,11 @@ Begin
       Params[i + 1] := true;
     End;
     If lowercase(paramstr(i)) = '-f' Then Begin
-      s := ExtractFilePath(ParamStrutf8(i + 1));
+      s := ExtractFilePath(ParamStr(i + 1));
       Params[i] := true;
       Params[i + 1] := true;
-      If Not DirectoryExistsutf8(s) Then Begin
-        If Not CreateDirUTF8(s) Then Begin
+      If Not DirectoryExists(s) Then Begin
+        If Not CreateDir(s) Then Begin
           Log('Could not create : ' + s, llWarning);
           Continue;
         End;
@@ -127,7 +133,7 @@ Begin
   s := '';
   For i := 1 To high(Params) Do Begin
     If Not params[i] Then Begin
-      s := s + ' ' + ParamStrUTF8(i);
+      s := s + ' ' + ParamStr(i);
     End;
   End;
   If s <> '' Then Begin
@@ -141,7 +147,32 @@ Begin
     exit;
   End
   Else Begin
-    Log('Launching on Port : ' + inttostr(port), llinfo);
+    // Get server IP address for display
+    serverIP := '127.0.0.1'; // Default to localhost
+    Try
+      adapters := GetLocalIPs();
+      // Find first non-localhost IP address (prefer network IP over localhost)
+      For j := 0 To High(adapters) Do Begin
+        If (adapters[j].IpAddress <> '127.0.0.1') And (adapters[j].IpAddress <> '') Then Begin
+          serverIP := adapters[j].IpAddress;
+          break;
+        End;
+      End;
+    Except
+      // If we can't get IP address, use localhost
+      serverIP := '127.0.0.1';
+    End;
+    
+    // Display server connection info in a nice formatted box
+    Log('===========================================', llinfo);
+    Log('', llinfo);
+    Log('        Server is Running on address', llinfo);
+    Log('', llinfo);
+    Log('                ' + serverIP, llinfo);
+    Log('', llinfo);
+    Log('                 Port: ' + inttostr(port), llinfo);
+    Log('', llinfo);
+    Log('===========================================', llinfo);
     If Autotimeout = 0 Then Begin
       Log('Autotimeout = 0, press "ESC" to terminate.', llinfo);
     End;

@@ -113,6 +113,10 @@ Begin
 {$IFDEF Linux}
   RunCommand('ifconfig', [], responce, [poWaitOnExit]);
 {$ENDIF}
+{$IFDEF Darwin}
+  // macOS uses ifconfig similar to Linux
+  RunCommand('ifconfig', [], responce, [poWaitOnExit]);
+{$ENDIF}
 {$IFDEF Windows}
   RunCommand('ipconfig', [], responce, [poNoConsole, poWaitOnExit]);
 {$ENDIF}
@@ -130,6 +134,46 @@ Begin
 
       // TODO: Maybe implement a more "Robust" method to get the adapter name ??
       result[high(result)].AdapterName := copy(sl[i - 1], 1, pos(':', sl[i - 1]) - 1);
+    End;
+{$ENDIF}
+{$IFDEF Darwin}
+    // macOS ifconfig format: "inet 192.168.1.100 netmask 0xffffff00 broadcast 192.168.1.255"
+    // or: "	inet 192.168.0.72 netmask 0xffffff00 broadcast 192.168.0.255"
+    If (pos('inet ', sl[i]) <> 0) And (pos('inet6 ', sl[i]) = 0) Then Begin
+      // Extract IP address (skip "inet " and get the first word)
+      tmp := trim(sl[i]);
+      tmp := copy(tmp, pos('inet ', tmp) + length('inet '), length(tmp));
+      tmp := copy(tmp, 1, pos(' ', tmp) - 1);
+      // Skip loopback interface (127.0.0.1)
+      If (tmp <> '127.0.0.1') And (tmp <> '') Then Begin
+        setlength(result, high(result) + 2);
+        result[high(result)].IpAddress := tmp;
+
+        // Extract netmask (can be in hex format like 0xffffff00 or decimal)
+        tmp := sl[i];
+        If pos('netmask ', tmp) <> 0 Then Begin
+          tmp := copy(tmp, pos('netmask ', tmp) + length('netmask '), length(tmp));
+          tmp := copy(tmp, 1, pos(' ', tmp) - 1);
+          // If netmask is in hex format (0x...), we could convert it, but for now just store as is
+          // Most common: 0xffffff00 = 255.255.255.0
+          result[high(result)].SubnetMask := tmp;
+        End Else Begin
+          result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
+        End;
+
+        // Get adapter name from previous line (format: "en0: flags=..." or "en0:")
+        If i > 0 Then Begin
+          tmp := trim(sl[i - 1]);
+          If pos(':', tmp) <> 0 Then Begin
+            tmp := copy(tmp, 1, pos(':', tmp) - 1);
+            result[high(result)].AdapterName := trim(tmp);
+          End Else Begin
+            result[high(result)].AdapterName := 'unknown';
+          End;
+        End Else Begin
+          result[high(result)].AdapterName := 'unknown';
+        End;
+      End;
     End;
 {$ENDIF}
 {$IFDEF Windows}

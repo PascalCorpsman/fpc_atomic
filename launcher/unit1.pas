@@ -74,11 +74,10 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3, LCLType
+Uses UTF8Process, process, Unit2, Unit3, LCLType, LazFileUtils, LazUTF8
   , ukeyboarddialog, uatomic_common, usynapsedownloader
 {$IFDEF Windows}
   , LResources
-  , ssl_openssl_lib, ssl_openssl, blcksock
 {$ENDIF}
   ;
 
@@ -139,20 +138,31 @@ End;
 Procedure TForm1.Button4Click(Sender: TObject);
 Var
   P: TProcessUTF8;
+  extractorPath: String;
 Begin
   // run cd data extractor
   StoreSettings();
   ini.UpdateFile;
+  // Find cd_data_extractor in the same directory as the launcher (for macOS app bundle)
+  // On macOS, this will be in Contents/MacOS/ of the app bundle
+  extractorPath := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
   // Short Prechecks
-  If (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage('Error, installation not complete, please run "Check for updates"');
+  If Not FileExists(extractorPath) Then Begin
+    showmessage('Error, installation not complete, please run "Check for updates"' + LineEnding +
+                'Missing: ' + extractorPath);
     exit;
   End;
   // Run the App ;)
+  // On macOS, GUI applications need to be run detached to show GUI properly
   p := TProcessUTF8.Create(Nil);
-  p.Executable := 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
+  p.Executable := extractorPath;
+{$IFDEF Darwin}
+  // On macOS, run GUI application detached so it can show its window
+  p.Options := p.Options + [poDetached];
+{$ELSE}
+  // On other platforms, wait for exit
   p.Options := p.Options + [poWaitOnExit];
+{$ENDIF}
   p.Execute;
   p.free;
 End;
@@ -266,6 +276,7 @@ Procedure TForm1.Button2Click(Sender: TObject);
 Var
   P: TProcessUTF8;
   sl: TStringList;
+  exePath, serverPath, workDir: String;
 Begin
   // Launch
   StoreSettings();
@@ -280,14 +291,21 @@ Begin
   End;
   sl.free;
   // Short Prechecks
-  If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
+  workDir := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  exePath := workDir + 'fpc_atomic';
+  serverPath := workDir + 'atomic_server';
+{$IFDEF Windows}
+  exePath := exePath + '.exe';
+  serverPath := serverPath + '.exe';
+{$ENDIF}
+  If (Not FileExists(exePath)) Or (Not FileExists(serverPath)) Then Begin
     showmessage('Error, installation not complete, please run "Check for updates"');
     exit;
   End;
   // Run the App ;)
   p := TProcessUTF8.Create(Nil);
-  p.Executable := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
+  p.Executable := exePath;
+  p.CurrentDirectory := ExcludeTrailingPathDelimiter(workDir);
   If CheckBox3.Checked Then Begin
     p.Parameters.Add('-ip');
     p.Parameters.Add(Edit2.Text);
@@ -360,13 +378,66 @@ Begin
   form2.Hide;
 End;
 
+Function ResolveResourceBase(BasePath: String): String;
+Var
+  testPath: String;
+  appBundlePath: String;
+Begin
+  // Normalize base path to absolute path
+  BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
+  
+  // Try multiple locations for data directory
+  // 1. Direct relative to executable (works with symlinks)
+  testPath := BasePath + 'data';
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 2. Relative path from MacOS directory in .app bundle
+  testPath := ExpandFileName(BasePath + '../Resources/data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 3. Try symlink path (../../data from MacOS) - for shared data directory
+  testPath := ExpandFileName(BasePath + '../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
+  testPath := ExpandFileName(BasePath + '../../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 5. Try path next to .app bundle (for cases where data is outside the bundle)
+  // If BasePath contains ".app/Contents/MacOS/", try going up to the .app bundle's parent directory
+  If Pos('.app/Contents/MacOS/', BasePath) > 0 Then Begin
+    appBundlePath := Copy(BasePath, 1, Pos('.app/Contents/MacOS/', BasePath) + 4); // Get path up to ".app"
+    appBundlePath := ExtractFilePath(ExcludeTrailingPathDelimiter(appBundlePath)); // Get parent directory of .app
+    testPath := ExpandFileName(appBundlePath + 'data');
+    If DirectoryExistsUTF8(testPath) Then Begin
+      Result := IncludeTrailingPathDelimiter(testPath);
+      exit;
+    End;
+  End;
+  // Fallback: use base path (may not exist, but at least we tried)
+  Result := BasePath + 'data' + PathDelim;
+End;
+
 Procedure TForm1.LoadSideImage;
 Var
   p: TPortableNetworkGraphic;
+  dataPath: String;
+  imagePath: String;
 Begin
-  If FileExists('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png') Then Begin
+  // Resolve data directory path
+  dataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  imagePath := dataPath + 'res' + PathDelim + 'mainmenu.png';
+  If FileExistsUTF8(imagePath) Then Begin
     p := TPortableNetworkGraphic.Create;
-    p.LoadFromFile('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png');
+    p.LoadFromFile(imagePath);
     p.Width := p.Width Div 2;
     Image1.Picture.Assign(p);
     p.free;

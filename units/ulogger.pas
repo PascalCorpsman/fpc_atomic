@@ -3,7 +3,7 @@
 (*                                                                            *)
 (* Version     : 0.06                                                         *)
 (*                                                                            *)
-(* Author      : Uwe Schächterle (Corpsman)                                   *)
+(* Author      : Uwe Schï¿½chterle (Corpsman)                                   *)
 (*                                                                            *)
 (* Support     : www.Corpsman.de                                              *)
 (*                                                                            *)
@@ -25,15 +25,15 @@
 (* Known Issues: none                                                         *)
 (*                                                                            *)
 (* History     : 0.01 - Initial version                                       *)
-(*               0.02 - prototypen für Stacktracing                           *)
+(*               0.02 - prototypen fï¿½r Stacktracing                           *)
 (*               0.03 - Halt on Fatal Option                                  *)
 (*                      MaxStackDepth                                         *)
 (*                      Optionales StackBoundaryChecking                      *)
-(*                      Optionales Anfügen Methodenname beim Logging          *)
+(*                      Optionales Anfï¿½gen Methodenname beim Logging          *)
 (*                      LogShow                                               *)
 (*               0.04 - Added loglevel llError                                *)
-(*               0.05 - Logshow für Konsole                                   *)
-(*               0.06 - laderoutine für Logfiles                              *)
+(*               0.05 - Logshow fï¿½r Konsole                                   *)
+(*               0.06 - laderoutine fï¿½r Logfiles                              *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -62,17 +62,17 @@ Type
    * Jeder Logeintrag kann einer bestimmten Log Gruppe zugeordnet werden
    * Es empfiehlt sich dabei folgende Gliederungshierarchie zu verwenden.
    *
-   * Für Produktivcode sollte mindetens LogLevel (3) Aktiv sein.
+   * Fï¿½r Produktivcode sollte mindetens LogLevel (3) Aktiv sein.
    *
    * Level :
    *(0)   Trace = [llTrace, lldebug, llInfo, llWarning, llError, llCritical, llFatal]
    *              Ein Trace Log, dient im Allgemeinen der Nachvollziehbarkeit des
-   *              Programmflusses, er erzeugt den Größten Datenoutput und ist
-   *              deswegen, die schwächste Form des Loggings
+   *              Programmflusses, er erzeugt den Grï¿½ï¿½ten Datenoutput und ist
+   *              deswegen, die schwï¿½chste Form des Loggings
    *              z.B.: bei Betreten und Beenden einer Methode
    *
    *(1)  Debugg = [lldebug, llInfo, llWarning, llError, llCritical, llFatal]
-   *              Ein Debugg Log, ist eine Willkürlich und generell nur Temporär
+   *              Ein Debugg Log, ist eine Willkï¿½rlich und generell nur Temporï¿½r
    *              ausgegebene Information
    *              z.B.: Bei der Suche nach Fehlern, Ausgabe von Werten
    *
@@ -82,26 +82,26 @@ Type
    *              z.B.: Aktuelle Uhrzeit, Anzahl eingeloggter Benutzer ..
    *
    *(3) Warning = [llWarning, llError, llCritical, llFatal]
-   *              Ein Warning Log, ist ein Fehler, welcher die Ausführung der
+   *              Ein Warning Log, ist ein Fehler, welcher die Ausfï¿½hrung der
    *              Anwendung nicht weiter beeinflusst. Aber dennoch nicht der
-   *              Übliche/ Erwartete Zustand eingenommen wird.
+   *              ï¿½bliche/ Erwartete Zustand eingenommen wird.
    *              z.B.: Vergessen eine Setting zu spezifizieren, die Anwendung nimmt einen Default Wert
    *
    *(4)   Error = [llError, llCritical, llFatal]
-   *              Ein Error Log, ist ein Fehler, welcher die Ausführung negativ
-   *              beeinflusst aber nicht zum Absturz führt. 
-   *              z.B.: Fehlen einer kompletten Konfigurationsdatei, das Programm kann eingeschränkt weiter genutzt werden.
+   *              Ein Error Log, ist ein Fehler, welcher die Ausfï¿½hrung negativ
+   *              beeinflusst aber nicht zum Absturz fï¿½hrt. 
+   *              z.B.: Fehlen einer kompletten Konfigurationsdatei, das Programm kann eingeschrï¿½nkt weiter genutzt werden.
    *
    *(5)Critical = [llCritical, llFatal]
    *              Ein Kritischer Log, ist ein Fataler Fehler, welcher aber eine
    *              geeignete Fehlerbehandlung hat, das Programm bleibt Konsistent
    *              und kann weiter Fehlerfrei (mit Defaultwerten) betrieben werden.
-   *              z.B.: Zugriff auf ein nicht existierendes Array Element => Rückgabe Default Wert
+   *              z.B.: Zugriff auf ein nicht existierendes Array Element => Rï¿½ckgabe Default Wert
    *                    Umwandlung von String in Int, mit Defaultwert
    *
    *(6)   Fatal = [llFatal]
-   *              Ein Fataler Log, führt im Prinzip zu einem Programmabsturz,
-   *              alles oder Programmteile sind hiernach nicht mehr ausführbar.
+   *              Ein Fataler Log, fï¿½hrt im Prinzip zu einem Programmabsturz,
+   *              alles oder Programmteile sind hiernach nicht mehr ausfï¿½hrbar.
    *              Die Anwendung ist in einem Undefinierten Zustand, bei dem sie
    *              nicht mehr definiert weiter arbeiten kann und beendet werden
    *              sollte.
@@ -113,15 +113,15 @@ Type
   TLogLevelSet = Set Of TLogLevel;
 
   (*
-   * Die Loggerklasse ist nur Verfügbar, damit "eigene" instanzen erzeugt
-   * werden können.
-   * Zur Nutzung der unit ist kein eigenständiges Erzeugen notwendig.
+   * Die Loggerklasse ist nur Verfï¿½gbar, damit "eigene" instanzen erzeugt
+   * werden kï¿½nnen.
+   * Zur Nutzung der unit ist kein eigenstï¿½ndiges Erzeugen notwendig.
    *)
 
   (*
    * Soll der Stack mit geloggt werden muss jede Prozedur wie folgt gestaltet werden
-   * Zur Nutzung muss das llTrace nicht Aktiviert werden, es genügt, dass LogTraceStack
-   * gesetzt wird, und das an LogStack übergebene Loglevel aktuell ebenfalls geloggt wird.
+   * Zur Nutzung muss das llTrace nicht Aktiviert werden, es genï¿½gt, dass LogTraceStack
+   * gesetzt wird, und das an LogStack ï¿½bergebene Loglevel aktuell ebenfalls geloggt wird.
    *
    * Procedure Dummy;
    * begin
@@ -149,17 +149,17 @@ Type
     fFlushLogFileOnLog: Boolean;
     flogfileisopened: Boolean;
     FEnable: Boolean;
-    FDateFormat: String; // Todo : Soll mal dem User verfügbar gemacht werden
+    FDateFormat: String; // Todo : Soll mal dem User verfï¿½gbar gemacht werden
     fLogToConsole: Boolean;
     flogtoFile: Boolean;
     fLogStackTrace: Boolean;
     fStack: TStringList;
     fMaxStackDepth: integer;
     fCheckStackBoundaries: Boolean;
-    Procedure OpenLogFile; // Öffnet evtl. das Filehandle
+    Procedure OpenLogFile; // ï¿½ffnet evtl. das Filehandle
     Procedure DoLog(Const Text: String); // Gibt den Text auf der Console aus, oder Speichert in ihn die LogDatei
-    Function CreateLog(Logtext: String; Const Loglevel: TLogLevel): String; // Erzeugt den Passend Eingerückten Logeintrag, welcher Gespeichert oder auf die Konsole Ausgegeben wird
-    Procedure CloseLogFile(Force: Boolean); // Schließt evtl. das Filehandle
+    Function CreateLog(Logtext: String; Const Loglevel: TLogLevel): String; // Erzeugt den Passend Eingerï¿½ckten Logeintrag, welcher Gespeichert oder auf die Konsole Ausgegeben wird
+    Procedure CloseLogFile(Force: Boolean); // Schlieï¿½t evtl. das Filehandle
     Function StackLog: String; // Der Stacklog als Text
     Procedure SetEnable(Const aValue: Boolean);
     Function getLoglevel(): integer;
@@ -167,17 +167,17 @@ Type
     (*
      * Stack Bezogene Optionen
      *)
-    Property AddRoutineNameToLogs: Boolean read fAddRoutineNameToLogs write fAddRoutineNameToLogs; // Wenn Stacktracing Aktiviert ist, dann kann hier der Aktuelle Methodenname Automatisch mit angefügt werden.
+    Property AddRoutineNameToLogs: Boolean read fAddRoutineNameToLogs write fAddRoutineNameToLogs; // Wenn Stacktracing Aktiviert ist, dann kann hier der Aktuelle Methodenname Automatisch mit angefï¿½gt werden.
     Property AutoLogStackOnFatal: Boolean read fAutoLogStackOnFatal write fAutoLogStackOnFatal; // Automatisches Stack Trace Schreiben bei Fatalen Logs
-    Property CheckMaxStackDepth: integer read fCheckMaxStackDepth write fCheckMaxStackDepth; // Bei Aktivierter Stack überwachung ist dies die Grenze wogegen geprüft wird
+    Property CheckMaxStackDepth: integer read fCheckMaxStackDepth write fCheckMaxStackDepth; // Bei Aktivierter Stack ï¿½berwachung ist dies die Grenze wogegen geprï¿½ft wird
     Property CheckStackBoundaries: Boolean read fCheckStackBoundaries write fCheckStackBoundaries; // Wenn Gesetzt, dann Loggt der Logger einen Fatalen Log, wenn Stacktiefe > fCheckMaxStackDepth oder < 0 wird.
     Property LogStackTrace: Boolean read fLogStackTrace write fLogStackTrace; // Wenn Aktiviert, dann muss zu jedem llTrace ein LogLeave aufgerufen werden.
-    Property MaxStackDepth: integer read fMaxStackDepth; // Gibt die bisher tiefste Stacktiefe zurück
+    Property MaxStackDepth: integer read fMaxStackDepth; // Gibt die bisher tiefste Stacktiefe zurï¿½ck
 
     (*
      * Generelle Optionen
      *)
-    Property Enable: Boolean read FEnable write SetEnable; //Nur Wenn Enabled wird überhaupt geloggt
+    Property Enable: Boolean read FEnable write SetEnable; //Nur Wenn Enabled wird ï¿½berhaupt geloggt
     Property HaltOnFatal: Boolean read fHaltOnFatal write fHaltOnFatal; // Wenn gesetzt, dann wird die Anwendung via Halt bei einem Fatalen Eintrag automatisch beendet.
 
     (*
@@ -192,8 +192,8 @@ Type
     Destructor Destroy; override;
 
     Procedure SetCustomLogging(Const LogLevel_: TLogLevelSet); // Frei Konfigurierbares Logging
-    Procedure SetLogFilename(Const Filename: String); // Setzt das den Dateinamen für die Logdatei
-    Procedure SetLogLevel(Const Level: integer); // Setzt gemäß der Obigen Spezifikation das Logging
+    Procedure SetLogFilename(Const Filename: String); // Setzt das den Dateinamen fï¿½r die Logdatei
+    Procedure SetLogLevel(Const Level: integer); // Setzt gemï¿½ï¿½ der Obigen Spezifikation das Logging
 
     // Der Eigentliche Log Mechanismus
     Procedure AssertLog(Criteria: Boolean; LogText: String; LogLevel_: TLogLevel = llInfo); // Logt nur wenn "Criteria" = true
@@ -240,7 +240,7 @@ Var
   Logger: TLogger = Nil; // Wird Automatisch initialisiert und Freigegeben, dient nur dem Zugriff auf die Konfiguration
 
   (*
-   * Diverse Log Funktionen für Basistypen, Wrapper für logger.XY
+   * Diverse Log Funktionen fï¿½r Basistypen, Wrapper fï¿½r logger.XY
    *)
 Procedure AssertLog(Criteria: Boolean; LogText: String; LogLevel: TLogLevel = llInfo); // Logt nur wenn "Criteria" = true
 Procedure Log(LogText: String; LogLevel: TLogLevel = llInfo); // -- Kann auch mit Mehrzeiligen Strings umgehen
@@ -261,9 +261,9 @@ Function LoadLogFile(Const Filename: String): TLogEntryArray;
 
 Implementation
 
-Uses sysutils, FileUtil, LazFileUtils,
+Uses sysutils,
 {$IFDEF USELCL}
-  lazutf8,
+  FileUtil, LazFileUtils, lazutf8,
 {$ENDIF}
   math;
 
@@ -277,10 +277,10 @@ End;
 
 (*
  * Umkehrfunktion zu FormatDateTime
- * Die Implementierung ist nicht vollständig, Erkennt aber ob die Konvertierung
+ * Die Implementierung ist nicht vollstï¿½ndig, Erkennt aber ob die Konvertierung
  * Fehlgeschlagen ist, wenn dem so ist, dann result := -1
  *)
-// TODO: Diese Funktion hier könnte auch durch die "ScanDateTime" routine aus dateutil ersetzt werden.
+// TODO: Diese Funktion hier kï¿½nnte auch durch die "ScanDateTime" routine aus dateutil ersetzt werden.
 Function StrToDateTimeFormat(Input, Format: String): TDateTime;
 Var
   y, m, d, h, n, s, z: String;
@@ -288,10 +288,10 @@ Var
   Block: Boolean;
 Begin
   (*
-   * Die Idee ist den Input String gemäß dem Format String zu Parsen und alle
+   * Die Idee ist den Input String gemï¿½ï¿½ dem Format String zu Parsen und alle
    * Formatstring Tokens in den einzelnen Container zu sammeln.
-   * Dann wird Konvertiert und mittels anschließender Rückkonvertierung
-   * geprüft ob alles geklappt hat *g*.
+   * Dann wird Konvertiert und mittels anschlieï¿½ender Rï¿½ckkonvertierung
+   * geprï¿½ft ob alles geklappt hat *g*.
    *)
   // Der Formatstring muss mindestens so lang sein wie der Eingabestring.
   If length(Format) < length(Input) Then Begin
@@ -402,13 +402,29 @@ Var
   cnt, i: Integer;
 Begin
   result := Nil;
+  {$IFDEF USELCL}
   If FileExistsutf8(Filename) Then Begin
-    // Gepuffertes Laden des Logfiles, so kann das Logfile während des neu ladens weiter beschrieben werden.
+  {$ELSE}
+  If FileExists(Filename) Then Begin
+  {$ENDIF}
+    // Gepuffertes Laden des Logfiles, so kann das Logfile wï¿½hrend des neu ladens weiter beschrieben werden.
+    {$IFDEF USELCL}
     s := GetTempFileNameUTF8(GetTempDir(), '');
+    {$ELSE}
+    s := GetTempFileName(GetTempDir(), '');
+    {$ENDIF}
     sl := TStringList.Create;
+    {$IFDEF USELCL}
     If CopyFile(utf8tosys(filename), utf8tosys(s), false, false) Then Begin
       sl.LoadFromFile(s);
       If Not DeleteFileUTF8(s) Then Begin
+    {$ELSE}
+    // For non-LCL builds, directly load the file
+    sl.LoadFromFile(filename);
+    Begin
+      // Dummy block for compatibility
+      If False Then Begin
+    {$ENDIF}
 {$IFDEF USELCL}
         showmessage('Error on deleting temporary file : ' + s);
 {$ELSE}
@@ -420,7 +436,7 @@ Begin
   Else Begin
     sl.LoadFromFile(Filename);
   End;
-  // Laden der Einträge
+  // Laden der Eintrï¿½ge
   setlength(result, sl.Count);
   cnt := 0;
   i := 0;
@@ -587,7 +603,7 @@ Begin
   End;
   // Halt on Fatal
   If fHaltOnFatal And (loglevel_ = llFatal) Then Begin
-    fstack.Clear; // Wir beenden via Gewalt, also Stack auch Löschen, wenn dann wurde er eh schon geloggt.
+    fstack.Clear; // Wir beenden via Gewalt, also Stack auch Lï¿½schen, wenn dann wurde er eh schon geloggt.
     CloseLogFile(true);
     halt(1);
   End;
@@ -666,7 +682,7 @@ End;
 
 Procedure TLogger.DoLog(Const Text: String);
 Begin
-  If flogfileisopened Then Begin // Wenn Keine datei geöffnet ist, kann auch nicht geschrieben werden.
+  If flogfileisopened Then Begin // Wenn Keine datei geï¿½ffnet ist, kann auch nicht geschrieben werden.
     writeln(FLogFile, Text);
   End;
   If fLogToConsole Then Begin // Wenn auch auf die Konsole ausgegeben werden soll
@@ -712,7 +728,7 @@ Procedure TLogger.SetLogFilename(Const Filename: String);
 Begin
   If (fFilename <> Filename) Then Begin
     fFilename := Filename;
-    // Wird der Dateiname Geändert, obwohl die Logdatei gerade geöffnet ist, muss die alte vorher geschlossen werden.
+    // Wird der Dateiname Geï¿½ndert, obwohl die Logdatei gerade geï¿½ffnet ist, muss die alte vorher geschlossen werden.
     If flogfileisopened Then Begin
       CloseLogFile(true);
     End;

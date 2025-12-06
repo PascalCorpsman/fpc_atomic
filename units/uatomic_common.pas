@@ -21,7 +21,19 @@ Interface
 {$I ../client/globaldefines.inc}
 
 Uses
-  Classes, SysUtils, ulogger, Graphics, ugraphics, uvectormath;
+  Classes, SysUtils, ulogger, uvectormath
+{$IFNDEF Server}
+  , Graphics, ugraphics
+{$ENDIF}
+  ;
+
+{$IFDEF Server}
+Type
+  TColor = LongWord;
+  TRGB = Record
+    r, g, b: Byte;
+  End;
+{$ENDIF}
 
 Const
   (*
@@ -111,11 +123,12 @@ Const
    *                       FIX: "Slow" bug under Windows #7
    * -releaseG - 0.12007 = FIX: made Windows version more robust (start game did not really work ...)
    * -releaseG - 0.12008 = FIX: Drawgame in Teamsplay -> no finish detected
-   *             0.12009 = FIX: if player has no bomb disease and places a bomb (which does not pop up), then it pops up exactly at that moment when the disease is over
+   * -releaseG - 0.12009 = FIX: if player has no bomb disease and places a bomb (which does not pop up), then it pops up exactly at that moment when the disease is over
+   *             0.12010 =
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12009';
+  Version = '0.12010';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
@@ -139,9 +152,9 @@ Const
   ChunkManagerHeaderLen = 12; // uChunkmanager.pas    HeaderLen = 12
 
   FrameRate = 10; // Zeit in ms bis ein neues Frame berechnet wird
-  UpdateRate = 40; // Zeit in ms bis die Clients wieder Aktualisiert werden
+  UpdateRate = 20; // Zeit in ms bis die Clients wieder Aktualisiert werden (50 FPS for smoother gameplay)
 
-  SynchonizeTimeOut = 150; // Zeit in ms Kommt mehr als 150ms lang keine Heartbeat Message von allen Clients, dann wird eine Zwangspause eingeleitet.
+  SynchonizeTimeOut = 800; // Zeit in ms Kommt mehr als 800ms lang keine Heartbeat Message von allen Clients, dann wird eine Zwangspause eingeleitet. (Increased for older machines) (increased for online play over internet)
   HeartBeatTime = 100; // Zeit in ms Muss Sinnigerweise << SynchonizeTimeOut sein.
 
   AtomicActionDoubleTime = 200; // Zeit in ms die zwischen 2 Tastendrücken liegen muss damit sie als "Doppelte" erkannt werden.
@@ -245,7 +258,9 @@ Const
    * Diese Farben sind nur im Range 0..100
    * Wenn sie als TColor genutzt werden sollen, müssen sie noch durch
    *
-   * Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+   * {$IFNDEF Server}
+Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+{$ENDIF}
    *
    *)
 {$IFDEF Only3Player}
@@ -515,6 +530,8 @@ Type
   TKeySet = (
     ks0 // Keyboard 0
     , ks1 // Keyboard 1
+    , ksJoy1 // Joystick 1
+    , ksJoy2 // Joystick 2
     );
 
   TPlayer = Record
@@ -630,7 +647,9 @@ Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speic
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
 
+{$IFNDEF Server}
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+{$ENDIF}
 
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
 Function AtomicDefaultKeys(Index: TKeySet): TKeys;
@@ -721,7 +740,10 @@ Begin
 End;
 {$ENDIF}
 
+{$IFNDEF Server}
+{$IFNDEF Server}
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
+{$ENDIF}
 Var
   r, g, b: integer;
 Begin
@@ -730,6 +752,7 @@ Begin
   b := min(255, round(aColor.b * 2.55));
   result := Graphics.RGBToColor(r, g, b);
 End;
+{$ENDIF}
 
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme);
 Begin

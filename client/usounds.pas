@@ -171,7 +171,7 @@ Begin
   // ggf. neu starten des Songs
   If game.Settings.PlaySounds And (FileExists(Filename)) And (Filename <> '') Then Begin
     // Start des Liedes in Endlosschleife
-    fBassSong := BASS_StreamCreateFile(false, Pchar(filename), 0, 0, BASS_MUSIC_LOOP);
+    fBassSong := BASS_StreamCreateFile(0, Pchar(filename), 0, 0, BASS_MUSIC_LOOP);
     If fBassSong = 0 Then Begin
       LogShow('Error unable to load :' + LineEnding + filename + LineEnding + 'Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
       exit;
@@ -206,7 +206,7 @@ Begin
     End;
   End;
   // Wir kennen den Sound noch nicht -> Aufnehmen und starten
-  song := BASS_StreamCreateFile(false, Pchar(filename), 0, 0, 0);
+  song := BASS_StreamCreateFile(0, Pchar(filename), 0, 0, 0);
   If Song = 0 Then Begin
     LogShow('Error unable to load :' + LineEnding + filename + LineEnding + 'Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
     exit;

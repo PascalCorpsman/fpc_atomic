@@ -380,11 +380,29 @@ Begin
   Bomb_Wobble.OffsetX := -20;
   Bomb_Wobble.OffsetY := -37 Div 2;
   If Not assigned(Bomb_Wobble.ani) Then exit;
-  FlameCross := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [0]);
+  // Grid is 5 columns x 9 rows, each frame is 41x37 pixels
+  // Each row is a 5-frame animation of one flame element:
+  // Row 0 (frames 0-4): FlameCross - 5-frame animation of cross pattern
+  // Row 1 (frames 5-9): FlameEnd up (vertical top end) - 5-frame animation
+  // Row 2 (frames 10-14): FlameEnd left (horizontal left end) - 5-frame animation
+  // Row 3 (frames 15-19): FlameEnd down (vertical bottom end) - 5-frame animation
+  // Row 4 (frames 20-24): FlameEnd right (horizontal right end) - 5-frame animation
+  // Row 5 (frames 25-29): FlameMiddle up (vertical middle going up) - 5-frame animation
+  // Row 6 (frames 30-34): FlameMiddle down (vertical middle going down) - 5-frame animation
+  // Row 7 (frames 35-39): FlameMiddle right (horizontal middle going right) - 5-frame animation
+  // Row 8 (frames 40-44): FlameMiddle left (horizontal middle going left) - 5-frame animation
+  // Each range corresponds to a direction: 0°=right, 90°=up, 180°=left, 270°=down
+  FlameCross := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [0]); // Row 0: cross animation (5 frames)
   If Not assigned(FlameCross) Then exit;
-  FlameMiddle := CreateAnimation(path + 'flame.png', 45, 50, 41, 37, 5, 9, 5, [40, 25, 35, 30]);
-  If Not assigned(FlameMiddle) Then exit;
-  FlameEnd := CreateAnimation(path + 'flame.png', 45, 50, 41, 37, 5, 9, 5, [20, 5, 10, 15]);
+  // FlameEnd: 4 ranges for 4 directions, each with 5-frame animation
+  // EqualizeRanges divides 360° into 4 equal parts: Range 0=0-89°, Range 1=90-179°, Range 2=180-269°, Range 3=270-359°
+  // When FlameAngle is set: 0°=right, 90°=up, 180°=left, 270°=down
+  // Frame offsets: 20=right(0°), 5=up(90°), 10=left(180°), 15=down(270°)
+  FlameEnd := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [20, 5, 10, 15]); // right, up, left, down
+  If Not assigned(FlameEnd) Then exit;
+  // FlameMiddle: 4 ranges for 4 directions, each with 5-frame animation
+  // Frame offsets: 40=right(0°), 30=up(90°), 35=left(180°), 25=down(270°) - swapped right/left and up/down
+  FlameMiddle := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [40, 30, 35, 25]);
   If Not assigned(FlameEnd) Then exit;
   If Not LoadDir(Path + 'idle' + PathDelim, fZenAnimations) Then exit;
   If Not LoadDir(Path + 'locked_in' + PathDelim, fLockedInAnimations) Then exit;

@@ -1,0 +1,41 @@
+# .dockerignore for FPC Atomic TCP Server
+
+# macOS specific
+.DS_Store
+*.app
+app_*
+bin/
+
+# Build artifacts
+*.o
+*.ppu
+*.a
+lib/
+*.compiled
+*.or
+
+# Development
+.git/
+.gitignore
+*.log
+*.bak
+*~
+
+# IDE
+.vscode/
+.idea/
+*.lps
+
+# Test files
+test_*
+tools/packet_*
+tools/udp_*
+
+# Enet (not used for TCP)
+enet_src/
+flyio/echo_test/
+
+# Documentation
+*.md
+README*
+

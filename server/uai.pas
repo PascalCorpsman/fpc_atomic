@@ -77,25 +77,64 @@ Var
 
 Function LoadAiLib(): Boolean;
 Var
-  Filename: String;
+  Filename, BasePath: String;
+{$IFDEF Darwin}
+  ArchDir: String = '';
+{$ENDIF}
+
+  Function TryLoad(const BasePath: String): Boolean;
+  Var
+    Candidate: String;
+  Begin
+    Candidate := IncludeTrailingPathDelimiter(BasePath) + Filename;
+    If Not FileExists(Candidate) Then Begin
+      Exit(False);
+    End;
+    Lib := LoadLibrary(Candidate);
+    If Lib = 0 Then
+      log(format('AI: LoadLibrary failed for: %s', [Candidate]), llError);
+    TryLoad := Lib <> 0;
+  End;
 Begin
 {$IFDEF Windows}
   Filename := 'ai.dll';
 {$ELSE}
+  {$IFDEF DARWIN}
+  Filename := 'libai.dylib';
+{$ELSE}
   Filename := 'libai.so';
 {$ENDIF}
-  Filename := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
-  result := false;
+{$ENDIF}
+  Result := False;
   If lib <> 0 Then UnloadLibrary(lib);
-  If Not FileExists(Filename) Then exit;
-  lib := LoadLibrary(Filename);
-  If lib = 0 Then exit;
+  Lib := 0;
+
+  BasePath := ExtractFilePath(ParamStr(0));
+  If Not TryLoad(BasePath) Then
+  Begin
+{$IFDEF Darwin}
+    {$IFDEF CPUAARCH64}
+    ArchDir := 'arm64';
+    {$ENDIF}
+    {$IFDEF CPUX86_64}
+    ArchDir := 'x86_64';
+    {$ENDIF}
+    If ArchDir <> '' Then
+      TryLoad(ExpandFileName(IncludeTrailingPathDelimiter(BasePath) + '../../lib/' + ArchDir));
+    If (Lib = 0) Then
+      TryLoad(ExpandFileName(IncludeTrailingPathDelimiter(BasePath) + '../lib'));
+{$ENDIF}
+  End;
+  If lib = 0 Then Begin
+    log('AI: Failed to load AI library from all attempted paths', llError);
+    exit;
+  End;
   AiInterfaceVersion := TAiInterfaceVersion(GetProcAddress(lib, 'AiInterfaceVersion'));
   If Not assigned(AiInterfaceVersion) Then Begin
+    log('AI: Failed to load AiInterfaceVersion function', llError);
     UnLoadAiLib;
     exit;
   End;
-
   If AiInterfaceVersion() <> AiLibInterfaceVersion Then Begin
     logshow(format('Error, invalid ai interface version. Got %d need %d', [AiInterfaceVersion(), AiLibInterfaceVersion]), llError);
     UnLoadAiLib;
@@ -104,29 +143,35 @@ Begin
 
   AiInit := TAiInit(GetProcAddress(lib, 'AiInit'));
   If Not assigned(AiInit) Then Begin
+    log('AI: Failed to load AiInit function', llError);
     UnLoadAiLib;
     exit;
   End;
+  
   AiNewRound := TAiNewRound(GetProcAddress(lib, 'AiNewRound'));
   If Not assigned(AiNewRound) Then Begin
+    log('AI: Failed to load AiNewRound function', llError);
     UnLoadAiLib;
     exit;
   End;
 
   AiHandlePlayer := TAiHandlePlayer(GetProcAddress(lib, 'AiHandlePlayer'));
   If Not assigned(AiHandlePlayer) Then Begin
+    log('AI: Failed to load AiHandlePlayer function', llError);
     UnLoadAiLib;
     exit;
   End;
 
   AiDeInit := TAiDeInit(GetProcAddress(lib, 'AiDeInit'));
   If Not assigned(AiDeInit) Then Begin
+    log('AI: Failed to load AiDeInit function', llError);
     UnLoadAiLib;
     exit;
   End;
 
   AiVersion := TAiVersion(GetProcAddress(lib, 'AiVersion'));
   If Not assigned(AiVersion) Then Begin
+    log('AI: Failed to load AiVersion function', llError);
     UnLoadAiLib;
     exit;
   End;

@@ -17,7 +17,7 @@
     <i18n>
       <EnableI18N LFM="False"/>
     </i18n>
-    <BuildModes Count="2">
+    <BuildModes Count="4">
       <Item1 Name="Default" Default="True"/>
       <Item2 Name="Debug">
         <CompilerOptions>
@@ -27,7 +27,7 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir);.."/>
-            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik"/>
+            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <Parsing>
@@ -60,6 +60,48 @@
           </Other>
         </CompilerOptions>
       </Item2>
+      <Item3 Name="macos_arm64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="../macos/bin/arm64/atomic_server"/>
+          </Target>
+          <ConfigAndTarget>
+            <TargetCPU Value="aarch64"/>
+            <TargetOS Value="darwin"/>
+          </ConfigAndTarget>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);.."/>
+            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
+            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+            <Libraries Value="../macos/lib/$(TargetCPU)"/>
+          </SearchPaths>
+          <Other>
+            <CustomOptions Value="-dServer -k-ld_classic -k-rpath -k@executable_path/../lib"/>
+          </Other>
+        </CompilerOptions>
+      </Item3>
+      <Item4 Name="macos_x86_64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="../macos/bin/x86_64/atomic_server"/>
+          </Target>
+          <ConfigAndTarget>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="darwin"/>
+          </ConfigAndTarget>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);.."/>
+            <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
+            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+            <Libraries Value="../macos/lib/$(TargetCPU)"/>
+          </SearchPaths>
+          <Other>
+            <CustomOptions Value="-dServer -k-ld_classic -k-rpath -k@executable_path/../lib"/>
+          </Other>
+        </CompilerOptions>
+      </Item4>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -77,13 +119,10 @@
         </Mode0>
       </Modes>
     </RunParams>
-    <RequiredPackages Count="2">
+    <RequiredPackages Count="1">
       <Item1>
         <PackageName Value="LCLBase"/>
       </Item1>
-      <Item2>
-        <PackageName Value="lnetbase"/>
-      </Item2>
     </RequiredPackages>
     <Units Count="7">
       <Unit0>
@@ -123,7 +162,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);.."/>
-      <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik"/>
+      <OtherUnitFiles Value="../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

@@ -22,15 +22,23 @@ The steps shown here are only needed to be done once (for installation).
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
    1.1 if you want all animations download and merge the expansion pack <del>from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)</del> link is broken use [new link](https://www.geocities.ws/mheid.geo/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
-2. download the atomic_launcher of the subfolder [bin](https://github.com/PascalCorpsman/fpc_atomic/tree/main/bin) on your harddisc
-3. run the "atomic_launcher" and follow the instructions<br>
+2. download the atomic_launcher from the latest release [here](https://github.com/PascalCorpsman/fpc_atomic/releases/latest) and store it on your harddisc<br>
+![](documentation/asset_download_preview.png)<br>
+   2.1 Linux users will need to 
+   >
+   > chmod +x atomic_launcher
+   >
+3. run the "atomic_launcher", click "check for updates" and then "Download and update files"<br>
    3.1 Linux users may need to run the following commands:
    >
    > sudo aptitude install libssl-dev
    >
-4. read the [manual](MANUAL.md)  
-4.5 if you are a Linux user run the "Linux_sound_install_script.sh"
-1. start the game by executing "atomic_launcher" and enjoy
+4. click "run cd data extractor"<br>
+   4.1 Click "set atomic cd root folder"<br>
+   4.2 Click "start extraction"  
+5. read the [manual](MANUAL.md)<br>
+   5.5 if you are a Linux user run the "Linux_sound_install_script.sh"
+6. start the game by executing "atomic_launcher" and enjoy
 
 ## How do i get updates ?
 By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates.
@@ -54,17 +62,31 @@ See the license.md file located at [license.md](license.md) for details about th
 
 ## What needs to be done to compile the code ?
 
+### General Requirements
+
 1. Install Lazarus IDE from https://www.lazarus-ide.org/
 2. Download dglopengl.pas from https://github.com/saschawillems/dglopengl and store it in the "units" folder
 3. Download bass.pas from https://www.un4seen.com/ and store it in the "units" folder
-   - Linux users: copy libbass.so to "/usr/lib/" or run "Linux_sound_install_script.sh"
-   - Windows users: copy bass.dll from the bin folder into the repository root folder
 4. Download synapse from http://www.ararat.cz/synapse/doku.php/download and store it in a new subfolder "synapse"
 5. Install the following packages into the Lazarus IDE:
     - 'Lnet' from https://github.com/almindor/L-Net or the fixed version from https://github.com/PascalCorpsman/lnet
     - 'LazOpenGLContext' (from the list of available packages inside the IDE)
 6. Download SDL2-Header from https://github.com/PascalCorpsman/SDL2-for-Pascal and store the content its "units" folder in a new subfolder "sdl2_for_pascal"
 7. Add the paths from 4. and 6. as searchpaths for all .lpi files (at least client, launcher and server) (in the IDE project -> settings -> compilersettings -> paths). Ignore the not resolvable searchpaths.
+
+### Platform-Specific Instructions
+
+#### Linux
+- Copy libbass.so to "/usr/lib/" or run "Linux_sound_install_script.sh"
+
+#### Windows
+- Copy bass.dll from the bin folder into the repository root folder
+
+#### macOS
+- **See [macos/README_mac.md](macos/README_mac.md) for detailed macOS build instructions**
+- **Quick start:** `./macos/tools/build_all_arm64.command` (ARM64) or `./macos/tools/build_all_x86_64.command` (x86_64)
+- Copy libbass.dylib from the bass24-osx into macos/lib/arm64 and macos/lib/x86_64
+- For x86_64 builds, Rosetta Homebrew is required (installed automatically via `install_rosetta_homebrew.command`)
 
 !! Attention !!
 

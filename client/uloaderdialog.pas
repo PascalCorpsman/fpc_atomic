@@ -33,7 +33,7 @@ Type
     fTextures: Array[0..8] Of Integer; // Die 9 Einzeltextruren des Hintergrunds
   public
     Percent: integer;
-    Constructor Create(Const Owner: TOpenGLControl);
+    Constructor Create(Const Owner: TOpenGLControl; Const DataPath: String = '');
     Destructor Destroy(); override;
     (*
      * !Achtung!
@@ -41,6 +41,7 @@ Type
      * -> Sollte also nur in Blockierenden Aufgaben aufgerufen werden !
      *)
     Procedure Render();
+    Procedure RenderDirect(); // Render without SwapBuffers and ProcessMessages - for use in OnPaint
   End;
 
 Implementation
@@ -50,6 +51,7 @@ Uses
   , dglOpenGL
   , Forms
   , LazUTF8
+  , LazFileUtils
   , uatomic_common
   , uopengl_graphikengine
   , uOpenGL_ASCII_Font
@@ -75,7 +77,7 @@ End;
 
 { TLoaderDialog }
 
-Constructor TLoaderDialog.Create(Const Owner: TOpenGLControl);
+Constructor TLoaderDialog.Create(Const Owner: TOpenGLControl; Const DataPath: String = '');
 Var
   p: String;
   png: TPortableNetworkGraphic;
@@ -86,8 +88,22 @@ Begin
   fHeight := 5 * 24;
   fOwner := Owner;
   Percent := 0;
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png';
+  // CRITICAL: Ensure OpenGL context is active before loading textures
+  // This is required because LoadGraphik uses glGenTextures and glTexImage2D
+  If Not Owner.MakeCurrent Then Begin
+    Raise Exception.Create('TLoaderDialog.Create: OpenGL context is not active');
+  End;
+  // Use provided DataPath if available, otherwise fall back to old method
+  If DataPath <> '' Then Begin
+    p := IncludeTrailingPathDelimiter(DataPath) + 'res' + PathDelim + 'loaddialog.png';
+  End Else Begin
+    p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png';
+  End;
   png := TPortableNetworkGraphic.Create;
+  If Not FileExistsUTF8(p) Then Begin
+    png.Free;
+    Raise Exception.Create('TLoaderDialog.Create: Could not find loaddialog.png at ' + p);
+  End;
   png.LoadFromFile(p);
   b := TBitmap.create;
   b.Assign(png);
@@ -203,6 +219,96 @@ Begin
   Exit2d();
   fOwner.SwapBuffers;
   Application.ProcessMessages;
+End;
+
+Procedure TLoaderDialog.RenderDirect();
+Var
+  x, i, j: Integer;
+  s: String;
+Begin
+  // Same as Render(), but without SwapBuffers and ProcessMessages
+  // This is for use in OnPaint, which already handles these
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
+  glLoadIdentity();
+  glcolor4f(1, 1, 1, 1);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  Go2d(GameWidth, GameHeight);
+  glPushMatrix;
+  glTranslatef((GameWidth - fWidth) Div 2, (GameHeight - fHeight) Div 2, atomic_dialog_Layer);
+  glPushMatrix;
+  // Die "Dialogbox"
+  // 1. Zeile
+  RenderImg(24, 24, fTextures[0]); // Ecke Oben Links
+  glPushMatrix;
+  For i := 1 To (fWidth Div 24) - 2 Do Begin
+    glTranslatef(24, 0, 0);
+    RenderImg(24, 24, fTextures[1]); // Obere Mittlere Kante
+  End;
+  glTranslatef(24, 0, 0);
+  RenderImg(24, 24, fTextures[2]); // Ecke Oben Rechts
+  glPopMatrix;
+  // Zeile 2 bis N -1
+  For j := 1 To (fHeight Div 24) - 2 Do Begin
+    glTranslatef(0, 24, 0);
+    glPushMatrix;
+    RenderImg(24, 24, fTextures[3]); // Linke Kante
+    For i := 1 To (fWidth Div 24) - 2 Do Begin
+      glTranslatef(24, 0, 0);
+      RenderImg(24, 24, fTextures[4]); // Die Mittelstücke
+    End;
+    glTranslatef(24, 0, 0);
+    RenderImg(24, 24, fTextures[5]); // Rechte Kante
+    glPopMatrix;
+  End;
+  // Letzte Zeile
+  glTranslatef(0, 24, 0);
+  RenderImg(24, 24, fTextures[6]); // Ecke unten Links
+  For i := 1 To (fWidth Div 24) - 2 Do Begin
+    glTranslatef(24, 0, 0);
+    RenderImg(24, 24, fTextures[7]); // untere Mittlere Kante
+  End;
+  glTranslatef(24, 0, 0);
+  RenderImg(24, 24, fTextures[8]); // Ecke Unten Rechts
+  glPopMatrix;
+  // Rendern der Elemente auf dem Dialog
+  glTranslatef(0, 0, atomic_EPSILON);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  // Der Schriftzug "Loading data..."
+  s := 'Loading data...';
+  OpenGL_ASCII_Font.Color := clWhite;
+  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
+  // Die Prozentzahl
+  s := inttostr(Percent) + '%';
+  OpenGL_ASCII_Font.Color := clYellow;
+  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
+  // Der Fortschrittsbalken
+  glTranslatef(0, 0, -atomic_EPSILON); // Der Weise Rahmen, mittels LineLoop sieht das scheiße aus, also muss der so in den Hintergrund der anderen beiden.
+  glBegin(GL_QUADS);
+  glColor3f(1, 1, 1);
+  glVertex3f(24, 82, 0);
+  glVertex3f(24, 82 + 14, 0);
+  glVertex3f(fWidth - 24, 82 + 14, 0);
+  glVertex3f(fWidth - 24, 82, 0);
+  glend;
+  glTranslatef(0, 0, atomic_EPSILON);
+  x := round((fWidth - 48 - 2) * Percent / 100);
+  glBegin(GL_QUADS);
+  glColor3f(168 / 255, 168 / 255, 168 / 255);
+  glVertex3f(24 + 1, 82 + 1, 0);
+  glVertex3f(24 + 1, 82 + 14 - 1, 0);
+  glVertex3f(24 + 1 + x, 82 + 14 - 1, 0);
+  glVertex3f(24 + 1 + x, 82 + 1, 0);
+  glend;
+  glBegin(GL_QUADS);
+  glColor3f(0, 0, 0);
+  glVertex3f(24 + 1 + x, 82 + 1, 0);
+  glVertex3f(24 + 1 + x, 82 + 14 - 1, 0);
+  glVertex3f(fWidth - 24 - 1, 82 + 14 - 1, 0);
+  glVertex3f(fWidth - 24 - 1, 82 + 1, 0);
+  glend;
+  glPopMatrix;
+  Exit2d();
 End;
 
 End.

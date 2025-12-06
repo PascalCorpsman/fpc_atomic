@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uJSON.pas                                                       ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.14                                                         *)
+(* Version     : 0.15                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -41,11 +41,17 @@
 (*               0.13 = Erste Versuche eine Zeilennummer aus zu geben, wenn   *)
 (*                      der JSON Text falsch ist..                            *)
 (*               0.14 = Ignore \u tags instead of throwing an exception       *)
+(*               0.15 = ADD IJSONAddobjInterface                              *)
+(*                      Parent Property                                       *)
+(*                      Validy Checks on TJSONArray.addobj                    *)
+(*                      FIX: linebreak on TJSONNodeObj.ToString               *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uJSON;
 
 {$MODE objfpc}{$H+}
+
+{$INTERFACES CORBA}
 
 Interface
 
@@ -137,10 +143,12 @@ Type
   private
     fName: String; // Wird in Findpath benötigt
     fobjs: Array Of TJSONObj; // Das ist damit TJSONObj das Findpath bereitstellen kann, sonst müssten das die Kindklassen alle Redundant implementieren
+    fParent: TJSONObj; // das Eltern JSON Element, wenn es eines gibt, sonst NIL
   protected
     Procedure Clear; virtual;
   public
     Tag: PtrInt; // For the User, is not needed by the JSON Library = 0 on Create
+    Property Parent: TJSONObj read fParent;
     Constructor Create; virtual;
     Destructor Destroy; override;
 
@@ -150,9 +158,14 @@ Type
     Function Clone: TJSONObj; virtual; // Abstract; // Das Object "Clont" sich selbst und wird als neue Instanz zurück gegeben
   End;
 
+  IJSONChildobjInterface = Interface
+    ['{121D69AC-9738-455E-B2EA-C80C409D588F}'] // Created with Lazarus IDE, using CTRL+SHIFT+G
+    Procedure AddObj(JSONObj: TJSONObj);
+    Function RemoveObj(JSONObj: TJSONObj): Boolean;
+  End;
   { TJSONComment }
 
-  TJSONComment = Class(TJSONObj) // Will man einen JSON 5.0 Kommantar erzeugen der Parser wirft alle Kommentare weg
+  TJSONComment = Class(TJSONObj) // Falls man einen JSON 5.0 Kommantar erzeugen will, der Parser wirft alle Kommentare weg
   private
 
   public
@@ -168,7 +181,7 @@ Type
 
   { TJSONArray }
 
-  TJSONArray = Class(TJSONObj)
+  TJSONArray = Class(TJSONObj, IJSONChildobjInterface)
   private
     Function getObjCount: integer;
     Function getObj(index: integer): TJSONObj;
@@ -181,6 +194,7 @@ Type
     Constructor Create; override;
 
     Procedure AddObj(JSONObj: TJSONObj);
+    Function RemoveObj(JSONObj: TJSONObj): Boolean;
     Procedure Clear; override;
 
     Function ToString(FrontSpace: String = ''): String; override;
@@ -190,7 +204,7 @@ Type
 
   { TJSONNode }
 
-  TJSONNode = Class(TJSONObj)
+  TJSONNode = Class(TJSONObj, IJSONChildobjInterface)
   private
     Function getObjCount: integer;
     Function getObj(index: integer): TJSONObj;
@@ -201,6 +215,7 @@ Type
     Constructor Create; override;
 
     Procedure AddObj(JSONObj: TJSONObj);
+    Function RemoveObj(JSONObj: TJSONObj): Boolean;
     Procedure Clear; override;
 
     Function ToString(FrontSpace: String = ''): String; override;
@@ -366,21 +381,23 @@ End;
 { TJSONTerminal }
 
 Constructor TJSONTerminal.Create(aValue: String);
+Var
+  i: Integer;
 Begin
   Inherited create;
+  fName := aValue;
   If length(aValue) > 1 Then Begin
     If (avalue[1] = '"') And (avalue[length(aValue)] = '"') Then Begin
       fName := copy(aValue, 2, length(aValue) - 2);
-      fIsString := true;
-    End
-    Else Begin
-      fName := aValue; // Eigentlich müsste hier ne AV kommen
-      fIsString := false;
     End;
-  End
-  Else Begin
-    fName := aValue; // Eigentlich müsste hier ne AV kommen
-    fIsString := false;
+  End;
+  fIsString := false;
+  For i := 1 To length(fName) Do Begin
+    // TODO: Das ist eigentlich falsch, weil es einen String wie 1.1.1 auch als gültige Zahl erkennen würde ..
+    If Not (fName[i] In ['0'..'9', DefaultFormatSettings.DecimalSeparator]) Then Begin
+      fIsString := true;
+      break;
+    End;
   End;
 End;
 
@@ -419,6 +436,7 @@ Begin
   Tag := 0;
   fName := '';
   fobjs := Nil;
+  fParent := Nil;
 End;
 
 Destructor TJSONObj.Destroy;
@@ -535,13 +553,39 @@ Begin
   setlength(result.fobjs, length(Self.fobjs));
   For i := 0 To high(fobjs) Do Begin
     result.fobjs[i] := Self.fobjs[i].Clone;
+    result.fobjs[i].fParent := result;
   End;
 End;
 
 Procedure TJSONArray.AddObj(JSONObj: TJSONObj);
 Begin
-  setlength(fobjs, High(fobjs) + 2);
-  fobjs[High(fobjs)] := JSONObj;
+  If (JSONObj Is TJSONTerminal) Or
+    (JSONObj Is TJSONNode) Then Begin
+    setlength(fobjs, High(fobjs) + 2);
+    fobjs[High(fobjs)] := JSONObj;
+    JSONObj.fParent := self;
+  End
+  Else Begin
+    Raise exception.create('Error: ' + JSONObj.ClassName + ' not allowed as element for ' + ClassName);
+  End;
+End;
+
+Function TJSONArray.RemoveObj(JSONObj: TJSONObj): Boolean;
+Var
+  i, j: Integer;
+Begin
+  result := false;
+  For i := 0 To high(fobjs) Do Begin
+    If fobjs[i] = JSONObj Then Begin
+      result := true;
+      fobjs[i].Free;
+      For j := i To high(fobjs) - 1 Do Begin
+        fobjs[j] := fobjs[j + 1];
+      End;
+      setlength(fobjs, high(fobjs));
+      exit;
+    End;
+  End;
 End;
 
 Procedure TJSONArray.Clear;
@@ -595,13 +639,34 @@ Begin
   setlength(result.fobjs, length(Self.fobjs));
   For i := 0 To high(fobjs) Do Begin
     result.fobjs[i] := Self.fobjs[i].Clone;
+    result.fobjs[i].fParent := result;
   End;
 End;
 
 Procedure TJSONNode.AddObj(JSONObj: TJSONObj);
 Begin
+  // TODO: darf hier wirklich alles hinzugefügt werden ?
   setlength(fobjs, High(fobjs) + 2);
   fobjs[High(fobjs)] := JSONObj;
+  JSONObj.fParent := self;
+End;
+
+Function TJSONNode.RemoveObj(JSONObj: TJSONObj): Boolean;
+Var
+  i, j: Integer;
+Begin
+  result := false;
+  For i := 0 To high(fobjs) Do Begin
+    If fobjs[i] = JSONObj Then Begin
+      result := true;
+      fobjs[i].Free;
+      For j := i To high(fobjs) - 1 Do Begin
+        fobjs[j] := fobjs[j + 1];
+      End;
+      setlength(fobjs, high(fobjs));
+      exit;
+    End;
+  End;
 End;
 
 Procedure TJSONNode.Clear;
@@ -917,12 +982,17 @@ Begin
   Inherited Create;
   fName := aName;
   fvalue := aValue;
+  fvalue.fParent := self;
 End;
 
 Function TJSONNodeObj.ToString(FrontSpace: String): String;
+Var
+  maybeLE: String;
 Begin
   If assigned(fvalue) Then Begin
-    result := FrontSpace + StringToJsonString(fName) + ':' + fvalue.ToString(FrontSpace);
+    maybeLE := '';
+    If fvalue Is TJSONNode Then maybeLE := LineEnding;
+    result := FrontSpace + StringToJsonString(fName) + ':' + maybeLE + fvalue.ToString(FrontSpace);
   End
   Else Begin
     result := FrontSpace + StringToJsonString(fName) + ':""';
