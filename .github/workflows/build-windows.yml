@@ -1,0 +1,110 @@
+name: Build Windows
+
+# Tento workflow se spustí při:
+# - Push do main/master branch
+# - Pull request do main/master branch
+# - Manuálně přes GitHub Actions tab
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Umožňuje manuální spuštění
+
+jobs:
+  build-windows:
+    name: Build for Windows
+    runs-on: windows-latest  # Použije Windows runner (virtuální Windows počítač)
+    
+    steps:
+    # 1. Checkout kódu z repozitáře
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    # 2. Setup Free Pascal Compiler
+    - name: Setup Free Pascal Compiler
+      run: |
+        # Stáhnout a nainstalovat FPC pro Windows
+        $fpcVersion = "3.2.2"
+        $fpcUrl = "https://sourceforge.net/projects/freepascal/files/Win32/$fpcVersion/fpc-$fpcVersion.x86_64-win64.exe/download"
+        $fpcInstaller = "$env:TEMP\fpc-installer.exe"
+        
+        Write-Host "Downloading Free Pascal Compiler..."
+        Invoke-WebRequest -Uri $fpcUrl -OutFile $fpcInstaller
+        
+        Write-Host "Installing Free Pascal Compiler..."
+        Start-Process -FilePath $fpcInstaller -ArgumentList "/VERYSILENT /NORESTART /DIR=C:\FPC" -Wait
+        
+        # Přidat FPC do PATH
+        $fpcPath = "C:\FPC\$fpcVersion\bin\x86_64-win64"
+        $env:PATH = "$fpcPath;$env:PATH"
+        echo "$fpcPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+        # Ověřit instalaci
+        fpc -v
+        
+    # 3. Setup Lazarus IDE
+    - name: Setup Lazarus IDE
+      run: |
+        $lazarusVersion = "3.0"
+        $lazarusUrl = "https://sourceforge.net/projects/lazarus/files/Lazarus%20Windows%2064%20bits/Lazarus%20$lazarusVersion/lazarus-$lazarusVersion-fpc-3.2.2-win64.exe/download"
+        $lazarusInstaller = "$env:TEMP\lazarus-installer.exe"
+        
+        Write-Host "Downloading Lazarus IDE..."
+        Invoke-WebRequest -Uri $lazarusUrl -OutFile $lazarusInstaller
+        
+        Write-Host "Installing Lazarus IDE..."
+        Start-Process -FilePath $lazarusInstaller -ArgumentList "/VERYSILENT /NORESTART /DIR=C:\lazarus" -Wait
+        
+        # Přidat Lazarus do PATH
+        $lazarusPath = "C:\lazarus"
+        $env:PATH = "$lazarusPath;$env:PATH"
+        echo "$lazarusPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+        # Ověřit instalaci
+        lazbuild --version
+        
+    # 4. Build Client
+    - name: Build Client
+      run: |
+        cd client
+        lazbuild --build-mode=default fpc_atomic.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 5. Build Launcher
+    - name: Build Launcher
+      run: |
+        cd launcher
+        lazbuild --build-mode=default atomic_launcher.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 6. Build Server
+    - name: Build Server
+      run: |
+        cd server
+        lazbuild --build-mode=default atomic_server.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 7. Build CD Data Extractor
+    - name: Build CD Data Extractor
+      run: |
+        cd cd_data_extractor_src
+        lazbuild --build-mode=default cd_data_extractor.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 8. Create artifacts directory
+    - name: Prepare artifacts
+      run: |
+        New-Item -ItemType Directory -Force -Path windows\bin
+        if (Test-Path "fpc_atomic.exe") { Move-Item "fpc_atomic.exe" "windows\bin\" }
+        if (Test-Path "atomic_launcher.exe") { Move-Item "atomic_launcher.exe" "windows\bin\" }
+        if (Test-Path "atomic_server.exe") { Move-Item "atomic_server.exe" "windows\bin\" }
+        if (Test-Path "cd_data_extractor.exe") { Move-Item "cd_data_extractor.exe" "windows\bin\" }
+        
+    # 9. Upload artifacts (soubory ke stažení)
+    - name: Upload Windows binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-binaries
+        path: windows/bin/*.exe
+        retention-days: 30  # Uchovat 30 dní

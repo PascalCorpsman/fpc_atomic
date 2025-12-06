@@ -1,0 +1,88 @@
+name: Build Linux
+
+# Tento workflow se spustí pouze:
+# - Manuálně přes GitHub Actions tab
+# Automatické spuštění je zakomentováno
+on:
+  # push:
+  #   branches: [ main, master ]
+  # pull_request:
+  #   branches: [ main, master ]
+  workflow_dispatch:  # Umožňuje manuální spuštění
+
+jobs:
+  build-linux:
+    name: Build for Linux
+    runs-on: ubuntu-latest  # Použije Linux runner (Ubuntu)
+    
+    steps:
+    # 1. Checkout kódu z repozitáře
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    # 2. Setup Free Pascal Compiler
+    - name: Setup Free Pascal Compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fpc fp-compiler
+        
+        # Ověřit instalaci
+        fpc -v
+        
+    # 3. Setup Lazarus IDE
+    - name: Setup Lazarus IDE
+      run: |
+        sudo apt-get install -y lazarus lazarus-ide-gtk2
+        
+        # Ověřit instalaci
+        lazbuild --version
+        
+    # 4. Build Client
+    - name: Build Client
+      run: |
+        cd client
+        lazbuild --build-mode=default fpc_atomic.lpi
+        
+    # 5. Build Launcher
+    - name: Build Launcher
+      run: |
+        cd launcher
+        lazbuild --build-mode=default atomic_launcher.lpi
+        
+    # 6. Build Server
+    - name: Build Server
+      run: |
+        cd server
+        lazbuild --build-mode=default atomic_server.lpi
+        
+    # 7. Build CD Data Extractor
+    - name: Build CD Data Extractor
+      run: |
+        cd cd_data_extractor_src
+        lazbuild --build-mode=default cd_data_extractor.lpi
+        
+    # 8. Prepare artifacts
+    - name: Prepare artifacts
+      run: |
+        mkdir -p linux/bin
+        if [ -f "fpc_atomic" ]; then
+          mv fpc_atomic linux/bin/
+        fi
+        if [ -f "atomic_launcher" ]; then
+          mv atomic_launcher linux/bin/
+        fi
+        if [ -f "atomic_server" ]; then
+          mv atomic_server linux/bin/
+        fi
+        if [ -f "cd_data_extractor" ]; then
+          mv cd_data_extractor linux/bin/
+        fi
+        
+    # 9. Upload artifacts
+    - name: Upload Linux binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-binaries
+        path: linux/bin/*
+        retention-days: 30
+
