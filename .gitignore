@@ -35,3 +35,4 @@ lib/
 server/stats.txt
 stats.txt
 
+.env
