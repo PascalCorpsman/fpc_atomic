@@ -27,42 +27,33 @@ jobs:
         $fpcVersion = "3.2.2"
         $fpcInstaller = "$env:TEMP\fpc-installer.exe"
         
-        # Try Chocolatey first (if available)
-        Write-Host "Trying Chocolatey for FPC..."
-        # Note: Chocolatey package name is 'freepascal', not 'fpc'
-        choco install freepascal --version=$fpcVersion -y --no-progress
-        if ($LASTEXITCODE -eq 0) {
-          Write-Host "FPC installed via Chocolatey"
-          # Chocolatey installs to C:\tools\freepascal\bin\i386-win32
-          # Refresh PATH to pick up Chocolatey installation
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          # Also check Chocolatey tools location
-          $chocoFpcPath = "C:\tools\freepascal\bin\i386-win32"
-          if (Test-Path $chocoFpcPath) {
-            $env:PATH = "$chocoFpcPath;$env:PATH"
-            echo "$chocoFpcPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-          # Wait a moment for PATH to update
-          Start-Sleep -Seconds 2
-          fpc -v
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "FPC verified successfully"
-            exit 0
-          }
-        }
-        
-        # Fallback: Download from SourceForge using direct link
-        Write-Host "Chocolatey failed or FPC not found, downloading from SourceForge..."
-        # Use direct download link (bypass SourceForge redirect page)
-        $fpcUrl = "https://sourceforge.net/projects/freepascal/files/Win32/$fpcVersion/fpc-$fpcVersion.x86_64-win64.exe/download"
+        # Download FPC from SourceForge
+        # Chocolatey installs 32-bit only, but we need 64-bit for lazbuild
+        # Use the combined installer which includes both 32-bit and 64-bit
+        Write-Host "Downloading FPC 64-bit from SourceForge..."
+        $fpcUrl = "https://sourceforge.net/projects/freepascal/files/Win32/$fpcVersion/fpc-$fpcVersion.win32.and.win64.exe/download"
         
         # Use curl with proper redirect handling
-        Write-Host "Downloading FPC installer..."
+        Write-Host "Downloading FPC installer from: $fpcUrl"
         $ProgressPreference = 'SilentlyContinue'
-        curl.exe -L --location-trusted -f -o $fpcInstaller $fpcUrl
+        
+        # Try curl first
+        curl.exe -L --location-trusted -f -o $fpcInstaller $fpcUrl 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fpcInstaller)) {
-          Write-Host "ERROR: Download failed"
-          exit 1
+          Write-Host "curl failed, trying Invoke-WebRequest..."
+          try {
+            Invoke-WebRequest -Uri $fpcUrl -OutFile $fpcInstaller -UseBasicParsing -MaximumRedirection 10 -ErrorAction Stop
+          } catch {
+            Write-Host "ERROR: Download failed - $_"
+            Write-Host "Trying alternative URL..."
+            # Alternative: try the x86_64 specific installer
+            $fpcUrlAlt = "https://sourceforge.net/projects/freepascal/files/Win32/$fpcVersion/fpc-$fpcVersion.x86_64-win64.exe/download"
+            curl.exe -L --location-trusted -f -o $fpcInstaller $fpcUrlAlt 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fpcInstaller)) {
+              Write-Host "ERROR: All download attempts failed"
+              exit 1
+            }
+          }
         }
         
         # Verify file size (should be > 10MB)
