@@ -210,14 +210,57 @@ jobs:
         
         # Try Chocolatey first (if available)
         Write-Host "Trying Chocolatey for Lazarus..."
-        choco install lazarus --version=$lazarusVersion -y --no-progress 2>&1 | Out-Null
+        choco install lazarus --version=$lazarusVersion -y --no-progress
         if ($LASTEXITCODE -eq 0) {
           Write-Host "Lazarus installed via Chocolatey"
+          # Refresh PATH to pick up Chocolatey installation
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          lazbuild --version 2>&1 | Out-Null
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Lazarus verified successfully"
-            exit 0
+          
+          # Wait a moment for PATH to update
+          Start-Sleep -Seconds 2
+          
+          # Try to find lazbuild in common locations
+          $lazbuildPath = $null
+          $possibleLazbuildPaths = @(
+            "C:\lazarus",
+            "C:\Program Files\Lazarus",
+            "C:\Program Files (x86)\Lazarus",
+            "$env:ProgramFiles\Lazarus",
+            "$env:ProgramFiles(x86)\Lazarus"
+          )
+          
+          foreach ($path in $possibleLazbuildPaths) {
+            $lazbuildExe = Join-Path $path "lazbuild.exe"
+            if (Test-Path $lazbuildExe) {
+              Write-Host "Found lazbuild at: $lazbuildExe"
+              $lazbuildPath = $path
+              $env:PATH = "$path;$env:PATH"
+              echo "$path" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+              break
+            }
+          }
+          
+          # If not found, search recursively
+          if (-not $lazbuildPath) {
+            Write-Host "Searching for lazbuild.exe recursively..."
+            $lazbuildExe = Get-ChildItem -Path "C:\" -Recurse -Filter "lazbuild.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($lazbuildExe) {
+              $lazbuildPath = $lazbuildExe.DirectoryName
+              Write-Host "Found lazbuild at: $lazbuildPath"
+              $env:PATH = "$lazbuildPath;$env:PATH"
+              echo "$lazbuildPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
+          
+          # Verify installation
+          if ($lazbuildPath) {
+            lazbuild --version
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Lazarus verified successfully"
+              exit 0
+            }
+          } else {
+            Write-Host "WARNING: lazbuild not found after Chocolatey installation, will try SourceForge..."
           }
         }
         
