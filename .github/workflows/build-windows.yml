@@ -21,126 +21,166 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    # 2. Setup Free Pascal Compiler using Chocolatey
+    # 2. Setup Free Pascal Compiler
     - name: Setup Free Pascal Compiler
       run: |
-        Write-Host "Installing Free Pascal Compiler via Chocolatey..."
-        # Chocolatey is pre-installed on GitHub Actions Windows runners
-        choco install fpc --version=3.2.2 -y --no-progress
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "ERROR: Chocolatey installation failed"
+        $fpcVersion = "3.2.2"
+        $fpcInstaller = "$env:TEMP\fpc-installer.exe"
+        
+        # Try Chocolatey first (if available)
+        Write-Host "Trying Chocolatey for FPC..."
+        # Note: Chocolatey package name is 'freepascal', not 'fpc'
+        choco install freepascal --version=$fpcVersion -y --no-progress
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "FPC installed via Chocolatey"
+          # Chocolatey installs to C:\tools\freepascal\bin\i386-win32
+          # Refresh PATH to pick up Chocolatey installation
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          # Also check Chocolatey tools location
+          $chocoFpcPath = "C:\tools\freepascal\bin\i386-win32"
+          if (Test-Path $chocoFpcPath) {
+            $env:PATH = "$chocoFpcPath;$env:PATH"
+            echo "$chocoFpcPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          # Wait a moment for PATH to update
+          Start-Sleep -Seconds 2
+          fpc -v
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "FPC verified successfully"
+            exit 0
+          }
+        }
+        
+        # Fallback: Download from SourceForge using direct link
+        Write-Host "Chocolatey failed or FPC not found, downloading from SourceForge..."
+        # Use direct download link (bypass SourceForge redirect page)
+        $fpcUrl = "https://sourceforge.net/projects/freepascal/files/Win32/$fpcVersion/fpc-$fpcVersion.x86_64-win64.exe/download"
+        
+        # Use curl with proper redirect handling
+        Write-Host "Downloading FPC installer..."
+        $ProgressPreference = 'SilentlyContinue'
+        curl.exe -L --location-trusted -f -o $fpcInstaller $fpcUrl
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fpcInstaller)) {
+          Write-Host "ERROR: Download failed"
           exit 1
         }
         
-        # Refresh environment variables to pick up new PATH
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        # Verify file size (should be > 10MB)
+        $fileInfo = Get-Item $fpcInstaller
+        Write-Host "Downloaded file size: $($fileInfo.Length) bytes"
+        if ($fileInfo.Length -lt 10MB) {
+          Write-Host "ERROR: File too small, may be HTML error page"
+          Get-Content $fpcInstaller -TotalCount 10
+          exit 1
+        }
         
-        # Ověřit instalaci
+        # Verify EXE header (MZ)
+        $fileBytes = [System.IO.File]::ReadAllBytes($fpcInstaller)
+        if ($fileBytes.Length -lt 2 -or $fileBytes[0] -ne 0x4D -or $fileBytes[1] -ne 0x5A) {
+          Write-Host "ERROR: Not a valid EXE file (missing MZ header)"
+          exit 1
+        }
+        Write-Host "File verified as valid EXE"
+        
+        # Install FPC
+        Write-Host "Installing FPC..."
+        $fullInstallerPath = (Resolve-Path $fpcInstaller).Path
+        $installProcess = Start-Process -FilePath $fullInstallerPath -ArgumentList "/VERYSILENT /NORESTART /DIR=C:\FPC" -Wait -PassThru -NoNewWindow
+        if ($installProcess.ExitCode -ne 0) {
+          Write-Host "ERROR: Installer exited with code $($installProcess.ExitCode)"
+          exit 1
+        }
+        
+        # Add FPC to PATH
+        $fpcPath = "C:\FPC\$fpcVersion\bin\x86_64-win64"
+        if (-not (Test-Path $fpcPath)) {
+          Write-Host "ERROR: FPC installation path not found: $fpcPath"
+          exit 1
+        }
+        $env:PATH = "$fpcPath;$env:PATH"
+        echo "$fpcPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+        # Verify installation
         Write-Host "Verifying FPC installation..."
         fpc -v
         if ($LASTEXITCODE -ne 0) {
           Write-Host "ERROR: FPC verification failed"
-          Write-Host "Trying to find FPC in common locations..."
-          $commonPaths = @(
-            "C:\FPC\3.2.2\bin\x86_64-win64",
-            "C:\Program Files\FPC\3.2.2\bin\x86_64-win64",
-            "$env:ProgramFiles\FPC\3.2.2\bin\x86_64-win64"
-          )
-          foreach ($path in $commonPaths) {
-            if (Test-Path $path) {
-              Write-Host "Found FPC at: $path"
-              $env:PATH = "$path;$env:PATH"
-              echo "$path" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            }
-          }
-          fpc -v
-          if ($LASTEXITCODE -ne 0) {
-            exit 1
-          }
+          exit 1
         }
         
-    # 3. Setup Lazarus IDE using Chocolatey
+    # 3. Setup Lazarus IDE
     - name: Setup Lazarus IDE
       run: |
-        Write-Host "Installing Lazarus IDE via Chocolatey..."
-        # Try to install lazarus via Chocolatey, if not available, fall back to manual download
-        choco install lazarus --version=3.0 -y --no-progress 2>&1 | Tee-Object -Variable chocoOutput
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "Chocolatey package not found, trying manual installation from SourceForge..."
-          
-          # Fallback to SourceForge download
-          $lazarusVersion = "3.0"
-          $lazarusUrl = "https://sourceforge.net/projects/lazarus/files/Lazarus%20Windows%2064%20bits/Lazarus%20$lazarusVersion/lazarus-$lazarusVersion-fpc-3.2.2-win64.exe/download"
-          $lazarusInstaller = "$env:TEMP\lazarus-installer.exe"
-          
-          Write-Host "Downloading Lazarus IDE from SourceForge..."
-          $ProgressPreference = 'SilentlyContinue'
-          
-          # Use curl (more reliable for SourceForge redirects)
-          curl.exe -L --fail --silent --show-error -o $lazarusInstaller $lazarusUrl
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lazarusInstaller)) {
-            Write-Host "ERROR: Download failed"
-            exit 1
-          }
-          
-          # Verify file size
-          $fileInfo = Get-Item $lazarusInstaller
-          if ($fileInfo.Length -lt 50MB) {
-            Write-Host "ERROR: File too small, download may have failed"
-            exit 1
-          }
-          
-          # Verify EXE header
-          $fileBytes = [System.IO.File]::ReadAllBytes($lazarusInstaller)
-          if ($fileBytes.Length -lt 2 -or $fileBytes[0] -ne 0x4D -or $fileBytes[1] -ne 0x5A) {
-            Write-Host "ERROR: Downloaded file is not a valid EXE"
-            exit 1
-          }
-          
-          Write-Host "Installing Lazarus IDE..."
-          $fullInstallerPath = (Resolve-Path $lazarusInstaller).Path
-          $installProcess = Start-Process -FilePath $fullInstallerPath -ArgumentList "/VERYSILENT /NORESTART /DIR=C:\lazarus" -Wait -PassThru -NoNewWindow
-          if ($installProcess.ExitCode -ne 0) {
-            Write-Host "ERROR: Installer exited with code $($installProcess.ExitCode)"
-            exit 1
-          }
-          
-          # Add to PATH
-          $lazarusPath = "C:\lazarus"
-          if (-not (Test-Path $lazarusPath)) {
-            Write-Host "ERROR: Lazarus installation path not found: $lazarusPath"
-            exit 1
-          }
-          $env:PATH = "$lazarusPath;$env:PATH"
-          echo "$lazarusPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        } else {
-          # Chocolatey installed successfully, refresh PATH
+        $lazarusVersion = "3.0"
+        $lazarusInstaller = "$env:TEMP\lazarus-installer.exe"
+        
+        # Try Chocolatey first (if available)
+        Write-Host "Trying Chocolatey for Lazarus..."
+        choco install lazarus --version=$lazarusVersion -y --no-progress 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "Lazarus installed via Chocolatey"
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          lazbuild --version 2>&1 | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Lazarus verified successfully"
+            exit 0
+          }
         }
         
-        # Ověřit instalaci
+        # Fallback: Download from SourceForge
+        Write-Host "Chocolatey failed or Lazarus not found, downloading from SourceForge..."
+        $lazarusUrl = "https://sourceforge.net/projects/lazarus/files/Lazarus%20Windows%2064%20bits/Lazarus%20$lazarusVersion/lazarus-$lazarusVersion-fpc-3.2.2-win64.exe/download"
+        
+        # Use curl with proper redirect handling
+        Write-Host "Downloading Lazarus installer..."
+        $ProgressPreference = 'SilentlyContinue'
+        curl.exe -L --location-trusted -f -o $lazarusInstaller $lazarusUrl
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lazarusInstaller)) {
+          Write-Host "ERROR: Download failed"
+          exit 1
+        }
+        
+        # Verify file size (should be > 50MB)
+        $fileInfo = Get-Item $lazarusInstaller
+        Write-Host "Downloaded file size: $($fileInfo.Length) bytes"
+        if ($fileInfo.Length -lt 50MB) {
+          Write-Host "ERROR: File too small, may be HTML error page"
+          Get-Content $lazarusInstaller -TotalCount 10
+          exit 1
+        }
+        
+        # Verify EXE header (MZ)
+        $fileBytes = [System.IO.File]::ReadAllBytes($lazarusInstaller)
+        if ($fileBytes.Length -lt 2 -or $fileBytes[0] -ne 0x4D -or $fileBytes[1] -ne 0x5A) {
+          Write-Host "ERROR: Not a valid EXE file (missing MZ header)"
+          exit 1
+        }
+        Write-Host "File verified as valid EXE"
+        
+        # Install Lazarus
+        Write-Host "Installing Lazarus IDE..."
+        $fullInstallerPath = (Resolve-Path $lazarusInstaller).Path
+        $installProcess = Start-Process -FilePath $fullInstallerPath -ArgumentList "/VERYSILENT /NORESTART /DIR=C:\lazarus" -Wait -PassThru -NoNewWindow
+        if ($installProcess.ExitCode -ne 0) {
+          Write-Host "ERROR: Installer exited with code $($installProcess.ExitCode)"
+          exit 1
+        }
+        
+        # Add Lazarus to PATH
+        $lazarusPath = "C:\lazarus"
+        if (-not (Test-Path $lazarusPath)) {
+          Write-Host "ERROR: Lazarus installation path not found: $lazarusPath"
+          exit 1
+        }
+        $env:PATH = "$lazarusPath;$env:PATH"
+        echo "$lazarusPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+        # Verify installation
         Write-Host "Verifying Lazarus installation..."
         lazbuild --version
         if ($LASTEXITCODE -ne 0) {
           Write-Host "ERROR: Lazarus verification failed"
-          Write-Host "Trying to find lazbuild in common locations..."
-          $commonPaths = @(
-            "C:\lazarus",
-            "C:\Program Files\Lazarus",
-            "$env:ProgramFiles\Lazarus"
-          )
-          foreach ($path in $commonPaths) {
-            $lazbuildPath = Join-Path $path "lazbuild.exe"
-            if (Test-Path $lazbuildPath) {
-              Write-Host "Found lazbuild at: $lazbuildPath"
-              $env:PATH = "$path;$env:PATH"
-              echo "$path" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            }
-          }
-          lazbuild --version
-          if ($LASTEXITCODE -ne 0) {
-            exit 1
-          }
+          exit 1
         }
         
     # 4. Build Client
