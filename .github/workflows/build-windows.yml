@@ -81,6 +81,17 @@ jobs:
           Write-Host "ERROR: Installer exited with code $($installProcess.ExitCode)"
           exit 1
         }
+        Write-Host "FPC installer completed successfully"
+        
+        # Wait a moment for installation to complete
+        Start-Sleep -Seconds 3
+        
+        # Debug: List what was installed
+        Write-Host "Checking installation directory..."
+        if (Test-Path "C:\FPC") {
+          Write-Host "Contents of C:\FPC:"
+          Get-ChildItem "C:\FPC" -Recurse -Directory -Depth 2 | Select-Object -First 20 FullName
+        }
         
         # Find FPC installation path (could be in different locations)
         Write-Host "Searching for FPC installation..."
