@@ -20,14 +20,7 @@ Unit uearlylog;
 
 Interface
 
-{$IFDEF DARWIN}
 Procedure EarlyLog(Const Msg: String);
-{$ELSE}
-Procedure EarlyLog(Const Msg: String);
-Begin
-  // Early logging only on macOS for now
-End;
-{$ENDIF}
 
 Implementation
 
