@@ -1,5 +1,16 @@
 # Source: https://github.com/github/gitignore/blob/main/Global/Lazarus.gitignore
 
+# Exception: Required libraries in bin/ directory for CI/CD builds
+# These are downloaded from GitHub releases and needed for linking
+# Must be before the global *.dll, *.so rules
+!bin/libbass.so
+!bin/libai.so
+!bin/bass.dll
+!bin/ai.dll
+!bin/SDL2.dll
+!bin/Linux_sound_install_script.sh
+!bin/fpc_atomic.version
+
 # Lazarus compiler-generated binaries (safe to delete)
 *.exe
 *.dll
