@@ -1154,36 +1154,36 @@ Procedure TGame.CheckSDLKeys();
       End
       Else Begin
         // Normal single-direction mode - send changes as before
-        If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
-          If up Then Begin
-            CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
-          End
-          Else Begin
-            CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
-          End;
-        End;
-        If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> Down Then Begin
-          If Down Then Begin
-            CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
-          End
-          Else Begin
-            CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
-          End;
-        End;
-        If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
-          If left Then Begin
-            CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
-          End
-          Else Begin
-            CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
-          End;
-        End;
-        If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
-          If right Then Begin
-            CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
-          End
-          Else Begin
-            CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
+      If up Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+      End;
+    End;
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> Down Then Begin
+      If Down Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+      End;
+    End;
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
+      If left Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+      End;
+    End;
+    If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
+      If right Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+      End
+      Else Begin
+        CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
           End;
         End;
       End;
@@ -1224,9 +1224,9 @@ End;
 Procedure TGame.ReadCurrentButtonState(var up, down, left, right, buttonA, buttonB: Boolean);
   
   Procedure CheckJoystick(Keys: TKeySet);
-  Var
-    d: Integer;
-  Begin
+Var
+  d: Integer;
+Begin
     If Not Assigned(fsdlJoysticks[Keys]) Then exit;
     try
       // Check analog stick
@@ -1256,9 +1256,9 @@ Procedure TGame.ReadCurrentButtonState(var up, down, left, right, buttonA, butto
       // Buttons: X = button 0 (Enter), Circle = button 1 (Esc)
       if fsdlJoysticks[Keys].ButtonCount > 0 then buttonA := fsdlJoysticks[Keys].Button[0];
       if fsdlJoysticks[Keys].ButtonCount > 1 then buttonB := fsdlJoysticks[Keys].Button[1];
-    except
-      // Ignore errors
-    end;
+  except
+    // Ignore errors
+  end;
   End;
   
 Begin
@@ -1382,7 +1382,7 @@ Begin
     If fsdl_Loaded Then Begin
       // Initialize with GAMECONTROLLER (implies JOYSTICK)
       fsdl_Loaded := SDL_Init(SDL_INIT_GAMECONTROLLER) = 0;
-    End;
+      End;
   End;
   
   // Clean up old instances
@@ -1441,14 +1441,14 @@ Begin
       // Only set UseSDL2 if not already configured (preserve user settings)
       if not Settings.Keys[ksJoy1].UseSDL2 then begin
         Settings.Keys[ksJoy1].UseSDL2 := true;
-        try
-          if SDL_JoystickNameForIndex(0) <> nil then
+      try
+        if SDL_JoystickNameForIndex(0) <> nil then
             Settings.Keys[ksJoy1].Name := SDL_JoystickNameForIndex(0)
-          else
+        else
             Settings.Keys[ksJoy1].Name := '';
-        except
+      except
           Settings.Keys[ksJoy1].Name := '';
-        end;
+      end;
         Settings.Keys[ksJoy1].NameIndex := 0;
         Settings.Keys[ksJoy1].AchsisIndex[0] := 1;
         Settings.Keys[ksJoy1].AchsisIdle[0] := 0;
@@ -1467,14 +1467,14 @@ Begin
       // Only set UseSDL2 if not already configured (preserve user settings)
       if not Settings.Keys[ksJoy2].UseSDL2 then begin
         Settings.Keys[ksJoy2].UseSDL2 := true;
-        try
-          if SDL_JoystickNameForIndex(1) <> nil then
+      try
+        if SDL_JoystickNameForIndex(1) <> nil then
             Settings.Keys[ksJoy2].Name := SDL_JoystickNameForIndex(1)
-          else
+        else
             Settings.Keys[ksJoy2].Name := '';
-        except
+      except
           Settings.Keys[ksJoy2].Name := '';
-        end;
+      end;
         Settings.Keys[ksJoy2].NameIndex := 0;
         Settings.Keys[ksJoy2].AchsisIndex[0] := 1;
         Settings.Keys[ksJoy2].AchsisIdle[0] := 0;

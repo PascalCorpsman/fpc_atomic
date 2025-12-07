@@ -2,7 +2,7 @@
 
 ## 1. Příprava prostředí
 - Nainstalovat FPC ≥ 3.2.2 a Lazarus IDE (Apple Silicon/Intel balíček).
-- Přidat externí jednotky do `units/`: `dglOpenGL.pas`, `bass.pas`, `synapse`, `sdl2_for_pascal`.
+- Přidat externí jednotky do `units/`: `dglOpenGL.pas`, `bass.pas`, `sdl2_for_pascal`.
 - Nainstalovat do systému runtime knihovny (`SDL2`, `libbass.dylib`, příp. `libSDL2_mixer.dylib`) a ověřit je přes `otool -L`.
 
 ## 2. Konfigurace projektů

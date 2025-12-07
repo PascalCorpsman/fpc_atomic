@@ -67,10 +67,10 @@ Procedure TSynapesDownloader.OnDataReceived(Sender: TObject; Const ContentLength
 Begin
   If ContentLength > 0 Then Begin
     aTotalSize := ContentLength;
-  End;
+      End;
   aFileSize := CurrentPos;
-  If assigned(OnFileDownloadUpdateEvent) Then Begin
-    OnFileDownloadUpdateEvent(self, aFileSize, aTotalSize);
+      If assigned(OnFileDownloadUpdateEvent) Then Begin
+        OnFileDownloadUpdateEvent(self, aFileSize, aTotalSize);
   End;
 End;
 
@@ -110,13 +110,13 @@ Begin
     End;
   End;
 
-  dir := ExtractFileDir(Filename);
-  If dir <> '' Then Begin
-    If Not ForceDirectories(dir) Then Begin
+    dir := ExtractFileDir(Filename);
+    If dir <> '' Then Begin
+      If Not ForceDirectories(dir) Then Begin
       Raise Exception.Create('Error, could not create: ' + dir);
-      exit;
+        exit;
+      End;
     End;
-  End;
 
   fClient := TFPHTTPClient.Create(Nil);
   Try
@@ -132,7 +132,7 @@ Begin
       f := TFileStream.Create(Filename, fmCreate);
       Try
         fClient.Get(FinalURL, f);
-        result := true;
+      result := true;
         // Final progress update
         If assigned(OnFileDownloadUpdateEvent) Then Begin
           OnFileDownloadUpdateEvent(self, aFileSize, aTotalSize);

@@ -29,7 +29,6 @@ Tyto jednotky musí být umístěny v `units/`:
 
 - `dglOpenGL.pas` - stáhnout z https://github.com/saschawillems/dglopengl
 - `bass.pas` - stáhnout z https://www.un4seen.com/
-- `synapse/` - celá složka z http://www.ararat.cz/synapse/doku.php/download
 - `sdl2_for_pascal/` - hlavičky SDL2 z https://github.com/PascalCorpsman/SDL2-for-Pascal
 
 ### Lazarus balíčky

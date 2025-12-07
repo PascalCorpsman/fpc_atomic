@@ -22,7 +22,6 @@ Tento dokument obsahuje přehled macOS build systému. Pro detailní návod na k
 - Další Pascal jednotky umístěné do `units/`:
   - `dglOpenGL.pas`
   - `bass.pas`
-  - `synapse/` (celá složka)
   - `sdl2_for_pascal/` (hlavičky SDL2 od autora projektu)
 
 ## Struktura adresáře `macos/`

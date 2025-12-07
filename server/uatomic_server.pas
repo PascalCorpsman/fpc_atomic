@@ -847,9 +847,9 @@ Begin
       End
       Else If fPLayer[PlayerIndex].UID = UID Then Begin
         // Same player, cycle through input methods
-        If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
-          fPLayer[PlayerIndex].Keyboard := ks1;
-        End
+          If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+            fPLayer[PlayerIndex].Keyboard := ks1;
+          End
         Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
           fPLayer[PlayerIndex].Keyboard := ksJoy1;
         End
@@ -858,16 +858,16 @@ Begin
         End
         Else If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
           // Joy 2 -> AI
-          fPLayer[PlayerIndex].UID := AIPlayer;
-          fPLayer[PlayerIndex].UserName := '';
-        End;
-        RefreshAllPlayerStats(0);
-      End
+            fPLayer[PlayerIndex].UID := AIPlayer;
+            fPLayer[PlayerIndex].UserName := '';
+          End;
+          RefreshAllPlayerStats(0);
+        End
       Else If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
         // AI -> Off
-        fPLayer[PlayerIndex].UID := NoPlayer;
-        fPLayer[PlayerIndex].UserName := '';
-        RefreshAllPlayerStats(0);
+            fPLayer[PlayerIndex].UID := NoPlayer;
+            fPLayer[PlayerIndex].UserName := '';
+            RefreshAllPlayerStats(0);
       End;
     End
     Else Begin
@@ -881,9 +881,9 @@ Begin
       End
       Else If fPLayer[PlayerIndex].UID = UID Then Begin
         // Same player, cycle through input methods
-        If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
-          fPLayer[PlayerIndex].Keyboard := ks1;
-        End
+          If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+            fPLayer[PlayerIndex].Keyboard := ks1;
+          End
         Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
           fPLayer[PlayerIndex].Keyboard := ksJoy1;
         End
@@ -892,10 +892,10 @@ Begin
         End
         Else If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
           // Joy 2 -> Off
-          fPLayer[PlayerIndex].UID := NoPlayer;
-          fPLayer[PlayerIndex].UserName := '';
-        End;
-        RefreshAllPlayerStats(0);
+            fPLayer[PlayerIndex].UID := NoPlayer;
+            fPLayer[PlayerIndex].UserName := '';
+          End;
+          RefreshAllPlayerStats(0);
       End;
     End;
   End
@@ -911,11 +911,11 @@ Begin
       End
       Else If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
         // AI -> Joy 2
-        fPLayer[PlayerIndex].UID := UID;
+          fPLayer[PlayerIndex].UID := UID;
         fPLayer[PlayerIndex].Keyboard := ksJoy2;
-        fPLayer[PlayerIndex].UserName := PlayerName;
-        RefreshAllPlayerStats(0);
-      End
+          fPLayer[PlayerIndex].UserName := PlayerName;
+          RefreshAllPlayerStats(0);
+        End
       Else If fPLayer[PlayerIndex].UID = UID Then Begin
         // Same player, cycle backwards through input methods
         If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
@@ -925,14 +925,14 @@ Begin
           fPLayer[PlayerIndex].Keyboard := ks1;
         End
         Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
-          fPLayer[PlayerIndex].Keyboard := ks0;
-        End
+              fPLayer[PlayerIndex].Keyboard := ks0;
+            End
         Else If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
           // Keyboard 0 -> Off
-          fPLayer[PlayerIndex].UID := NoPlayer;
-          fPLayer[PlayerIndex].UserName := '';
-        End;
-        RefreshAllPlayerStats(0);
+              fPLayer[PlayerIndex].UID := NoPlayer;
+              fPLayer[PlayerIndex].UserName := '';
+            End;
+            RefreshAllPlayerStats(0);
       End;
     End
     Else Begin
@@ -953,14 +953,14 @@ Begin
           fPLayer[PlayerIndex].Keyboard := ks1;
         End
         Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
-          fPLayer[PlayerIndex].Keyboard := ks0;
-        End
+            fPLayer[PlayerIndex].Keyboard := ks0;
+          End
         Else If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
           // Keyboard 0 -> Off
-          fPLayer[PlayerIndex].UID := NoPlayer;
-          fPLayer[PlayerIndex].UserName := '';
-        End;
-        RefreshAllPlayerStats(0);
+            fPLayer[PlayerIndex].UID := NoPlayer;
+            fPLayer[PlayerIndex].UserName := '';
+          End;
+          RefreshAllPlayerStats(0);
       End;
     End;
   End;
