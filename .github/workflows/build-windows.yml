@@ -320,20 +320,30 @@ jobs:
           exit 1
         }
         
-    # 4. Install LNet package
-    - name: Install LNet package
+    # 4. Build LNet package
+    - name: Build LNet package
       run: |
-        Write-Host "Installing LNet package..."
+        Write-Host "Building LNet package..."
         $lnetPackagePath = "macos\third_party\lnet_src\lazaruspackage\lnetvisual.lpk"
         if (Test-Path $lnetPackagePath) {
           Write-Host "Found LNet package at: $lnetPackagePath"
-          # Install package using lazbuild
-          lazbuild --add-package-link $lnetPackagePath
+          # First build the base package
+          $lnetBasePath = "macos\third_party\lnet_src\lazaruspackage\lnetbase.lpk"
+          if (Test-Path $lnetBasePath) {
+            Write-Host "Building lnetbase.lpk..."
+            lazbuild --build-package $lnetBasePath
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "WARNING: lnetbase.lpk build failed, but continuing..."
+            }
+          }
+          # Then build the visual package
+          Write-Host "Building lnetvisual.lpk..."
+          lazbuild --build-package $lnetPackagePath
           if ($LASTEXITCODE -eq 0) {
-            Write-Host "LNet package installed successfully"
+            Write-Host "LNet package built successfully"
           } else {
-            Write-Host "WARNING: LNet package installation failed, but continuing..."
-            Write-Host "Package might be available via source files"
+            Write-Host "WARNING: LNet package build failed, but continuing..."
+            Write-Host "Package might be available via source files in search paths"
           }
         } else {
           Write-Host "WARNING: LNet package not found at: $lnetPackagePath"
