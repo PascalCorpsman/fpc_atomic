@@ -24,31 +24,28 @@ jobs:
     # 2. Setup Free Pascal Compiler
     - name: Setup Free Pascal Compiler
       run: |
+        set -e  # Exit on any error
         sudo apt-get update
         sudo apt-get install -y fpc fp-compiler
         
-        # Ověřit instalaci
-        fpc -v
-        if [ $? -ne 0 ]; then
-          echo "ERROR: FPC installation failed"
-          exit 1
-        fi
+        # Ověřit instalaci - použij -iV pro verzi bez potřeby source souboru
+        fpc -iV
+        echo "FPC version check completed"
         
     # 3. Setup Lazarus IDE
     - name: Setup Lazarus IDE
       run: |
+        set -e  # Exit on any error
         sudo apt-get install -y lazarus lazarus-ide-gtk2
         
         # Ověřit instalaci
         lazbuild --version
-        if [ $? -ne 0 ]; then
-          echo "ERROR: Lazarus installation failed"
-          exit 1
-        fi
+        echo "Lazarus version check completed"
         
     # 4. Install system dependencies
     - name: Install system dependencies
       run: |
+        set -e  # Exit on any error
         # Install SDL2 development libraries
         sudo apt-get install -y libsdl2-dev
         
@@ -61,6 +58,7 @@ jobs:
     # 5. Download and install BASS library
     - name: Download and install BASS library
       run: |
+        set -e  # Exit on any error
         echo "Downloading BASS library for Linux..."
         # BASS library needs to be downloaded from https://www.un4seen.com/
         # For CI/CD, we'll try to download it or use a placeholder
@@ -95,6 +93,7 @@ jobs:
     # 6. Download and build LNet package
     - name: Download and build LNet package
       run: |
+        set -e  # Exit on any error
         echo "Downloading LNet from GitHub..."
         # Use master branch (not main) - see https://github.com/PascalCorpsman/lnet
         lnetUrl="https://github.com/PascalCorpsman/lnet/archive/refs/heads/master.zip"
@@ -225,6 +224,7 @@ jobs:
     # 7. Verify dependencies
     - name: Verify dependencies
       run: |
+        set -e  # Exit on any error
         echo "Verifying all required dependencies..."
         
         # Check dglopengl.pas
@@ -283,46 +283,35 @@ jobs:
     # 8. Build Client
     - name: Build Client
       run: |
+        set -e  # Exit on any error
         cd client
         lazbuild --build-mode=default fpc_atomic.lpi
-        if [ $? -ne 0 ]; then
-          echo "ERROR: Client build failed"
-          exit 1
-        fi
         
     # 9. Build Launcher
     - name: Build Launcher
       run: |
+        set -e  # Exit on any error
         cd launcher
         lazbuild --build-mode=default atomic_launcher.lpi
-        if [ $? -ne 0 ]; then
-          echo "ERROR: Launcher build failed"
-          exit 1
-        fi
         
     # 10. Build Server
     - name: Build Server
       run: |
+        set -e  # Exit on any error
         cd server
         lazbuild --build-mode=default atomic_server.lpi
-        if [ $? -ne 0 ]; then
-          echo "ERROR: Server build failed"
-          exit 1
-        fi
         
     # 11. Build CD Data Extractor
     - name: Build CD Data Extractor
       run: |
+        set -e  # Exit on any error
         cd cd_data_extractor_src
         lazbuild --build-mode=default cd_data_extractor.lpi
-        if [ $? -ne 0 ]; then
-          echo "ERROR: CD Data Extractor build failed"
-          exit 1
-        fi
         
     # 12. Prepare artifacts
     - name: Prepare artifacts
       run: |
+        set -e  # Exit on any error
         mkdir -p linux/bin
         echo "Looking for compiled binaries..."
         
