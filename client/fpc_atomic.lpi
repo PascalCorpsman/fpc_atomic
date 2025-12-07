@@ -255,7 +255,7 @@
       </Options>
     </Linking>
     <Other>
-      <CustomOptions Value="-dClient"/>
+      <CustomOptions Value="-dClient -k-lbass"/>
       <OtherDefines Count="1">
         <Define0 Value="Client"/>
       </OtherDefines>
