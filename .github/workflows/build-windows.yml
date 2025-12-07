@@ -324,17 +324,27 @@ jobs:
     - name: Download and build LNet package
       run: |
         Write-Host "Downloading LNet from GitHub..."
-        $lnetUrl = "https://github.com/PascalCorpsman/lnet/archive/refs/heads/main.zip"
+        # Use master branch (not main) - see https://github.com/PascalCorpsman/lnet
+        $lnetUrl = "https://github.com/PascalCorpsman/lnet/archive/refs/heads/master.zip"
         $lnetZip = "$env:TEMP\lnet.zip"
         $lnetDir = "$env:TEMP\lnet"
         
         # Download LNet
+        Write-Host "Downloading from: $lnetUrl"
         $ProgressPreference = 'SilentlyContinue'
         curl.exe -L --location-trusted -f -o $lnetZip $lnetUrl
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lnetZip)) {
-          Write-Host "ERROR: Failed to download LNet"
-          exit 1
+          Write-Host "ERROR: Failed to download LNet (curl exit code: $LASTEXITCODE)"
+          Write-Host "Trying alternative URL..."
+          # Try alternative URL format
+          $lnetUrlAlt = "https://github.com/PascalCorpsman/lnet/archive/master.zip"
+          curl.exe -L --location-trusted -f -o $lnetZip $lnetUrlAlt
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lnetZip)) {
+            Write-Host "ERROR: All download attempts failed"
+            exit 1
+          }
         }
+        Write-Host "LNet downloaded successfully"
         
         # Extract LNet
         Write-Host "Extracting LNet..."
