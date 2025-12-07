@@ -491,14 +491,15 @@ Initialization
   // TODO: Hier fehlt noch ein Hinweis wie man die .lrs Datei erzeugt ;)
 {$I atomic_launcher.lrs}
 
-  // 1. ggf. die Crypto libs entpacken und dann einrichten
-  If Not CheckAndMaybeExtract('ssleay32') Then exit;
-  If Not CheckAndMaybeExtract('libeay32') Then exit;
-
-  If SSLImplementation = TSSLNone Then Begin
-    If InitSSLInterface Then
-      SSLImplementation := TSSLOpenSSL;
-  End;
+  // SSL initialization removed - using fphttpclient instead of Synapse
+  // fphttpclient handles SSL automatically via system libraries
+  // Old Synapse SSL code:
+  // If Not CheckAndMaybeExtract('ssleay32') Then exit;
+  // If Not CheckAndMaybeExtract('libeay32') Then exit;
+  // If SSLImplementation = TSSLNone Then Begin
+  //   If InitSSLInterface Then
+  //     SSLImplementation := TSSLOpenSSL;
+  // End;
 {$ENDIF}
 
 End.
