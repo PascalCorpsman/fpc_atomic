@@ -23,7 +23,7 @@ Interface
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
   uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick, usdl_gamecontroller,
-  uloaderdialog, uearlylog;
+  uloaderdialog;
 
 Type
   TUDPPingData = Record
