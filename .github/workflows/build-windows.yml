@@ -356,35 +356,80 @@ jobs:
           }
         }
         
-    # 5. Build Client
+    # 5. Verify dependencies
+    - name: Verify dependencies
+      run: |
+        Write-Host "Verifying all required dependencies..."
+        
+        # Check dglopengl.pas
+        if (Test-Path "units\dglOpenGL.pas") {
+          Write-Host "✓ dglOpenGL.pas found"
+        } else {
+          Write-Host "ERROR: dglOpenGL.pas not found"
+          exit 1
+        }
+        
+        # Check bass.pas
+        if (Test-Path "units\bass.pas") {
+          Write-Host "✓ bass.pas found"
+        } else {
+          Write-Host "ERROR: bass.pas not found"
+          exit 1
+        }
+        
+        # Check SDL2-for-Pascal
+        if (Test-Path "units\sdl2_for_pascal") {
+          Write-Host "✓ SDL2-for-Pascal found"
+        } else {
+          Write-Host "ERROR: SDL2-for-Pascal not found"
+          exit 1
+        }
+        
+        # Check LNet source files
+        if (Test-Path "macos\third_party\lnet_src\lazaruspackage\lnetcomponents.pas") {
+          Write-Host "✓ LNet source files found"
+        } else {
+          Write-Host "ERROR: LNet source files not found"
+          exit 1
+        }
+        
+        # Check LazOpenGLContext (should be in Lazarus IDE)
+        Write-Host "✓ LazOpenGLContext should be part of Lazarus IDE (checked in RequiredPackages)"
+        
+        # Note: synapse is not needed anymore (replaced with fphttpclient)
+        Write-Host "Note: synapse is not required (replaced with fphttpclient)"
+        
+        Write-Host "All dependencies verified!"
+        
+    # 6. Build Client
     - name: Build Client
       run: |
         cd client
         lazbuild --build-mode=default fpc_atomic.lpi
         if ($LASTEXITCODE -ne 0) { exit 1 }
         
-    # 6. Build Launcher
+    # 7. Build Launcher
     - name: Build Launcher
       run: |
         cd launcher
         lazbuild --build-mode=default atomic_launcher.lpi
         if ($LASTEXITCODE -ne 0) { exit 1 }
         
-    # 7. Build Server
+    # 8. Build Server
     - name: Build Server
       run: |
         cd server
         lazbuild --build-mode=default atomic_server.lpi
         if ($LASTEXITCODE -ne 0) { exit 1 }
         
-    # 8. Build CD Data Extractor
+    # 9. Build CD Data Extractor
     - name: Build CD Data Extractor
       run: |
         cd cd_data_extractor_src
         lazbuild --build-mode=default cd_data_extractor.lpi
         if ($LASTEXITCODE -ne 0) { exit 1 }
         
-    # 9. Create artifacts directory
+    # 10. Create artifacts directory
     - name: Prepare artifacts
       run: |
         New-Item -ItemType Directory -Force -Path windows\bin
@@ -410,7 +455,7 @@ jobs:
         Write-Host "Artifacts prepared. Contents of windows\bin:"
         Get-ChildItem windows\bin\ | Format-Table
         
-    # 10. Upload artifacts (soubory ke stažení)
+    # 11. Upload artifacts (soubory ke stažení)
     - name: Upload Windows binaries
       uses: actions/upload-artifact@v4
       with:
