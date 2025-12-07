@@ -405,7 +405,7 @@ jobs:
             Write-Host "✓ lnet.pp found at: $targetLibDir\lnet.pp"
           } else {
             Write-Host "WARNING: lnet.pp not found at expected location"
-            Write-Host "Contents of $targetLibDir:"
+            Write-Host "Contents of ${targetLibDir}:"
             Get-ChildItem -Path $targetLibDir -Filter "*.pp" | Select-Object -First 5 Name
             exit 1
           }
