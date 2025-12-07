@@ -182,8 +182,18 @@ Var
 Begin
   If Assigned(OpenGL_ASCII_Font) Then OpenGL_ASCII_Font.free;
   Bitmap := TBitmap.Create;
-  bitmap.LoadFromLazarusResource('OpenGLFont');
-  OpenGL_ASCII_Font := TOpenGL_ASCII_Font.Create(bitmap, 8, 12, 256);
+  Try
+    bitmap.LoadFromLazarusResource('OpenGLFont');
+    OpenGL_ASCII_Font := TOpenGL_ASCII_Font.Create(bitmap, 8, 12, 256);
+  Except
+    On E: Exception Do Begin
+      // Log error but don't crash - font might not be critical
+      WriteLn('ERROR: Failed to load OpenGLFont resource: ', E.Message);
+      WriteLn('Font will not be available');
+      bitmap.Free;
+      exit;
+    End;
+  End;
   bitmap.Free;
 End;
 
