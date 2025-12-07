@@ -31,17 +31,21 @@ Uses SysUtils
   ;
 
 Procedure EarlyLog(Const Msg: String);
-{$IFDEF DARWIN}
 Var
   LogFile: TextFile;
   LogPath: String;
 Begin
   Try
+{$IFDEF DARWIN}
     LogPath := IncludeTrailingPathDelimiter(GetUserDir) + 'Library/Application Support/fpc_atomic/early_debug.log';
     If Not DirectoryExistsUTF8(ExtractFilePath(LogPath)) Then
       ForceDirectoriesUTF8(ExtractFilePath(LogPath));
+{$ELSE}
+    // On Windows and Linux, create log file next to executable
+    LogPath := ChangeFileExt(ParamStr(0), '_debug.log');
+{$ENDIF}
     AssignFile(LogFile, LogPath);
-    If FileExistsUTF8(LogPath) Then
+    If FileExists(LogPath) Then
       Append(LogFile)
     Else
       Rewrite(LogFile);
@@ -52,11 +56,6 @@ Begin
     // Ignore errors in early logging
   End;
 End;
-{$ELSE}
-Begin
-  // Early logging only on macOS for now
-End;
-{$ENDIF}
 
 End.
 

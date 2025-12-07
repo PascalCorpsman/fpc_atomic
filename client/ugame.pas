@@ -23,7 +23,7 @@ Interface
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
   uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick, usdl_gamecontroller,
-  uloaderdialog;
+  uloaderdialog, uearlylog;
 
 Type
   TUDPPingData = Record
@@ -3189,23 +3189,32 @@ Begin
 {$IFDEF ShowInitTime}
   t := GetTickCount64;
 {$ENDIF}
+  uearlylog.EarlyLog('TGame.Initialize: Starting');
+  uearlylog.EarlyLog('TGame.Initialize: Owner assigned: ' + BoolToStr(Assigned(Owner), true));
   log('TGame.Initialize', lltrace);
   log('TGame.Initialize: Owner assigned: ' + BoolToStr(Assigned(Owner), true), llInfo);
   fOwner := Owner;
   
   // Resolve data path BEFORE creating Loader dialog (Loader needs it)
   p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  uearlylog.EarlyLog('TGame.Initialize: Assets root: ' + p);
   // Resolve data directory path - check multiple locations for .app bundle compatibility
   fDataPath := ResolveResourceBase(p);
+  uearlylog.EarlyLog('TGame.Initialize: Data path: ' + fDataPath);
+  uearlylog.EarlyLog('TGame.Initialize: Data path exists: ' + BoolToStr(DirectoryExists(fDataPath), true));
   log('Assets root: ' + p, llInfo);
   log('Data path: ' + fDataPath, llInfo);
   log('Data path exists: ' + BoolToStr(DirectoryExists(fDataPath), true), llInfo);
   Try
+    uearlylog.EarlyLog('TGame.Initialize: Creating TLoaderDialog...');
     Loader := TLoaderDialog.create(Owner, fDataPath);
     fLoaderDialog := Loader; // Store reference for OnPaint
+    uearlylog.EarlyLog('TGame.Initialize: TLoaderDialog created successfully');
     log('TLoaderDialog created successfully', llInfo);
   Except
     On E: Exception Do Begin
+      uearlylog.EarlyLog('ERROR creating TLoaderDialog: ' + E.Message);
+      uearlylog.EarlyLog('Exception class: ' + E.ClassName);
       log('ERROR creating TLoaderDialog: ' + E.Message, llError);
       log('Exception class: ' + E.ClassName, llError);
       Raise;

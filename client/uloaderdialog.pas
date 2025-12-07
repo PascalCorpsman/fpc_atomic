@@ -53,6 +53,7 @@ Uses
   , LazUTF8
   , LazFileUtils
   , uatomic_common
+  , uearlylog
   , uopengl_graphikengine
   , uOpenGL_ASCII_Font
   ;
@@ -91,8 +92,10 @@ Begin
   // CRITICAL: Ensure OpenGL context is active before loading textures
   // This is required because LoadGraphik uses glGenTextures and glTexImage2D
   If Not Owner.MakeCurrent Then Begin
+    uearlylog.EarlyLog('TLoaderDialog.Create: ERROR - OpenGL context is not active');
     Raise Exception.Create('TLoaderDialog.Create: OpenGL context is not active');
   End;
+  uearlylog.EarlyLog('TLoaderDialog.Create: OpenGL context is active');
   // Use provided DataPath if available, otherwise fall back to old method
   If DataPath <> '' Then Begin
     p := IncludeTrailingPathDelimiter(DataPath) + 'res' + PathDelim + 'loaddialog.png';
@@ -100,6 +103,8 @@ Begin
     p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png';
   End;
   // Log path for debugging
+  uearlylog.EarlyLog('TLoaderDialog.Create: Looking for loaddialog.png at: ' + p);
+  uearlylog.EarlyLog('TLoaderDialog.Create: File exists: ' + BoolToStr(FileExistsUTF8(p), true));
   uatomic_common.log('TLoaderDialog.Create: Looking for loaddialog.png at: ' + p, llInfo);
   uatomic_common.log('TLoaderDialog.Create: File exists: ' + BoolToStr(FileExistsUTF8(p), true), llInfo);
   png := TPortableNetworkGraphic.Create;
