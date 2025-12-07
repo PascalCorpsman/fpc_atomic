@@ -199,9 +199,25 @@ Begin
     If Assigned(Game) And Not fGameInitialized Then Begin
       fGameInitialized := true; // Set flag first to prevent re-entry
       log('Calling Game.Initialize from OpenGLControl1MakeCurrent (Windows)', llInfo);
-      Game.initialize(OpenGLControl1);
+      log('Game assigned: ' + BoolToStr(Assigned(Game), true), llInfo);
+      log('OpenGLControl1 assigned: ' + BoolToStr(Assigned(OpenGLControl1), true), llInfo);
+      Try
+        Game.initialize(OpenGLControl1);
+        log('Game.Initialize completed successfully', llInfo);
+        log('Game.IsInitialized: ' + BoolToStr(Game.IsInitialized, true), llInfo);
+      Except
+        On E: Exception Do Begin
+          log('ERROR in Game.Initialize: ' + E.Message, llError);
+          log('Exception class: ' + E.ClassName, llError);
+        End;
+      End;
       // Process messages to allow OnPaint to render loading dialog
       Application.ProcessMessages;
+    End Else Begin
+      If Not Assigned(Game) Then
+        log('WARNING: Game is not assigned in OpenGLControl1MakeCurrent (Windows)', llWarning);
+      If fGameInitialized Then
+        log('Game already initialized, skipping', llInfo);
     End;
 {$ELSE}
     // NOTE: On macOS, Game.Initialize is called from Application.OnIdle

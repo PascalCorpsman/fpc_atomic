@@ -3190,6 +3190,7 @@ Begin
   t := GetTickCount64;
 {$ENDIF}
   log('TGame.Initialize', lltrace);
+  log('TGame.Initialize: Owner assigned: ' + BoolToStr(Assigned(Owner), true), llInfo);
   fOwner := Owner;
   
   // Resolve data path BEFORE creating Loader dialog (Loader needs it)
@@ -3198,8 +3199,18 @@ Begin
   fDataPath := ResolveResourceBase(p);
   log('Assets root: ' + p, llInfo);
   log('Data path: ' + fDataPath, llInfo);
-  Loader := TLoaderDialog.create(Owner, fDataPath);
-  fLoaderDialog := Loader; // Store reference for OnPaint
+  log('Data path exists: ' + BoolToStr(DirectoryExists(fDataPath), true), llInfo);
+  Try
+    Loader := TLoaderDialog.create(Owner, fDataPath);
+    fLoaderDialog := Loader; // Store reference for OnPaint
+    log('TLoaderDialog created successfully', llInfo);
+  Except
+    On E: Exception Do Begin
+      log('ERROR creating TLoaderDialog: ' + E.Message, llError);
+      log('Exception class: ' + E.ClassName, llError);
+      Raise;
+    End;
+  End;
   (*
    * Lade Prozente
    * 0..10 : Screens

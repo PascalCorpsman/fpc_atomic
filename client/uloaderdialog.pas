@@ -99,12 +99,18 @@ Begin
   End Else Begin
     p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png';
   End;
+  // Log path for debugging
+  uatomic_common.log('TLoaderDialog.Create: Looking for loaddialog.png at: ' + p, llInfo);
+  uatomic_common.log('TLoaderDialog.Create: File exists: ' + BoolToStr(FileExistsUTF8(p), true), llInfo);
   png := TPortableNetworkGraphic.Create;
   If Not FileExistsUTF8(p) Then Begin
     png.Free;
+    uatomic_common.log('TLoaderDialog.Create: ERROR - Could not find loaddialog.png at ' + p, llError);
     Raise Exception.Create('TLoaderDialog.Create: Could not find loaddialog.png at ' + p);
   End;
+  uatomic_common.log('TLoaderDialog.Create: Loading PNG file...', llInfo);
   png.LoadFromFile(p);
+  uatomic_common.log('TLoaderDialog.Create: PNG loaded, size: ' + IntToStr(png.Width) + 'x' + IntToStr(png.Height), llInfo);
   b := TBitmap.create;
   b.Assign(png);
   b.Transparent := false;
@@ -113,10 +119,17 @@ Begin
   b2.Height := 24;
   b2.Width := 24;
   b2.Transparent := false;
+  uatomic_common.log('TLoaderDialog.Create: Loading textures...', llInfo);
   For i := 0 To 8 Do Begin
     b2.Canvas.Draw(-(i Mod 3) * 24, -(i Div 3) * 24, b);
     fTextures[i] := OpenGL_GraphikEngine.LoadGraphik(b2, 'TLoaderDialog_img' + inttostr(i), smStretch);
+    If fTextures[i] = 0 Then Begin
+      uatomic_common.log('TLoaderDialog.Create: WARNING - Failed to load texture ' + IntToStr(i), llWarning);
+    End Else Begin
+      uatomic_common.log('TLoaderDialog.Create: Texture ' + IntToStr(i) + ' loaded, ID: ' + IntToStr(fTextures[i]), llInfo);
+    End;
   End;
+  uatomic_common.log('TLoaderDialog.Create: All textures loaded', llInfo);
   b2.free;
   b.free;
 End;
