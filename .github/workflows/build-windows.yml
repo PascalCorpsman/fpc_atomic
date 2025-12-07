@@ -395,24 +395,55 @@ jobs:
         New-Item -ItemType Directory -Force -Path $targetLnetDir | Out-Null
         New-Item -ItemType Directory -Force -Path $targetLnetSrcDir | Out-Null
         
-        # Copy lib directory
+        # Copy lib directory (contains lnet.pp and other base units)
         if (Test-Path "$lnetSourceDir\lib") {
           Copy-Item -Path "$lnetSourceDir\lib\*" -Destination $targetLnetDir -Recurse -Force
           Write-Host "Copied LNet lib to $targetLnetDir"
+          # Verify lnet.pp exists
+          if (Test-Path "$targetLnetDir\lnet.pp") {
+            Write-Host "✓ lnet.pp found in lib directory"
+          } else {
+            Write-Host "WARNING: lnet.pp not found in lib directory"
+            Get-ChildItem -Path $targetLnetDir -Filter "*.pp" -Recurse | Select-Object -First 5 Name
+          }
+        } else {
+          Write-Host "ERROR: LNet lib directory not found at $lnetSourceDir\lib"
+          exit 1
         }
         
-        # Copy lazaruspackage directory
+        # Copy lazaruspackage directory (contains lclnet.pas and lnetcomponents.pas)
         if (Test-Path "$lnetSourceDir\lazaruspackage") {
           Copy-Item -Path "$lnetSourceDir\lazaruspackage" -Destination $targetLnetSrcDir -Recurse -Force
           Write-Host "Copied LNet lazaruspackage to $targetLnetSrcDir"
+        } else {
+          Write-Host "ERROR: LNet lazaruspackage directory not found at $lnetSourceDir\lazaruspackage"
+          exit 1
         }
         
-        # Verify lnetcomponents.pas is available
+        # Verify key files are available
         $lnetComponents = Get-ChildItem -Path $targetLnetSrcDir -Recurse -Filter "lnetcomponents.pas" | Select-Object -First 1
+        $lclnet = Get-ChildItem -Path $targetLnetSrcDir -Recurse -Filter "lclnet.pas" | Select-Object -First 1
+        $lnet = Get-ChildItem -Path $targetLnetDir -Recurse -Filter "lnet.pp" | Select-Object -First 1
+        
         if ($lnetComponents) {
           Write-Host "✓ lnetcomponents.pas available at: $($lnetComponents.FullName)"
         } else {
-          Write-Host "WARNING: lnetcomponents.pas not found after copy"
+          Write-Host "ERROR: lnetcomponents.pas not found after copy"
+          exit 1
+        }
+        
+        if ($lclnet) {
+          Write-Host "✓ lclnet.pas available at: $($lclnet.FullName)"
+        } else {
+          Write-Host "ERROR: lclnet.pas not found after copy"
+          exit 1
+        }
+        
+        if ($lnet) {
+          Write-Host "✓ lnet.pp available at: $($lnet.FullName)"
+        } else {
+          Write-Host "ERROR: lnet.pp not found after copy"
+          exit 1
         }
         
     # 5. Verify dependencies
