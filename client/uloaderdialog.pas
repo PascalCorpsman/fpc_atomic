@@ -208,15 +208,22 @@ Begin
   glPopMatrix;
   // Rendern der Elemente auf dem Dialog
   glTranslatef(0, 0, atomic_EPSILON);
+  // CRITICAL: Disable texturing before rendering fonts (fonts use display lists, not textures)
+  glDisable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
-  // Der Schriftzug "Loading data..."
-  s := 'Loading data...';
-  OpenGL_ASCII_Font.Color := clWhite;
-  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
-  // Die Prozentzahl
-  s := inttostr(Percent) + '%';
-  OpenGL_ASCII_Font.Color := clYellow;
-  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
+  // Check if font is initialized
+  If Not Assigned(OpenGL_ASCII_Font) Then Begin
+    uearlylog.EarlyLog('TLoaderDialog: WARNING - OpenGL_ASCII_Font is not assigned');
+  End Else Begin
+    // Der Schriftzug "Loading data..."
+    s := 'Loading data...';
+    OpenGL_ASCII_Font.Color := clWhite;
+    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
+    // Die Prozentzahl
+    s := inttostr(Percent) + '%';
+    OpenGL_ASCII_Font.Color := clYellow;
+    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
+  End;
   // Der Fortschrittsbalken
   glTranslatef(0, 0, -atomic_EPSILON); // Der Weise Rahmen, mittels LineLoop sieht das scheiße aus, also muss der so in den Hintergrund der anderen beiden.
   glBegin(GL_QUADS);
@@ -316,15 +323,22 @@ Begin
   glPopMatrix;
   // Rendern der Elemente auf dem Dialog
   glTranslatef(0, 0, atomic_EPSILON);
+  // CRITICAL: Disable texturing before rendering fonts (fonts use display lists, not textures)
+  glDisable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
-  // Der Schriftzug "Loading data..."
-  s := 'Loading data...';
-  OpenGL_ASCII_Font.Color := clWhite;
-  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
-  // Die Prozentzahl
-  s := inttostr(Percent) + '%';
-  OpenGL_ASCII_Font.Color := clYellow;
-  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
+  // Check if font is initialized
+  If Not Assigned(OpenGL_ASCII_Font) Then Begin
+    uearlylog.EarlyLog('TLoaderDialog: WARNING - OpenGL_ASCII_Font is not assigned');
+  End Else Begin
+    // Der Schriftzug "Loading data..."
+    s := 'Loading data...';
+    OpenGL_ASCII_Font.Color := clWhite;
+    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
+    // Die Prozentzahl
+    s := inttostr(Percent) + '%';
+    OpenGL_ASCII_Font.Color := clYellow;
+    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
+  End;
   // Der Fortschrittsbalken
   glTranslatef(0, 0, -atomic_EPSILON); // Der Weise Rahmen, mittels LineLoop sieht das scheiße aus, also muss der so in den Hintergrund der anderen beiden.
   glBegin(GL_QUADS);
