@@ -65,9 +65,13 @@ jobs:
         # Note: The actual libbass.so needs to be provided by the user
         # For now, we'll create a note that it needs to be installed
         
-        # Check if libbass.so exists in repo (it shouldn't, but check anyway)
-        if [ -f "libbass.so" ]; then
-          echo "Found libbass.so in repository"
+        # Check for libbass.so in various locations
+        if [ -f "bin/libbass.so" ]; then
+          echo "Found libbass.so in bin/"
+          sudo cp bin/libbass.so /usr/lib/
+          sudo chmod 644 /usr/lib/libbass.so
+        elif [ -f "libbass.so" ]; then
+          echo "Found libbass.so in repository root"
           sudo cp libbass.so /usr/lib/
           sudo chmod 644 /usr/lib/libbass.so
         elif [ -f "macos/bin/arm64/libbass.so" ]; then
@@ -75,25 +79,9 @@ jobs:
           sudo cp macos/bin/arm64/libbass.so /usr/lib/
           sudo chmod 644 /usr/lib/libbass.so
         else
-          echo "WARNING: libbass.so not found in repository"
-          echo "BASS library needs to be downloaded from https://www.un4seen.com/"
-          echo "For CI/CD builds, we'll create a dummy libbass.so to allow linking"
-          echo "Note: This will cause runtime errors, but allows the build to complete"
-          # Create a dummy shared library to allow linking
-          # This is a workaround - the actual library should be provided
-          echo "Creating dummy libbass.so for linking..."
-          # Install gcc if not available
-          sudo apt-get install -y gcc || true
-          cat > /tmp/dummy_bass.c << 'EOF'
-          void dummy_bass_function() {}
-          EOF
-          gcc -shared -fPIC -o /tmp/libbass.so /tmp/dummy_bass.c || {
-            echo "ERROR: Failed to create dummy libbass.so"
-            exit 1
-          }
-          sudo cp /tmp/libbass.so /usr/lib/
-          sudo chmod 644 /usr/lib/libbass.so
-          echo "WARNING: Using dummy libbass.so - runtime will fail!"
+          echo "ERROR: libbass.so not found in repository"
+          echo "BASS library needs to be in bin/libbass.so"
+          exit 1
         fi
         
         # Verify installation
@@ -348,6 +336,17 @@ jobs:
             echo "WARNING: $bin not found"
           fi
         done
+        
+        # Copy Linux libraries if they exist
+        if [ -f "bin/libbass.so" ]; then
+          echo "Copying libbass.so to artifacts"
+          cp bin/libbass.so linux/bin/
+        fi
+        
+        if [ -f "bin/libai.so" ]; then
+          echo "Copying libai.so to artifacts"
+          cp bin/libai.so linux/bin/
+        fi
         
         echo "Artifacts prepared. Contents of linux/bin:"
         ls -lh linux/bin/
