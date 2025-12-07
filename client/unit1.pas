@@ -198,10 +198,7 @@ Begin
     EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
     Try
       AtomicFont.CreateFont;
-      If Assigned(AtomicFont.Font1) And Assigned(AtomicFont.Font2) Then
-        EarlyLog('OpenGLControl1MakeCurrent: AtomicFont created successfully')
-      Else
-        EarlyLog('OpenGLControl1MakeCurrent: WARNING - AtomicFont fonts are Nil after creation');
+      EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
     Except
       On E: Exception Do Begin
         EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
