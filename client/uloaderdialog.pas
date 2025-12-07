@@ -60,6 +60,11 @@ Uses
 
 Procedure RenderImg(w, h, ImageIndex: integer); // TODO: das ggf noch mal irgendwohin auslagern ??
 Begin
+  If ImageIndex = 0 Then Begin
+    uearlylog.EarlyLog('RenderImg: WARNING - ImageIndex is 0 (invalid texture)');
+    exit;
+  End;
+  glEnable(GL_TEXTURE_2D);
   glBindTexture(gl_texture_2d, ImageIndex);
   glbegin(gl_quads);
   glTexCoord2f(0, 1);
