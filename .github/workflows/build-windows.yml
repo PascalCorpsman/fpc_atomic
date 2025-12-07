@@ -383,15 +383,36 @@ jobs:
           Write-Host "LNet package built successfully"
         } else {
           Write-Host "WARNING: LNet package build failed"
-          Write-Host "Checking if lnetcomponents.pas is available..."
-          $lnetComponents = Get-ChildItem -Path $lnetDir -Recurse -Filter "lnetcomponents.pas" | Select-Object -First 1
-          if ($lnetComponents) {
-            Write-Host "Found lnetcomponents.pas at: $($lnetComponents.FullName)"
-            Write-Host "Package should work via source files"
-          } else {
-            Write-Host "ERROR: lnetcomponents.pas not found"
-            exit 1
-          }
+        }
+        
+        # Copy LNet source files to expected location for search paths
+        Write-Host "Copying LNet source files to macos/third_party..."
+        $lnetSourceDir = "$lnetDir\lnet-master"
+        $targetLnetDir = "macos\third_party\lnet"
+        $targetLnetSrcDir = "macos\third_party\lnet_src"
+        
+        # Create directories
+        New-Item -ItemType Directory -Force -Path $targetLnetDir | Out-Null
+        New-Item -ItemType Directory -Force -Path $targetLnetSrcDir | Out-Null
+        
+        # Copy lib directory
+        if (Test-Path "$lnetSourceDir\lib") {
+          Copy-Item -Path "$lnetSourceDir\lib\*" -Destination $targetLnetDir -Recurse -Force
+          Write-Host "Copied LNet lib to $targetLnetDir"
+        }
+        
+        # Copy lazaruspackage directory
+        if (Test-Path "$lnetSourceDir\lazaruspackage") {
+          Copy-Item -Path "$lnetSourceDir\lazaruspackage" -Destination $targetLnetSrcDir -Recurse -Force
+          Write-Host "Copied LNet lazaruspackage to $targetLnetSrcDir"
+        }
+        
+        # Verify lnetcomponents.pas is available
+        $lnetComponents = Get-ChildItem -Path $targetLnetSrcDir -Recurse -Filter "lnetcomponents.pas" | Select-Object -First 1
+        if ($lnetComponents) {
+          Write-Host "✓ lnetcomponents.pas available at: $($lnetComponents.FullName)"
+        } else {
+          Write-Host "WARNING: lnetcomponents.pas not found after copy"
         }
         
     # 5. Verify dependencies
