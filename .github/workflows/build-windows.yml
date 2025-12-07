@@ -5,10 +5,10 @@ name: Build Windows
 # - Pull request do main/master branch
 # - Manuálně přes GitHub Actions tab
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  #push:
+  #  branches: [ main, master ]
+  #pull_request:
+  #  branches: [ main, master ]
   workflow_dispatch:  # Umožňuje manuální spuštění
 
 jobs:
