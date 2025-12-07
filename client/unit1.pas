@@ -182,8 +182,32 @@ Begin
   If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
     log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
-    Create_ASCII_Font;
-    AtomicFont.CreateFont;
+    EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    Try
+      Create_ASCII_Font;
+      If Assigned(OpenGL_ASCII_Font) Then
+        EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      Else
+        EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+    Except
+      On E: Exception Do Begin
+        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        log('ERROR creating ASCII font: ' + E.Message, llError);
+      End;
+    End;
+    EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    Try
+      AtomicFont.CreateFont;
+      If Assigned(AtomicFont.Font1) And Assigned(AtomicFont.Font2) Then
+        EarlyLog('OpenGLControl1MakeCurrent: AtomicFont created successfully')
+      Else
+        EarlyLog('OpenGLControl1MakeCurrent: WARNING - AtomicFont fonts are Nil after creation');
+    Except
+      On E: Exception Do Begin
+        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        log('ERROR creating AtomicFont: ' + E.Message, llError);
+      End;
+    End;
     glenable(GL_TEXTURE_2D); // Texturen
     glEnable(GL_DEPTH_TEST); // Tiefentest
     glDepthFunc(gl_less);
