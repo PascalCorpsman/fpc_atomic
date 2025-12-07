@@ -388,23 +388,26 @@ jobs:
         # Copy LNet source files to expected location for search paths
         Write-Host "Copying LNet source files to macos/third_party..."
         $lnetSourceDir = "$lnetDir\lnet-master"
-        $targetLnetDir = "macos\third_party\lnet"
+        $targetLnetBaseDir = "macos\third_party\lnet"
         $targetLnetSrcDir = "macos\third_party\lnet_src"
         
-        # Create directories
-        New-Item -ItemType Directory -Force -Path $targetLnetDir | Out-Null
+        # Create base directory structure
+        New-Item -ItemType Directory -Force -Path $targetLnetBaseDir | Out-Null
         New-Item -ItemType Directory -Force -Path $targetLnetSrcDir | Out-Null
         
-        # Copy lib directory (contains lnet.pp and other base units)
+        # Copy lib directory as subdirectory (search path expects macos/third_party/lnet/lib/)
         if (Test-Path "$lnetSourceDir\lib") {
-          Copy-Item -Path "$lnetSourceDir\lib\*" -Destination $targetLnetDir -Recurse -Force
-          Write-Host "Copied LNet lib to $targetLnetDir"
-          # Verify lnet.pp exists
-          if (Test-Path "$targetLnetDir\lnet.pp") {
-            Write-Host "✓ lnet.pp found in lib directory"
+          $targetLibDir = "$targetLnetBaseDir\lib"
+          Copy-Item -Path "$lnetSourceDir\lib" -Destination $targetLibDir -Recurse -Force
+          Write-Host "Copied LNet lib directory to $targetLibDir"
+          # Verify lnet.pp exists at correct path
+          if (Test-Path "$targetLibDir\lnet.pp") {
+            Write-Host "✓ lnet.pp found at: $targetLibDir\lnet.pp"
           } else {
-            Write-Host "WARNING: lnet.pp not found in lib directory"
-            Get-ChildItem -Path $targetLnetDir -Filter "*.pp" -Recurse | Select-Object -First 5 Name
+            Write-Host "WARNING: lnet.pp not found at expected location"
+            Write-Host "Contents of $targetLibDir:"
+            Get-ChildItem -Path $targetLibDir -Filter "*.pp" | Select-Object -First 5 Name
+            exit 1
           }
         } else {
           Write-Host "ERROR: LNet lib directory not found at $lnetSourceDir\lib"
@@ -420,31 +423,33 @@ jobs:
           exit 1
         }
         
-        # Verify key files are available
-        $lnetComponents = Get-ChildItem -Path $targetLnetSrcDir -Recurse -Filter "lnetcomponents.pas" | Select-Object -First 1
-        $lclnet = Get-ChildItem -Path $targetLnetSrcDir -Recurse -Filter "lclnet.pas" | Select-Object -First 1
-        $lnet = Get-ChildItem -Path $targetLnetDir -Recurse -Filter "lnet.pp" | Select-Object -First 1
+        # Verify key files are available at correct paths
+        $lnetComponentsPath = "$targetLnetSrcDir\lazaruspackage\lnetcomponents.pas"
+        $lclnetPath = "$targetLnetSrcDir\lazaruspackage\lclnet.pas"
+        $lnetPath = "$targetLnetBaseDir\lib\lnet.pp"
         
-        if ($lnetComponents) {
-          Write-Host "✓ lnetcomponents.pas available at: $($lnetComponents.FullName)"
+        if (Test-Path $lnetComponentsPath) {
+          Write-Host "✓ lnetcomponents.pas available at: $lnetComponentsPath"
         } else {
-          Write-Host "ERROR: lnetcomponents.pas not found after copy"
+          Write-Host "ERROR: lnetcomponents.pas not found at: $lnetComponentsPath"
           exit 1
         }
         
-        if ($lclnet) {
-          Write-Host "✓ lclnet.pas available at: $($lclnet.FullName)"
+        if (Test-Path $lclnetPath) {
+          Write-Host "✓ lclnet.pas available at: $lclnetPath"
         } else {
-          Write-Host "ERROR: lclnet.pas not found after copy"
+          Write-Host "ERROR: lclnet.pas not found at: $lclnetPath"
           exit 1
         }
         
-        if ($lnet) {
-          Write-Host "✓ lnet.pp available at: $($lnet.FullName)"
+        if (Test-Path $lnetPath) {
+          Write-Host "✓ lnet.pp available at: $lnetPath"
         } else {
-          Write-Host "ERROR: lnet.pp not found after copy"
+          Write-Host "ERROR: lnet.pp not found at: $lnetPath"
           exit 1
         }
+        
+        Write-Host "All LNet files copied and verified successfully!"
         
     # 5. Verify dependencies
     - name: Verify dependencies
