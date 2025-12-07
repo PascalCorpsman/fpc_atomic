@@ -279,9 +279,15 @@ Begin
   // Render loading dialog during initialization, otherwise render game
   If Assigned(Game) And Assigned(Game.LoaderDialog) And Not Game.IsInitialized Then Begin
     // Render loading dialog directly during initialization (critical for macOS visibility)
+    EarlyLog('OpenGLControl1Paint: Rendering LoaderDialog');
     Game.LoaderDialog.RenderDirect();
+    EarlyLog('OpenGLControl1Paint: LoaderDialog rendered');
   End Else If Assigned(Game) And Game.IsInitialized Then Begin
     Game.Render();
+  End Else Begin
+    EarlyLog('OpenGLControl1Paint: Not rendering - Game=' + BoolToStr(Assigned(Game), true) + 
+      ', LoaderDialog=' + BoolToStr(Assigned(Game) And Assigned(Game.LoaderDialog), true) + 
+      ', IsInitialized=' + BoolToStr(Assigned(Game) And Game.IsInitialized, true));
   End;
   If Assigned(Game) And Game.IsInitialized And Game.Settings.ShowFPS Then Begin
     // Track level start time - detect when level begins (playing time resets to 0 or jumps up)

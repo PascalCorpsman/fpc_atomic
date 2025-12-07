@@ -124,16 +124,20 @@ Begin
   b2.Height := 24;
   b2.Width := 24;
   b2.Transparent := false;
+  uearlylog.EarlyLog('TLoaderDialog.Create: Loading textures...');
   uatomic_common.log('TLoaderDialog.Create: Loading textures...', llInfo);
   For i := 0 To 8 Do Begin
     b2.Canvas.Draw(-(i Mod 3) * 24, -(i Div 3) * 24, b);
     fTextures[i] := OpenGL_GraphikEngine.LoadGraphik(b2, 'TLoaderDialog_img' + inttostr(i), smStretch);
     If fTextures[i] = 0 Then Begin
+      uearlylog.EarlyLog('TLoaderDialog.Create: WARNING - Failed to load texture ' + IntToStr(i));
       uatomic_common.log('TLoaderDialog.Create: WARNING - Failed to load texture ' + IntToStr(i), llWarning);
     End Else Begin
+      uearlylog.EarlyLog('TLoaderDialog.Create: Texture ' + IntToStr(i) + ' loaded, ID: ' + IntToStr(fTextures[i]));
       uatomic_common.log('TLoaderDialog.Create: Texture ' + IntToStr(i) + ' loaded, ID: ' + IntToStr(fTextures[i]), llInfo);
     End;
   End;
+  uearlylog.EarlyLog('TLoaderDialog.Create: All textures loaded');
   uatomic_common.log('TLoaderDialog.Create: All textures loaded', llInfo);
   b2.free;
   b.free;
@@ -246,6 +250,8 @@ Var
 Begin
   // Same as Render(), but without SwapBuffers and ProcessMessages
   // This is for use in OnPaint, which already handles these
+  uearlylog.EarlyLog('TLoaderDialog.RenderDirect: Starting render');
+  uearlylog.EarlyLog('TLoaderDialog.RenderDirect: fTextures[0] = ' + IntToStr(fTextures[0]));
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
