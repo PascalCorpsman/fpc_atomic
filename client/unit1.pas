@@ -311,7 +311,10 @@ Begin
 
   ScaleX := ControlW / GameWidth;
   ScaleY := ControlH / GameHeight;
-  UniformScale := Min(ScaleX, ScaleY);
+  If ScaleX < ScaleY Then
+    UniformScale := ScaleX
+  Else
+    UniformScale := ScaleY;
   If UniformScale <= 0 Then
     UniformScale := 1;
 
