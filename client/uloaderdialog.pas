@@ -247,11 +247,25 @@ Procedure TLoaderDialog.RenderDirect();
 Var
   x, i, j: Integer;
   s: String;
+  vp: Array[0..3] Of GLint;
 Begin
   // Same as Render(), but without SwapBuffers and ProcessMessages
   // This is for use in OnPaint, which already handles these
   uearlylog.EarlyLog('TLoaderDialog.RenderDirect: Starting render');
   uearlylog.EarlyLog('TLoaderDialog.RenderDirect: fTextures[0] = ' + IntToStr(fTextures[0]));
+  
+  // CRITICAL: Ensure OpenGL context is active
+  If Not fOwner.MakeCurrent Then Begin
+    uearlylog.EarlyLog('TLoaderDialog.RenderDirect: ERROR - OpenGL context is not active');
+    exit;
+  End;
+  
+  // Check viewport
+  glGetIntegerv(GL_VIEWPORT, @vp[0]);
+  uearlylog.EarlyLog('TLoaderDialog.RenderDirect: Viewport: ' + IntToStr(vp[0]) + ',' + IntToStr(vp[1]) + ',' + IntToStr(vp[2]) + 'x' + IntToStr(vp[3]));
+  
+  // Enable texturing
+  glEnable(GL_TEXTURE_2D);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
