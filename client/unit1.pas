@@ -193,9 +193,22 @@ Begin
     Initialized := True;
     OpenGLControl1Resize(Nil);
     Timer1.Enabled := true;
-    // NOTE: Game.Initialize is now called from Application.OnIdle
+{$IFDEF Windows}
+    // On Windows, call Game.Initialize directly here to ensure textures are loaded
+    // before any rendering happens. On Windows, the OpenGL context is ready at this point.
+    If Assigned(Game) And Not fGameInitialized Then Begin
+      fGameInitialized := true; // Set flag first to prevent re-entry
+      log('Calling Game.Initialize from OpenGLControl1MakeCurrent (Windows)', llInfo);
+      Game.initialize(OpenGLControl1);
+      // Process messages to allow OnPaint to render loading dialog
+      Application.ProcessMessages;
+    End;
+{$ELSE}
+    // NOTE: On macOS, Game.Initialize is called from Application.OnIdle
     // This ensures Application.Run is active, so OnPaint can be called during initialization
+    // On macOS, the context might not be fully ready at this point
     fGameInitialized := false; // Will be set to true in OnIdle after Game.Initialize completes
+{$ENDIF}
   End;
   Form1.Invalidate;
 End;
@@ -215,12 +228,11 @@ Begin
    * NOTE: Allow rendering during initialization to show loading dialog (critical on macOS and Windows)
    *)
   If Not Timer1.Enabled Then exit;
-  // Allow rendering loading dialog even if Initialized is false (during Game.Initialize)
-  // On Windows, Initialized may be true but Game.Initialize may not have started yet
+  // Allow rendering loading dialog even if Initialized is false (during Game.Initialize on macOS)
   // On macOS, Initialized may be false but Game.Initialize is in progress
   If Not Initialized And (Not Assigned(Game) Or Not Assigned(Game.LoaderDialog) Or Game.IsInitialized) Then Exit;
-  // On Windows: If Initialized is true but Game is not initialized yet, wait for it
-  // This prevents rendering before textures are loaded (Windows-specific issue)
+  // On Windows, Game.Initialize is called from OpenGLControl1MakeCurrent, so if Initialized is true
+  // but Game is not initialized yet, we should wait (though this should not happen)
 {$IFDEF Windows}
   If Initialized And (Not Assigned(Game) Or (Assigned(Game) And Not Game.IsInitialized And Not Assigned(Game.LoaderDialog))) Then Exit;
 {$ENDIF}
@@ -611,13 +623,13 @@ Var
   i, port: Integer;
   msg, ip: String;
 Begin
-  // CRITICAL: On macOS and Windows, Game.Initialize must be called from OnIdle (after Application.Run starts)
+  // CRITICAL: On macOS, Game.Initialize must be called from OnIdle (after Application.Run starts)
   // This ensures OnPaint can be called during initialization to show the loading dialog
-  // On Windows, this is especially important to ensure textures are loaded before rendering
+  // On Windows, Game.Initialize is called directly from OpenGLControl1MakeCurrent
+{$IFNDEF Windows}
   If Not fGameInitialized And Initialized And Assigned(Game) Then Begin
     // Ensure OpenGL context is active before initializing (required for texture loading)
     // On macOS, context might not be ready immediately after Application.Run starts
-    // On Windows, context should be ready, but we check anyway
     If Not OpenGLControl1.MakeCurrent Then Begin
       // Context not ready yet, try again next time
       exit;
@@ -627,9 +639,10 @@ Begin
     // All texture loading happens here, so context must be active
     Game.initialize(OpenGLControl1);
     // Process messages to allow OnPaint to render loading dialog
-    // This is critical on both macOS and Windows to show loading progress
+    // This is critical on macOS to show loading progress
     Application.ProcessMessages;
   End;
+{$ENDIF}
   
   // Process incoming network chunks from network thread
   If Assigned(Game) Then Begin
