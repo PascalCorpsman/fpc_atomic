@@ -151,7 +151,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src;../../Sample/SDL2/library;../../Sample/SDL2;../../Sample/TCP_IP;../synapse;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
+      <OtherUnitFiles Value="../units;../units/sdl2_for_pascal;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src;../../Sample/SDL2/library;../../Sample/SDL2;../../Sample/TCP_IP;../synapse;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
