@@ -320,84 +320,67 @@ jobs:
           exit 1
         }
         
-    # 4. Build LNet package
-    - name: Build LNet package
+    # 4. Download and build LNet package
+    - name: Download and build LNet package
       run: |
-        Write-Host "Building LNet package..."
-        Write-Host "Current directory: $(Get-Location)"
-        Write-Host "Listing macos directory:"
-        if (Test-Path "macos") {
-          Get-ChildItem "macos" -Directory | Select-Object -First 5 Name
-        } else {
-          Write-Host "macos directory not found, listing root:"
-          Get-ChildItem -Directory | Select-Object -First 10 Name
+        Write-Host "Downloading LNet from GitHub..."
+        $lnetUrl = "https://github.com/PascalCorpsman/lnet/archive/refs/heads/main.zip"
+        $lnetZip = "$env:TEMP\lnet.zip"
+        $lnetDir = "$env:TEMP\lnet"
+        
+        # Download LNet
+        $ProgressPreference = 'SilentlyContinue'
+        curl.exe -L --location-trusted -f -o $lnetZip $lnetUrl
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lnetZip)) {
+          Write-Host "ERROR: Failed to download LNet"
+          exit 1
         }
         
-        # Try different path formats
-        $lnetPackagePath = $null
-        $possiblePaths = @(
-          "macos\third_party\lnet_src\lazaruspackage\lnetvisual.lpk",
-          "macos/third_party/lnet_src/lazaruspackage/lnetvisual.lpk",
-          ".\macos\third_party\lnet_src\lazaruspackage\lnetvisual.lpk"
-        )
+        # Extract LNet
+        Write-Host "Extracting LNet..."
+        Expand-Archive -Path $lnetZip -DestinationPath $lnetDir -Force
         
-        foreach ($path in $possiblePaths) {
-          if (Test-Path $path) {
-            $lnetPackagePath = $path
-            Write-Host "Found LNet package at: $lnetPackagePath"
-            break
-          }
+        # Find the package files
+        $lnetPackagePath = Get-ChildItem -Path $lnetDir -Recurse -Filter "lnetvisual.lpk" | Select-Object -First 1
+        if (-not $lnetPackagePath) {
+          Write-Host "ERROR: lnetvisual.lpk not found in downloaded archive"
+          exit 1
         }
         
-        if ($lnetPackagePath) {
-          # First build the base package
-          $lnetBasePath = $lnetPackagePath -replace "lnetvisual.lpk", "lnetbase.lpk"
-          if (Test-Path $lnetBasePath) {
-            Write-Host "Building lnetbase.lpk..."
-            lazbuild --build-package $lnetBasePath
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "WARNING: lnetbase.lpk build failed, but continuing..."
-            }
-          } else {
-            Write-Host "WARNING: lnetbase.lpk not found at: $lnetBasePath"
-          }
-          
-          # Then build the visual package
-          Write-Host "Building lnetvisual.lpk..."
-          lazbuild --build-package $lnetPackagePath
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "LNet package built successfully"
-          } else {
-            Write-Host "WARNING: LNet package build failed, but continuing..."
-            Write-Host "Package might be available via source files in search paths"
-          }
+        $lnetBasePath = Get-ChildItem -Path $lnetDir -Recurse -Filter "lnetbase.lpk" | Select-Object -First 1
+        if (-not $lnetBasePath) {
+          Write-Host "ERROR: lnetbase.lpk not found in downloaded archive"
+          exit 1
+        }
+        
+        Write-Host "Found LNet packages:"
+        Write-Host "  Base: $($lnetBasePath.FullName)"
+        Write-Host "  Visual: $($lnetPackagePath.FullName)"
+        
+        # Build base package first
+        Write-Host "Building lnetbase.lpk..."
+        lazbuild --build-package $lnetBasePath.FullName
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "WARNING: lnetbase.lpk build failed, but continuing..."
         } else {
-          Write-Host "WARNING: LNet package not found, checking if source files are available..."
-          $lnetComponentsPath = $null
-          $possibleComponentPaths = @(
-            "macos\third_party\lnet_src\lazaruspackage\lnetcomponents.pas",
-            "macos/third_party/lnet_src/lazaruspackage/lnetcomponents.pas"
-          )
-          
-          foreach ($path in $possibleComponentPaths) {
-            if (Test-Path $path) {
-              $lnetComponentsPath = $path
-              Write-Host "LNet source files found at: $lnetComponentsPath"
-              Write-Host "Package should work via source files in search paths"
-              break
-            }
-          }
-          
-          if (-not $lnetComponentsPath) {
-            Write-Host "ERROR: LNet source files not found"
-            Write-Host "Searching for lnetcomponents.pas recursively..."
-            $found = Get-ChildItem -Path . -Recurse -Filter "lnetcomponents.pas" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-              Write-Host "Found lnetcomponents.pas at: $($found.FullName)"
-            } else {
-              Write-Host "ERROR: lnetcomponents.pas not found anywhere"
-              exit 1
-            }
+          Write-Host "lnetbase.lpk built successfully"
+        }
+        
+        # Build visual package
+        Write-Host "Building lnetvisual.lpk..."
+        lazbuild --build-package $lnetPackagePath.FullName
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "LNet package built successfully"
+        } else {
+          Write-Host "WARNING: LNet package build failed"
+          Write-Host "Checking if lnetcomponents.pas is available..."
+          $lnetComponents = Get-ChildItem -Path $lnetDir -Recurse -Filter "lnetcomponents.pas" | Select-Object -First 1
+          if ($lnetComponents) {
+            Write-Host "Found lnetcomponents.pas at: $($lnetComponents.FullName)"
+            Write-Host "Package should work via source files"
+          } else {
+            Write-Host "ERROR: lnetcomponents.pas not found"
+            exit 1
           }
         }
         
