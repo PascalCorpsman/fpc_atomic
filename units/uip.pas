@@ -36,7 +36,7 @@ Unit uip;
 Interface
 
 Uses
-  Classes, SysUtils;
+  Classes, SysUtils, math;
 
 Type
   TIPAddress = Array[0..3] Of Byte;
@@ -104,7 +104,7 @@ Var
   sl: TStringList;
   responce, tmp: String;
 {$IFDEF Windows}
-  j,
+  j, k: Integer;
 {$ENDIF}
   i: Integer;
 Begin
