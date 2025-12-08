@@ -420,8 +420,9 @@ Var
   ini: TIniFile;
   sl: TStringList;
   normalizedContent: String;
+  i: Integer;
 {$IFDEF Client}
-  i, j: Integer;
+  j: Integer;
   xBrick: TOpenGL_Animation;
 {$ENDIF}
 Begin
