@@ -295,9 +295,17 @@ Var
   light: Boolean;
   //  f: GLfloat;  <-- Alte Variante mittels glPoints
   currentColor: TVector4;
+  textureEnabled: Boolean;
 Begin
   //  glGetFloatv(GL_POINT_SIZE, @f); // Bakup der Point Size, diese wird hier Verändert !!  <-- Alte Variante mittels glPoints
   light := glIsEnabled(GL_LIGHTING);
+  textureEnabled := glIsEnabled(GL_TEXTURE_2D);
+{$IFDEF Windows}
+  // Log OpenGL state on Windows for debugging
+  If (Pos('Loading', Text) > 0) Or (Pos('%', Text) > 0) Then Begin
+    WriteLn('Textout: Text="', Text, '" x=', x, ' y=', y, ' GL_LIGHTING=', light, ' GL_TEXTURE_2D=', textureEnabled);
+  End;
+{$ENDIF}
   If light Then Begin
     glDisable(GL_LIGHTING); // Deaktivieren der Beleuchtung, die können wir hier nun wirklich nicht gebrauchen..
   End;
