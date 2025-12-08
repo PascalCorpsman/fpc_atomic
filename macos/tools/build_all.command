@@ -134,21 +134,21 @@ echo "Checking data directory..."
 echo "========================================="
 echo ""
 
-# Check if data directory exists in bin directory, if not copy from project root
+# Always copy data directory from project root to bin directory
 DATA_SOURCE="${PROJECT_ROOT}/data"
 DATA_TARGET="${BIN_DIR}/data"
 
-if [[ ! -d "${DATA_TARGET}" ]]; then
-  if [[ -d "${DATA_SOURCE}" ]]; then
-    echo "Data directory not found in ${BIN_DIR}, copying from project root..."
-    cp -R "${DATA_SOURCE}" "${DATA_TARGET}"
-    echo "  ✓ Copied data directory to ${DATA_TARGET}"
-  else
-    echo "  ⚠ Warning: Data directory not found at ${DATA_SOURCE}" >&2
+if [[ -d "${DATA_SOURCE}" ]]; then
+  echo "Copying data directory from project root to ${BIN_DIR}..."
+  # Use rsync to sync data directory (preserves existing files, adds new ones)
+  mkdir -p "${DATA_TARGET}"
+  rsync -a "${DATA_SOURCE}/" "${DATA_TARGET}/"
+  echo "  ✓ Synchronized data directory to ${DATA_TARGET}"
+else
+  echo "  ⚠ Warning: Data directory not found at ${DATA_SOURCE}" >&2
+  if [[ ! -d "${DATA_TARGET}" ]]; then
     echo "  ⚠ Warning: Data directory not found at ${DATA_TARGET}" >&2
   fi
-else
-  echo "  ✓ Data directory already exists at ${DATA_TARGET}"
 fi
 
 echo ""
