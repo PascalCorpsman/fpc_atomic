@@ -684,6 +684,12 @@ Begin
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
   // Und dem Master Die Schnittmenge Mitteilen
   EvalFieldHashList(fieldlist, true);
+  // CRITICAL: Also send available field list to the newly connected client
+  // This ensures remote clients get the field list even if they're not the master
+  // The master already got it from EvalFieldHashList above, but non-master clients need it too
+  If UID <> fSettings.MasterUid Then Begin
+    EvalFieldHashList(fieldlist, false); // Send to all clients (including the new one)
+  End;
   LogLeave;
 End;
 
