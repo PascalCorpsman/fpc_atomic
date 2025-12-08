@@ -462,7 +462,31 @@ Begin
   End;
 {$ENDIF}
   ini.free;
-  tmphash := MD5File(dir + 'info.txt');
+  // Normalize line endings before calculating hash to ensure cross-platform consistency
+  // Windows uses CRLF (\r\n), Mac/Linux use LF (\n)
+  // We normalize to LF for consistent hashing across platforms
+  Begin
+    Var
+      sl: TStringList;
+      normalizedContent: String;
+    Begin
+      sl := TStringList.Create;
+      Try
+        sl.LoadFromFile(dir + 'info.txt');
+        // Normalize line endings to LF (Unix style)
+        // TStringList.Text already uses LineEnding, but we need consistent LF
+        normalizedContent := '';
+        For i := 0 To sl.Count - 1 Do Begin
+          If i > 0 Then normalizedContent := normalizedContent + #10;
+          normalizedContent := normalizedContent + sl[i];
+        End;
+        // Calculate MD5 from normalized content using MD5String
+        tmphash := MD5String(normalizedContent);
+      Finally
+        sl.Free;
+      End;
+    End;
+  End;
   AppendHash;
   If name = '' Then exit; // Name ='' und Hash = 0 ist reserviert für das Random Field
 
