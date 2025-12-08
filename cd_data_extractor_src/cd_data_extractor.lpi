@@ -26,7 +26,7 @@
           </ConfigAndTarget>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung"/>
+            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung;../units"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <Other>
@@ -46,7 +46,7 @@
           </ConfigAndTarget>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung"/>
+            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung;../units"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <Other>
@@ -85,7 +85,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../Sample/Sound/uwave.pas"/>
+        <Filename Value="../../units/uwave.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
