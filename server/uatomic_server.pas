@@ -1745,9 +1745,9 @@ Begin
           End
           Else Begin
             // Name matches but hash differs - accept for cross-platform compatibility
-            // Log warning for debugging
-            log(format('Field name match but hash mismatch (accepting for cross-platform): Server "%s" (hash: %d) vs Client "%s" (hash: %d)', 
-              [fFields[i].Name, fFields[i].Hash, list[j].Name, list[j].Hash]), llWarning);
+            // Log warning for debugging (commented out - too noisy in production)
+            // log(format('Field name match but hash mismatch (accepting for cross-platform): Server "%s" (hash: %d) vs Client "%s" (hash: %d)', 
+            //   [fFields[i].Name, fFields[i].Hash, list[j].Name, list[j].Hash]), llWarning);
             found := true;
             break;
           End;

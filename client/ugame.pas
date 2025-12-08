@@ -2274,8 +2274,9 @@ Begin
       For i := 0 To high(fFields) Do Begin
         If CompareText(fFields[i].Name, s) = 0 Then Begin
           // Name matches but hash differs - accept for cross-platform compatibility
-          log(format('Field "%s": accepting despite hash mismatch (Server hash: %d, Local hash: %d)', 
-            [s, ahash, fFields[i].Hash]), llWarning);
+          // Log warning for debugging (commented out - too noisy in production)
+          // log(format('Field "%s": accepting despite hash mismatch (Server hash: %d, Local hash: %d)', 
+          //   [s, ahash, fFields[i].Hash]), llWarning);
           fFields[i].Available := true;
           break;
         End;
