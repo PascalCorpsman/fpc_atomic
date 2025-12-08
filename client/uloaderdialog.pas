@@ -208,6 +208,11 @@ Begin
   glPopMatrix;
   // Rendern der Elemente auf dem Dialog
   glTranslatef(0, 0, atomic_EPSILON);
+{$IFDEF Windows}
+  // CRITICAL for Windows: Fonts use display lists (GL_QUADS), not textures
+  // If GL_TEXTURE_2D is enabled, OpenGL may apply texture to font geometry, making text invisible
+  glDisable(GL_TEXTURE_2D);
+{$ENDIF}
   glBindTexture(GL_TEXTURE_2D, 0);
   // Der Schriftzug "Loading data..."
   s := 'Loading data...';
@@ -217,6 +222,10 @@ Begin
   s := inttostr(Percent) + '%';
   OpenGL_ASCII_Font.Color := clYellow;
   OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
+{$IFDEF Windows}
+  // Re-enable texturing for subsequent rendering
+  glEnable(GL_TEXTURE_2D);
+{$ENDIF}
   // Der Fortschrittsbalken
   glTranslatef(0, 0, -atomic_EPSILON); // Der Weise Rahmen, mittels LineLoop sieht das scheiße aus, also muss der so in den Hintergrund der anderen beiden.
   glBegin(GL_QUADS);
@@ -316,6 +325,11 @@ Begin
   glPopMatrix;
   // Rendern der Elemente auf dem Dialog
   glTranslatef(0, 0, atomic_EPSILON);
+{$IFDEF Windows}
+  // CRITICAL for Windows: Fonts use display lists (GL_QUADS), not textures
+  // If GL_TEXTURE_2D is enabled, OpenGL may apply texture to font geometry, making text invisible
+  glDisable(GL_TEXTURE_2D);
+{$ENDIF}
   glBindTexture(GL_TEXTURE_2D, 0);
   // Der Schriftzug "Loading data..."
   s := 'Loading data...';
@@ -325,6 +339,10 @@ Begin
   s := inttostr(Percent) + '%';
   OpenGL_ASCII_Font.Color := clYellow;
   OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
+{$IFDEF Windows}
+  // Re-enable texturing for subsequent rendering
+  glEnable(GL_TEXTURE_2D);
+{$ENDIF}
   // Der Fortschrittsbalken
   glTranslatef(0, 0, -atomic_EPSILON); // Der Weise Rahmen, mittels LineLoop sieht das scheiße aus, also muss der so in den Hintergrund der anderen beiden.
   glBegin(GL_QUADS);
