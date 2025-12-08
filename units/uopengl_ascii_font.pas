@@ -57,12 +57,13 @@ Uses
   IntfGraphics, fpImage, Graphics, LCLType, LResources, classes,
   dglopengl, // http://wiki.delphigl.com/index.php/dglOpenGL.pas
   uvectormath, // http://corpsman.de/index.php?doc=opengl/opengl_graphikengine
-{$IFDEF Windows}
-  uearlylog // For debug logging on Windows
-{$ENDIF}
   LConvEncoding,
   uopengl_font_common,
-  math;
+  math
+{$IFDEF Windows}
+  , uearlylog // For debug logging on Windows
+{$ENDIF}
+  ;
 
 Type
 
