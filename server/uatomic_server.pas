@@ -1734,10 +1734,20 @@ Begin
     found := false;
     If fFields[i].Available Then Begin // karten die Früher schon ausgeschlossen wurden brauchen nicht mehr geprüft werden..
       For j := 0 To high(List) Do Begin
-        If (fFields[i].Name = list[j].Name) And
+        // Use case-insensitive comparison for field names to handle Windows/Mac differences
+        // Hash comparison is still case-sensitive and should match if files are identical
+        If (CompareText(fFields[i].Name, list[j].Name) = 0) And
           (fFields[i].Hash = list[j].Hash) Then Begin
           found := true;
           break;
+        End
+        Else Begin
+          // Log mismatch for debugging cross-platform issues
+          If (CompareText(fFields[i].Name, list[j].Name) = 0) And
+             (fFields[i].Hash <> list[j].Hash) Then Begin
+            log(format('Field name match but hash mismatch: Server "%s" (hash: %d) vs Client "%s" (hash: %d)', 
+              [fFields[i].Name, fFields[i].Hash, list[j].Name, list[j].Hash]), llWarning);
+          End;
         End;
       End;
     End;
