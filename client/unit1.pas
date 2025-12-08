@@ -179,6 +179,8 @@ Begin
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
   End;
+{$IFDEF Windows}
+  // On Windows: allowcnt = 2 (exactly 2) and call Game.Initialize directly here
   If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
     log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
@@ -216,6 +218,48 @@ Begin
     Game.initialize(OpenGLControl1);
     Timer1.Enabled := true;
   End;
+{$ELSE}
+  // On macOS: allowcnt >= 1 and Game.Initialize will be called from OnIdle
+  If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
+    log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
+    OpenGL_GraphikEngine.clear;
+    EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    Try
+      Create_ASCII_Font;
+      If Assigned(OpenGL_ASCII_Font) Then
+        EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      Else
+        EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+    Except
+      On E: Exception Do Begin
+        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        log('ERROR creating ASCII font: ' + E.Message, llError);
+      End;
+    End;
+    EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    Try
+      AtomicFont.CreateFont;
+      EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
+    Except
+      On E: Exception Do Begin
+        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        log('ERROR creating AtomicFont: ' + E.Message, llError);
+      End;
+    End;
+    glenable(GL_TEXTURE_2D); // Texturen
+    glEnable(GL_DEPTH_TEST); // Tiefentest
+    glDepthFunc(gl_less);
+    glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
+
+    // Der Anwendung erlauben zu Rendern.
+    Initialized := True;
+    OpenGLControl1Resize(Nil);
+    Timer1.Enabled := true;
+    // NOTE: On macOS, Game.Initialize is called from Application.OnIdle
+    // This ensures Application.Run is active, so OnPaint can be called during initialization
+    fGameInitialized := false; // Will be set to true in OnIdle after Game.Initialize completes
+  End;
+{$ENDIF}
   Form1.Invalidate;
 End;
 
