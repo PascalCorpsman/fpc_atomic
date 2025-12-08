@@ -1719,7 +1719,7 @@ End;
 Procedure TServer.EvalFieldHashList(Const List: TFieldHashNameList;
   SendToMaster: Boolean);
 Var
-  m: TMemorystream;
+  m, m2: TMemorystream;
   i, j: Integer;
   found: Boolean;
 Begin
@@ -1755,6 +1755,15 @@ Begin
     SendChunk(miAvailableFieldList, m, fSettings.MasterUid);
   End
   Else Begin
+    // Send to all connected clients (not just master)
+    // This is needed when a new client connects and needs the field list
+    // Create a copy of the stream for each client since SendChunk takes ownership
+    For i := 0 To high(fUidInfos) Do Begin
+      m2 := TMemoryStream.Create;
+      m.Position := 0;
+      m2.CopyFrom(m, m.Size);
+      SendChunk(miAvailableFieldList, m2, fUidInfos[i].Uid);
+    End;
     m.free;
   End;
   LogLeave;
