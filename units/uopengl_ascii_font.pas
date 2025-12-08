@@ -57,6 +57,9 @@ Uses
   IntfGraphics, fpImage, Graphics, LCLType, LResources, classes,
   dglopengl, // http://wiki.delphigl.com/index.php/dglOpenGL.pas
   uvectormath, // http://corpsman.de/index.php?doc=opengl/opengl_graphikengine
+{$IFDEF Windows}
+  uearlylog // For debug logging on Windows
+{$ENDIF}
   LConvEncoding,
   uopengl_font_common,
   math;
@@ -301,9 +304,13 @@ Begin
   light := glIsEnabled(GL_LIGHTING);
   textureEnabled := glIsEnabled(GL_TEXTURE_2D);
 {$IFDEF Windows}
-  // Log OpenGL state on Windows for debugging
+  // Log OpenGL state on Windows for debugging (only for loading dialog text to avoid spam)
   If (Pos('Loading', Text) > 0) Or (Pos('%', Text) > 0) Then Begin
-    WriteLn('Textout: Text="', Text, '" x=', x, ' y=', y, ' GL_LIGHTING=', light, ' GL_TEXTURE_2D=', textureEnabled);
+    Try
+      uearlylog.EarlyLog('Textout: Text="' + Text + '" x=' + IntToStr(x) + ' y=' + IntToStr(y) + ' GL_LIGHTING=' + BoolToStr(light, true) + ' GL_TEXTURE_2D=' + BoolToStr(textureEnabled, true));
+    Except
+      // Ignore errors in logging - don't crash the app
+    End;
   End;
 {$ENDIF}
   If light Then Begin
