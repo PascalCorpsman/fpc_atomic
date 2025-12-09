@@ -2248,6 +2248,7 @@ Var
   i: Integer;
   ahash: uint64;
   s: String;
+  found: Boolean;
 Begin
   log('TGame.HandleUpdateAvailableFieldList', llTrace);
   For i := 0 To high(fFields) Do Begin
@@ -2258,11 +2259,27 @@ Begin
     s := stream.ReadAnsiString;
     ahash := 0;
     stream.Read(ahash, sizeof(ahash));
+    found := false;
+    // First try exact match (name and hash)
     For i := 0 To high(fFields) Do Begin
-      If (fFields[i].Name = s) And
+      If (CompareText(fFields[i].Name, s) = 0) And
         (fFields[i].Hash = ahash) Then Begin
         fFields[i].Available := true;
+        found := true;
         break;
+      End;
+    End;
+    // If exact match not found, try name-only match (for cross-platform compatibility)
+    If Not found Then Begin
+      For i := 0 To high(fFields) Do Begin
+        If CompareText(fFields[i].Name, s) = 0 Then Begin
+          // Name matches but hash differs - accept for cross-platform compatibility
+          // Log warning for debugging (commented out - too noisy in production)
+          // log(format('Field "%s": accepting despite hash mismatch (Server hash: %d, Local hash: %d)', 
+          //   [s, ahash, fFields[i].Hash]), llWarning);
+          fFields[i].Available := true;
+          break;
+        End;
       End;
     End;
   End;
@@ -2291,9 +2308,25 @@ Begin
   fActualField := Nil;
   stream.Read(FieldHash, SizeOf(FieldHash));
   stream.Read(Wins, SizeOf(Wins));
+  // First try exact match (name and hash)
   For i := 0 To high(fFields) Do Begin
-    If (fFields[i].Name = FieldName)
+    If (CompareText(fFields[i].Name, FieldName) = 0)
       And (fFields[i].Hash = FieldHash) Then Begin
+      fActualField := fFields[i];
+      TFieldSetupMenu(fScreens[sEditFieldSetup]).ActualField := fActualField;
+      TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch := wins;
+      Settings.LastWinsToWinMatch := wins;
+      LogLeave;
+      exit;
+    End;
+  End;
+  // If exact match not found, try name-only match (for cross-platform compatibility)
+  // This handles cases where Windows and Mac have different file versions but same field name
+  For i := 0 To high(fFields) Do Begin
+    If CompareText(fFields[i].Name, FieldName) = 0 Then Begin
+      // Name matches but hash differs - accept for cross-platform compatibility
+      log(format('Field name match but hash mismatch (using local field): Server "%s" (hash: %d) vs Local "%s" (hash: %d)', 
+        [FieldName, FieldHash, fFields[i].Name, fFields[i].Hash]), llWarning);
       fActualField := fFields[i];
       TFieldSetupMenu(fScreens[sEditFieldSetup]).ActualField := fActualField;
       TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch := wins;

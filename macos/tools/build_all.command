@@ -44,7 +44,7 @@ else
   esac
 fi
 
-BIN_DIR="${PROJECT_ROOT}/macos/bin/${TARGET_ARCH}"
+BIN_DIR="${PROJECT_ROOT}/bin/macos/${TARGET_ARCH}"
 
 echo "========================================="
 echo "Building FPC Atomic for macOS (${TARGET_ARCH})"
@@ -99,32 +99,37 @@ fi
 # Build applications - use eval to properly handle arguments with spaces
 EVAL_CMD="lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\""
 
+# Function to filter build output - removes unnecessary warnings and hints
+filter_build_output() {
+  grep -vE "^Note:|^Hint:|.*Hint:.*not used|SetupCompilerFilename:|SearchCompilerCandidates|using config file|ld: warning: -dylib_file is deprecated|ld: warning: -ld_classic is deprecated|ld: warning: dylib.*was built for newer macOS version|-macosx_version_min has been renamed|replacing existing signature|^Free Pascal Compiler|^Copyright|^Target OS:|^Compiling |^Assembling |^Compiling resource|^Linking |lines compiled|hint\(s\) issued|warning\(s\) issued|error\(s\) issued|^\([0-9]+\) |Warning: \[TPCTargetConfigCache|cannot find real compiler|no unit paths|invalid fpc|missing FPC_FULLVERSION" || true
+}
+
 # Build applications
 echo "Building client (fpc_atomic)..."
-eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/client/fpc_atomic.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/client/fpc_atomic.lpi\" 2>&1 | filter_build_output || {
   echo "Error: Failed to build client" >&2
   exit 1
 }
 
 echo "Building launcher (atomic_launcher)..."
-eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/launcher/atomic_launcher.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/launcher/atomic_launcher.lpi\" 2>&1 | filter_build_output || {
   echo "Error: Failed to build launcher" >&2
   exit 1
 }
 
 echo "Building server (atomic_server)..."
-eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/server/atomic_server.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/server/atomic_server.lpi\" 2>&1 | filter_build_output || {
   echo "Error: Failed to build server" >&2
   exit 1
 }
 
 echo "Building AI library (ai)..."
-eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/ai/ai.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/ai/ai.lpi\" 2>&1 | filter_build_output || {
   echo "Warning: Failed to build AI library (may not be critical)" >&2
 }
 
 echo "Building CD Data Extractor GUI (cd_data_extractor)..."
-eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/cd_data_extractor_src/cd_data_extractor.lpi\" 2>&1 | grep -v "^Note:" | grep -v "^Hint:" || {
+eval lazbuild ${LAZBUILD_ARGS} --build-mode=\"${BUILD_MODE}\" \"${PROJECT_ROOT}/cd_data_extractor_src/cd_data_extractor.lpi\" 2>&1 | filter_build_output || {
   echo "Warning: Failed to build CD Data Extractor GUI (may not be critical)" >&2
 }
 
@@ -134,21 +139,21 @@ echo "Checking data directory..."
 echo "========================================="
 echo ""
 
-# Check if data directory exists in bin directory, if not copy from project root
+# Always copy data directory from project root to bin directory
 DATA_SOURCE="${PROJECT_ROOT}/data"
 DATA_TARGET="${BIN_DIR}/data"
 
-if [[ ! -d "${DATA_TARGET}" ]]; then
-  if [[ -d "${DATA_SOURCE}" ]]; then
-    echo "Data directory not found in ${BIN_DIR}, copying from project root..."
-    cp -R "${DATA_SOURCE}" "${DATA_TARGET}"
-    echo "  ✓ Copied data directory to ${DATA_TARGET}"
-  else
-    echo "  ⚠ Warning: Data directory not found at ${DATA_SOURCE}" >&2
+if [[ -d "${DATA_SOURCE}" ]]; then
+  echo "Copying data directory from project root to ${BIN_DIR}..."
+  # Use rsync to sync data directory (preserves existing files, adds new ones)
+  mkdir -p "${DATA_TARGET}"
+  rsync -a "${DATA_SOURCE}/" "${DATA_TARGET}/"
+  echo "  ✓ Synchronized data directory to ${DATA_TARGET}"
+else
+  echo "  ⚠ Warning: Data directory not found at ${DATA_SOURCE}" >&2
+  if [[ ! -d "${DATA_TARGET}" ]]; then
     echo "  ⚠ Warning: Data directory not found at ${DATA_TARGET}" >&2
   fi
-else
-  echo "  ✓ Data directory already exists at ${DATA_TARGET}"
 fi
 
 echo ""
@@ -164,7 +169,7 @@ echo ""
 echo "========================================="
 echo "Build complete!"
 echo "========================================="
-echo "App bundles are in: ${PROJECT_ROOT}/macos/app/"
+echo "App bundles are in: ${PROJECT_ROOT}/macos/app_${TARGET_ARCH}/"
 echo "  - FPCAtomic.app"
 echo "  - FPCAtomicLauncher.app"
 echo "  - FPCAtomicServer.app"

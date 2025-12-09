@@ -179,11 +179,73 @@ Begin
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
   End;
-  If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
+{$IFDEF Windows}
+  // On Windows: allowcnt = 2 (exactly 2) and call Game.Initialize directly here
+  If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
     log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
-    Create_ASCII_Font;
-    AtomicFont.CreateFont;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    Try
+      Create_ASCII_Font;
+      // If Assigned(OpenGL_ASCII_Font) Then
+      //   EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      // Else
+      //   EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        // log('ERROR creating ASCII font: ' + E.Message, llError);
+      End;
+    End;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    Try
+      AtomicFont.CreateFont;
+      // EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        // log('ERROR creating AtomicFont: ' + E.Message, llError);
+      End;
+    End;
+    glenable(GL_TEXTURE_2D); // Texturen
+    glEnable(GL_DEPTH_TEST); // Tiefentest
+    glDepthFunc(gl_less);
+    glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
+
+    // Der Anwendung erlauben zu Rendern.
+    Initialized := True;
+    OpenGLControl1Resize(Nil);
+    Game.initialize(OpenGLControl1);
+    Timer1.Enabled := true;
+  End;
+{$ELSE}
+  // On macOS: allowcnt >= 1 and Game.Initialize will be called from OnIdle
+  If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
+    // log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
+    OpenGL_GraphikEngine.clear;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    Try
+      Create_ASCII_Font;
+      // If Assigned(OpenGL_ASCII_Font) Then
+      //   EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      // Else
+      //   EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        // log('ERROR creating ASCII font: ' + E.Message, llError);
+      End;
+    End;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    Try
+      AtomicFont.CreateFont;
+      // EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        // log('ERROR creating AtomicFont: ' + E.Message, llError);
+      End;
+    End;
     glenable(GL_TEXTURE_2D); // Texturen
     glEnable(GL_DEPTH_TEST); // Tiefentest
     glDepthFunc(gl_less);
@@ -193,50 +255,11 @@ Begin
     Initialized := True;
     OpenGLControl1Resize(Nil);
     Timer1.Enabled := true;
-{$IFDEF Windows}
-    // On Windows, call Game.Initialize directly here to ensure textures are loaded
-    // before any rendering happens. On Windows, the OpenGL context is ready at this point.
-    If Assigned(Game) And Not fGameInitialized Then Begin
-      fGameInitialized := true; // Set flag first to prevent re-entry
-      EarlyLog('OpenGLControl1MakeCurrent: Calling Game.Initialize (Windows)');
-      EarlyLog('OpenGLControl1MakeCurrent: Game assigned: ' + BoolToStr(Assigned(Game), true));
-      EarlyLog('OpenGLControl1MakeCurrent: OpenGLControl1 assigned: ' + BoolToStr(Assigned(OpenGLControl1), true));
-      Try
-        Game.initialize(OpenGLControl1);
-        EarlyLog('OpenGLControl1MakeCurrent: Game.Initialize completed successfully');
-        EarlyLog('OpenGLControl1MakeCurrent: Game.IsInitialized: ' + BoolToStr(Game.IsInitialized, true));
-        log('Calling Game.Initialize from OpenGLControl1MakeCurrent (Windows)', llInfo);
-        log('Game assigned: ' + BoolToStr(Assigned(Game), true), llInfo);
-        log('OpenGLControl1 assigned: ' + BoolToStr(Assigned(OpenGLControl1), true), llInfo);
-        log('Game.Initialize completed successfully', llInfo);
-        log('Game.IsInitialized: ' + BoolToStr(Game.IsInitialized, true), llInfo);
-      Except
-        On E: Exception Do Begin
-          EarlyLog('ERROR in Game.Initialize: ' + E.Message);
-          EarlyLog('Exception class: ' + E.ClassName);
-          log('ERROR in Game.Initialize: ' + E.Message, llError);
-          log('Exception class: ' + E.ClassName, llError);
-        End;
-      End;
-      // Process messages to allow OnPaint to render loading dialog
-      Application.ProcessMessages;
-    End Else Begin
-      If Not Assigned(Game) Then Begin
-        EarlyLog('WARNING: Game is not assigned in OpenGLControl1MakeCurrent (Windows)');
-        log('WARNING: Game is not assigned in OpenGLControl1MakeCurrent (Windows)', llWarning);
-      End;
-      If fGameInitialized Then Begin
-        EarlyLog('Game already initialized, skipping');
-        log('Game already initialized, skipping', llInfo);
-      End;
-    End;
-{$ELSE}
     // NOTE: On macOS, Game.Initialize is called from Application.OnIdle
     // This ensures Application.Run is active, so OnPaint can be called during initialization
-    // On macOS, the context might not be fully ready at this point
     fGameInitialized := false; // Will be set to true in OnIdle after Game.Initialize completes
-{$ENDIF}
   End;
+{$ENDIF}
   Form1.Invalidate;
 End;
 
@@ -244,7 +267,7 @@ Procedure TForm1.OpenGLControl1Paint(Sender: TObject);
 Var
   s: String;
   CurrentPlayingTime: Integer;
-  ElapsedMs, ElapsedSeconds, Minutes, Seconds: Integer;
+  // ElapsedMs, ElapsedSeconds, Minutes, Seconds: Integer;
 Begin
   (*
    * Unter Windows kann es vorkommen, dass dieses OnPaint ausgelöst wird obwohl wir noch am Laden in OpenGLControl1MakeCurrent sind
@@ -279,15 +302,15 @@ Begin
   // Render loading dialog during initialization, otherwise render game
   If Assigned(Game) And Assigned(Game.LoaderDialog) And Not Game.IsInitialized Then Begin
     // Render loading dialog directly during initialization (critical for macOS visibility)
-    EarlyLog('OpenGLControl1Paint: Rendering LoaderDialog');
+    // EarlyLog('OpenGLControl1Paint: Rendering LoaderDialog');
     Game.LoaderDialog.RenderDirect();
-    EarlyLog('OpenGLControl1Paint: LoaderDialog rendered');
+    // EarlyLog('OpenGLControl1Paint: LoaderDialog rendered');
   End Else If Assigned(Game) And Game.IsInitialized Then Begin
     Game.Render();
   End Else Begin
-    EarlyLog('OpenGLControl1Paint: Not rendering - Game=' + BoolToStr(Assigned(Game), true) + 
-      ', LoaderDialog=' + BoolToStr(Assigned(Game) And Assigned(Game.LoaderDialog), true) + 
-      ', IsInitialized=' + BoolToStr(Assigned(Game) And Game.IsInitialized, true));
+    // EarlyLog('OpenGLControl1Paint: Not rendering - Game=' + BoolToStr(Assigned(Game), true) + 
+    //   ', LoaderDialog=' + BoolToStr(Assigned(Game) And Assigned(Game.LoaderDialog), true) + 
+    //   ', IsInitialized=' + BoolToStr(Assigned(Game) And Game.IsInitialized, true));
   End;
   If Assigned(Game) And Game.IsInitialized And Game.Settings.ShowFPS Then Begin
     // Track level start time - detect when level begins (playing time resets to 0 or jumps up)

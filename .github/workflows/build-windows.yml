@@ -561,6 +561,32 @@ jobs:
           }
         }
         
+        # Copy DLL files (ai.dll, bass.dll, SDL2.dll) to artifacts
+        Write-Host "Copying DLL files..."
+        $dllFiles = @(
+          "bin\ai.dll",
+          "bin\bass.dll",
+          "bin\SDL2.dll"
+        )
+        
+        foreach ($dll in $dllFiles) {
+          if (Test-Path $dll) {
+            Write-Host "Found: $dll"
+            Copy-Item $dll "windows\bin\" -Force
+          } else {
+            Write-Host "WARNING: $dll not found"
+          }
+        }
+        
+        # Copy data directory to artifacts
+        Write-Host "Copying data directory..."
+        if (Test-Path "data") {
+          Copy-Item -Path "data" -Destination "windows\bin\data" -Recurse -Force
+          Write-Host "✓ data directory copied to windows\bin\data"
+        } else {
+          Write-Host "WARNING: data directory not found"
+        }
+        
         Write-Host "Artifacts prepared. Contents of windows\bin:"
         Get-ChildItem windows\bin\ | Format-Table
         
@@ -569,5 +595,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows-binaries
-        path: windows/bin/*.exe
+        path: windows/bin/*
         retention-days: 30  # Uchovat 30 dní

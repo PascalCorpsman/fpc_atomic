@@ -53,7 +53,6 @@ Uses
   , LazUTF8
   , LazFileUtils
   , uatomic_common
-  , uearlylog
   , uopengl_graphikengine
   , uOpenGL_ASCII_Font
   ;
@@ -61,7 +60,6 @@ Uses
 Procedure RenderImg(w, h, ImageIndex: integer); // TODO: das ggf noch mal irgendwohin auslagern ??
 Begin
   If ImageIndex = 0 Then Begin
-    uearlylog.EarlyLog('RenderImg: WARNING - ImageIndex is 0 (invalid texture)');
     exit;
   End;
   glEnable(GL_TEXTURE_2D);
@@ -97,30 +95,22 @@ Begin
   // CRITICAL: Ensure OpenGL context is active before loading textures
   // This is required because LoadGraphik uses glGenTextures and glTexImage2D
   If Not Owner.MakeCurrent Then Begin
-    uearlylog.EarlyLog('TLoaderDialog.Create: ERROR - OpenGL context is not active');
     Raise Exception.Create('TLoaderDialog.Create: OpenGL context is not active');
   End;
-  uearlylog.EarlyLog('TLoaderDialog.Create: OpenGL context is active');
   // Use provided DataPath if available, otherwise fall back to old method
   If DataPath <> '' Then Begin
     p := IncludeTrailingPathDelimiter(DataPath) + 'res' + PathDelim + 'loaddialog.png';
   End Else Begin
     p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png';
   End;
-  // Log path for debugging
-  uearlylog.EarlyLog('TLoaderDialog.Create: Looking for loaddialog.png at: ' + p);
-  uearlylog.EarlyLog('TLoaderDialog.Create: File exists: ' + BoolToStr(FileExistsUTF8(p), true));
-  uatomic_common.log('TLoaderDialog.Create: Looking for loaddialog.png at: ' + p, llInfo);
-  uatomic_common.log('TLoaderDialog.Create: File exists: ' + BoolToStr(FileExistsUTF8(p), true), llInfo);
   png := TPortableNetworkGraphic.Create;
   If Not FileExistsUTF8(p) Then Begin
     png.Free;
-    uatomic_common.log('TLoaderDialog.Create: ERROR - Could not find loaddialog.png at ' + p, llError);
-    Raise Exception.Create('TLoaderDialog.Create: Could not find loaddialog.png at ' + p);
+    Raise Exception.Create('The data directory is incomplete.' + LineEnding + LineEnding +
+      'Please run FPC Atomic Launcher and use the "Run CD data extractor" button to extract the required game data.' + LineEnding + LineEnding +
+      'Missing file: ' + ExtractFileName(p));
   End;
-  uatomic_common.log('TLoaderDialog.Create: Loading PNG file...', llInfo);
   png.LoadFromFile(p);
-  uatomic_common.log('TLoaderDialog.Create: PNG loaded, size: ' + IntToStr(png.Width) + 'x' + IntToStr(png.Height), llInfo);
   b := TBitmap.create;
   b.Assign(png);
   b.Transparent := false;
@@ -129,21 +119,10 @@ Begin
   b2.Height := 24;
   b2.Width := 24;
   b2.Transparent := false;
-  uearlylog.EarlyLog('TLoaderDialog.Create: Loading textures...');
-  uatomic_common.log('TLoaderDialog.Create: Loading textures...', llInfo);
   For i := 0 To 8 Do Begin
     b2.Canvas.Draw(-(i Mod 3) * 24, -(i Div 3) * 24, b);
     fTextures[i] := OpenGL_GraphikEngine.LoadGraphik(b2, 'TLoaderDialog_img' + inttostr(i), smStretch);
-    If fTextures[i] = 0 Then Begin
-      uearlylog.EarlyLog('TLoaderDialog.Create: WARNING - Failed to load texture ' + IntToStr(i));
-      uatomic_common.log('TLoaderDialog.Create: WARNING - Failed to load texture ' + IntToStr(i), llWarning);
-    End Else Begin
-      uearlylog.EarlyLog('TLoaderDialog.Create: Texture ' + IntToStr(i) + ' loaded, ID: ' + IntToStr(fTextures[i]));
-      uatomic_common.log('TLoaderDialog.Create: Texture ' + IntToStr(i) + ' loaded, ID: ' + IntToStr(fTextures[i]), llInfo);
-    End;
   End;
-  uearlylog.EarlyLog('TLoaderDialog.Create: All textures loaded');
-  uatomic_common.log('TLoaderDialog.Create: All textures loaded', llInfo);
   b2.free;
   b.free;
 End;
@@ -208,22 +187,15 @@ Begin
   glPopMatrix;
   // Rendern der Elemente auf dem Dialog
   glTranslatef(0, 0, atomic_EPSILON);
-  // CRITICAL: Disable texturing before rendering fonts (fonts use display lists, not textures)
-  glDisable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
-  // Check if font is initialized
-  If Not Assigned(OpenGL_ASCII_Font) Then Begin
-    uearlylog.EarlyLog('TLoaderDialog: WARNING - OpenGL_ASCII_Font is not assigned');
-  End Else Begin
-    // Der Schriftzug "Loading data..."
-    s := 'Loading data...';
-    OpenGL_ASCII_Font.Color := clWhite;
-    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
-    // Die Prozentzahl
-    s := inttostr(Percent) + '%';
-    OpenGL_ASCII_Font.Color := clYellow;
-    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
-  End;
+  // Der Schriftzug "Loading data..."
+  s := 'Loading data...';
+  OpenGL_ASCII_Font.Color := clWhite;
+  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
+  // Die Prozentzahl
+  s := inttostr(Percent) + '%';
+  OpenGL_ASCII_Font.Color := clYellow;
+  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
   // Der Fortschrittsbalken
   glTranslatef(0, 0, -atomic_EPSILON); // Der Weise Rahmen, mittels LineLoop sieht das scheiße aus, also muss der so in den Hintergrund der anderen beiden.
   glBegin(GL_QUADS);
@@ -259,22 +231,14 @@ Procedure TLoaderDialog.RenderDirect();
 Var
   x, i, j: Integer;
   s: String;
-  vp: Array[0..3] Of GLint;
 Begin
   // Same as Render(), but without SwapBuffers and ProcessMessages
   // This is for use in OnPaint, which already handles these
-  uearlylog.EarlyLog('TLoaderDialog.RenderDirect: Starting render');
-  uearlylog.EarlyLog('TLoaderDialog.RenderDirect: fTextures[0] = ' + IntToStr(fTextures[0]));
   
   // CRITICAL: Ensure OpenGL context is active
   If Not fOwner.MakeCurrent Then Begin
-    uearlylog.EarlyLog('TLoaderDialog.RenderDirect: ERROR - OpenGL context is not active');
     exit;
   End;
-  
-  // Check viewport
-  glGetIntegerv(GL_VIEWPORT, @vp[0]);
-  uearlylog.EarlyLog('TLoaderDialog.RenderDirect: Viewport: ' + IntToStr(vp[0]) + ',' + IntToStr(vp[1]) + ',' + IntToStr(vp[2]) + 'x' + IntToStr(vp[3]));
   
   // Enable texturing
   glEnable(GL_TEXTURE_2D);
@@ -323,22 +287,15 @@ Begin
   glPopMatrix;
   // Rendern der Elemente auf dem Dialog
   glTranslatef(0, 0, atomic_EPSILON);
-  // CRITICAL: Disable texturing before rendering fonts (fonts use display lists, not textures)
-  glDisable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, 0);
-  // Check if font is initialized
-  If Not Assigned(OpenGL_ASCII_Font) Then Begin
-    uearlylog.EarlyLog('TLoaderDialog: WARNING - OpenGL_ASCII_Font is not assigned');
-  End Else Begin
-    // Der Schriftzug "Loading data..."
-    s := 'Loading data...';
-    OpenGL_ASCII_Font.Color := clWhite;
-    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
-    // Die Prozentzahl
-    s := inttostr(Percent) + '%';
-    OpenGL_ASCII_Font.Color := clYellow;
-    OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
-  End;
+  // Der Schriftzug "Loading data..."
+  s := 'Loading data...';
+  OpenGL_ASCII_Font.Color := clWhite;
+  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, 24, s);
+  // Die Prozentzahl
+  s := inttostr(Percent) + '%';
+  OpenGL_ASCII_Font.Color := clYellow;
+  OpenGL_ASCII_Font.Textout((fWidth - round(OpenGL_ASCII_Font.TextWidth(s))) Div 2, (fHeight - round(OpenGL_ASCII_Font.TextHeight(s))) Div 2, s);
   // Der Fortschrittsbalken
   glTranslatef(0, 0, -atomic_EPSILON); // Der Weise Rahmen, mittels LineLoop sieht das scheiße aus, also muss der so in den Hintergrund der anderen beiden.
   glBegin(GL_QUADS);

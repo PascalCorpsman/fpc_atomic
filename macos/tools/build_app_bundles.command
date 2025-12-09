@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Allow architecture to be specified as first argument
 if [[ $# -gt 0 ]]; then
@@ -14,9 +14,12 @@ if [[ $# -gt 0 ]]; then
     x86_64|intel)
       TARGET_ARCH="x86_64"
       ;;
+    universal)
+      TARGET_ARCH="universal"
+      ;;
     *)
       echo "Unsupported architecture: ${REQUESTED_ARCH}" >&2
-      echo "Usage: $0 [arm64|x86_64]" >&2
+      echo "Usage: $0 [arm64|x86_64|universal]" >&2
       exit 1
       ;;
   esac
@@ -37,13 +40,13 @@ else
   esac
 fi
 
-BIN_DIR="${PROJECT_ROOT}/bin/${TARGET_ARCH}"
-LIB_DIR="${PROJECT_ROOT}/lib/${TARGET_ARCH}"
-APP_ROOT="${PROJECT_ROOT}/app_${TARGET_ARCH}"
+BIN_DIR="${PROJECT_ROOT}/bin/macos/${TARGET_ARCH}"
+LIB_DIR="${PROJECT_ROOT}/lib/macos/${TARGET_ARCH}"
+APP_ROOT="${PROJECT_ROOT}/macos/app_${TARGET_ARCH}"
 SHARED_DATA_DIR="${APP_ROOT}/data"
-TEMPLATE_ROOT="${PROJECT_ROOT}/app_templates"
+TEMPLATE_ROOT="${PROJECT_ROOT}/macos/app_templates"
 # Assets directory relative to macos/ directory (where PROJECT_ROOT points)
-ASSETS_DIR="${PROJECT_ROOT}/assets"
+ASSETS_DIR="${PROJECT_ROOT}/macos/assets"
 # Check for Icon Composer .icon format first (new format from 2025)
 ICON_DIR="${ASSETS_DIR}/AtomicBomberIcon.icon"
 ICON_FILE="${ASSETS_DIR}/AtomicBomberIcon.icns"
@@ -207,7 +210,11 @@ function ensure_template() {
   rsync -a --delete "${template_dir}/" "${app_dir}/"
 }
 
-echo "Preparing FPCAtomic.app (${TARGET_ARCH})"
+if [[ "${TARGET_ARCH}" == "universal" ]]; then
+  echo "Preparing FPCAtomic.app (Universal: arm64 + x86_64)"
+else
+  echo "Preparing FPCAtomic.app (${TARGET_ARCH})"
+fi
 ensure_template "Game" "FPCAtomic.app"
 GAME_APP="${APP_ROOT}/FPCAtomic.app"
 GAME_MACOS_DIR="${GAME_APP}/Contents/MacOS"
@@ -216,10 +223,13 @@ GAME_LIB_DIR="${GAME_APP}/Contents/lib"
 mkdir -p "${GAME_MACOS_DIR}" "${GAME_LIB_DIR}"
 copy_binary "${BIN_DIR}/fpc_atomic" "${GAME_MACOS_DIR}/fpc_atomic"
 sync_libs "${GAME_LIB_DIR}"
-link_shared_data "${GAME_MACOS_DIR}"
 copy_icon "${GAME_APP}"
 
-echo "Preparing FPCAtomicLauncher.app (${TARGET_ARCH})"
+if [[ "${TARGET_ARCH}" == "universal" ]]; then
+  echo "Preparing FPCAtomicLauncher.app (Universal: arm64 + x86_64)"
+else
+  echo "Preparing FPCAtomicLauncher.app (${TARGET_ARCH})"
+fi
 ensure_template "Launcher" "FPCAtomicLauncher.app"
 LAUNCHER_APP="${APP_ROOT}/FPCAtomicLauncher.app"
 LAUNCHER_MACOS_DIR="${LAUNCHER_APP}/Contents/MacOS"
@@ -237,10 +247,13 @@ else
   echo "  ⚠ Warning: cd_data_extractor not found at ${BIN_DIR}/cd_data_extractor" >&2
 fi
 sync_libs "${LAUNCHER_LIB_DIR}"
-link_shared_data "${LAUNCHER_MACOS_DIR}"
 copy_icon "${LAUNCHER_APP}"
 
-echo "Preparing FPCAtomicServer.app (${TARGET_ARCH})"
+if [[ "${TARGET_ARCH}" == "universal" ]]; then
+  echo "Preparing FPCAtomicServer.app (Universal: arm64 + x86_64)"
+else
+  echo "Preparing FPCAtomicServer.app (${TARGET_ARCH})"
+fi
 ensure_template "Server" "FPCAtomicServer.app"
 SERVER_APP="${APP_ROOT}/FPCAtomicServer.app"
 SERVER_MACOS_DIR="${SERVER_APP}/Contents/MacOS"
@@ -250,7 +263,6 @@ mkdir -p "${SERVER_MACOS_DIR}" "${SERVER_LIB_DIR}"
 copy_binary "${BIN_DIR}/atomic_server" "${SERVER_MACOS_DIR}/atomic_server"
 chmod +x "${SERVER_MACOS_DIR}/run_server"
 sync_libs "${SERVER_LIB_DIR}"
-link_shared_data "${SERVER_MACOS_DIR}"
 copy_icon "${SERVER_APP}"
 
 echo "Synchronising shared data directory"
@@ -263,7 +275,7 @@ for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
   if [[ -d "${app}/Contents/lib" ]]; then
     for lib in "${app}/Contents/lib"/*.dylib; do
       if [[ -f "${lib}" ]]; then
-        /usr/bin/codesign --force --sign - "${lib}" 2>&1 | grep -v "already signed" || true
+        /usr/bin/codesign --force --sign - "${lib}" 2>&1 | grep -v "already signed" | grep -v "replacing existing signature" || true
       fi
     done
   fi
@@ -272,7 +284,7 @@ for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
   if [[ -d "${app}/Contents/MacOS" ]]; then
     for exe in "${app}/Contents/MacOS"/*; do
       if [[ -f "${exe}" ]] && [[ -x "${exe}" ]] && ! [[ -L "${exe}" ]]; then
-        /usr/bin/codesign --force --sign - "${exe}" 2>&1 | grep -v "already signed" || true
+        /usr/bin/codesign --force --sign - "${exe}" 2>&1 | grep -v "already signed" | grep -v "replacing existing signature" || true
       fi
     done
   fi
@@ -281,10 +293,10 @@ for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
   ENTITLEMENTS_FILE="${app}/Contents/entitlements.plist"
   if [[ -f "${ENTITLEMENTS_FILE}" ]]; then
     echo "Signing $(basename "${app}") bundle with entitlements..."
-    /usr/bin/codesign --force --deep --sign - --entitlements "${ENTITLEMENTS_FILE}" "${app}"
+    /usr/bin/codesign --force --deep --sign - --entitlements "${ENTITLEMENTS_FILE}" "${app}" 2>&1 | grep -v "replacing existing signature" || true
   else
     echo "Signing $(basename "${app}") bundle without entitlements..."
-    /usr/bin/codesign --force --deep --sign - "${app}"
+    /usr/bin/codesign --force --deep --sign - "${app}" 2>&1 | grep -v "replacing existing signature" || true
   fi
 done
 

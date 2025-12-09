@@ -18,7 +18,7 @@
         <CompilerOptions>
           <Version Value="11"/>
           <Target>
-            <Filename Value="../macos/bin/arm64/cd_data_extractor"/>
+            <Filename Value="../bin/macos/arm64/cd_data_extractor"/>
           </Target>
           <ConfigAndTarget>
             <TargetCPU Value="aarch64"/>
@@ -26,7 +26,7 @@
           </ConfigAndTarget>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung"/>
+            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung;../units"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <Other>
@@ -38,7 +38,7 @@
         <CompilerOptions>
           <Version Value="11"/>
           <Target>
-            <Filename Value="../macos/bin/x86_64/cd_data_extractor"/>
+            <Filename Value="../bin/macos/x86_64/cd_data_extractor"/>
           </Target>
           <ConfigAndTarget>
             <TargetCPU Value="x86_64"/>
@@ -46,7 +46,7 @@
           </ConfigAndTarget>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung"/>
+            <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/OpenGL;../../Sample/DatenSteuerung;../units"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <Other>
@@ -85,7 +85,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../Sample/Sound/uwave.pas"/>
+        <Filename Value="../../units/uwave.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

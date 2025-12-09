@@ -49,5 +49,15 @@ stats.txt
 .env
 macos/app_arm64/data
 macos/app_x86_64/data
-macos/bin/arm64/data
+macos/app_universal/data
+bin/macos/
 data
+
+# DMG files for distribution
+releases/
+releases/*.dmg
+releases/*.temp.dmg
+
+# Notarization temporary files
+*.zip
+!*.lpi

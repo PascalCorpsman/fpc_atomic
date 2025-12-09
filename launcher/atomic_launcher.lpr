@@ -10,8 +10,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, unit1, ulauncher, unit2, unit3, ucdextractor, ukeyboarddialog,
-  uJSON, uwave, uopengl_animation, usdl_joystick, usynapsedownloader,
+  Forms, unit1, unit2, unit3, ucdextractor, uopengl_animation,
   usdlwizzard;
 
 {$R *.res}

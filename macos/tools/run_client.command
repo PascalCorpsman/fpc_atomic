@@ -4,12 +4,12 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ARCH="$(uname -m)"
 case "$ARCH" in
   arm64|aarch64)
-    BIN_PATH="${REPO_ROOT}/macos/bin/arm64/fpc_atomic"
-    LIB_PATH="${REPO_ROOT}/macos/lib/arm64"
+    BIN_PATH="${REPO_ROOT}/bin/macos/arm64/fpc_atomic"
+    LIB_PATH="${REPO_ROOT}/lib/macos/arm64"
     ;;
   x86_64)
-    BIN_PATH="${REPO_ROOT}/macos/bin/x86_64/fpc_atomic"
-    LIB_PATH="${REPO_ROOT}/macos/lib/x86_64"
+    BIN_PATH="${REPO_ROOT}/bin/macos/x86_64/fpc_atomic"
+    LIB_PATH="${REPO_ROOT}/lib/macos/x86_64"
     ;;
   *)
     echo "Unsupported architecture: ${ARCH}" >&2

@@ -418,8 +418,14 @@ Var
 
 Var
   ini: TIniFile;
+  sl: TStringList;
+  normalizedContent: String;
+  fs: TFileStream;
+  rawContent: AnsiString;
+  normalizedBytes: TMemoryStream;
+  i: Integer;
 {$IFDEF Client}
-  i, j: Integer;
+  j: Integer;
   xBrick: TOpenGL_Animation;
 {$ENDIF}
 Begin
@@ -462,7 +468,47 @@ Begin
   End;
 {$ENDIF}
   ini.free;
-  tmphash := MD5File(dir + 'info.txt');
+  // Normalize line endings before calculating hash to ensure cross-platform consistency
+  // Windows uses CRLF (\r\n), Mac/Linux use LF (\n)
+  // We normalize to LF for consistent hashing across platforms
+  // Read file as raw bytes to avoid automatic line ending conversion
+  fs := TFileStream.Create(dir + 'info.txt', fmOpenRead);
+  Try
+    SetLength(rawContent, fs.Size);
+    fs.Read(rawContent[1], fs.Size);
+  Finally
+    fs.Free;
+  End;
+  // Normalize line endings: CRLF -> LF, CR -> LF
+  normalizedBytes := TMemoryStream.Create;
+  Try
+    i := 1;
+    While i <= Length(rawContent) Do Begin
+      If (i < Length(rawContent)) And (rawContent[i] = #13) And (rawContent[i + 1] = #10) Then Begin
+        // CRLF -> LF
+        normalizedBytes.WriteByte(10);
+        Inc(i, 2);
+      End
+      Else If rawContent[i] = #13 Then Begin
+        // CR -> LF
+        normalizedBytes.WriteByte(10);
+        Inc(i);
+      End
+      Else Begin
+        // Keep other bytes as-is
+        normalizedBytes.WriteByte(Ord(rawContent[i]));
+        Inc(i);
+      End;
+    End;
+    normalizedBytes.Position := 0;
+    // Calculate MD5 from normalized bytes
+    // Convert normalized bytes to string for MD5String
+    SetLength(normalizedContent, normalizedBytes.Size);
+    normalizedBytes.Read(normalizedContent[1], normalizedBytes.Size);
+    tmphash := MD5String(normalizedContent);
+  Finally
+    normalizedBytes.Free;
+  End;
   AppendHash;
   If name = '' Then exit; // Name ='' und Hash = 0 ist reserviert für das Random Field
 

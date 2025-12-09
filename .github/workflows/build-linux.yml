@@ -348,6 +348,15 @@ jobs:
           cp bin/libai.so linux/bin/
         fi
         
+        # Copy data directory to artifacts
+        echo "Copying data directory..."
+        if [ -d "data" ]; then
+          cp -r data linux/bin/
+          echo "✓ data directory copied to linux/bin/data"
+        else
+          echo "WARNING: data directory not found"
+        fi
+        
         echo "Artifacts prepared. Contents of linux/bin:"
         ls -lh linux/bin/
         

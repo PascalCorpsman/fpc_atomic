@@ -56,7 +56,7 @@ echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-LIB_DIR="${PROJECT_ROOT}/macos/lib/x86_64"
+LIB_DIR="${PROJECT_ROOT}/lib/macos/x86_64"
 
 # Get Rosetta Homebrew prefix
 ROSETTA_PREFIX=$(arch -x86_64 /usr/local/bin/brew --prefix)

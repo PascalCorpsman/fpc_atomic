@@ -134,6 +134,7 @@ Type
 
     Procedure LoadAi();
     Procedure HurryHandling;
+    Function GetStatsFilePath: String; // Returns correct path for stats.txt (Application Support on macOS)
   public
     Constructor Create(Port, AutoTimeOut: Integer);
     Destructor Destroy(); override;
@@ -684,6 +685,11 @@ Begin
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
   // Und dem Master Die Schnittmenge Mitteilen
   EvalFieldHashList(fieldlist, true);
+  // CRITICAL: Always send available field list to all clients after evaluation
+  // This ensures all clients (including newly connected ones) receive the updated field list
+  // The master already got it from EvalFieldHashList above, but we need to send to all
+  // to ensure remote clients get the field list even if they're not the master
+  EvalFieldHashList(fieldlist, false); // Send to all clients (including the new one)
   LogLeave;
 End;
 
@@ -1713,7 +1719,7 @@ End;
 Procedure TServer.EvalFieldHashList(Const List: TFieldHashNameList;
   SendToMaster: Boolean);
 Var
-  m: TMemorystream;
+  m, m2: TMemorystream;
   i, j: Integer;
   found: Boolean;
 Begin
@@ -1729,10 +1735,23 @@ Begin
     found := false;
     If fFields[i].Available Then Begin // karten die Früher schon ausgeschlossen wurden brauchen nicht mehr geprüft werden..
       For j := 0 To high(List) Do Begin
-        If (fFields[i].Name = list[j].Name) And
-          (fFields[i].Hash = list[j].Hash) Then Begin
-          found := true;
-          break;
+        // Use case-insensitive comparison for field names to handle Windows/Mac differences
+        // For cross-platform compatibility, accept fields if names match, even if hashes differ
+        // This handles cases where Windows and Mac have different file versions or hash calculation differences
+        If CompareText(fFields[i].Name, list[j].Name) = 0 Then Begin
+          If fFields[i].Hash = list[j].Hash Then Begin
+            // Perfect match - name and hash both match
+            found := true;
+            break;
+          End
+          Else Begin
+            // Name matches but hash differs - accept for cross-platform compatibility
+            // Log warning for debugging (commented out - too noisy in production)
+            // log(format('Field name match but hash mismatch (accepting for cross-platform): Server "%s" (hash: %d) vs Client "%s" (hash: %d)', 
+            //   [fFields[i].Name, fFields[i].Hash, list[j].Name, list[j].Hash]), llWarning);
+            found := true;
+            break;
+          End;
         End;
       End;
     End;
@@ -1749,6 +1768,15 @@ Begin
     SendChunk(miAvailableFieldList, m, fSettings.MasterUid);
   End
   Else Begin
+    // Send to all connected clients (not just master)
+    // This is needed when a new client connects and needs the field list
+    // Create a copy of the stream for each client since SendChunk takes ownership
+    For i := 0 To high(fUidInfos) Do Begin
+      m2 := TMemoryStream.Create;
+      m.Position := 0;
+      m2.CopyFrom(m, m.Size);
+      SendChunk(miAvailableFieldList, m2, fUidInfos[i].Uid);
+    End;
     m.free;
   End;
   LogLeave;
@@ -2352,13 +2380,29 @@ Begin
   LogLeave;
 End;
 
+Function TServer.GetStatsFilePath: String;
+{$IFDEF DARWIN}
+Var
+  ConfigDir: String;
+Begin
+  // On macOS, use Application Support directory like client does
+  ConfigDir := IncludeTrailingPathDelimiter(GetUserDir) + 'Library/Application Support/fpc_atomic/';
+  If Not ForceDirectoriesUTF8(ConfigDir) Then
+    ConfigDir := IncludeTrailingPathDelimiter(GetAppConfigDirUTF8(False));
+  Result := ConfigDir + 'stats.txt';
+End;
+{$ELSE}
+Begin
+  // On Windows and Linux, use directory where executable is located
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'stats.txt';
+End;
+{$ENDIF}
+
 Procedure TServer.LoadStatistiks;
 Var
   ini: TIniFile;
-  p: String;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  ini := TIniFile.Create(p + 'stats.txt');
+  ini := TIniFile.Create(Self.GetStatsFilePath);
   fStatistik.Total[sMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
   fStatistik.Total[sGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
   fStatistik.Total[sFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
@@ -2382,10 +2426,8 @@ End;
 Procedure TServer.SaveStatistiks;
 Var
   ini: TIniFile;
-  p: String;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  ini := TIniFile.Create(p + 'stats.txt');
+  ini := TIniFile.Create(Self.GetStatsFilePath);
   Try
     ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[sMatchesStarted] + fStatistik.LastRun[sMatchesStarted]);
     ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[sGamesStarted] + fStatistik.LastRun[sGamesStarted]);
