@@ -322,6 +322,12 @@ Var
   tmpFolder: String;
   dl: TSynapesDownloader;
 Begin
+{$IFDEF Darwin}
+  // Updates are not implemented on macOS yet
+  showmessage('Updates are not yet available on macOS.' + LineEnding + LineEnding +
+    'Please check the project repository for manual updates.');
+  exit;
+{$ENDIF}
 {$IFDEF Linux}
   If DirectoryExists('cd_data_extractor') Then Begin
     If id_yes = Application.MessageBox('In the launcher location there is a folder named "cd_data_extractor", this will crash the update process' + LineEnding +

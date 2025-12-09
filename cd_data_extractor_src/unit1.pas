@@ -77,20 +77,25 @@ Begin
   caption := DefCaption;
   label1.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('CD-Root', ''));
   
-  // On macOS, set default FPC Atomic folder to parent directory (where app bundles are)
-  // cd_data_extractor is in Contents/MacOS/, so we need to go up two levels (../../)
+  // Set default FPC Atomic folder
 {$IFDEF Darwin}
+  // On macOS, set default to relative path ../../ (two levels up from Contents/MacOS/)
   defaultAtomicFolder := IniPropStorage1.ReadString('FPC-Atomic', '');
   If defaultAtomicFolder = '' Then Begin
-    // Set default to parent directory (where app bundles are)
-    // From Contents/MacOS/ go up two levels
-    defaultAtomicFolder := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + '..' + PathDelim + '..' + PathDelim);
-    // Remove trailing path delimiter for consistency
+    // Use relative path ../../ from the executable location
+    defaultAtomicFolder := '..' + PathDelim + '..' + PathDelim;
     defaultAtomicFolder := ExcludeTrailingPathDelimiter(defaultAtomicFolder);
   End;
   label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), defaultAtomicFolder);
 {$ELSE}
-  label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('FPC-Atomic', ''));
+  // On Windows/Linux, set default to the directory where the executable is located
+  defaultAtomicFolder := IniPropStorage1.ReadString('FPC-Atomic', '');
+  If defaultAtomicFolder = '' Then Begin
+    // Use the directory where the executable is located
+    defaultAtomicFolder := ExtractFilePath(ParamStr(0));
+    defaultAtomicFolder := ExcludeTrailingPathDelimiter(defaultAtomicFolder);
+  End;
+  label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), defaultAtomicFolder);
 {$ENDIF}
   
   memo1.clear;
@@ -133,17 +138,17 @@ Begin
   // Set FPC Atomic Folder
   SelectDirectoryDialog1.Title := button4.caption;
 {$IFDEF Darwin}
-  // On macOS, set initial directory to parent directory (where app bundles are)
-  // if label2 is empty or doesn't exist
-  If (label2.caption = '') Or (Not DirectoryExists(label2.caption)) Then Begin
-    defaultDir := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + '..' + PathDelim + '..' + PathDelim);
-    defaultDir := ExcludeTrailingPathDelimiter(defaultDir);
-    If DirectoryExists(defaultDir) Then Begin
-      SelectDirectoryDialog1.InitialDir := defaultDir;
-    End;
+  // On macOS, always set initial directory to two levels up (../../)
+  defaultDir := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + '..' + PathDelim + '..' + PathDelim);
+  defaultDir := ExcludeTrailingPathDelimiter(defaultDir);
+  If DirectoryExists(defaultDir) Then Begin
+    SelectDirectoryDialog1.InitialDir := defaultDir;
   End
   Else Begin
-    SelectDirectoryDialog1.InitialDir := label2.caption;
+    // Fallback to label2.caption if ../../ doesn't exist
+    If label2.caption <> '' Then Begin
+      SelectDirectoryDialog1.InitialDir := label2.caption;
+    End;
   End;
 {$ELSE}
   If label2.caption <> '' Then Begin
