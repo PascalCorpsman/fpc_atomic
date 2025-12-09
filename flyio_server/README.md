@@ -7,31 +7,90 @@
    # Instalace (macOS)
    curl -L https://fly.io/install.sh | sh
    
+   # Instalace (Linux)
+   curl -L https://fly.io/install.sh | sh
+   
+   # Instalace (Windows - PowerShell)
+   powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
+   
    # Přihlášení
    flyctl auth login
    ```
 
-2. **Docker** - pro lokální testování (volitelné)
+2. **Git** - pro klonování repozitáře (volitelné, pokud používáte předpřipravený image)
 
 ## 🚀 Rychlý postup
 
-### 1. Přejít do adresáře
+### Varianta A: Použití předpřipraveného Docker image (doporučeno)
 
-```bash
-cd flyio_tcp
-```
+Pokud chcete použít předpřipravený Docker image z GitHub Container Registry, nemusíte mít nainstalovaný Pascal compiler ani Lazarus:
 
-### 2. Deploy na Fly.io
+1. **Vytvořte nový adresář a přejděte do něj:**
+   ```bash
+   mkdir fpc-atomic-server
+   cd fpc-atomic-server
+   ```
 
-**První deploy (vytvoří novou aplikaci):**
-```bash
-flyctl launch
-```
+2. **Stáhněte `fly.toml` z GitHubu:**
+   ```bash
+   # Z nejnovějšího release
+   curl -L https://github.com/PavelZverina/fpc_atomic_macos/releases/latest/download/fly.toml -o fly.toml
+   
+   # Nebo přímo z repozitáře
+   curl -L https://raw.githubusercontent.com/PavelZverina/fpc_atomic_macos/main/flyio_server/fly.toml -o fly.toml
+   ```
 
-**Nebo pokud už máte aplikaci:**
-```bash
-flyctl deploy
-```
+3. **Stáhněte `fly.toml.example` a přejmenujte ho:**
+   ```bash
+   curl -L https://github.com/PavelZverina/fpc_atomic_macos/releases/latest/download/fly.toml.example -o fly.toml
+   ```
+   
+   Nebo vytvořte `fly.toml` ručně:
+   ```toml
+   app = "fpc-atomic-tcp-server"
+   primary_region = "fra"
+   
+   [build]
+     image = "ghcr.io/PavelZverina/fpc-atomic-server:latest"
+   
+   [env]
+     PORT = "5521"
+   
+   [[services]]
+     protocol = "tcp"
+     internal_port = 5521
+     processes = ["app"]
+     auto_stop_machines = true
+     auto_start_machines = true
+     min_machines_running = 0
+   
+     [[services.ports]]
+       port = 5521
+   ```
+
+4. **Deploy na Fly.io:**
+   ```bash
+   flyctl launch
+   ```
+
+### Varianta B: Build z source kódu
+
+Pokud chcete buildnout z source kódu (vyžaduje Pascal compiler a Lazarus):
+
+1. **Naklonujte repozitář:**
+   ```bash
+   git clone https://github.com/PavelZverina/fpc_atomic_macos.git
+   cd fpc_atomic_macos/flyio_server
+   ```
+
+2. **Deploy na Fly.io:**
+   ```bash
+   # První deploy (vytvoří novou aplikaci)
+   flyctl launch
+   
+   # Nebo pokud už máte aplikaci
+   flyctl deploy
+   ```
 
 ### 3. Zobrazení informací
 
