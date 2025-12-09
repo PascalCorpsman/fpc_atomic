@@ -116,7 +116,9 @@ Begin
   If Not FileExistsUTF8(p) Then Begin
     png.Free;
     uatomic_common.log('TLoaderDialog.Create: ERROR - Could not find loaddialog.png at ' + p, llError);
-    Raise Exception.Create('TLoaderDialog.Create: Could not find loaddialog.png at ' + p);
+    Raise Exception.Create('The data directory is incomplete.' + LineEnding + LineEnding +
+      'Please run FPC Atomic Launcher and use the "Run CD data extractor" button to extract the required game data.' + LineEnding + LineEnding +
+      'Missing file: ' + ExtractFileName(p));
   End;
   uatomic_common.log('TLoaderDialog.Create: Loading PNG file...', llInfo);
   png.LoadFromFile(p);
