@@ -21,7 +21,7 @@ Uses
   cthreads,
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, Unit1, Unit18, uatomic, ukeyboarddialog, ukeygrabber,
+  Forms, Unit1, Unit18,
   SysUtils
   ;
 

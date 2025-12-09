@@ -278,7 +278,7 @@ for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
   if [[ -d "${app}/Contents/lib" ]]; then
     for lib in "${app}/Contents/lib"/*.dylib; do
       if [[ -f "${lib}" ]]; then
-        /usr/bin/codesign --force --sign - "${lib}" 2>&1 | grep -v "already signed" || true
+        /usr/bin/codesign --force --sign - "${lib}" 2>&1 | grep -v "already signed" | grep -v "replacing existing signature" || true
       fi
     done
   fi
@@ -287,7 +287,7 @@ for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
   if [[ -d "${app}/Contents/MacOS" ]]; then
     for exe in "${app}/Contents/MacOS"/*; do
       if [[ -f "${exe}" ]] && [[ -x "${exe}" ]] && ! [[ -L "${exe}" ]]; then
-        /usr/bin/codesign --force --sign - "${exe}" 2>&1 | grep -v "already signed" || true
+        /usr/bin/codesign --force --sign - "${exe}" 2>&1 | grep -v "already signed" | grep -v "replacing existing signature" || true
       fi
     done
   fi
@@ -296,10 +296,10 @@ for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
   ENTITLEMENTS_FILE="${app}/Contents/entitlements.plist"
   if [[ -f "${ENTITLEMENTS_FILE}" ]]; then
     echo "Signing $(basename "${app}") bundle with entitlements..."
-    /usr/bin/codesign --force --deep --sign - --entitlements "${ENTITLEMENTS_FILE}" "${app}"
+    /usr/bin/codesign --force --deep --sign - --entitlements "${ENTITLEMENTS_FILE}" "${app}" 2>&1 | grep -v "replacing existing signature" || true
   else
     echo "Signing $(basename "${app}") bundle without entitlements..."
-    /usr/bin/codesign --force --deep --sign - "${app}"
+    /usr/bin/codesign --force --deep --sign - "${app}" 2>&1 | grep -v "replacing existing signature" || true
   fi
 done
 
