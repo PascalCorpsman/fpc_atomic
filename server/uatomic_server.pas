@@ -134,6 +134,7 @@ Type
 
     Procedure LoadAi();
     Procedure HurryHandling;
+    Function GetStatsFilePath: String; // Returns correct path for stats.txt (Application Support on macOS)
   public
     Constructor Create(Port, AutoTimeOut: Integer);
     Destructor Destroy(); override;
@@ -2379,13 +2380,29 @@ Begin
   LogLeave;
 End;
 
+Function TServer.GetStatsFilePath: String;
+{$IFDEF DARWIN}
+Var
+  ConfigDir: String;
+Begin
+  // On macOS, use Application Support directory like client does
+  ConfigDir := IncludeTrailingPathDelimiter(GetUserDir) + 'Library/Application Support/fpc_atomic/';
+  If Not ForceDirectoriesUTF8(ConfigDir) Then
+    ConfigDir := IncludeTrailingPathDelimiter(GetAppConfigDirUTF8(False));
+  Result := ConfigDir + 'stats.txt';
+End;
+{$ELSE}
+Begin
+  // On Windows and Linux, use directory where executable is located
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'stats.txt';
+End;
+{$ENDIF}
+
 Procedure TServer.LoadStatistiks;
 Var
   ini: TIniFile;
-  p: String;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  ini := TIniFile.Create(p + 'stats.txt');
+  ini := TIniFile.Create(Self.GetStatsFilePath);
   fStatistik.Total[sMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
   fStatistik.Total[sGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
   fStatistik.Total[sFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
@@ -2409,10 +2426,8 @@ End;
 Procedure TServer.SaveStatistiks;
 Var
   ini: TIniFile;
-  p: String;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  ini := TIniFile.Create(p + 'stats.txt');
+  ini := TIniFile.Create(Self.GetStatsFilePath);
   Try
     ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[sMatchesStarted] + fStatistik.LastRun[sMatchesStarted]);
     ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[sGamesStarted] + fStatistik.LastRun[sGamesStarted]);
