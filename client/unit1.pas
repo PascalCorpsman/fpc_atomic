@@ -184,27 +184,27 @@ Begin
   If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
     log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
-    EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
     Try
       Create_ASCII_Font;
-      If Assigned(OpenGL_ASCII_Font) Then
-        EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
-      Else
-        EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+      // If Assigned(OpenGL_ASCII_Font) Then
+      //   EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      // Else
+      //   EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
     Except
       On E: Exception Do Begin
-        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
-        log('ERROR creating ASCII font: ' + E.Message, llError);
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        // log('ERROR creating ASCII font: ' + E.Message, llError);
       End;
     End;
-    EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
     Try
       AtomicFont.CreateFont;
-      EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
+      // EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
     Except
       On E: Exception Do Begin
-        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
-        log('ERROR creating AtomicFont: ' + E.Message, llError);
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        // log('ERROR creating AtomicFont: ' + E.Message, llError);
       End;
     End;
     glenable(GL_TEXTURE_2D); // Texturen
@@ -221,29 +221,29 @@ Begin
 {$ELSE}
   // On macOS: allowcnt >= 1 and Game.Initialize will be called from OnIdle
   If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
-    log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
+    // log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
-    EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
     Try
       Create_ASCII_Font;
-      If Assigned(OpenGL_ASCII_Font) Then
-        EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
-      Else
-        EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+      // If Assigned(OpenGL_ASCII_Font) Then
+      //   EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      // Else
+      //   EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
     Except
       On E: Exception Do Begin
-        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
-        log('ERROR creating ASCII font: ' + E.Message, llError);
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        // log('ERROR creating ASCII font: ' + E.Message, llError);
       End;
     End;
-    EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
     Try
       AtomicFont.CreateFont;
-      EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
+      // EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
     Except
       On E: Exception Do Begin
-        EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
-        log('ERROR creating AtomicFont: ' + E.Message, llError);
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        // log('ERROR creating AtomicFont: ' + E.Message, llError);
       End;
     End;
     glenable(GL_TEXTURE_2D); // Texturen
@@ -267,7 +267,7 @@ Procedure TForm1.OpenGLControl1Paint(Sender: TObject);
 Var
   s: String;
   CurrentPlayingTime: Integer;
-  ElapsedMs, ElapsedSeconds, Minutes, Seconds: Integer;
+  // ElapsedMs, ElapsedSeconds, Minutes, Seconds: Integer;
 Begin
   (*
    * Unter Windows kann es vorkommen, dass dieses OnPaint ausgelöst wird obwohl wir noch am Laden in OpenGLControl1MakeCurrent sind
@@ -302,15 +302,15 @@ Begin
   // Render loading dialog during initialization, otherwise render game
   If Assigned(Game) And Assigned(Game.LoaderDialog) And Not Game.IsInitialized Then Begin
     // Render loading dialog directly during initialization (critical for macOS visibility)
-    EarlyLog('OpenGLControl1Paint: Rendering LoaderDialog');
+    // EarlyLog('OpenGLControl1Paint: Rendering LoaderDialog');
     Game.LoaderDialog.RenderDirect();
-    EarlyLog('OpenGLControl1Paint: LoaderDialog rendered');
+    // EarlyLog('OpenGLControl1Paint: LoaderDialog rendered');
   End Else If Assigned(Game) And Game.IsInitialized Then Begin
     Game.Render();
   End Else Begin
-    EarlyLog('OpenGLControl1Paint: Not rendering - Game=' + BoolToStr(Assigned(Game), true) + 
-      ', LoaderDialog=' + BoolToStr(Assigned(Game) And Assigned(Game.LoaderDialog), true) + 
-      ', IsInitialized=' + BoolToStr(Assigned(Game) And Game.IsInitialized, true));
+    // EarlyLog('OpenGLControl1Paint: Not rendering - Game=' + BoolToStr(Assigned(Game), true) + 
+    //   ', LoaderDialog=' + BoolToStr(Assigned(Game) And Assigned(Game.LoaderDialog), true) + 
+    //   ', IsInitialized=' + BoolToStr(Assigned(Game) And Game.IsInitialized, true));
   End;
   If Assigned(Game) And Game.IsInitialized And Game.Settings.ShowFPS Then Begin
     // Track level start time - detect when level begins (playing time resets to 0 or jumps up)
