@@ -14,9 +14,12 @@ if [[ $# -gt 0 ]]; then
     x86_64|intel)
       TARGET_ARCH="x86_64"
       ;;
+    universal)
+      TARGET_ARCH="universal"
+      ;;
     *)
       echo "Unsupported architecture: ${REQUESTED_ARCH}" >&2
-      echo "Usage: $0 [arm64|x86_64]" >&2
+      echo "Usage: $0 [arm64|x86_64|universal]" >&2
       exit 1
       ;;
   esac
@@ -207,7 +210,11 @@ function ensure_template() {
   rsync -a --delete "${template_dir}/" "${app_dir}/"
 }
 
-echo "Preparing FPCAtomic.app (${TARGET_ARCH})"
+if [[ "${TARGET_ARCH}" == "universal" ]]; then
+  echo "Preparing FPCAtomic.app (Universal: arm64 + x86_64)"
+else
+  echo "Preparing FPCAtomic.app (${TARGET_ARCH})"
+fi
 ensure_template "Game" "FPCAtomic.app"
 GAME_APP="${APP_ROOT}/FPCAtomic.app"
 GAME_MACOS_DIR="${GAME_APP}/Contents/MacOS"
@@ -219,7 +226,11 @@ sync_libs "${GAME_LIB_DIR}"
 link_shared_data "${GAME_MACOS_DIR}"
 copy_icon "${GAME_APP}"
 
-echo "Preparing FPCAtomicLauncher.app (${TARGET_ARCH})"
+if [[ "${TARGET_ARCH}" == "universal" ]]; then
+  echo "Preparing FPCAtomicLauncher.app (Universal: arm64 + x86_64)"
+else
+  echo "Preparing FPCAtomicLauncher.app (${TARGET_ARCH})"
+fi
 ensure_template "Launcher" "FPCAtomicLauncher.app"
 LAUNCHER_APP="${APP_ROOT}/FPCAtomicLauncher.app"
 LAUNCHER_MACOS_DIR="${LAUNCHER_APP}/Contents/MacOS"
@@ -240,7 +251,11 @@ sync_libs "${LAUNCHER_LIB_DIR}"
 link_shared_data "${LAUNCHER_MACOS_DIR}"
 copy_icon "${LAUNCHER_APP}"
 
-echo "Preparing FPCAtomicServer.app (${TARGET_ARCH})"
+if [[ "${TARGET_ARCH}" == "universal" ]]; then
+  echo "Preparing FPCAtomicServer.app (Universal: arm64 + x86_64)"
+else
+  echo "Preparing FPCAtomicServer.app (${TARGET_ARCH})"
+fi
 ensure_template "Server" "FPCAtomicServer.app"
 SERVER_APP="${APP_ROOT}/FPCAtomicServer.app"
 SERVER_MACOS_DIR="${SERVER_APP}/Contents/MacOS"
