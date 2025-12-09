@@ -578,6 +578,15 @@ jobs:
           }
         }
         
+        # Copy data directory to artifacts
+        Write-Host "Copying data directory..."
+        if (Test-Path "data") {
+          Copy-Item -Path "data" -Destination "windows\bin\data" -Recurse -Force
+          Write-Host "✓ data directory copied to windows\bin\data"
+        } else {
+          Write-Host "WARNING: data directory not found"
+        }
+        
         Write-Host "Artifacts prepared. Contents of windows\bin:"
         Get-ChildItem windows\bin\ | Format-Table
         
