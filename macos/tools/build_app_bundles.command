@@ -223,7 +223,6 @@ GAME_LIB_DIR="${GAME_APP}/Contents/lib"
 mkdir -p "${GAME_MACOS_DIR}" "${GAME_LIB_DIR}"
 copy_binary "${BIN_DIR}/fpc_atomic" "${GAME_MACOS_DIR}/fpc_atomic"
 sync_libs "${GAME_LIB_DIR}"
-link_shared_data "${GAME_MACOS_DIR}"
 copy_icon "${GAME_APP}"
 
 if [[ "${TARGET_ARCH}" == "universal" ]]; then
@@ -248,7 +247,6 @@ else
   echo "  ⚠ Warning: cd_data_extractor not found at ${BIN_DIR}/cd_data_extractor" >&2
 fi
 sync_libs "${LAUNCHER_LIB_DIR}"
-link_shared_data "${LAUNCHER_MACOS_DIR}"
 copy_icon "${LAUNCHER_APP}"
 
 if [[ "${TARGET_ARCH}" == "universal" ]]; then
@@ -265,7 +263,6 @@ mkdir -p "${SERVER_MACOS_DIR}" "${SERVER_LIB_DIR}"
 copy_binary "${BIN_DIR}/atomic_server" "${SERVER_MACOS_DIR}/atomic_server"
 chmod +x "${SERVER_MACOS_DIR}/run_server"
 sync_libs "${SERVER_LIB_DIR}"
-link_shared_data "${SERVER_MACOS_DIR}"
 copy_icon "${SERVER_APP}"
 
 echo "Synchronising shared data directory"
