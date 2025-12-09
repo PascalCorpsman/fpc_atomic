@@ -18,7 +18,7 @@
         <CompilerOptions>
           <Version Value="11"/>
           <Target>
-            <Filename Value="../macos/bin/arm64/cd_data_extractor"/>
+            <Filename Value="../bin/macos/arm64/cd_data_extractor"/>
           </Target>
           <ConfigAndTarget>
             <TargetCPU Value="aarch64"/>
@@ -38,7 +38,7 @@
         <CompilerOptions>
           <Version Value="11"/>
           <Target>
-            <Filename Value="../macos/bin/x86_64/cd_data_extractor"/>
+            <Filename Value="../bin/macos/x86_64/cd_data_extractor"/>
           </Target>
           <ConfigAndTarget>
             <TargetCPU Value="x86_64"/>

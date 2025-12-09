@@ -4,12 +4,12 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ARCH="$(uname -m)"
 case "$ARCH" in
   arm64|aarch64)
-    BIN_PATH="${PROJECT_ROOT}/bin/arm64/atomic_server"
-    LIB_PATH="${PROJECT_ROOT}/lib/arm64"
+    BIN_PATH="${PROJECT_ROOT}/bin/macos/arm64/atomic_server"
+    LIB_PATH="${PROJECT_ROOT}/lib/macos/arm64"
     ;;
   x86_64)
-    BIN_PATH="${PROJECT_ROOT}/bin/x86_64/atomic_server"
-    LIB_PATH="${PROJECT_ROOT}/lib/x86_64"
+    BIN_PATH="${PROJECT_ROOT}/bin/macos/x86_64/atomic_server"
+    LIB_PATH="${PROJECT_ROOT}/lib/macos/x86_64"
     ;;
   *)
     echo "Unsupported architecture: ${ARCH}" >&2

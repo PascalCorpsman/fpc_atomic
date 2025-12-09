@@ -44,7 +44,7 @@ else
   esac
 fi
 
-BIN_DIR="${PROJECT_ROOT}/macos/bin/${TARGET_ARCH}"
+BIN_DIR="${PROJECT_ROOT}/bin/macos/${TARGET_ARCH}"
 
 echo "========================================="
 echo "Building FPC Atomic for macOS (${TARGET_ARCH})"
@@ -164,7 +164,7 @@ echo ""
 echo "========================================="
 echo "Build complete!"
 echo "========================================="
-echo "App bundles are in: ${PROJECT_ROOT}/macos/app/"
+echo "App bundles are in: ${PROJECT_ROOT}/macos/app_${TARGET_ARCH}/"
 echo "  - FPCAtomic.app"
 echo "  - FPCAtomicLauncher.app"
 echo "  - FPCAtomicServer.app"

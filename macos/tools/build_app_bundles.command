@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Allow architecture to be specified as first argument
 if [[ $# -gt 0 ]]; then
@@ -37,13 +37,13 @@ else
   esac
 fi
 
-BIN_DIR="${PROJECT_ROOT}/bin/${TARGET_ARCH}"
-LIB_DIR="${PROJECT_ROOT}/lib/${TARGET_ARCH}"
-APP_ROOT="${PROJECT_ROOT}/app_${TARGET_ARCH}"
+BIN_DIR="${PROJECT_ROOT}/bin/macos/${TARGET_ARCH}"
+LIB_DIR="${PROJECT_ROOT}/lib/macos/${TARGET_ARCH}"
+APP_ROOT="${PROJECT_ROOT}/macos/app_${TARGET_ARCH}"
 SHARED_DATA_DIR="${APP_ROOT}/data"
-TEMPLATE_ROOT="${PROJECT_ROOT}/app_templates"
+TEMPLATE_ROOT="${PROJECT_ROOT}/macos/app_templates"
 # Assets directory relative to macos/ directory (where PROJECT_ROOT points)
-ASSETS_DIR="${PROJECT_ROOT}/assets"
+ASSETS_DIR="${PROJECT_ROOT}/macos/assets"
 # Check for Icon Composer .icon format first (new format from 2025)
 ICON_DIR="${ASSETS_DIR}/AtomicBomberIcon.icon"
 ICON_FILE="${ASSETS_DIR}/AtomicBomberIcon.icns"

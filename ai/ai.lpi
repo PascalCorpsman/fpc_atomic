@@ -19,7 +19,7 @@
         <CompilerOptions>
           <Version Value="11"/>
           <Target>
-            <Filename Value="../macos/lib/arm64/libai.dylib"/>
+            <Filename Value="../lib/macos/arm64/libai.dylib"/>
           </Target>
           <ConfigAndTarget>
             <TargetCPU Value="aarch64"/>
@@ -39,7 +39,7 @@
         <CompilerOptions>
           <Version Value="11"/>
           <Target>
-            <Filename Value="../macos/lib/x86_64/libai.dylib"/>
+            <Filename Value="../lib/macos/x86_64/libai.dylib"/>
           </Target>
           <ConfigAndTarget>
             <TargetCPU Value="x86_64"/>

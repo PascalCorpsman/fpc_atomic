@@ -49,5 +49,5 @@ stats.txt
 .env
 macos/app_arm64/data
 macos/app_x86_64/data
-macos/bin/
+bin/macos/
 data
