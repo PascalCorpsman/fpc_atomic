@@ -36,37 +36,68 @@
 
 ## 🚀 Rychlý postup
 
-### Varianta A: Použití předpřipraveného Docker image (doporučeno)
+### Varianta A: Použití předpřipraveného Docker image s herními daty (doporučeno)
 
-Pokud chcete použít předpřipravený Docker image z GitHub Container Registry, nemusíte mít nainstalovaný Pascal compiler ani Lazarus:
+Pokud chcete použít předpřipravený Docker image z GitHub Container Registry, nemusíte mít nainstalovaný Pascal compiler ani Lazarus. Musíte ale přidat herní data extrahovaná z originálního CD.
 
-1. **Vytvořte nový adresář a přejděte do něj:**
+**⚠️ DŮLEŽITÉ: Herní data jsou vyžadována**
+
+Předpřipravený Docker image neobsahuje herní data kvůli licenčním důvodům. Musíte extrahovat data z originálního CD Atomic Bomberman a přidat je k deploymentu.
+
+1. **Extrahujte herní data:**
+   - Použijte CD Data Extractor (součást repozitáře) k extrakci dat z originálního CD
+   - Tím se vytvoří adresář `data` s mapami, zdroji a zvuky
+
+2. **Vytvořte adresář pro deployment:**
    ```bash
    mkdir fpc-atomic-server
    cd fpc-atomic-server
    ```
 
-2. **Stáhněte `fly.toml` z GitHubu:**
+3. **Zkopírujte herní data:**
    ```bash
-   # Z nejnovějšího release
-   curl -L https://github.com/PavelZverina/fpc_atomic_macos/releases/latest/download/fly.toml -o fly.toml
+   # Zkopírujte extrahovaný adresář data
+   cp -r /cesta/k/extrahovanym/datam .
+   ```
    
-   # Nebo přímo z repozitáře
-   curl -L https://raw.githubusercontent.com/PavelZverina/fpc_atomic_macos/main/flyio_server/fly.toml -o fly.toml
+   Adresář `data` by měl obsahovat:
+   - `maps/` - herní mapy
+   - `res/` - zdroje, textury, atd.
+   - `sounds/` - zvukové efekty
+
+4. **Naklonujte repozitář (pro získání deploy scriptu):**
+   ```bash
+   git clone https://github.com/PavelZverina/fpc_atomic_macos.git
+   cd fpc_atomic_macos/flyio_server
    ```
 
-3. **Stáhněte `fly.toml.example` a přejmenujte ho:**
+5. **Zkopírujte svůj adresář data:**
    ```bash
-   curl -L https://github.com/PavelZverina/fpc_atomic_macos/releases/latest/download/fly.toml.example -o fly.toml
+   # Zkopírujte extrahovaná data do flyio_server/
+   cp -r /cesta/k/extrahovanym/datam .
+   ```
+
+6. **Deploy na Fly.io:**
+   ```bash
+   # Použijte deploy script, který přidá data k předpřipravenému image
+   ./deploy_with_data.sh
+   ```
+
+   **Alternativa - Ruční deployment:**
+   
+   Pokud preferujete ruční deployment, můžete vytvořit vlastní Dockerfile:
+   ```dockerfile
+   FROM ghcr.io/PavelZverina/fpc-atomic-server:latest
+   COPY data /app/data
    ```
    
-   Nebo vytvořte `fly.toml` ručně:
+   Pak vytvořte `fly.toml`:
    ```toml
    app = "fpc-atomic-tcp-server"
    primary_region = "fra"
    
    [build]
-     image = "ghcr.io/PavelZverina/fpc-atomic-server:latest"
+     dockerfile = "Dockerfile"
    
    [env]
      PORT = "5521"
@@ -82,10 +113,10 @@ Pokud chcete použít předpřipravený Docker image z GitHub Container Registry
      [[services.ports]]
        port = 5521
    ```
-
-4. **Deploy na Fly.io:**
+   
+   Pak deployujte:
    ```bash
-   flyctl launch
+   flyctl deploy
    ```
 
 ### Varianta B: Build z source kódu

@@ -36,29 +36,68 @@
 
 ## 🚀 Quick Start
 
-### Option A: Using Pre-built Docker Image (Recommended)
+### Option A: Using Pre-built Docker Image with Game Data (Recommended)
 
-If you want to use a pre-built Docker image from GitHub Container Registry, you don't need to have Pascal compiler or Lazarus installed:
+If you want to use a pre-built Docker image from GitHub Container Registry, you don't need to have Pascal compiler or Lazarus installed. However, you need to add game data extracted from the original CD.
 
-1. **Create a new directory and navigate to it:**
+**⚠️ IMPORTANT: Game Data Required**
+
+The pre-built Docker image does not include game data due to licensing. You must extract data from the original Atomic Bomberman CD and add it to your deployment.
+
+1. **Extract game data:**
+   - Use the CD Data Extractor tool (included in the repository) to extract data from the original game CD
+   - This will create a `data` directory with maps, resources, and sounds
+
+2. **Create deployment directory:**
    ```bash
    mkdir fpc-atomic-server
    cd fpc-atomic-server
    ```
 
-2. **Download `fly.toml.example` from GitHub:**
+3. **Copy game data:**
    ```bash
-   # From the latest release
-   curl -L https://github.com/PavelZverina/fpc_atomic_macos/releases/latest/download/fly.toml.example -o fly.toml
+   # Copy the extracted data directory
+   cp -r /path/to/extracted/data .
    ```
    
-   Or create `fly.toml` manually:
+   The `data` directory should contain:
+   - `maps/` - game maps
+   - `res/` - resources, textures, etc.
+   - `sounds/` - sound effects
+
+4. **Clone the repository (to get deploy script):**
+   ```bash
+   git clone https://github.com/PavelZverina/fpc_atomic_macos.git
+   cd fpc_atomic_macos/flyio_server
+   ```
+
+5. **Copy your data directory:**
+   ```bash
+   # Copy your extracted data to flyio_server/
+   cp -r /path/to/extracted/data .
+   ```
+
+6. **Deploy to Fly.io:**
+   ```bash
+   # Use the deploy script that adds data to the pre-built image
+   ./deploy_with_data.sh
+   ```
+
+   **Alternative - Manual deployment:**
+   
+   If you prefer to deploy manually, you can create a custom Dockerfile:
+   ```dockerfile
+   FROM ghcr.io/PavelZverina/fpc-atomic-server:latest
+   COPY data /app/data
+   ```
+   
+   Then create `fly.toml`:
    ```toml
    app = "fpc-atomic-tcp-server"
    primary_region = "fra"
    
    [build]
-     image = "ghcr.io/PavelZverina/fpc-atomic-server:latest"
+     dockerfile = "Dockerfile"
    
    [env]
      PORT = "5521"
@@ -74,10 +113,10 @@ If you want to use a pre-built Docker image from GitHub Container Registry, you 
      [[services.ports]]
        port = 5521
    ```
-
-3. **Deploy to Fly.io:**
+   
+   Then deploy:
    ```bash
-   flyctl launch
+   flyctl deploy
    ```
 
 ### Option B: Build from Source Code
