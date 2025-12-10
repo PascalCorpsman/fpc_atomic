@@ -53,7 +53,8 @@ Uses
   , uopengl_graphikengine // Die OpenGLGraphikengine ist eine Eigenproduktion von www.Corpsman.de, und kann getrennt geladen werden.
   , uOpenGL_ASCII_Font
   , ugame
-  , uatomic_common;
+  , uatomic_common
+  , uscreens; // For TScreenEnum (sExitBomberman)
 
 {$IFDEF AUTOMODE}
 Const
@@ -146,9 +147,7 @@ Uses lazfileutils, LazUTF8, LCLType
   , bass
   //  , unit18 // Der Fortschrittsbalken während des Updates
   , uatomicfont
-{$IFDEF AUTOMODE}
-  , uscreens
-{$ENDIF}
+  // uscreens is now imported in main uses section (line 57) for TScreenEnum access
   , uearlylog
   ;
 
@@ -607,20 +606,42 @@ End;
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
   log('TForm1.FormCloseQuery', llTrace);
-  // Todo: Speichern der Map, oder wenigstens Nachfragen ob gespeichert werden soll
-  log('Shuting down.', llInfo);
-  IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
-  IniPropStorage1.WriteString('Version', Version);
-  //setValue('MainForm', 'Left', inttostr(Form1.left));
-  //setValue('MainForm', 'Top', inttostr(Form1.top));
-  //setValue('MainForm', 'Width', inttostr(Form1.Width));
-  //setValue('MainForm', 'Height', inttostr(Form1.Height));
+  
+  // If NeedFormClose is already true, user has confirmed exit via menu/ESC
+  // Allow the close to proceed normally
+  If NeedFormClose Then Begin
+    log('Shuting down (user confirmed exit).', llInfo);
+    IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
+    IniPropStorage1.WriteString('Version', Version);
+    //setValue('MainForm', 'Left', inttostr(Form1.left));
+    //setValue('MainForm', 'Top', inttostr(Form1.top));
+    //setValue('MainForm', 'Width', inttostr(Form1.Width));
+    //setValue('MainForm', 'Height', inttostr(Form1.Height));
 
-  timer1.Enabled := false;
-  Initialized := false;
-  // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
-  Game.Disconnect;
-  Game.OnIdle;
+    timer1.Enabled := false;
+    Initialized := false;
+    // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
+    Game.Disconnect;
+    Game.OnIdle;
+    LogLeave;
+    Exit; // Allow close to proceed
+  End;
+  
+  // User clicked window close button - show confirmation dialog
+  log('Window close button clicked, showing confirmation dialog', llInfo);
+  CanClose := false; // Prevent immediate close
+  
+  // Show the same dialog as when user presses ESC or selects Exit from menu
+  If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
+    // User confirmed - switch to Exit Bomberman screen
+    // This will set NeedFormClose := true, play quit sound, and then close the form
+    // TScreenEnum is available through ugame.pas which uses uscreens.pas
+    If Assigned(Game) Then Begin
+      Game.SwitchToScreen(sExitBomberman);
+    End;
+  End;
+  // If user clicked No, CanClose remains false, so window stays open
+  
   LogLeave;
 End;
 

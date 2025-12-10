@@ -117,6 +117,7 @@ Type
     FControlHeight: Integer;
     FViewportScale: Double;
     fDataPath: String; // Base path to data directory
+    fServerPID: Integer; // PID of locally started server process (0 if no server started)
 
     // === CLIENT-SIDE INTERPOLATION ===
     // Snapshots of server state
@@ -274,6 +275,7 @@ Type
 
 Var
   Game: TGame; // Die SpielEngine
+  NeedFormClose: Boolean = false; // Set to true when user confirms exit, triggers form close after quit sound
 
 Implementation
 
@@ -298,9 +300,6 @@ Uses dglopengl
   , ugraphics
   , uearlylog
   ;
-
-Var
-  NeedFormClose: Boolean = false;
 
   (*
    * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
@@ -1612,15 +1611,20 @@ Begin
       If FileExistsUTF8(serv) Then Begin
         log('Launching server directly: ' + serv, llInfo);
         p := TProcessUTF8.Create(Nil);
-        p.Options := [poDetached];
+        // Use poNoConsole instead of poDetached so we can get the PID
+        p.Options := [poNoConsole, poNewProcessGroup];
         p.Executable := '/bin/zsh';
         p.Parameters.Add('-c');
         // Set DYLD_LIBRARY_PATH and run atomic_server with parameters
+        // Use exec to replace shell process with server process for cleaner PID tracking
         p.Parameters.Add('cd ' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS' +
           ' && export DYLD_LIBRARY_PATH=' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/lib:$DYLD_LIBRARY_PATH' +
-          ' && ' + serv + ' -p ' + inttostr(settings.Port) +
+          ' && exec ' + serv + ' -p ' + inttostr(settings.Port) +
           ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()));
         p.Execute;
+        // Store PID for later termination
+        fServerPID := p.ProcessID;
+        log('Server started with PID: ' + inttostr(fServerPID), llInfo);
         p.free;
         result := true;
         LogLeave;
@@ -1642,7 +1646,7 @@ Begin
 {$ENDIF}
   If FileExistsUTF8(serv) Then Begin
     p := TProcessUTF8.Create(Nil);
-    p.Options := [poNewConsole];
+    p.Options := [poNewConsole, poNewProcessGroup];
     p.Executable := serv;
     p.Parameters.Add('-p');
     p.Parameters.Add(inttostr(settings.Port));
@@ -1653,6 +1657,9 @@ Begin
     p.Parameters.Add('-f');
     p.Parameters.Add(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
     p.Execute;
+    // Store PID for later termination
+    fServerPID := p.ProcessID;
+    log('Server started with PID: ' + inttostr(fServerPID), llInfo);
     p.free;
   End
   Else Begin
@@ -1668,11 +1675,11 @@ Begin
 {$ELSE}
 {$IFDEF DARWIN}
   // Wait for server to start and check if port is listening
-  sleep(2000); // Initial wait for .app bundle to start
-  // Check if server is actually listening on the port (up to 5 seconds)
+  sleep(3000); // Initial wait for .app bundle to start (increased from 2000ms)
+  // Check if server is actually listening on the port (up to 10 seconds)
   portListening := false;
   portCheckCount := 0;
-  While (portCheckCount < 10) And (Not portListening) Do Begin
+  While (portCheckCount < 20) And (Not portListening) Do Begin
     sleep(500); // Check every 500ms
     Inc(portCheckCount);
     
@@ -3036,8 +3043,8 @@ Begin
   If isLocalhost Then Begin
     // For localhost, retry more times (server might still be starting)
     // Server needs time to: 1) Start .app bundle, 2) Initialize, 3) Start listening on port
-    maxRetries := 10;
-    retryDelay := 1000; // 1000ms (1 second) between retries - server needs time to start
+    maxRetries := 15; // Increased from 10 to allow more time for server to start
+    retryDelay := 1500; // Increased from 1000ms to 1500ms between retries - server needs more time to start
   End
   Else Begin
     // For remote servers, try only once
@@ -3126,13 +3133,64 @@ Begin
   FControlHeight := GameHeight;
   FViewportScale := 1;
   fDataPath := ''; // Will be set in Initialize
+  fServerPID := 0; // No server started initially
 End;
 
 Destructor TGame.Destroy;
 Var
   i: TScreenEnum;
   j: Integer;
+  killProcess: TProcessUTF8;
 Begin
+  // Terminate locally started server if it's still running
+  If fServerPID > 0 Then Begin
+    log('Terminating server process (PID: ' + inttostr(fServerPID) + ')', llInfo);
+{$IFDEF Windows}
+    // On Windows, use taskkill
+    killProcess := TProcessUTF8.Create(Nil);
+    killProcess.Options := [poWaitOnExit, poUsePipes];
+    killProcess.Executable := 'taskkill';
+    killProcess.Parameters.Add('/PID');
+    killProcess.Parameters.Add(inttostr(fServerPID));
+    killProcess.Parameters.Add('/F'); // Force termination
+    killProcess.Parameters.Add('/T'); // Terminate child processes
+    killProcess.Execute;
+    killProcess.Free;
+{$ELSE}
+    // On Unix-like systems (macOS, Linux), use kill command
+    killProcess := TProcessUTF8.Create(Nil);
+    killProcess.Options := [poWaitOnExit, poUsePipes];
+    killProcess.Executable := '/bin/kill';
+    killProcess.Parameters.Add('-TERM'); // Try graceful termination first
+    killProcess.Parameters.Add(inttostr(fServerPID));
+    killProcess.Execute;
+    killProcess.Free;
+    
+    // Wait a bit and check if process is still running
+    Sleep(500);
+    killProcess := TProcessUTF8.Create(Nil);
+    killProcess.Options := [poWaitOnExit, poUsePipes];
+    killProcess.Executable := '/bin/kill';
+    killProcess.Parameters.Add('-0'); // Check if process exists
+    killProcess.Parameters.Add(inttostr(fServerPID));
+    killProcess.Execute;
+    If killProcess.ExitStatus = 0 Then Begin
+      // Process still exists, force kill
+      log('Server process still running, force killing...', llWarning);
+      killProcess.Free;
+      killProcess := TProcessUTF8.Create(Nil);
+      killProcess.Options := [poWaitOnExit, poUsePipes];
+      killProcess.Executable := '/bin/kill';
+      killProcess.Parameters.Add('-KILL');
+      killProcess.Parameters.Add(inttostr(fServerPID));
+      killProcess.Execute;
+    End;
+    killProcess.Free;
+{$ENDIF}
+    fServerPID := 0;
+    log('Server process terminated', llInfo);
+  End;
+  
   If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].free;
   If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].free;
   If assigned(fsdlJoysticks[ksJoy1]) Then fsdlJoysticks[ksJoy1].free;
