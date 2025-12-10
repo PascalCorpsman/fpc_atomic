@@ -300,9 +300,20 @@ for app in "${GAME_APP}" "${LAUNCHER_APP}" "${SERVER_APP}"; do
   fi
 done
 
+# Copy remove_quarantine.command to app directory
+REMOVE_QUARANTINE_SCRIPT="${SCRIPT_DIR}/remove_quarantine.command"
+if [[ -f "${REMOVE_QUARANTINE_SCRIPT}" ]]; then
+  cp "${REMOVE_QUARANTINE_SCRIPT}" "${APP_ROOT}/"
+  chmod +x "${APP_ROOT}/remove_quarantine.command"
+  echo "  ✓ Copied remove_quarantine.command to ${APP_ROOT}"
+else
+  echo "  ⚠ Warning: remove_quarantine.command not found at ${REMOVE_QUARANTINE_SCRIPT}" >&2
+fi
+
 echo "Done. Bundles are in ${APP_ROOT}:"
 echo "  - FPCAtomic.app"
 echo "  - FPCAtomicLauncher.app"
 echo "  - FPCAtomicServer.app"
+echo "  - remove_quarantine.command"
 
 

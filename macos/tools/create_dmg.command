@@ -107,6 +107,13 @@ cp -R "${APP_ROOT}/FPCAtomic.app" "${FPCATOMIC_DIR}/"
 cp -R "${APP_ROOT}/FPCAtomicLauncher.app" "${FPCATOMIC_DIR}/"
 cp -R "${APP_ROOT}/FPCAtomicServer.app" "${FPCATOMIC_DIR}/"
 
+# Copy remove_quarantine.command if it exists
+if [[ -f "${APP_ROOT}/remove_quarantine.command" ]]; then
+  echo "Copying remove_quarantine.command..."
+  cp "${APP_ROOT}/remove_quarantine.command" "${FPCATOMIC_DIR}/"
+  chmod +x "${FPCATOMIC_DIR}/remove_quarantine.command"
+fi
+
 # Copy data directory if it exists
 if [[ -d "${DATA_DIR}" ]]; then
   echo "Copying data directory..."
@@ -131,7 +138,11 @@ To install FPC Atomic:
    - Set the path to your Atomic Bomberman CD data
    - Click "Start extraction" to extract game assets
 
-4. After extraction, you can launch the game from the launcher.
+4. If you copied the apps via AirDrop or downloaded them, you may need to:
+   - Double-click "remove_quarantine.command" to remove macOS quarantine
+   - This allows the apps to run without security warnings
+
+5. After extraction, you can launch the game from the launcher.
 
 System Requirements:
 - macOS 11.0 (Big Sur) or later
