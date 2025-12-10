@@ -1581,6 +1581,13 @@ Var
   portCheckCount: Integer;
   portListening: Boolean;
 {$ENDIF}
+{$IFDEF UNIX}
+{$IFNDEF DARWIN}
+  serverCmd: String;
+  terminalFound: Boolean;
+  terminalExe: String;
+{$ENDIF}
+{$ENDIF}
 Begin
   //Begin
   log('TGame.StartHost', llTrace);
@@ -1609,24 +1616,23 @@ Begin
       // This ensures DYLD_LIBRARY_PATH is set correctly and parameters are passed
       serv := IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS/atomic_server';
       If FileExistsUTF8(serv) Then Begin
-        log('Launching server directly: ' + serv, llInfo);
+        log('Launching server in terminal: ' + serv, llInfo);
         p := TProcessUTF8.Create(Nil);
-        // Use poNoConsole instead of poDetached so we can get the PID
-        p.Options := [poNoConsole, poNewProcessGroup];
-        p.Executable := '/bin/zsh';
-        p.Parameters.Add('-c');
-        // Set DYLD_LIBRARY_PATH and run atomic_server with parameters
-        // Use exec to replace shell process with server process for cleaner PID tracking
-        p.Parameters.Add('cd ' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS' +
-          ' && export DYLD_LIBRARY_PATH=' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/lib:$DYLD_LIBRARY_PATH' +
-          ' && exec ' + serv + ' -p ' + inttostr(settings.Port) +
-          ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()));
+        p.Options := [poDetached];
+        // Use osascript to open Terminal and run server command
+        p.Executable := '/usr/bin/osascript';
+        p.Parameters.Add('-e');
+        p.Parameters.Add('tell application "Terminal" to do script "cd ''' + 
+          IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS''' +
+          ' && export DYLD_LIBRARY_PATH=''' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/lib:$DYLD_LIBRARY_PATH''' +
+          ' && ''' + serv + ''' -p ' + inttostr(settings.Port) +
+          ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()) + '; echo \"\nServer terminated. Press any key to close this window...\"; read"');
         p.Execute;
-        // Store PID for later termination
-        fServerPID := p.ProcessID;
-        log('Server started with PID: ' + inttostr(fServerPID), llInfo);
         p.free;
         result := true;
+        fServerPID := 0; // Server runs in terminal, no PID tracking needed
+        // Wait for server to start
+        Sleep(2000);
         LogLeave;
         exit;
       End
@@ -1645,6 +1651,123 @@ Begin
   serv := serv + '.exe';
 {$ENDIF}
   If FileExistsUTF8(serv) Then Begin
+    log('Launching server in terminal: ' + serv, llInfo);
+{$IFDEF Windows}
+    // On Windows, use start command to open new console window
+    p := TProcessUTF8.Create(Nil);
+    p.Options := [poDetached];
+    p.Executable := 'cmd.exe';
+    p.Parameters.Add('/c');
+    p.Parameters.Add('start');
+    p.Parameters.Add('"FPC Atomic Server"');
+    p.Parameters.Add('cmd.exe');
+    p.Parameters.Add('/k');
+    // Build the command to run server
+    p.Parameters.Add(serv + ' -p ' + inttostr(settings.Port) +
+      ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()) +
+      ' -f ' + IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
+    p.Execute;
+    p.free;
+    fServerPID := 0; // Server runs in terminal, no PID tracking needed
+    Sleep(2000); // Wait for server to start
+{$ELSE}
+{$IFDEF UNIX}
+{$IFNDEF DARWIN}
+    // On Linux/Unix (not macOS), try to find a terminal emulator
+    serverCmd := 'cd ''' + basePath + ''' && ''' + serv + ''' -p ' + inttostr(settings.Port) +
+      ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()) +
+      ' -f ' + IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log' +
+      '; echo ""; echo "Server terminated. Press Enter to close..."; read';
+    terminalFound := false;
+      
+      // Try x-terminal-emulator first (works on most Linux systems)
+      terminalExe := FindDefaultExecutablePath('x-terminal-emulator');
+      If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/x-terminal-emulator') Then Begin
+        p := TProcessUTF8.Create(Nil);
+        p.Options := [poDetached];
+        If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/x-terminal-emulator';
+        p.Parameters.Add('-e');
+        p.Parameters.Add('bash');
+        p.Parameters.Add('-c');
+        p.Parameters.Add(serverCmd);
+        p.Execute;
+        p.free;
+        terminalFound := true;
+      End
+      // Try gnome-terminal
+      Else Begin
+        terminalExe := FindDefaultExecutablePath('gnome-terminal');
+        If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/gnome-terminal') Then Begin
+          p := TProcessUTF8.Create(Nil);
+          p.Options := [poDetached];
+          If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/gnome-terminal';
+          p.Parameters.Add('--');
+          p.Parameters.Add('bash');
+          p.Parameters.Add('-c');
+          p.Parameters.Add(serverCmd);
+          p.Execute;
+          p.free;
+          terminalFound := true;
+        End
+        // Try konsole (KDE)
+        Else Begin
+          terminalExe := FindDefaultExecutablePath('konsole');
+          If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/konsole') Then Begin
+            p := TProcessUTF8.Create(Nil);
+            p.Options := [poDetached];
+            If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/konsole';
+            p.Parameters.Add('-e');
+            p.Parameters.Add('bash');
+            p.Parameters.Add('-c');
+            p.Parameters.Add(serverCmd);
+            p.Execute;
+            p.free;
+            terminalFound := true;
+          End
+          // Try xterm as fallback
+          Else Begin
+            terminalExe := FindDefaultExecutablePath('xterm');
+            If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/xterm') Then Begin
+              p := TProcessUTF8.Create(Nil);
+              p.Options := [poDetached];
+              If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/xterm';
+              p.Parameters.Add('-e');
+              p.Parameters.Add('bash');
+              p.Parameters.Add('-c');
+              p.Parameters.Add(serverCmd);
+              p.Execute;
+              p.free;
+              terminalFound := true;
+            End;
+          End;
+        End;
+      End;
+      
+      If Not terminalFound Then Begin
+        log('Warning: No terminal emulator found, starting server in background', llWarning);
+        // Fallback: start server without terminal
+        p := TProcessUTF8.Create(Nil);
+        p.Options := [poNewConsole, poNewProcessGroup];
+        p.Executable := serv;
+        p.Parameters.Add('-p');
+        p.Parameters.Add(inttostr(settings.Port));
+        p.Parameters.Add('-t');
+        p.Parameters.Add('0');
+        p.Parameters.Add('-l');
+        p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
+        p.Parameters.Add('-f');
+        p.Parameters.Add(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
+        p.Execute;
+        fServerPID := p.ProcessID;
+        p.free;
+      End
+      Else Begin
+        fServerPID := 0; // Server runs in terminal, no PID tracking needed
+      End;
+    Sleep(2000); // Wait for server to start
+{$ENDIF} // IFNDEF DARWIN
+{$ELSE} // UNIX
+    // Other platforms - fallback to background start
     p := TProcessUTF8.Create(Nil);
     p.Options := [poNewConsole, poNewProcessGroup];
     p.Executable := serv;
@@ -1657,10 +1780,11 @@ Begin
     p.Parameters.Add('-f');
     p.Parameters.Add(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
     p.Execute;
-    // Store PID for later termination
     fServerPID := p.ProcessID;
-    log('Server started with PID: ' + inttostr(fServerPID), llInfo);
     p.free;
+    Sleep(2000);
+{$ENDIF} // UNIX
+{$ENDIF} // Windows
   End
   Else Begin
     LogShow('Error: could not find server application, abort now', llError);
@@ -3140,56 +3264,10 @@ Destructor TGame.Destroy;
 Var
   i: TScreenEnum;
   j: Integer;
-  killProcess: TProcessUTF8;
 Begin
-  // Terminate locally started server if it's still running
-  If fServerPID > 0 Then Begin
-    log('Terminating server process (PID: ' + inttostr(fServerPID) + ')', llInfo);
-{$IFDEF Windows}
-    // On Windows, use taskkill
-    killProcess := TProcessUTF8.Create(Nil);
-    killProcess.Options := [poWaitOnExit, poUsePipes];
-    killProcess.Executable := 'taskkill';
-    killProcess.Parameters.Add('/PID');
-    killProcess.Parameters.Add(inttostr(fServerPID));
-    killProcess.Parameters.Add('/F'); // Force termination
-    killProcess.Parameters.Add('/T'); // Terminate child processes
-    killProcess.Execute;
-    killProcess.Free;
-{$ELSE}
-    // On Unix-like systems (macOS, Linux), use kill command
-    killProcess := TProcessUTF8.Create(Nil);
-    killProcess.Options := [poWaitOnExit, poUsePipes];
-    killProcess.Executable := '/bin/kill';
-    killProcess.Parameters.Add('-TERM'); // Try graceful termination first
-    killProcess.Parameters.Add(inttostr(fServerPID));
-    killProcess.Execute;
-    killProcess.Free;
-    
-    // Wait a bit and check if process is still running
-    Sleep(500);
-    killProcess := TProcessUTF8.Create(Nil);
-    killProcess.Options := [poWaitOnExit, poUsePipes];
-    killProcess.Executable := '/bin/kill';
-    killProcess.Parameters.Add('-0'); // Check if process exists
-    killProcess.Parameters.Add(inttostr(fServerPID));
-    killProcess.Execute;
-    If killProcess.ExitStatus = 0 Then Begin
-      // Process still exists, force kill
-      log('Server process still running, force killing...', llWarning);
-      killProcess.Free;
-      killProcess := TProcessUTF8.Create(Nil);
-      killProcess.Options := [poWaitOnExit, poUsePipes];
-      killProcess.Executable := '/bin/kill';
-      killProcess.Parameters.Add('-KILL');
-      killProcess.Parameters.Add(inttostr(fServerPID));
-      killProcess.Execute;
-    End;
-    killProcess.Free;
-{$ENDIF}
-    fServerPID := 0;
-    log('Server process terminated', llInfo);
-  End;
+  // Server is running in terminal window - user can terminate it manually
+  // No automatic termination to avoid Access violation errors
+  fServerPID := 0;
   
   If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].free;
   If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].free;
