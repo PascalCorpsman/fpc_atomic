@@ -45,6 +45,7 @@ Type
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
+    Timer1: TTimer;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
@@ -52,11 +53,15 @@ Type
     Procedure Button5Click(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
+    Procedure FormActivate(Sender: TObject);
+    Procedure FormShow(Sender: TObject);
+    Procedure Timer1Timer(Sender: TObject);
   private
     ini: TIniFile;
     Atomic_Version: TVersion;
     ProtocollVersion: integer;
     Version: Single;
+    fImageLoaded: Boolean; // Track if image was loaded last time we checked
 
     Procedure LoadSettings();
     Procedure StoreSettings();
@@ -119,8 +124,12 @@ Begin
   Constraints.MaxWidth := Width;
   SetCurrentDir(ExtractFilePath(ParamStr(0)));
   Atomic_Version := TVersion.Create();
+  fImageLoaded := false;
   LoadSideImage();
   LoadSettings();
+  // Set up timer to periodically check if image file appears (after data extraction)
+  Timer1.Interval := 1000; // Check every second
+  Timer1.Enabled := true;
   caption := format('FPC Atomic, launcher ver. %0.2f', [LauncherVersion / 100]);
   // Handle Launcher Parameters
   For i := 1 To ParamCount Do Begin
@@ -165,6 +174,10 @@ Begin
 {$ENDIF}
   p.Execute;
   p.free;
+  // Refresh image after extractor might have created data files
+  LoadSideImage();
+  Image1.Invalidate;
+  Application.ProcessMessages;
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
@@ -270,6 +283,20 @@ Begin
   Atomic_Version := Nil;
   ini.free;
   ini := Nil;
+End;
+
+Procedure TForm1.FormActivate(Sender: TObject);
+Begin
+  // Refresh side image when form gets focus (in case data was extracted)
+  LoadSideImage();
+  Image1.Invalidate;
+End;
+
+Procedure TForm1.FormShow(Sender: TObject);
+Begin
+  // Refresh side image when form is shown (in case data was extracted)
+  LoadSideImage();
+  Image1.Invalidate;
 End;
 
 Procedure TForm1.Button2Click(Sender: TObject);
@@ -432,6 +459,26 @@ Begin
   Result := BasePath + 'data' + PathDelim;
 End;
 
+Procedure TForm1.Timer1Timer(Sender: TObject);
+Var
+  dataPath, imagePath: String;
+  imageExists: Boolean;
+Begin
+  // Check if image file exists now (if data was extracted)
+  dataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  imagePath := dataPath + 'res' + PathDelim + 'mainmenu.png';
+  imageExists := FileExistsUTF8(imagePath);
+  
+  // If image file status changed (appeared or disappeared), reload
+  If imageExists <> fImageLoaded Then Begin
+    LoadSideImage(); // This will update fImageLoaded internally
+    // Once image is loaded, we can slow down the timer or disable it
+    If imageExists Then Begin
+      Timer1.Interval := 5000; // Check less frequently once image is loaded
+    End;
+  End;
+End;
+
 Procedure TForm1.LoadSideImage;
 Var
   p: TPortableNetworkGraphic;
@@ -443,10 +490,21 @@ Begin
   imagePath := dataPath + 'res' + PathDelim + 'mainmenu.png';
   If FileExistsUTF8(imagePath) Then Begin
     p := TPortableNetworkGraphic.Create;
-    p.LoadFromFile(imagePath);
-    p.Width := p.Width Div 2;
-    Image1.Picture.Assign(p);
-    p.free;
+    Try
+      p.LoadFromFile(imagePath);
+      p.Width := p.Width Div 2;
+      Image1.Picture.Assign(p);
+      Image1.Invalidate; // Force redraw
+      fImageLoaded := true;
+    Finally
+      p.free;
+    End;
+  End
+  Else Begin
+    // Clear image if file doesn't exist
+    Image1.Picture.Clear;
+    Image1.Invalidate;
+    fImageLoaded := false;
   End;
 End;
 
