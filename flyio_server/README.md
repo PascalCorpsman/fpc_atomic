@@ -68,7 +68,7 @@ The pre-built Docker image does not include game data due to licensing. You must
 4. **Clone the repository (to get deploy script):**
    ```bash
    git clone https://github.com/PavelZverina/fpc_atomic_macos.git
-   cd fpc_atomic_macos/flyio_server
+   cd fpc_atomic/flyio_server
    ```
 
 5. **Copy your data directory:**
@@ -145,7 +145,7 @@ Before deploying, you must extract game data from the original Atomic Bomberman 
 3. **Clone the repository:**
    ```bash
    git clone https://github.com/PavelZverina/fpc_atomic_macos.git
-   cd fpc_atomic_macos
+   cd fpc_atomic
    ```
 
 4. **Deploy to Fly.io:**
@@ -159,7 +159,7 @@ Before deploying, you must extract game data from the original Atomic Bomberman 
    **Or manually:**
    ```bash
    # Make sure you're in the project root
-   cd /path/to/fpc_atomic_macos
+   cd /path/to/fpc_atomic
    
    # First deploy (creates new application)
    flyctl deploy --config flyio_server/fly.toml

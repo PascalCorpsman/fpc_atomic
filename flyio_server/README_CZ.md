@@ -68,7 +68,7 @@ Předpřipravený Docker image neobsahuje herní data kvůli licenčním důvod�
 4. **Naklonujte repozitář (pro získání deploy scriptu):**
    ```bash
    git clone https://github.com/PavelZverina/fpc_atomic_macos.git
-   cd fpc_atomic_macos/flyio_server
+   cd fpc_atomic/flyio_server
    ```
 
 5. **Zkopírujte svůj adresář data:**
@@ -145,7 +145,7 @@ Před deployem musíte extrahovat herní data z originálního CD Atomic Bomberm
 3. **Naklonujte repozitář:**
    ```bash
    git clone https://github.com/PavelZverina/fpc_atomic_macos.git
-   cd fpc_atomic_macos
+   cd fpc_atomic
    ```
 
 4. **Deploy na Fly.io:**
@@ -159,7 +159,7 @@ Před deployem musíte extrahovat herní data z originálního CD Atomic Bomberm
    **Nebo ručně:**
    ```bash
    # Ujistěte se, že jste v rootu projektu
-   cd /cesta/k/fpc_atomic_macos
+   cd /cesta/k/fpc_atomic
    
    # První deploy (vytvoří novou aplikaci)
    flyctl deploy --config flyio_server/fly.toml

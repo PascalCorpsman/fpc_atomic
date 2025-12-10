@@ -33,7 +33,7 @@
             <Libraries Value="../lib/macos/$(TargetCPU)"/>
           </SearchPaths>
           <Other>
-            <CustomOptions Value="-dClient -k-L/Users/pavelzverina/AiProjects/fpc_atomic_macos/lib/macos/aarch64 -k/Users/pavelzverina/AiProjects/fpc_atomic_macos/lib/macos/aarch64/libbass.dylib -k-ld_classic -k-rpath -k@executable_path/../lib"/>
+            <CustomOptions Value="-dClient -k-L/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/aarch64 -k/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/aarch64/libbass.dylib -k-ld_classic -k-rpath -k@executable_path/../lib"/>
             <OtherDefines Count="1">
               <Define0 Value="Client"/>
             </OtherDefines>
@@ -57,7 +57,7 @@
             <Libraries Value="../lib/macos/$(TargetCPU)"/>
           </SearchPaths>
           <Other>
-            <CustomOptions Value="-dClient -k-L/Users/pavelzverina/AiProjects/fpc_atomic_macos/lib/macos/x86_64 -k/Users/pavelzverina/AiProjects/fpc_atomic_macos/lib/macos/x86_64/libbass.dylib -k-ld_classic -k-rpath -k@executable_path/../lib"/>
+            <CustomOptions Value="-dClient -k-L/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/x86_64 -k/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/x86_64/libbass.dylib -k-ld_classic -k-rpath -k@executable_path/../lib"/>
             <OtherDefines Count="1">
               <Define0 Value="Client"/>
             </OtherDefines>

@@ -25,7 +25,7 @@ Pro rychlý build všech aplikací a vytvoření app bundlů máte dvě možnost
 Nebo z kořenového adresáře projektu:
 
 ```bash
-cd /Users/pavelzverina/AiProjects/fpc_atomic_macos
+cd /Users/pavelzverina/AiProjects/fpc_atomic
 ./macos/tools/build_all.command [architektura]
 ```
 
