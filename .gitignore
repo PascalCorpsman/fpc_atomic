@@ -42,6 +42,9 @@ lib/
 # Application bundle for Mac OS
 *.app/
 
+# Full game data - for local testing only
+data_extracted_full/
+
 # Atomic files
 server/stats.txt
 stats.txt
