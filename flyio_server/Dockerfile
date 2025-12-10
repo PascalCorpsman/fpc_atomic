@@ -18,12 +18,13 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
+# Build context should be project root, not flyio_server/
 COPY server /build/server
 COPY units /build/units
 COPY client /build/client
 COPY macos/third_party/lnet_src /build/lnet_src
 COPY ai /build/ai
-COPY macos/app_arm64/data /build/data
+COPY flyio_server/data /build/data
 
 # Build AI library (Pascal version - fully functional!)
 WORKDIR /build/ai

@@ -12,7 +12,12 @@
 
 ## 📋 Požadavky
 
-1. **Fly.io CLI** - Command Line Interface - nainstalovaný a přihlášený
+1. **Fly.io Účet** - Vytvořte si bezplatný účet na [fly.io](https://fly.io)
+   - Přejděte na https://fly.io a zaregistrujte se (dostupný bezplatný tarif)
+   - K vytvoření účtu budete potřebovat emailovou adresu
+   - Bezplatný tarif zahrnuje 3 sdílené CPU VM a 3GB trvalého úložiště
+
+2. **Fly.io CLI** - Command Line Interface - nainstalovaný a přihlášený
    ```bash
    # Instalace (macOS)
    curl -L https://fly.io/install.sh | sh
@@ -23,7 +28,7 @@
    # Instalace (Windows - PowerShell)
    powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
    
-   # Přihlášení
+   # Přihlášení (vyžaduje Fly.io účet)
    flyctl auth login
    ```
 
@@ -87,20 +92,54 @@ Pokud chcete použít předpřipravený Docker image z GitHub Container Registry
 
 Pokud chcete buildnout z source kódu (vyžaduje Pascal compiler a Lazarus):
 
-1. **Naklonujte repozitář:**
+**⚠️ DŮLEŽITÉ: Herní data jsou vyžadována**
+
+Před deployem musíte extrahovat herní data z originálního CD Atomic Bomberman a zkopírovat je do adresáře `flyio_server/data`.
+
+1. **Extrahujte herní data:**
+   - Použijte CD Data Extractor (součást repozitáře) k extrakci dat z originálního CD
+   - Tím se vytvoří adresář `data` s mapami, zdroji a zvuky
+
+2. **Zkopírujte data do flyio_server:**
+   ```bash
+   # Zkopírujte extrahovaný adresář data do flyio_server/
+   cp -r /cesta/k/extrahovanym/datam flyio_server/data
+   ```
+   
+   Adresář `flyio_server/data` by měl obsahovat:
+   - `maps/` - herní mapy
+   - `res/` - zdroje, textury, atd.
+   - `sounds/` - zvukové efekty
+
+3. **Naklonujte repozitář:**
    ```bash
    git clone https://github.com/PavelZverina/fpc_atomic_macos.git
-   cd fpc_atomic_macos/flyio_server
+   cd fpc_atomic_macos
    ```
 
-2. **Deploy na Fly.io:**
+4. **Deploy na Fly.io:**
+   
+   **Nejjednodušší způsob - použijte deploy script:**
    ```bash
+   cd flyio_server
+   ./deploy_to_flyio.sh
+   ```
+   
+   **Nebo ručně:**
+   ```bash
+   # Ujistěte se, že jste v rootu projektu
+   cd /cesta/k/fpc_atomic_macos
+   
    # První deploy (vytvoří novou aplikaci)
-   flyctl launch
+   flyctl deploy --config flyio_server/fly.toml
    
    # Nebo pokud už máte aplikaci
-   flyctl deploy
+   flyctl deploy --config flyio_server/fly.toml
    ```
+   
+   **Poznámka:** Build context musí být root projektu (ne `flyio_server/`), takže vždy spouštějte `flyctl deploy` z rootu projektu s `--config flyio_server/fly.toml`.
+   
+   **Poznámka:** Pokud nezahrnete herní data, server se zbuildí a poběží, ale bez herních map. Budou dostupné pouze náhodné mapy.
 
 ### 3. Zobrazení informací
 

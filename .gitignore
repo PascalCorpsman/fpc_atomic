@@ -42,8 +42,8 @@ lib/
 # Application bundle for Mac OS
 *.app/
 
-# Full game data - for local testing only
-data_extracted_full/
+# Full game data - for flyio server
+flyio_server/data/
 
 # Atomic files
 server/stats.txt

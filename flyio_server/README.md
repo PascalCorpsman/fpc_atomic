@@ -12,7 +12,12 @@
 
 ## 📋 Requirements
 
-1. **Fly.io CLI** - Command Line Interface - installed and logged in
+1. **Fly.io Account** - Create a free account at [fly.io](https://fly.io)
+   - Go to https://fly.io and sign up (free tier available)
+   - You'll need an email address to create an account
+   - Free tier includes 3 shared-cpu VMs and 3GB persistent storage
+
+2. **Fly.io CLI** - Command Line Interface - installed and logged in
    ```bash
    # Installation (macOS)
    curl -L https://fly.io/install.sh | sh
@@ -23,7 +28,7 @@
    # Installation (Windows - PowerShell)
    powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
    
-   # Login
+   # Login (requires Fly.io account)
    flyctl auth login
    ```
 
@@ -79,20 +84,54 @@ If you want to use a pre-built Docker image from GitHub Container Registry, you 
 
 If you want to build from source code (requires Pascal compiler and Lazarus):
 
-1. **Clone the repository:**
+**⚠️ IMPORTANT: Game Data Required**
+
+Before deploying, you must extract game data from the original Atomic Bomberman CD and copy it to the `flyio_server/data` directory.
+
+1. **Extract game data:**
+   - Use the CD Data Extractor tool (included in the repository) to extract data from the original game CD
+   - This will create a `data` directory with maps, resources, and sounds
+
+2. **Copy data to flyio_server:**
+   ```bash
+   # Copy the extracted data directory to flyio_server/
+   cp -r /path/to/extracted/data flyio_server/data
+   ```
+   
+   The `flyio_server/data` directory should contain:
+   - `maps/` - game maps
+   - `res/` - resources, textures, etc.
+   - `sounds/` - sound effects
+
+3. **Clone the repository:**
    ```bash
    git clone https://github.com/PavelZverina/fpc_atomic_macos.git
-   cd fpc_atomic_macos/flyio_server
+   cd fpc_atomic_macos
    ```
 
-2. **Deploy to Fly.io:**
+4. **Deploy to Fly.io:**
+   
+   **Easy way - use the deploy script:**
    ```bash
+   cd flyio_server
+   ./deploy_to_flyio.sh
+   ```
+   
+   **Or manually:**
+   ```bash
+   # Make sure you're in the project root
+   cd /path/to/fpc_atomic_macos
+   
    # First deploy (creates new application)
-   flyctl launch
+   flyctl deploy --config flyio_server/fly.toml
    
    # Or if you already have an application
-   flyctl deploy
+   flyctl deploy --config flyio_server/fly.toml
    ```
+   
+   **Note:** The build context must be the project root (not `flyio_server/`), so always run `flyctl deploy` from the project root with `--config flyio_server/fly.toml`.
+   
+   **Note:** If you don't include game data, the server will build and run, but without game maps. Only random maps will be available.
 
 ### 3. View Information
 

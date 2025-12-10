@@ -4,7 +4,7 @@ app = "fpc-atomic-tcp-server"
 primary_region = "fra"  # Frankfurt (closest to Czech Republic)
 
 [build]
-  dockerfile = "flyio_server/Dockerfile"
+  dockerfile = "Dockerfile"
   build_args = {}
 
 [deploy]
