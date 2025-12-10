@@ -1163,7 +1163,18 @@ Begin
     (Not FielWalkable(x, y + 1, false)) And
     (Players[PlayerIndex].info.Animation <> raLockedIn) Then Begin
     Players[PlayerIndex].info.Animation := raLockedIn;
-    Players[PlayerIndex].info.Value := random(65536);
+    // Determine corner animation based on blocked diagonal directions
+    // Check diagonal directions: top-left, top-right, bottom-left, bottom-right
+    // corner0-corner7 correspond to different corner configurations
+    // Map diagonal block pattern to corner index (0-7)
+    // Pattern: TL, TR, BL, BR as bits
+    Players[PlayerIndex].info.Value := 0;
+    If Not FielWalkable(x - 1, y - 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 1;  // bit 0: top-left
+    If Not FielWalkable(x + 1, y - 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 2;  // bit 1: top-right
+    If Not FielWalkable(x - 1, y + 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 4;  // bit 2: bottom-left
+    If Not FielWalkable(x + 1, y + 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 8;  // bit 3: bottom-right
+    // Map 16 possible combinations to 8 corner animations (0-7)
+    Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Mod 8;
     Players[PlayerIndex].info.Counter := 0;
   End;
   result := fField[x, y].BrickData = bdSolid;
