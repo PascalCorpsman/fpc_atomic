@@ -65,5 +65,5 @@ releases/*.temp.dmg
 *.zip
 !*.lpi
 
-# Fly.io configuration (keep your own app name private)
-flyio_server/fly.toml
+# Fly.io secrets (keep your own secrets private)
+# Note: fly.toml is now committed with placeholder, actual app name comes from .env

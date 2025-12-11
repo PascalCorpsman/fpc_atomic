@@ -34,11 +34,27 @@
 
 2. **Git** - for cloning the repository (optional, if using pre-built image)
 
+## 📋 Which deploy script to use?
+
+There are two deploy scripts in the repository:
+
+- **`deploy_prebuilt.sh`** (recommended) - Faster option
+  - Uses pre-built Docker image from GitHub Container Registry
+  - Faster (no compilation from source)
+  - Requires game data (fails without it)
+  - Use if you have game data and want a quick deploy
+
+- **`build_and_deploy.sh`** - Slower option
+  - Builds the server from Pascal source code
+  - Slower (compiles during build process)
+  - Can work without game data (warns but continues)
+  - Use if you want to build from current source code or don't have game data
+
 ## 🚀 Quick Start
 
-### Option A: Using Pre-built Docker Image with Game Data (Recommended)
+### Option A: Deploy from Pre-built Docker Image (Recommended) - `deploy_prebuilt.sh`
 
-If you want to use a pre-built Docker image from GitHub Container Registry, you don't need to have Pascal compiler or Lazarus installed. However, you need to add game data extracted from the original CD.
+**Faster option** - uses a pre-built Docker image from GitHub Container Registry. You don't need to have Pascal compiler or Lazarus installed. However, you need to add game data extracted from the original CD.
 
 **⚠️ IMPORTANT: Game Data Required**
 
@@ -80,7 +96,7 @@ The pre-built Docker image does not include game data due to licensing. You must
 6. **Deploy to Fly.io:**
    ```bash
    # Use the deploy script that adds data to the pre-built image
-   ./deploy_with_data.sh
+   ./deploy_prebuilt.sh
    ```
 
    **Alternative - Manual deployment:**
@@ -119,9 +135,9 @@ The pre-built Docker image does not include game data due to licensing. You must
    flyctl deploy
    ```
 
-### Option B: Build from Source Code
+### Option B: Build from Source Code and Deploy - `build_and_deploy.sh`
 
-If you want to build from source code (requires Pascal compiler and Lazarus):
+**Slower option** - builds the server from Pascal source code and then deploys it. Requires Pascal compiler (but it's already in the Dockerfile, so you don't need anything installed locally). Can work without game data (server will run, but without maps).
 
 **⚠️ IMPORTANT: Game Data Required**
 
@@ -148,13 +164,28 @@ Before deploying, you must extract game data from the original Atomic Bomberman 
    cd fpc_atomic
    ```
 
-4. **Deploy to Fly.io:**
+4. **Set app name in .env file:**
    
-   **Easy way - use the deploy script:**
+   Create or edit `.env` file in project root:
+   ```bash
+   # In project root (not in flyio_server/)
+   echo "FLY_APP_NAME=fpc-atomic-tcp-server-my-name" >> .env
+   ```
+   
+   **Important:** The app name is stored in `.env` file (which is in `.gitignore`), so you can commit `fly.toml` to git without exposing your app name.
+
+5. **Deploy to Fly.io:**
+   
+   **Easy way - use the build and deploy script:**
    ```bash
    cd flyio_server
-   ./deploy_to_flyio.sh
+   ./build_and_deploy.sh
    ```
+   
+   **What this script does:**
+   - Builds the server from Pascal source code (compilation happens in Docker image)
+   - Deploys the build to Fly.io
+   - Can work without game data (warns but continues)
    
    **Or manually:**
    ```bash

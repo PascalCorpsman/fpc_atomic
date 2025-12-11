@@ -34,11 +34,27 @@
 
 2. **Git** - pro klonování repozitáře (volitelné, pokud používáte předpřipravený image)
 
+## 📋 Který deploy script použít?
+
+V repozitáři jsou dva deploy scripty:
+
+- **`deploy_prebuilt.sh`** (doporučeno) - Rychlejší varianta
+  - Používá předpřipravený Docker image z GitHub Container Registry
+  - Rychlejší (nekompiluje z source)
+  - Vyžaduje herní data (bez nich selže)
+  - Použij, pokud máš herní data a chceš rychlý deploy
+
+- **`build_and_deploy.sh`** - Pomalejší varianta
+  - Builduje server z Pascal source kódu
+  - Pomalejší (kompiluje během build procesu)
+  - Může pracovat bez herních dat (varuje, ale pokračuje)
+  - Použij, pokud chceš buildnout z aktuálního source kódu nebo nemáš herní data
+
 ## 🚀 Rychlý postup
 
-### Varianta A: Použití předpřipraveného Docker image s herními daty (doporučeno)
+### Varianta A: Deploy z předpřipraveného Docker image (doporučeno) - `deploy_prebuilt.sh`
 
-Pokud chcete použít předpřipravený Docker image z GitHub Container Registry, nemusíte mít nainstalovaný Pascal compiler ani Lazarus. Musíte ale přidat herní data extrahovaná z originálního CD.
+**Rychlejší varianta** - používá předpřipravený Docker image z GitHub Container Registry. Nemusíte mít nainstalovaný Pascal compiler ani Lazarus. Musíte ale přidat herní data extrahovaná z originálního CD.
 
 **⚠️ DŮLEŽITÉ: Herní data jsou vyžadována**
 
@@ -80,7 +96,7 @@ Předpřipravený Docker image neobsahuje herní data kvůli licenčním důvod�
 6. **Deploy na Fly.io:**
    ```bash
    # Použijte deploy script, který přidá data k předpřipravenému image
-   ./deploy_with_data.sh
+   ./deploy_prebuilt.sh
    ```
 
    **Alternativa - Ruční deployment:**
@@ -119,9 +135,9 @@ Předpřipravený Docker image neobsahuje herní data kvůli licenčním důvod�
    flyctl deploy
    ```
 
-### Varianta B: Build z source kódu
+### Varianta B: Build z source kódu a deploy - `build_and_deploy.sh`
 
-Pokud chcete buildnout z source kódu (vyžaduje Pascal compiler a Lazarus):
+**Pomalejší varianta** - builduje server z Pascal source kódu a pak ho deployuje. Vyžaduje Pascal compiler (ale ten je už v Dockerfile, takže nemusíte mít nic lokálně nainstalované). Může pracovat i bez herních dat (server poběží, ale bez map).
 
 **⚠️ DŮLEŽITÉ: Herní data jsou vyžadována**
 
@@ -148,13 +164,28 @@ Před deployem musíte extrahovat herní data z originálního CD Atomic Bomberm
    cd fpc_atomic
    ```
 
-4. **Deploy na Fly.io:**
+4. **Nastavte název aplikace v .env souboru:**
    
-   **Nejjednodušší způsob - použijte deploy script:**
+   Vytvořte nebo upravte `.env` soubor v rootu projektu:
+   ```bash
+   # V rootu projektu (ne v flyio_server/)
+   echo "FLY_APP_NAME=fpc-atomic-tcp-server-moje-jmeno" >> .env
+   ```
+   
+   **Důležité:** Název aplikace je uložen v `.env` souboru (který je v `.gitignore`), takže můžeš commitovat `fly.toml` do gitu bez odhalení svého názvu aplikace.
+
+5. **Deploy na Fly.io:**
+   
+   **Nejjednodušší způsob - použijte build and deploy script:**
    ```bash
    cd flyio_server
-   ./deploy_to_flyio.sh
+   ./build_and_deploy.sh
    ```
+   
+   **Co tento script dělá:**
+   - Builduje server z Pascal source kódu (kompilace probíhá v Docker image)
+   - Deployuje buildu na Fly.io
+   - Může pracovat bez herních dat (varuje, ale pokračuje)
    
    **Nebo ručně:**
    ```bash

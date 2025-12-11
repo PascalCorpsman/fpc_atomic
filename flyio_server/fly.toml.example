@@ -1,15 +1,16 @@
 # Fly.io configuration for FPC Atomic TCP Server
 # 
-# This is a template file. Copy this to fly.toml and change the app name to your unique name.
+# This is a template file. Copy this to fly.toml.
 # 
 # Usage:
 #   1. Copy this file: cp fly.toml.example fly.toml
-#   2. Edit fly.toml and change "your-app-name-here" to your unique app name
-#   3. Deploy: flyctl deploy
+#   2. Add FLY_APP_NAME=your-app-name to your .env file (in project root)
+#   3. Deploy using: ./build_and_deploy.sh (build from source) or ./deploy_prebuilt.sh (use pre-built image)
 #
-# Note: fly.toml is in .gitignore and won't be committed to the repository.
+# The app name is loaded from .env file (FLY_APP_NAME variable) to keep your
+# app name private while still being able to commit fly.toml to git.
 
-app = "your-app-name-here"  # Change this to your unique app name (e.g., "fpc-atomic-tcp-server-john")
+app = "${FLY_APP_NAME}"  # App name is loaded from .env file (FLY_APP_NAME variable) via deploy script
 primary_region = "fra"  # Frankfurt (closest to Czech Republic)
 
 [build]

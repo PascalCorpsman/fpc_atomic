@@ -1,6 +1,6 @@
 # Fly.io configuration for FPC Atomic TCP Server
 
-app = "fpc-atomic-tcp-server"
+app = "${FLY_APP_NAME}"  # App name is loaded from .env file (FLY_APP_NAME variable) via deploy script
 primary_region = "fra"  # Frankfurt (closest to Czech Republic)
 
 [build]

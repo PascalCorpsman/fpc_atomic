@@ -1,5 +1,6 @@
 #!/bin/bash
-# Script to deploy FPC Atomic Server to Fly.io
+# Build and deploy FPC Atomic Server to Fly.io from source code
+# This script builds the server from Pascal source code and deploys it to Fly.io
 # Works on macOS, Linux, and Windows (with Git Bash or WSL)
 # This script ensures the correct build context (project root) is used
 
@@ -27,6 +28,44 @@ fi
 if [[ ! -f "${FLYIO_DIR}/fly.toml" ]]; then
   echo "Error: fly.toml not found at ${FLYIO_DIR}/fly.toml" >&2
   exit 1
+fi
+
+# Load app name from .env file (if exists)
+FLY_APP_NAME=""
+if [[ -f "${PROJECT_ROOT}/.env" ]]; then
+  # Source .env file and extract FLY_APP_NAME
+  set +u  # Temporarily allow unset variables
+  source <(grep -E '^FLY_APP_NAME=' "${PROJECT_ROOT}/.env" 2>/dev/null || true)
+  if [[ -n "${FLY_APP_NAME:-}" ]]; then
+    echo "✓ Using app name from .env: ${FLY_APP_NAME}"
+  fi
+  set -u  # Re-enable strict mode
+fi
+
+# If FLY_APP_NAME is not set, try to extract from fly.toml placeholder
+if [[ -z "${FLY_APP_NAME:-}" ]]; then
+  # Check if fly.toml contains placeholder
+  if grep -q '\${FLY_APP_NAME}' "${FLYIO_DIR}/fly.toml" 2>/dev/null; then
+    echo "⚠️  Error: FLY_APP_NAME not found in .env file" >&2
+    echo "Please add FLY_APP_NAME=your-app-name to ${PROJECT_ROOT}/.env" >&2
+    exit 1
+  fi
+  # If no placeholder, extract actual app name from fly.toml
+  FLY_APP_NAME=$(grep -E '^app\s*=' "${FLYIO_DIR}/fly.toml" | head -1 | sed -E 's/^app\s*=\s*["'\'']?([^"'\'']+)["'\'']?.*/\1/' | tr -d ' ')
+  if [[ -n "${FLY_APP_NAME}" ]]; then
+    echo "✓ Using app name from fly.toml: ${FLY_APP_NAME}"
+  fi
+fi
+
+# Create temporary fly.toml with replaced app name
+TEMP_FLY_TOML="${FLYIO_DIR}/fly.toml.tmp"
+if [[ -n "${FLY_APP_NAME:-}" ]]; then
+  # Replace ${FLY_APP_NAME} placeholder in fly.toml
+  sed "s|\${FLY_APP_NAME}|${FLY_APP_NAME}|g" "${FLYIO_DIR}/fly.toml" > "${TEMP_FLY_TOML}"
+  echo "✓ Created temporary fly.toml with app name: ${FLY_APP_NAME}"
+else
+  echo "⚠️  Warning: No app name found, using fly.toml as-is" >&2
+  cp "${FLYIO_DIR}/fly.toml" "${TEMP_FLY_TOML}"
 fi
 
 # Check if Dockerfile exists
@@ -94,9 +133,12 @@ echo "Dockerfile: ${FLYIO_DIR}/Dockerfile"
 echo ""
 
 # Deploy to Fly.io
-# Build context is project root, so we use --config to point to fly.toml
+# Build context is project root, so we use --config to point to temporary fly.toml
 echo "Starting deployment..."
-flyctl deploy --config "${FLYIO_DIR}/fly.toml" "$@"
+flyctl deploy --config "${TEMP_FLY_TOML}" "$@"
+
+# Cleanup temporary file
+rm -f "${TEMP_FLY_TOML}"
 
 echo ""
 echo "========================================="
@@ -104,8 +146,16 @@ echo "Deployment complete!"
 echo "========================================="
 echo ""
 echo "To check server status:"
-echo "  flyctl status --config ${FLYIO_DIR}/fly.toml"
+if [[ -n "${FLY_APP_NAME:-}" ]]; then
+  echo "  flyctl status --app ${FLY_APP_NAME}"
+else
+  echo "  flyctl status --config ${FLYIO_DIR}/fly.toml"
+fi
 echo ""
 echo "To view logs:"
-echo "  flyctl logs --config ${FLYIO_DIR}/fly.toml"
+if [[ -n "${FLY_APP_NAME:-}" ]]; then
+  echo "  flyctl logs --app ${FLY_APP_NAME}"
+else
+  echo "  flyctl logs --config ${FLYIO_DIR}/fly.toml"
+fi
 echo ""
