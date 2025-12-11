@@ -22,13 +22,37 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 COPY server /build/server
 COPY units /build/units
 COPY client /build/client
-COPY macos/third_party/lnet_src /build/lnet_src
 COPY ai /build/ai
 
 # Copy data directory
 # Note: Workflow ensures flyio_server/data exists (copies from data/ if needed)
 # If flyio_server/data doesn't exist, this will fail - but workflow should handle it
 COPY flyio_server/data /build/data
+
+# Download and setup LNet library (needed for server networking)
+# LNet is not in the repository, so we download it during build
+RUN echo "=== Downloading LNet library ===" && \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl unzip && \
+    lnetUrl="https://github.com/PascalCorpsman/lnet/archive/refs/heads/master.zip" && \
+    lnetZip="/tmp/lnet.zip" && \
+    lnetDir="/tmp/lnet" && \
+    curl -L -f -o "$lnetZip" "$lnetUrl" || \
+    curl -L -f -o "$lnetZip" "https://github.com/PascalCorpsman/lnet/archive/master.zip" && \
+    unzip -q "$lnetZip" -d "$lnetDir" && \
+    lnetSourceDir=$(find "$lnetDir" -type d -name "lnet-*" | head -1) && \
+    mkdir -p /build/lnet_src && \
+    if [ -d "$lnetSourceDir/lazaruspackage" ]; then \
+      cp -r "$lnetSourceDir/lazaruspackage" /build/lnet_src/; \
+    fi && \
+    if [ -d "$lnetSourceDir/lib" ]; then \
+      mkdir -p /build/lnet_src/lib && \
+      cp -r "$lnetSourceDir/lib"/* /build/lnet_src/lib/; \
+    fi && \
+    rm -rf "$lnetZip" "$lnetDir" && \
+    apt-get purge -y curl unzip && \
+    apt-get autoremove -y && \
+    echo "=== LNet library downloaded and set up ===" && \
+    ls -la /build/lnet_src/
 
 # Build AI library (Pascal version - fully functional!)
 WORKDIR /build/ai
@@ -45,7 +69,7 @@ RUN echo "=== Building Pascal AI library ===" && \
 
 # Modify .lpi to use correct search paths for Docker build and compile
 WORKDIR /build/server
-RUN sed -i 's|../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage|../units;../lnet_src/lib|g' atomic_server.lpi && \
+RUN sed -i 's|../../Sample/TCP_IP;../../Sample/DatenSteuerung;../units;../../Sample/Graphik;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage|../units;../lnet_src/lib;../lnet_src/lazaruspackage|g' atomic_server.lpi && \
     echo "=== Building TCP server with Lazarus ===" && \
     lazbuild --lazarusdir=/usr/lib/lazarus/default --build-mode="Default" atomic_server.lpi && \
     mkdir -p /app && \
