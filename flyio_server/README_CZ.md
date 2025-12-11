@@ -93,7 +93,7 @@ Předpřipravený Docker image neobsahuje herní data kvůli licenčním důvod�
    
    Pak vytvořte `fly.toml`:
    ```toml
-   app = "fpc-atomic-tcp-server"
+   app = "your-app-name-here"  # Změňte to na váš unikátní název aplikace
    primary_region = "fra"
    
    [build]
@@ -236,12 +236,44 @@ Defaultní region je **Frankfurt (fra)** - můžete změnit v `fly.toml`.
 
 ### Připojení klientů
 
-1. Získejte IP adresu serveru:
+**⚠️ DŮLEŽITÉ: Každý server má svou vlastní adresu**
+
+Každý, kdo nasadí server na fly.io, má svou vlastní unikátní adresu. Pokud více lidí použije stejný název aplikace, budou se snažit deploynout do stejné aplikace, což nebude fungovat - každý musí mít svůj vlastní účet a aplikaci.
+
+**DŮLEŽITÉ:** Před deployem změňte název aplikace v `fly.toml` na něco unikátního, například:
+```toml
+app = "fpc-atomic-tcp-server-moje-jmeno"
+```
+
+**Jak zjistit adresu serveru:**
+
+1. **DNS adresa (doporučeno):** `<app-name>.fly.dev`
+   - Například: `your-app-name-here.fly.dev`
+   - Tato adresa se nemění a je spolehlivější než IP adresa
+   - Zjistíte ji z názvu aplikace v `fly.toml` nebo z:
+     ```bash
+     flyctl status
+     ```
+
+2. **IP adresa (alternativa):**
    ```bash
    flyctl status
    ```
+   - IP adresa se může měnit, proto je lepší použít DNS jméno
 
-2. Použijte IP adresu a port **5521** v klientovi
+**Připojení v klientovi:**
+
+1. Stiskněte **"j"** v hlavním menu
+2. Zadejte adresu serveru:
+   - **DNS adresa:** `<app-name>.fly.dev` (např. `your-app-name-here.fly.dev`)
+   - **Nebo IP adresa:** z `flyctl status`
+3. Zadejte port: **5521**
+4. Stiskněte **OK**
+
+**Alternativa - Command line parametry:**
+```bash
+./fpc_atomic -ip your-app-name-here.fly.dev -port 5521
+```
 
 ## 📊 Monitoring
 

@@ -1,9 +1,15 @@
 # Fly.io configuration for FPC Atomic TCP Server
 # 
-# Tento soubor je pro použití s předpřipraveným Docker image z GitHub Container Registry.
-# Pokud chcete buildnout z source kódu, použijte fly.toml z repozitáře.
+# This is a template file. Copy this to fly.toml and change the app name to your unique name.
+# 
+# Usage:
+#   1. Copy this file: cp fly.toml.example fly.toml
+#   2. Edit fly.toml and change "your-app-name-here" to your unique app name
+#   3. Deploy: flyctl deploy
+#
+# Note: fly.toml is in .gitignore and won't be committed to the repository.
 
-app = "fpc-atomic-tcp-server"
+app = "your-app-name-here"  # Change this to your unique app name (e.g., "fpc-atomic-tcp-server-john")
 primary_region = "fra"  # Frankfurt (closest to Czech Republic)
 
 [build]

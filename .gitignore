@@ -64,3 +64,6 @@ releases/*.temp.dmg
 # Notarization temporary files
 *.zip
 !*.lpi
+
+# Fly.io configuration (keep your own app name private)
+flyio_server/fly.toml

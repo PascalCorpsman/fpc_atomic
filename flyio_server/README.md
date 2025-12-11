@@ -93,7 +93,7 @@ The pre-built Docker image does not include game data due to licensing. You must
    
    Then create `fly.toml`:
    ```toml
-   app = "fpc-atomic-tcp-server"
+   app = "your-app-name-here"  # Change this to your unique app name
    primary_region = "fra"
    
    [build]
@@ -236,12 +236,44 @@ Default region is **Frankfurt (fra)** - you can change it in `fly.toml`.
 
 ### Client Connection
 
-1. Get the server IP address:
+**⚠️ IMPORTANT: Each server has its own unique address**
+
+Each person who deploys a server on fly.io has their own unique address. If multiple people use the same app name, they will try to deploy to the same application, which won't work - each person must have their own account and application.
+
+**IMPORTANT:** Before deploying, change the app name in `fly.toml` to something unique, for example:
+```toml
+app = "fpc-atomic-tcp-server-my-name"
+```
+
+**How to find the server address:**
+
+1. **DNS address (recommended):** `<app-name>.fly.dev`
+   - For example: `your-app-name-here.fly.dev`
+   - This address doesn't change and is more reliable than an IP address
+   - You can find it from the app name in `fly.toml` or from:
+     ```bash
+     flyctl status
+     ```
+
+2. **IP address (alternative):**
    ```bash
    flyctl status
    ```
+   - IP address may change, so it's better to use DNS name
 
-2. Use the IP address and port **5521** in the client
+**Connecting in the client:**
+
+1. Press **"j"** in the main menu
+2. Enter the server address:
+   - **DNS address:** `<app-name>.fly.dev` (e.g., `your-app-name-here.fly.dev`)
+   - **Or IP address:** from `flyctl status`
+3. Enter port: **5521**
+4. Press **OK**
+
+**Alternative - Command line parameters:**
+```bash
+./fpc_atomic -ip your-app-name-here.fly.dev -port 5521
+```
 
 ## 📊 Monitoring
 
