@@ -33,13 +33,12 @@ fi
 # Load app name from .env file (if exists)
 FLY_APP_NAME=""
 if [[ -f "${PROJECT_ROOT}/.env" ]]; then
-  # Source .env file and extract FLY_APP_NAME
-  set +u  # Temporarily allow unset variables
-  source <(grep -E '^FLY_APP_NAME=' "${PROJECT_ROOT}/.env" 2>/dev/null || true)
+  # Extract FLY_APP_NAME from .env file
+  # Handles: FLY_APP_NAME=value, export FLY_APP_NAME=value, FLY_APP_NAME="value", FLY_APP_NAME='value', and comments
+  FLY_APP_NAME=$(grep -E '^[[:space:]]*(export[[:space:]]+)?FLY_APP_NAME[[:space:]]*=' "${PROJECT_ROOT}/.env" 2>/dev/null | head -1 | sed -E 's/^[[:space:]]*(export[[:space:]]+)?FLY_APP_NAME[[:space:]]*=[[:space:]]*//' | sed -E 's/^["'\''](.*)["'\'']$/\1/' | sed -E 's/[[:space:]]*#.*$//' | tr -d '[:space:]')
   if [[ -n "${FLY_APP_NAME:-}" ]]; then
     echo "✓ Using app name from .env: ${FLY_APP_NAME}"
   fi
-  set -u  # Re-enable strict mode
 fi
 
 # If FLY_APP_NAME is not set, try to extract from fly.toml placeholder
