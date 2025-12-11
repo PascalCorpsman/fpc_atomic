@@ -15,6 +15,11 @@ unit BASS;
 
 interface
 
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 {$IFDEF MSWINDOWS}
 uses
   Windows;

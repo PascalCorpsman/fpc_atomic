@@ -44,6 +44,11 @@
 (*               0.16 - Disconnect socket instead of raising AV on error      *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uChunkmanager;
 
 {$MODE objfpc}{$H+}

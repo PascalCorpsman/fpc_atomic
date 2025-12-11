@@ -47,6 +47,11 @@
 (*  !! Gilt seit ver 0.02 nicht mehr !!                                       *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uOpenGL_ASCII_Font;
 
 {$MODE ObjFPC}{$H+}

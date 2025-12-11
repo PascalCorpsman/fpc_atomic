@@ -865,6 +865,11 @@ Begin
                     If Not assigned(SDL_RenderGetD3D12Device) Then result := false;
                     SDL_DXGIGetOutputInfo := TSDL_DXGIGetOutputInfo_func(GetProcAddress(LibHandle, 'SDL_DXGIGetOutputInfo'));
                     If Not assigned(SDL_DXGIGetOutputInfo) Then result := false; //*)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 {$IFDEF LINUX}
     SDL_LinuxSetThreadPriority := TSDL_LinuxSetThreadPriority_func(GetProcAddress(LibHandle, 'SDL_LinuxSetThreadPriority'));
     If Not assigned(SDL_LinuxSetThreadPriority) Then result := false;

@@ -34,6 +34,11 @@
  * Sicht auf Optionen Dialog: https://www.youtube.com/watch?v=fO9HhzhEloE
  * Network Spiel aus Server Sicht: https://www.youtube.com/watch?v=cuZ2GOkse5k
  *)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit Unit1;
 
 {$MODE objfpc}{$H+}

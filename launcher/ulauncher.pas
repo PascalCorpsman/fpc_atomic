@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit ulauncher;
 
 {$MODE ObjFPC}{$H+}
