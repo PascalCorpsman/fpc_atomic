@@ -84,11 +84,13 @@ Begin
   
   // Set default FPC Atomic folder
 {$IFDEF Darwin}
-  // On macOS, set default to relative path ../../ (two levels up from Contents/MacOS/)
+  // On macOS, set default to relative path ../../../ (three levels up from Contents/MacOS/)
+  // From: .../FPCAtomicLauncher.app/Contents/MacOS/
+  // To:   .../app_arm64/
   defaultAtomicFolder := IniPropStorage1.ReadString('FPC-Atomic', '');
   If defaultAtomicFolder = '' Then Begin
-    // Use relative path ../../ from the executable location
-    defaultAtomicFolder := '..' + PathDelim + '..' + PathDelim;
+    // Use relative path ../../../ from the executable location
+    defaultAtomicFolder := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim;
     defaultAtomicFolder := ExcludeTrailingPathDelimiter(defaultAtomicFolder);
   End;
   label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), defaultAtomicFolder);
