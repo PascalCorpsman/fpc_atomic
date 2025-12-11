@@ -86,6 +86,9 @@ Type
     fBombs: Array[0..15 * 11 - 1] Of TBombInfo;
     fParamJoinIP: String;
     fParamJoinPort: integer;
+    fWaitingForLocalServer: Boolean; // True when waiting for local server to start
+    fLastConnectionAttempt: QWord; // Timestamp of last connection attempt
+    fConnectionRetryInterval: QWord; // Interval between retry attempts (ms)
     fPlayingTime_s: integer;
     fPause: Boolean;
     fNeedDisconnect: Boolean; // Wenn True, dann wird ein Disconnect via Idle Handler durchgeführt (das darf nach LNet nicht im Socket Event gemacht werden da es sonst eine AV-Gibt)
@@ -411,6 +414,7 @@ Begin
     sMainScreen: Begin
         fgameState := gs_MainMenu;
         StopPingingForGames;
+        fWaitingForLocalServer := false; // Stop waiting for local server when returning to main menu
         Disconnect();
         HandleSetPause(false); // Sonst bleibt die Hauptmenü Animation ggf stehen, das will natürlich keiner ;)
         If assigned(OnNeedShowCursor) Then OnNeedShowCursor(Nil);
@@ -1924,6 +1928,10 @@ Var
 Begin
   // Der Client ist beim Server Registriert, nun gilt es um die Mitspielerlaubniss zu fragen.
   log('TGame.Connection_Connect', llTrace);
+  
+  // Stop waiting for local server - we're connected now
+  fWaitingForLocalServer := false;
+  
   fChunkManager.SetNoDelay(true);
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
@@ -1961,6 +1969,16 @@ End;
 Procedure TGame.Connection_Error(Const msg: String; aSocket: TLSocket);
 Begin
   log('TGame.Connection_Error', llTrace);
+  
+  // If we're waiting for local server, don't show error and don't switch to main menu
+  // OnIdle will retry the connection periodically
+  If fWaitingForLocalServer Then Begin
+    log('Connection error while waiting for local server: ' + msg + ' - will retry', llInfo);
+    LogLeave;
+    exit;
+  End;
+  
+  // For remote servers or if we're not waiting, show error and go back to main menu
   LogShow(msg, llError);
   SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
   LogLeave;
@@ -3145,47 +3163,48 @@ End;
 
 Procedure TGame.Join(IP: String; Port: Integer);
 Var
-  retryCount: Integer;
-  maxRetries: Integer;
-  retryDelay: Integer;
   isLocalhost: Boolean;
 Begin
   log('TGame.Join', lltrace);
   log(format('Joining to %s on port %d as %s', [ip, port, Settings.NodeName]));
   
-  // Check if connecting to localhost (after starting server)
+  // Store connection parameters for retry logic
+  fParamJoinIP := ip;
+  fParamJoinPort := port;
+  
+  // Check if connecting to localhost
   isLocalhost := (ip = '127.0.0.1') Or (ip = 'localhost');
   
   If isLocalhost Then Begin
-    // For localhost, retry more times (server might still be starting)
-    // Server needs time to: 1) Start .app bundle, 2) Initialize, 3) Start listening on port
-    maxRetries := 15; // Increased from 10 to allow more time for server to start
-    retryDelay := 1500; // Increased from 1000ms to 1500ms between retries - server needs more time to start
+    // For localhost, enable waiting mode - will retry periodically in OnIdle
+    // This is needed because localhost "connection refused" comes back immediately
+    // while remote servers may take time to respond (allowing time for server to start)
+    fWaitingForLocalServer := true;
+    fLastConnectionAttempt := 0; // Will trigger immediate attempt in OnIdle
+    fConnectionRetryInterval := 2000; // Retry every 2 seconds
+    log('Localhost connection - will retry periodically until server is available', llInfo);
   End
   Else Begin
-    // For remote servers, try only once
-    maxRetries := 1;
-    retryDelay := 0;
+    // For remote servers, connection attempt is async - if it fails, Connection_Error will handle it
+    fWaitingForLocalServer := false;
   End;
   
-  retryCount := 0;
-  While retryCount < maxRetries Do Begin
-    If fChunkManager.Connect(ip, port) Then Begin
-      log('Successfully connected to server', llInfo);
-      logleave;
-      exit;
+  // Initiate async connection attempt
+  // Note: Connect() returning True only means the async connection was initiated,
+  // not that we're actually connected. Real connection status comes via callbacks.
+  If Not fChunkManager.Connect(ip, port) Then Begin
+    // Immediate failure - connection couldn't even be initiated
+    log('Could not initiate connection', llWarning);
+    If Not isLocalhost Then Begin
+      LogShow('Error: Could not initiate connection to server', llError);
+      SwitchToScreen(sMainScreen);
     End;
-    
-    Inc(retryCount);
-    If retryCount < maxRetries Then Begin
-      log(format('Connection attempt %d/%d failed, retrying in %dms...', [retryCount, maxRetries, retryDelay]), llInfo);
-      Sleep(retryDelay);
-    End;
+    // For localhost, OnIdle will retry
+  End
+  Else Begin
+    log('Connection initiated (async), waiting for result...', llInfo);
   End;
   
-  // All retries failed
-  LogShow('Error could not connect to server after ' + inttostr(maxRetries) + ' attempts', llError);
-  SwitchToScreen(sMainScreen);
   logleave;
 End;
 
@@ -3227,6 +3246,9 @@ Begin
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
+  fWaitingForLocalServer := false;
+  fLastConnectionAttempt := 0;
+  fConnectionRetryInterval := 2000; // Retry every 2 seconds
   fPause := false;
   fNeedDisconnect := false;
   fPlayerIndex[ks0] := -1;
@@ -3988,6 +4010,20 @@ Begin
    *)
   If fNeedDisconnect Then Begin
     DoDisconnect();
+  End;
+  
+  // Periodically retry connection if we're waiting for local server to start
+  // On localhost, "connection refused" comes back immediately, so we need to retry periodically
+  If fWaitingForLocalServer And (fParamJoinIP <> '') Then Begin
+    If (fLastConnectionAttempt = 0) Or (GetTickCount64 - fLastConnectionAttempt >= fConnectionRetryInterval) Then Begin
+      fLastConnectionAttempt := GetTickCount64;
+      log(format('Retrying connection to %s:%d...', [fParamJoinIP, fParamJoinPort]), llInfo);
+      // Initiate new async connection attempt
+      If Not fChunkManager.Connect(fParamJoinIP, fParamJoinPort) Then Begin
+        log('Could not initiate connection, will retry later', llInfo);
+      End;
+      // If Connect returned True, we wait for Connection_Connect or Connection_Error callback
+    End;
   End;
   
   // Always pump SDL events first to update button states
