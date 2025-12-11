@@ -2735,7 +2735,6 @@ Begin
       log('fDataPath was empty, resolved to: ' + fDataPath, llInfo);
     End;
     s := fDataPath + 'sounds' + PathDelim + soundFile;
-    log('Sound effect path: ' + s, llTrace);
     If Not FileExistsUTF8(s) Then Begin
       log('Sound effect file not found: ' + s + ', trying to re-resolve data path', llWarning);
       // Try to re-resolve data path
