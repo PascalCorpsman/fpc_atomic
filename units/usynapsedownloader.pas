@@ -27,6 +27,11 @@
 (*              0.02 - Replaced synapse with fphttpclient (2024-12-05)        *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit usynapsedownloader;
 
 {$MODE ObjFPC}{$H+}

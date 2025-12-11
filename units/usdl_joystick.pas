@@ -25,6 +25,11 @@
 (* History     : 0.01 - Initial version                                       *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit usdl_joystick;
 
 {$MODE objfpc}{$H+}

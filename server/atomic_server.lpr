@@ -26,6 +26,11 @@
 (*                                                                            *)
 (******************************************************************************)
 
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Program atomic_server;
 
 Uses

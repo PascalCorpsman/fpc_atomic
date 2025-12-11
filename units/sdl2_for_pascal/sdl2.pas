@@ -57,6 +57,11 @@ unit sdl2;
    - Sam Latinga and everyone else from the SDL-Team
 }
 
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 {$DEFINE SDL}
 
 {$I jedi.inc}

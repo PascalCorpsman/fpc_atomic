@@ -13,6 +13,11 @@ uses
   Forms, unit1, unit2, unit3, ucdextractor, uopengl_animation,
   usdlwizzard;
 
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 {$R *.res}
 
 begin
