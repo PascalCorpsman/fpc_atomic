@@ -2037,12 +2037,6 @@ Var
   m: TMemoryStream;
   b: Boolean;
 Begin
-{$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miUpdateGameData) And
-    ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
-{$ENDIF}
-    // log('TGame.OnReceivedChunk : ' + MessageIdentifierToString(Chunk.UserDefinedID), llTrace);
   Case (Chunk.UserDefinedID And $FFFF) Of
     miUpdateMasterID: Begin
         HandleUpdateMasterId(Chunk.Data);
@@ -2155,12 +2149,6 @@ Begin
       log('Unknown user defined id : ' + inttostr((Chunk.UserDefinedID And $FFFF)), llError);
     End;
   End;
-{$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miUpdateGameData) And
-    ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
-{$ENDIF}
-    LogLeave;
 End;
 
 Procedure TGame.SendChunk(UserDefinedID: Integer; Const Data: TStream);
