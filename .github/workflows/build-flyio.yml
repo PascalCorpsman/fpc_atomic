@@ -17,11 +17,40 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    # 2. Setup Docker Buildx
+    # 2. Prepare data directory for Docker build
+    - name: Prepare data directory
+      run: |
+        # Pokud flyio_server/data neexistuje, použij data z rootu projektu
+        if [ ! -d "flyio_server/data" ]; then
+          echo "flyio_server/data not found, using data from project root"
+          if [ -d "data" ]; then
+            mkdir -p flyio_server
+            cp -r data flyio_server/data
+            echo "✓ Copied data from project root to flyio_server/data"
+            echo "⚠️  WARNING: This image will be built with placeholder/empty data"
+            echo "⚠️  WARNING: Server deployed from this image will NOT work properly (no game maps)"
+            echo "⚠️  WARNING: Users must add game data using deploy_prebuilt.sh with actual game data"
+          else
+            echo "WARNING: Neither flyio_server/data nor data directory found"
+            echo "Creating empty data directory (server will NOT work properly)"
+            mkdir -p flyio_server/data
+          fi
+        else
+          echo "✓ flyio_server/data exists, using it"
+          # Check if it contains actual game data (has maps directory)
+          if [ -d "flyio_server/data/maps" ] && [ "$(ls -A flyio_server/data/maps 2>/dev/null)" ]; then
+            echo "✓ flyio_server/data contains game maps - image will be fully functional"
+          else
+            echo "⚠️  WARNING: flyio_server/data exists but appears to be empty/placeholder"
+            echo "⚠️  WARNING: Server deployed from this image will NOT work properly"
+          fi
+        fi
+      
+    # 3. Setup Docker Buildx
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    # 3. Login to GitHub Container Registry
+    # 4. Login to GitHub Container Registry
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
@@ -29,7 +58,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
       
-    # 4. Extract version from tag or use commit SHA
+    # 5. Extract version from tag or use commit SHA
     - name: Extract version
       id: version
       run: |
@@ -43,7 +72,7 @@ jobs:
         echo "tag_latest=ghcr.io/${{ github.repository_owner }}/fpc-atomic-server:latest" >> $GITHUB_OUTPUT
         echo "Version: $VERSION"
       
-    # 5. Build Docker image
+    # 6. Build Docker image
     - name: Build Docker image
       uses: docker/build-push-action@v5
       with:
@@ -56,7 +85,7 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
       
-    # 6. Create GitHub Release (pouze pro tagy)
+    # 7. Create GitHub Release (pouze pro tagy)
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1

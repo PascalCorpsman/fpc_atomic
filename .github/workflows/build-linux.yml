@@ -364,6 +364,6 @@ jobs:
     - name: Upload Linux binaries
       uses: actions/upload-artifact@v4
       with:
-        name: linux-binaries
+        name: FPCAtomic-Linux
         path: linux/bin/*
         retention-days: 30  # Uchovat 30 dní

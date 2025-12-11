@@ -24,6 +24,10 @@ COPY units /build/units
 COPY client /build/client
 COPY macos/third_party/lnet_src /build/lnet_src
 COPY ai /build/ai
+
+# Copy data directory
+# Note: Workflow ensures flyio_server/data exists (copies from data/ if needed)
+# If flyio_server/data doesn't exist, this will fail - but workflow should handle it
 COPY flyio_server/data /build/data
 
 # Build AI library (Pascal version - fully functional!)
