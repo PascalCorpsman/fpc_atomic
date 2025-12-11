@@ -2042,7 +2042,7 @@ Begin
     ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
     ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
 {$ENDIF}
-    log('TGame.OnReceivedChunk : ' + MessageIdentifierToString(Chunk.UserDefinedID), llTrace);
+    // log('TGame.OnReceivedChunk : ' + MessageIdentifierToString(Chunk.UserDefinedID), llTrace);
   Case (Chunk.UserDefinedID And $FFFF) Of
     miUpdateMasterID: Begin
         HandleUpdateMasterId(Chunk.Data);
