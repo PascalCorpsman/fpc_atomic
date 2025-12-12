@@ -1,12 +1,26 @@
 # FPC Atomic
 
-Author   : Uwe Schächterle (Corpsman)  
-Homepage : https://www.Corpsman.de  
-Source   : https://github.com/PascalCorpsman/fpc_atomic  
-Wiki     : https://en.wikipedia.org/wiki/Atomic_Bomberman
+Author       : Uwe Schächterle (Corpsman)  
+Homepage     : https://www.Corpsman.de  
+Source       : https://github.com/PascalCorpsman/fpc_atomic  
+Wiki         : https://en.wikipedia.org/wiki/Atomic_Bomberman
+
+MacOS version : Pavel Zvěřina
 
 ## Description
 FPC Atomic is a complete reimplementation of the original Atomic Bomberman game (from 1997). This repository hosts only the source code, as the graphics and sounds are copyrighted by Interplay Productions. To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
+
+## Differences from the original fork
+
+This version is a fork of the original FPC Atomic implementation by Uwe Schächterle (Corpsman). While maintaining compatibility with the original game mechanics, this fork focuses on:
+- Native build macOS (Apple Silicon and Intel)
+- Cross-platform game compatibility and native builds for all major platforms
+- Build and deploy game server on [fly.io](https://fly.io)
+- Modern deployment options (automated builds)
+- Enhanced user experience (better controller support, network optimizations)
+- Support of Game Controllers ()
+- Support for up to 4 players on a single computer (2 Keyboards, 2 Game Controllers)
+- Bug fixes and animation corrections
 
 
 ## Preview:
@@ -15,13 +29,11 @@ FPC Atomic is a complete reimplementation of the original Atomic Bomberman game 
 
 
 ## What needs to be done to play the game?
-The steps shown here are only needed to be done once (for installation).
-
-![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/documentation/installation.plantuml)
 
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
    1.1 if you want all animations download and merge the expansion pack <del>from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)</del> link is broken use [new link](https://www.geocities.ws/mheid.geo/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
+
 2. download the atomic_launcher from the latest release [here](https://github.com/PascalCorpsman/fpc_atomic/releases/latest) and store it on your harddisc<br>
 ![](documentation/asset_download_preview.png)<br>
    2.1 Linux users will need to 
@@ -82,6 +94,26 @@ See the license.md file located at [license.md](license.md) for details about th
 - Copy bass.dll from the bin folder into the repository root folder
 
 #### macOS
+
+**Installation (for end users):**
+
+1. Download the latest release from the [releases page](https://github.com/PascalCorpsman/fpc_atomic/releases/latest)
+2. Drag the FPCAtomic folder to your Applications folder
+3. Open the FPCAtomic folder and double-click `FPCAtomicLauncher.app` to start the launcher
+4. If the data directory is included, the game is ready to play!
+   - If not, click "Run CD data extractor", set the path to your Atomic Bomberman CD data, and click "Start extraction"
+5. If you copied the apps via AirDrop or downloaded them, you may need to:
+   - Double-click `remove_quarantine.command` to remove macOS quarantine
+   - This allows the apps to run without security warnings
+6. After extraction, you can launch the game from the launcher
+
+**System Requirements:**
+- macOS 11.0 (Big Sur) or later
+- For arm64 version: Apple Silicon Mac (M1/M2/M3 or later)
+- For x86_64 version: Intel Mac
+- For universal version: Any Mac (automatically uses the correct architecture)
+
+**Building from source:**
 - **See [macos/README_mac.md](macos/README_mac.md) for detailed macOS build instructions**
 - **Quick start:** `./macos/tools/build_all_arm64.command` (ARM64) or `./macos/tools/build_all_x86_64.command` (x86_64)
 - Copy libbass.dylib from the bass24-osx into macos/lib/arm64 and macos/lib/x86_64
@@ -100,13 +132,31 @@ The AI that is delivered with this repository is more a try than a real AI, and 
 
 Read the manual section [Console commands](MANUAL.md#console-commands) to load and unload your ai without the need to restart the application.
 
+### Enhancements and bug fixies
+
+This fork includes significant improvements and new features:
+
+- **Multi-platform builds**: Added native builds for macOS (Apple Silicon and Intel)
+- **Resizable main window**: Main window of the game can be resized now
+- **Improved networking**: Network connection runs on a separate thread for better performance
+- **Cross-platform multiplayer**: Cross-play support between Windows, macOS, and Linux
+- **Cloud server support**: Server deployment on Fly.io for online multiplayer
+- **Enhanced controller support**: Improved joystick support with fine-tuned controls for both joystick and D-Pad
+- **Local multiplayer**: Support for up to 4 players on a single computer
+
+- **Network optimization**: Player movement prediction and extrapolation for smoother gameplay on low-quality networks
+- **Animation fixes**: Corrected "locked in" animations and fixed cornered animation bug (when bomberman is locked and cannot move)
+- **CI/CD automation**: GitHub Actions for automated builds (Windows, Linux, and Fly.io Docker server)
+
+
 ## External known sites which link to this repository
 - https://osgameclones.com/atomic-bomberman/
 - https://www.myabandonware.com/game/atomic-bomberman-bat
 
 ## Contributors
 Idea : Interplay Productions  
-Implementation : Uwe Schächterle  
+Original Implementation : Uwe Schächterle (Corpsman)  
+Enhanced Implementation & Cross-platform Support : Pavel Zverina  
 Graphics : Interplay Productions  
 Leveldesign : Interplay Productions  
-Testing : Uwe Schächterle
+Testing : Uwe Schächterle, Pavel Zverina
