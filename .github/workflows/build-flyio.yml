@@ -94,6 +94,9 @@ jobs:
       with:
         name: Fly.io Server ${{ steps.version.outputs.version }}
         body: |
+        
+          ☁️ Cloud Server Release
+          This release contains files for build and deploy game server to [fly.io](https://fly.io)
           ## FPC Atomic Server for Fly.io
           
           ### 🚀 How to deploy to Fly.io (without Pascal compiler!)
