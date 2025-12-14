@@ -128,6 +128,7 @@ Type
     Function GetWorkDir(Out Directory: String): Boolean;
     Procedure HideCursor(Sender: TObject);
     Procedure ShowCursor(Sender: TObject);
+    Function InitializeBASS(): Boolean;
   public
     { public declarations }
     Procedure OnConnectToServer(Sender: TObject);
@@ -432,6 +433,124 @@ Begin
   fLastControlHeight := ControlH;
 End;
 
+Function TForm1.InitializeBASS(): Boolean;
+Var
+  DeviceIndex: Integer;
+  DeviceInfo: BASS_DEVICEINFO;
+  ErrorCode: Integer;
+  ErrorMsg: String;
+  TriedDevices: String;
+Begin
+  Result := False;
+  TriedDevices := '';
+  
+  (*
+   * BASS_DEVICE_DMIX = Allows multiple applications to write to the sound card.
+   * Without this flag, no other sound applications can run.
+   *)
+  
+  // First try: Default device (-1) with DMIX flag
+  log('Trying to initialize BASS with default device (-1) and DMIX flag...', llInfo);
+{$IFDEF Windows}
+  If BASS_Init(-1, 44100, BASS_DEVICE_DMIX, 0, Nil) Then Begin
+{$ELSE}
+  If BASS_Init(-1, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
+{$ENDIF}
+    log('BASS initialized successfully with default device and DMIX', llInfo);
+    Result := True;
+    Exit;
+  End;
+  
+  ErrorCode := BASS_ErrorGetCode;
+  TriedDevices := 'Default device (-1)';
+  log('Failed to initialize with default device, error code: ' + IntToStr(ErrorCode), llWarning);
+  
+  // Second try: Enumerate available devices and try each one with DMIX
+  log('Enumerating available audio devices...', llInfo);
+  DeviceIndex := 0;
+  While BASS_GetDeviceInfo(DeviceIndex, DeviceInfo) Do Begin
+    If (DeviceInfo.flags And BASS_DEVICE_ENABLED) <> 0 Then Begin
+      If TriedDevices <> '' Then TriedDevices := TriedDevices + ', ';
+      If Assigned(DeviceInfo.name) Then
+        TriedDevices := TriedDevices + 'Device ' + IntToStr(DeviceIndex) + ' (' + String(DeviceInfo.name) + ')'
+      Else
+        TriedDevices := TriedDevices + 'Device ' + IntToStr(DeviceIndex);
+      
+      log('Trying device ' + IntToStr(DeviceIndex) + ' with DMIX...', llInfo);
+{$IFDEF Windows}
+      If BASS_Init(DeviceIndex, 44100, BASS_DEVICE_DMIX, 0, Nil) Then Begin
+{$ELSE}
+      If BASS_Init(DeviceIndex, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
+{$ENDIF}
+        log('BASS initialized successfully with device ' + IntToStr(DeviceIndex) + ' and DMIX', llInfo);
+        Result := True;
+        Exit;
+      End;
+      ErrorCode := BASS_ErrorGetCode;
+      log('Failed to initialize device ' + IntToStr(DeviceIndex) + ', error code: ' + IntToStr(ErrorCode), llWarning);
+    End;
+    Inc(DeviceIndex);
+  End;
+  
+  // Third try: Default device without DMIX flag (fallback)
+  log('Trying default device without DMIX flag (fallback)...', llInfo);
+{$IFDEF Windows}
+  If BASS_Init(-1, 44100, 0, 0, Nil) Then Begin
+{$ELSE}
+  If BASS_Init(-1, 44100, 0, Nil, Nil) Then Begin
+{$ENDIF}
+    log('BASS initialized successfully with default device without DMIX (note: other sound apps may not work)', llWarning);
+    Result := True;
+    Exit;
+  End;
+  
+  ErrorCode := BASS_ErrorGetCode;
+  
+  // Fourth try: Enumerate devices without DMIX
+  log('Trying available devices without DMIX flag...', llInfo);
+  DeviceIndex := 0;
+  While BASS_GetDeviceInfo(DeviceIndex, DeviceInfo) Do Begin
+    If (DeviceInfo.flags And BASS_DEVICE_ENABLED) <> 0 Then Begin
+      log('Trying device ' + IntToStr(DeviceIndex) + ' without DMIX...', llInfo);
+{$IFDEF Windows}
+      If BASS_Init(DeviceIndex, 44100, 0, 0, Nil) Then Begin
+{$ELSE}
+      If BASS_Init(DeviceIndex, 44100, 0, Nil, Nil) Then Begin
+{$ENDIF}
+        log('BASS initialized successfully with device ' + IntToStr(DeviceIndex) + ' without DMIX', llWarning);
+        Result := True;
+        Exit;
+      End;
+      ErrorCode := BASS_ErrorGetCode;
+    End;
+    Inc(DeviceIndex);
+  End;
+  
+  // All attempts failed - show detailed error message
+  ErrorMsg := 'Unable to initialize audio device.' + LineEnding + LineEnding;
+  ErrorMsg := ErrorMsg + 'Error code: ' + IntToStr(ErrorCode);
+  Case ErrorCode Of
+    23: ErrorMsg := ErrorMsg + ' (BASS_ERROR_DEVICE - illegal device number)';
+    3: ErrorMsg := ErrorMsg + ' (BASS_ERROR_DRIVER - cannot find a free sound driver)';
+    8: ErrorMsg := ErrorMsg + ' (BASS_ERROR_INIT - BASS_Init has not been successfully called)';
+    11: ErrorMsg := ErrorMsg + ' (BASS_ERROR_REINIT - device needs to be reinitialized)';
+    46: ErrorMsg := ErrorMsg + ' (BASS_ERROR_BUSY - the device is busy)';
+    49: ErrorMsg := ErrorMsg + ' (BASS_ERROR_DENIED - access denied)';
+    Else ErrorMsg := ErrorMsg + ' (unknown error)';
+  End;
+  ErrorMsg := ErrorMsg + LineEnding + LineEnding;
+  ErrorMsg := ErrorMsg + 'Tried devices: ' + TriedDevices;
+  ErrorMsg := ErrorMsg + LineEnding + LineEnding;
+  ErrorMsg := ErrorMsg + 'Possible solutions:' + LineEnding;
+  ErrorMsg := ErrorMsg + '1. Check if audio device is available and not used by another application' + LineEnding;
+  ErrorMsg := ErrorMsg + '2. Restart the application' + LineEnding;
+  ErrorMsg := ErrorMsg + '3. Check audio driver installation' + LineEnding;
+  ErrorMsg := ErrorMsg + '4. On Linux: ensure ALSA/PulseAudio is properly configured';
+  
+  log(ErrorMsg, llError);
+  showmessage(ErrorMsg);
+End;
+
 Procedure TForm1.FormCreate(Sender: TObject);
 Var
   FileloggingDir: String;
@@ -520,17 +639,8 @@ Begin
     halt;
   End;
 
-  (*
-  BASS_DEVICE_DMIX = Erlaubt das Mehrfache Beschreiben auf die Soundkarte.
-  Ohne dieses Flag, können keine anderen Sound anwendungen mehr laufen.
-  *)
-{$IFDEF Windows}
-  If Not Bass_init(-1, 44100, BASS_DEVICE_DMIX, 0, Nil) Then Begin
-{$ELSE}
-  // Steht der Compiler auf Object Pascal mus diese Zeile genommen werden.
-  If Not Bass_init(-1, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
-{$ENDIF}
-    showmessage('Unable to init the device, Error code :' + inttostr(BASS_ErrorGetCode));
+  // Try to initialize BASS with better error handling and fallback options
+  If Not InitializeBASS() Then Begin
     halt;
   End;
 

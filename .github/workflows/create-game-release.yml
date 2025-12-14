@@ -99,7 +99,8 @@ jobs:
           
           ### 🎮 Game Release
           
-          This release contains game binaries for Windows and Linux.
+          This release contains game binaries for Windows and Linux and macOS.
+          To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
           
           ### 📦 Available Downloads
           
@@ -113,7 +114,7 @@ jobs:
           
           ### 📝 Notes
           
-          - For macOS, you may need to remove quarantine attributes: `xattr -cr FPCAtomic.app`
+          - For macOS, you may need to remove quarantine attributes running: `remove_quarantine.command`
           - Linux users may need to install dependencies: `sudo apt-get install libssl-dev`
           - Windows Defender may flag unsigned executables - this is normal for unsigned builds
           

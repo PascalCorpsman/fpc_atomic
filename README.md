@@ -34,8 +34,8 @@ This version is a fork of the original FPC Atomic implementation by Uwe Schächt
    1.1 if you want all animations download and merge the expansion pack <del>from [here](https://www.oocities.org/timessquare/tower/4056/ani.html) or use this [direct download link](https://www.oocities.org/timessquare/tower/4056/download/ani.zip)</del> link is broken use [new link](https://www.geocities.ws/mheid.geo/download/ani.zip)  
    1.2 extract the content of ani.zip into the CD-Content "/DATA/ANI" subfolder
 
-2. download the atomic_launcher from the latest release [here](https://github.com/PascalCorpsman/fpc_atomic/releases/latest) and store it on your harddisc<br>
-![](documentation/asset_download_preview.png)<br>
+2. download the files from the latest release [here](https://github.com/zverinapavel/fpc_atomic_macos/releases/latest) and store it on your harddisc<br><br>
+![](documentation/asset_download_preview.png)<br><br>
    2.1 Linux users will need to 
    >
    > chmod +x atomic_launcher
@@ -50,10 +50,11 @@ This version is a fork of the original FPC Atomic implementation by Uwe Schächt
    4.2 Click "start extraction"  
 5. read the [manual](MANUAL.md)<br>
    5.5 if you are a Linux user run the "Linux_sound_install_script.sh"
-6. start the game by executing "atomic_launcher" and enjoy
+6. start the game by executing "atomic_launcher" or "FPCAtomic" application  and enjoy
 
 ## How do i get updates ?
-By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates.
+By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates. 
+NOTE: This feature is not supported on MacOS
 
 ## Differences to the original
 
