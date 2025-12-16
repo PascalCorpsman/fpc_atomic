@@ -1,0 +1,130 @@
+name: Create Game Release
+
+# This workflow creates a release with game builds for Windows and Linux
+# macOS builds are created locally, not via GitHub Actions
+# Responds only to tags starting with "v" (e.g., v1.0.0), but NOT "server-v*"
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+  push:
+    tags:
+      - 'v*'  # Triggers on tags starting with 'v' (e.g., v1.0.0)
+
+jobs:
+  create-release:
+    name: Create Game Release
+    runs-on: ubuntu-latest
+    # Don't run for server tags - they have their own workflow
+    if: ${{ !startsWith(github.ref, 'refs/tags/server-v') }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Extract version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+        elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION="dev-${GITHUB_SHA::8}"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Download Windows artifacts
+      uses: dawidd6/action-download-artifact@v3
+      continue-on-error: true
+      with:
+        workflow: build-windows.yml
+        name: FPCAtomic-Windows
+        path: release-assets/windows
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Download Linux artifacts
+      uses: dawidd6/action-download-artifact@v3
+      continue-on-error: true
+      with:
+        workflow: build-linux.yml
+        name: FPCAtomic-Linux
+        path: release-assets/linux
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        echo "Preparing release assets for ${{ steps.version.outputs.version }}"
+        
+        # Check which platforms are available
+        if [ -d "release-assets/windows" ] && [ "$(ls -A release-assets/windows 2>/dev/null)" ]; then
+          echo "✓ Windows binaries found"
+          # Create ZIP for Windows
+          cd release-assets/windows
+          zip -r ../FPCAtomic-Windows-${{ steps.version.outputs.version }}.zip .
+          cd ../..
+        fi
+        
+        if [ -d "release-assets/linux" ] && [ "$(ls -A release-assets/linux 2>/dev/null)" ]; then
+          echo "✓ Linux binaries found"
+          # Create tar.gz for Linux
+          cd release-assets/linux
+          tar -czf ../FPCAtomic-Linux-${{ steps.version.outputs.version }}.tar.gz .
+          cd ../..
+        fi
+        
+        # List all prepared files
+        echo "Release assets prepared:"
+        ls -lh release-assets/*.{zip,tar.gz} 2>/dev/null || echo "⚠️  No archives found - make sure build workflows have run for this tag"
+        
+        # If no artifacts found, create at least a placeholder
+        if [ ! -f "release-assets/FPCAtomic-Windows-${{ steps.version.outputs.version }}.zip" ] && \
+           [ ! -f "release-assets/FPCAtomic-Linux-${{ steps.version.outputs.version }}.tar.gz" ]; then
+          echo "⚠️  WARNING: No build artifacts found. Release will be created but without binaries."
+          echo "⚠️  WARNING: Make sure to run build workflows (build-windows.yml, build-linux.yml) first."
+        fi
+    
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+      uses: softprops/action-gh-release@v1
+      with:
+        name: FPC Atomic ${{ steps.version.outputs.version }}
+        tag_name: ${{ steps.version.outputs.version }}
+        body: |
+          ## FPC Atomic ${{ steps.version.outputs.version }}
+          
+          ### 🎮 Game Release
+          
+          This release contains game binaries for Windows and Linux and macOS.
+          To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
+          
+          ### 📦 Available Downloads
+          
+          - **Windows**: Download `FPCAtomic-Windows-${{ steps.version.outputs.version }}.zip` and extract to play
+          - **Linux**: Download `FPCAtomic-Linux-${{ steps.version.outputs.version }}.tar.gz` and extract to play
+          - **macOS**: macOS builds are created locally. See [macos/README_mac.md](../macos/README_mac.md) for build instructions.
+          
+          ### 🚀 Installation
+          
+          See the main [README.md](README.md) for installation instructions.
+          
+          ### 📝 Notes
+          
+          - For macOS, you may need to remove quarantine attributes running: `remove_quarantine.command`
+          - Linux users may need to install dependencies: `sudo apt-get install libssl-dev`
+          - Windows Defender may flag unsigned executables - this is normal for unsigned builds
+          
+          ### 🔗 Related Releases
+          
+          - **Fly.io Server**: See [server releases](https://github.com/${{ github.repository }}/releases) tagged with `server-v*` for cloud server deployment
+        draft: false
+        prerelease: false
+        files: |
+          release-assets/*.zip
+          release-assets/*.tar.gz
+        token: ${{ secrets.GITHUB_TOKEN }}
+

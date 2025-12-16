@@ -34,6 +34,11 @@
  * Sicht auf Optionen Dialog: https://www.youtube.com/watch?v=fO9HhzhEloE
  * Network Spiel aus Server Sicht: https://www.youtube.com/watch?v=cuZ2GOkse5k
  *)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit Unit1;
 
 {$MODE objfpc}{$H+}
@@ -44,7 +49,7 @@ Interface
 
 Uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ExtCtrls, IniPropStorage,
+  Math, ExtCtrls, IniPropStorage,
   OpenGlcontext, lNetComponents, lNet,
   (*
    * Kommt ein Linkerfehler wegen OpenGL dann: sudo apt-get install freeglut3-dev
@@ -53,7 +58,8 @@ Uses
   , uopengl_graphikengine // Die OpenGLGraphikengine ist eine Eigenproduktion von www.Corpsman.de, und kann getrennt geladen werden.
   , uOpenGL_ASCII_Font
   , ugame
-  , uatomic_common;
+  , uatomic_common
+  , uscreens; // For TScreenEnum (sExitBomberman)
 
 {$IFDEF AUTOMODE}
 Const
@@ -107,7 +113,12 @@ Type
     Form1ShowOnce: Boolean;
     FPS_Counter, LastFPS_Counter: integer;
     LastFPSTime: int64;
+    fLastControlWidth, fLastControlHeight: Integer; // Track last control size to detect resize
+    fLevelStartTime: int64; // Time when current level started (for elapsed time tracking)
+    fLastPlayingTime_s: integer; // Last known playing time to detect level start
+    fGameInitialized: Boolean; // Flag to track if Game.Initialize has been called
     FWishFullscreen: Boolean;
+    FAdjustingSize: Boolean;
 {$IFDEF AUTOMODE}
     AutomodeData: TAutomodeData;
 {$ENDIF}
@@ -117,6 +128,7 @@ Type
     Function GetWorkDir(Out Directory: String): Boolean;
     Procedure HideCursor(Sender: TObject);
     Procedure ShowCursor(Sender: TObject);
+    Function InitializeBASS(): Boolean;
   public
     { public declarations }
     Procedure OnConnectToServer(Sender: TObject);
@@ -141,9 +153,8 @@ Uses lazfileutils, LazUTF8, LCLType
   , bass
   //  , unit18 // Der Fortschrittsbalken während des Updates
   , uatomicfont
-{$IFDEF AUTOMODE}
-  , uscreens
-{$ENDIF}
+  // uscreens is now imported in main uses section (line 57) for TScreenEnum access
+  , uearlylog
   ;
 
 Var
@@ -161,6 +172,8 @@ Var
 
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
+  // Changed to llTrace to reduce log spam
+  // log('OpenGLControl1MakeCurrent allowcnt=' + inttostr(allowcnt), llTrace);
   If allowcnt > 2 Then Begin
     exit;
   End;
@@ -171,10 +184,34 @@ Begin
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
   End;
+{$IFDEF Windows}
+  // On Windows: allowcnt = 2 (exactly 2) and call Game.Initialize directly here
   If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
+    log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
     OpenGL_GraphikEngine.clear;
-    Create_ASCII_Font;
-    AtomicFont.CreateFont;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    Try
+      Create_ASCII_Font;
+      // If Assigned(OpenGL_ASCII_Font) Then
+      //   EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      // Else
+      //   EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        // log('ERROR creating ASCII font: ' + E.Message, llError);
+      End;
+    End;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    Try
+      AtomicFont.CreateFont;
+      // EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        // log('ERROR creating AtomicFont: ' + E.Message, llError);
+      End;
+    End;
     glenable(GL_TEXTURE_2D); // Texturen
     glEnable(GL_DEPTH_TEST); // Tiefentest
     glDepthFunc(gl_less);
@@ -186,73 +223,371 @@ Begin
     Game.initialize(OpenGLControl1);
     Timer1.Enabled := true;
   End;
+{$ELSE}
+  // On macOS: allowcnt >= 1 and Game.Initialize will be called from OnIdle
+  If (allowcnt >= 1) And (Not Initialized) Then Begin // Ensure initialization runs once when the context becomes available.
+    // log('Initializing OpenGL resources (allowcnt=' + inttostr(allowcnt) + ')', llInfo);
+    OpenGL_GraphikEngine.clear;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating ASCII font...');
+    Try
+      Create_ASCII_Font;
+      // If Assigned(OpenGL_ASCII_Font) Then
+      //   EarlyLog('OpenGLControl1MakeCurrent: ASCII font created successfully')
+      // Else
+      //   EarlyLog('OpenGLControl1MakeCurrent: WARNING - ASCII font is Nil after creation');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating ASCII font: ' + E.Message);
+        // log('ERROR creating ASCII font: ' + E.Message, llError);
+      End;
+    End;
+    // EarlyLog('OpenGLControl1MakeCurrent: Creating AtomicFont...');
+    Try
+      AtomicFont.CreateFont;
+      // EarlyLog('OpenGLControl1MakeCurrent: AtomicFont.CreateFont completed without exception');
+    Except
+      On E: Exception Do Begin
+        // EarlyLog('OpenGLControl1MakeCurrent: ERROR creating AtomicFont: ' + E.Message);
+        // log('ERROR creating AtomicFont: ' + E.Message, llError);
+      End;
+    End;
+    glenable(GL_TEXTURE_2D); // Texturen
+    glEnable(GL_DEPTH_TEST); // Tiefentest
+    glDepthFunc(gl_less);
+    glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
+
+    // Der Anwendung erlauben zu Rendern.
+    Initialized := True;
+    OpenGLControl1Resize(Nil);
+    Timer1.Enabled := true;
+    // NOTE: On macOS, Game.Initialize is called from Application.OnIdle
+    // This ensures Application.Run is active, so OnPaint can be called during initialization
+    fGameInitialized := false; // Will be set to true in OnIdle after Game.Initialize completes
+  End;
+{$ENDIF}
   Form1.Invalidate;
 End;
 
 Procedure TForm1.OpenGLControl1Paint(Sender: TObject);
 Var
   s: String;
+  CurrentPlayingTime: Integer;
+  // ElapsedMs, ElapsedSeconds, Minutes, Seconds: Integer;
 Begin
   (*
    * Unter Windows kann es vorkommen, dass dieses OnPaint ausgelöst wird obwohl wir noch am Laden in OpenGLControl1MakeCurrent sind
    * Wenn das Passiert, bekommt der User eine Fehlermeldung die nicht stimmt.
    *
    * Zum Glück kann man das Abfangen in dem man hier den Timer1 abprüft und das so verhindert ;)
+   * 
+   * NOTE: Allow rendering during initialization to show loading dialog (critical on macOS and Windows)
    *)
   If Not Timer1.Enabled Then exit;
-  If Not Initialized Then Exit;
+  // Allow rendering loading dialog even if Initialized is false (during Game.Initialize on macOS)
+  // On macOS, Initialized may be false but Game.Initialize is in progress
+  If Not Initialized And (Not Assigned(Game) Or Not Assigned(Game.LoaderDialog) Or Game.IsInitialized) Then Exit;
+  // On Windows, Game.Initialize is called from OpenGLControl1MakeCurrent, so if Initialized is true
+  // but Game is not initialized yet, we should wait (though this should not happen)
+{$IFDEF Windows}
+  If Initialized And (Not Assigned(Game) Or (Assigned(Game) And Not Game.IsInitialized And Not Assigned(Game.LoaderDialog))) Then Exit;
+{$ENDIF}
+  
+  // Check if window size changed and update viewport if needed
+  If (OpenGLControl1.ClientWidth <> fLastControlWidth) Or 
+     (OpenGLControl1.ClientHeight <> fLastControlHeight) Then Begin
+    OpenGLControl1Resize(Nil);
+  End;
+  
   // Render Szene
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
   glcolor4f(1, 1, 1, 1);
   glBindTexture(GL_TEXTURE_2D, 0);
-  Game.Render();
-  If Game.Settings.ShowFPS Then Begin
+  // Render loading dialog during initialization, otherwise render game
+  If Assigned(Game) And Assigned(Game.LoaderDialog) And Not Game.IsInitialized Then Begin
+    // Render loading dialog directly during initialization (critical for macOS visibility)
+    // EarlyLog('OpenGLControl1Paint: Rendering LoaderDialog');
+    Game.LoaderDialog.RenderDirect();
+    // EarlyLog('OpenGLControl1Paint: LoaderDialog rendered');
+  End Else If Assigned(Game) And Game.IsInitialized Then Begin
+    Game.Render();
+  End Else Begin
+    // EarlyLog('OpenGLControl1Paint: Not rendering - Game=' + BoolToStr(Assigned(Game), true) + 
+    //   ', LoaderDialog=' + BoolToStr(Assigned(Game) And Assigned(Game.LoaderDialog), true) + 
+    //   ', IsInitialized=' + BoolToStr(Assigned(Game) And Game.IsInitialized, true));
+  End;
+  If Assigned(Game) And Game.IsInitialized And Game.Settings.ShowFPS Then Begin
+    // Track level start time - detect when level begins (playing time resets to 0 or jumps up)
+    If Assigned(Game) Then Begin
+      CurrentPlayingTime := Game.PlayingTime_s;
+      // Detect level start: playing time reset to 0 (or -1 for infinity) when level begins
+      // or when playing time suddenly increases (new round starts)
+      If (CurrentPlayingTime >= 0) And ((fLastPlayingTime_s < 0) Or 
+         (fLastPlayingTime_s > CurrentPlayingTime + 5)) Then Begin
+        // Level started (reset detected or time jumped backwards significantly)
+        fLevelStartTime := GetTickCount64();
+      End;
+      fLastPlayingTime_s := CurrentPlayingTime;
+    End;
+    
     Go2d(OpenGLControl1.Width, OpenGLControl1.Height);
     glBindTexture(GL_TEXTURE_2D, 0);
-    OpenGL_ASCII_Font.Color := clwhite;
     glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
-    s := 'FPS : ' + inttostr(LastFPS_Counter);
-{$IFDEF DebuggMode}
-    If game.fPlayer[1].UID = -1 Then Begin // Wenn der Spieler 1 eine AI ist ..
-      s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
+    
+    // === ENHANCED DEBUG OVERLAY - BOTTOM OF SCREEN ===
+    // Use AtomicFont for larger, more readable text
+    AtomicFont.Color := clWhite;
+    
+    // First line: FPS and Network stats with MAX values
+    s := 'FPS: ' + inttostr(LastFPS_Counter);
+    If Assigned(Game) Then Begin
+      s := s + format(' | RTT: %dms (max %dms)', [Game.fDebugStats.LastRTT, Game.fDebugStats.MaxRTT]);
+      s := s + format(' | Snap: %dms (max %dms)', [Game.fDebugStats.SnapshotAge, Game.fDebugStats.MaxSnapAge]);
     End;
-{$ENDIF}
-    OpenGL_ASCII_Font.Textout(5, 5, s);
+    AtomicFont.Textout(10, OpenGLControl1.Height - 60, s);
+    
+    // Second line: Interpolation stats with MAX
+    If Assigned(Game) Then Begin
+      s := format('Interp: %.2f (max %.2f)', [Game.fDebugStats.InterpolationFactor, Game.fDebugStats.MaxInterpFactor]);
+      If Game.fDebugStats.IsExtrapolating Then
+        s := s + ' [EXTRAPOLATING]'
+      Else
+        s := s + ' [interpolating]';
+      AtomicFont.Textout(10, OpenGLControl1.Height - 40, s);
+    End;
+    
+    // Third line: Viewport info (if in debug mode)
+    {$IFDEF DebuggMode}
+    If Assigned(Game) Then Begin
+      s := 'Viewport: ' + inttostr(OpenGLControl1.ClientWidth) + 'x' + inttostr(OpenGLControl1.ClientHeight);
+      s := s + ' | Game: ' + inttostr(Game.DebugViewportWidth) + 'x' + inttostr(Game.DebugViewportHeight);
+      s := s + format(' Scale: %.2f', [Game.DebugViewportScale]);
+      AtomicFont.Textout(10, OpenGLControl1.Height - 20, s);
+      
+      // AI position debug
+      If game.fPlayer[1].UID = -1 Then Begin
+        s := format('AI: %.2f, %.2f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
+        OpenGL_ASCII_Font.Textout(10, OpenGLControl1.Height - 5, s);
+      End;
+    End;
+    {$ENDIF}
     Exit2d();
   End;
   OpenGLControl1.SwapBuffers;
 End;
 
 Procedure TForm1.OpenGLControl1Resize(Sender: TObject);
+Var
+  ControlW, ControlH: Integer;
+  ScaleX, ScaleY, UniformScale: Double;
+  ViewportWidth, ViewportHeight: Integer;
+  OffsetX, OffsetY: Integer;
 Begin
-  If Initialized Then Begin
+  ControlW := OpenGLControl1.ClientWidth;
+  ControlH := OpenGLControl1.ClientHeight;
+  If ControlW <= 0 Then ControlW := GameWidth;
+  If ControlH <= 0 Then ControlH := GameHeight;
+
+  ScaleX := ControlW / GameWidth;
+  ScaleY := ControlH / GameHeight;
+  If ScaleX < ScaleY Then
+    UniformScale := ScaleX
+  Else
+    UniformScale := ScaleY;
+  If UniformScale <= 0 Then
+    UniformScale := 1;
+
+  ViewportWidth := Round(GameWidth * UniformScale);
+  ViewportHeight := Round(GameHeight * UniformScale);
+  If ViewportWidth < 1 Then ViewportWidth := 1;
+  If ViewportHeight < 1 Then ViewportHeight := 1;
+  If ViewportWidth > ControlW Then ViewportWidth := ControlW;
+  If ViewportHeight > ControlH Then ViewportHeight := ControlH;
+
+  OffsetX := (ControlW - ViewportWidth) div 2;
+  OffsetY := (ControlH - ViewportHeight) div 2;
+
+  // Always set viewport if OpenGL context is available
+  // CRITICAL: Set projection matrix to fixed logical dimensions (GameWidth x GameHeight)
+  // This ensures game coordinates are always the same regardless of viewport size
+  // Without this, changing viewport size changes the logical coordinate system,
+  // which affects animation timing and game speed
+  If Initialized And OpenGLControl1.MakeCurrent Then Begin
+    glViewport(OffsetX, OffsetY, ViewportWidth, ViewportHeight);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glViewport(0, 0, OpenGLControl1.Width, OpenGLControl1.Height);
-    gluPerspective(45.0, OpenGLControl1.Width / OpenGLControl1.Height, 0.1, 100.0);
+    // Set orthographic projection with fixed logical dimensions (GameWidth x GameHeight)
+    // This ensures that game coordinates are always the same, regardless of viewport size
+    glOrtho(0, GameWidth, GameHeight, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
   End;
+
+  // Update game viewport metrics even before initialization
+  If Assigned(Game) Then
+    Game.SetViewportMetrics(ControlW, ControlH, OffsetX, OffsetY,
+      ViewportWidth, ViewportHeight);
+  
+  // Track current control size to detect resize changes
+  fLastControlWidth := ControlW;
+  fLastControlHeight := ControlH;
+End;
+
+Function TForm1.InitializeBASS(): Boolean;
+Var
+  DeviceIndex: Integer;
+  DeviceInfo: BASS_DEVICEINFO;
+  ErrorCode: Integer;
+  ErrorMsg: String;
+  TriedDevices: String;
+Begin
+  Result := False;
+  TriedDevices := '';
+  
+  (*
+   * BASS_DEVICE_DMIX = Allows multiple applications to write to the sound card.
+   * Without this flag, no other sound applications can run.
+   *)
+  
+  // First try: Default device (-1) with DMIX flag
+  log('Trying to initialize BASS with default device (-1) and DMIX flag...', llInfo);
+{$IFDEF Windows}
+  If BASS_Init(-1, 44100, BASS_DEVICE_DMIX, 0, Nil) Then Begin
+{$ELSE}
+  If BASS_Init(-1, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
+{$ENDIF}
+    log('BASS initialized successfully with default device and DMIX', llInfo);
+    Result := True;
+    Exit;
+  End;
+  
+  ErrorCode := BASS_ErrorGetCode;
+  TriedDevices := 'Default device (-1)';
+  log('Failed to initialize with default device, error code: ' + IntToStr(ErrorCode), llWarning);
+  
+  // Second try: Enumerate available devices and try each one with DMIX
+  log('Enumerating available audio devices...', llInfo);
+  DeviceIndex := 0;
+  While BASS_GetDeviceInfo(DeviceIndex, DeviceInfo) Do Begin
+    If (DeviceInfo.flags And BASS_DEVICE_ENABLED) <> 0 Then Begin
+      If TriedDevices <> '' Then TriedDevices := TriedDevices + ', ';
+      If Assigned(DeviceInfo.name) Then
+        TriedDevices := TriedDevices + 'Device ' + IntToStr(DeviceIndex) + ' (' + String(DeviceInfo.name) + ')'
+      Else
+        TriedDevices := TriedDevices + 'Device ' + IntToStr(DeviceIndex);
+      
+      log('Trying device ' + IntToStr(DeviceIndex) + ' with DMIX...', llInfo);
+{$IFDEF Windows}
+      If BASS_Init(DeviceIndex, 44100, BASS_DEVICE_DMIX, 0, Nil) Then Begin
+{$ELSE}
+      If BASS_Init(DeviceIndex, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
+{$ENDIF}
+        log('BASS initialized successfully with device ' + IntToStr(DeviceIndex) + ' and DMIX', llInfo);
+        Result := True;
+        Exit;
+      End;
+      ErrorCode := BASS_ErrorGetCode;
+      log('Failed to initialize device ' + IntToStr(DeviceIndex) + ', error code: ' + IntToStr(ErrorCode), llWarning);
+    End;
+    Inc(DeviceIndex);
+  End;
+  
+  // Third try: Default device without DMIX flag (fallback)
+  log('Trying default device without DMIX flag (fallback)...', llInfo);
+{$IFDEF Windows}
+  If BASS_Init(-1, 44100, 0, 0, Nil) Then Begin
+{$ELSE}
+  If BASS_Init(-1, 44100, 0, Nil, Nil) Then Begin
+{$ENDIF}
+    log('BASS initialized successfully with default device without DMIX (note: other sound apps may not work)', llWarning);
+    Result := True;
+    Exit;
+  End;
+  
+  ErrorCode := BASS_ErrorGetCode;
+  
+  // Fourth try: Enumerate devices without DMIX
+  log('Trying available devices without DMIX flag...', llInfo);
+  DeviceIndex := 0;
+  While BASS_GetDeviceInfo(DeviceIndex, DeviceInfo) Do Begin
+    If (DeviceInfo.flags And BASS_DEVICE_ENABLED) <> 0 Then Begin
+      log('Trying device ' + IntToStr(DeviceIndex) + ' without DMIX...', llInfo);
+{$IFDEF Windows}
+      If BASS_Init(DeviceIndex, 44100, 0, 0, Nil) Then Begin
+{$ELSE}
+      If BASS_Init(DeviceIndex, 44100, 0, Nil, Nil) Then Begin
+{$ENDIF}
+        log('BASS initialized successfully with device ' + IntToStr(DeviceIndex) + ' without DMIX', llWarning);
+        Result := True;
+        Exit;
+      End;
+      ErrorCode := BASS_ErrorGetCode;
+    End;
+    Inc(DeviceIndex);
+  End;
+  
+  // All attempts failed - show detailed error message
+  ErrorMsg := 'Unable to initialize audio device.' + LineEnding + LineEnding;
+  ErrorMsg := ErrorMsg + 'Error code: ' + IntToStr(ErrorCode);
+  Case ErrorCode Of
+    23: ErrorMsg := ErrorMsg + ' (BASS_ERROR_DEVICE - illegal device number)';
+    3: ErrorMsg := ErrorMsg + ' (BASS_ERROR_DRIVER - cannot find a free sound driver)';
+    8: ErrorMsg := ErrorMsg + ' (BASS_ERROR_INIT - BASS_Init has not been successfully called)';
+    11: ErrorMsg := ErrorMsg + ' (BASS_ERROR_REINIT - device needs to be reinitialized)';
+    46: ErrorMsg := ErrorMsg + ' (BASS_ERROR_BUSY - the device is busy)';
+    49: ErrorMsg := ErrorMsg + ' (BASS_ERROR_DENIED - access denied)';
+    Else ErrorMsg := ErrorMsg + ' (unknown error)';
+  End;
+  ErrorMsg := ErrorMsg + LineEnding + LineEnding;
+  ErrorMsg := ErrorMsg + 'Tried devices: ' + TriedDevices;
+  ErrorMsg := ErrorMsg + LineEnding + LineEnding;
+  ErrorMsg := ErrorMsg + 'Possible solutions:' + LineEnding;
+  ErrorMsg := ErrorMsg + '1. Check if audio device is available and not used by another application' + LineEnding;
+  ErrorMsg := ErrorMsg + '2. Restart the application' + LineEnding;
+  ErrorMsg := ErrorMsg + '3. Check audio driver installation' + LineEnding;
+  ErrorMsg := ErrorMsg + '4. On Linux: ensure ALSA/PulseAudio is properly configured';
+  
+  log(ErrorMsg, llError);
+  showmessage(ErrorMsg);
 End;
 
 Procedure TForm1.FormCreate(Sender: TObject);
 Var
   FileloggingDir: String;
   i: integer;
+  AutoLogFile: String;
+  ConfigDirUsed: String;
+{$IFDEF DARWIN}
+  ConfigDir: String;
+{$ENDIF}
 Begin
   Randomize;
   ConnectParamsHandled := false;
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
   Form1ShowOnce := true;
-  IniPropStorage1.IniFileName := 'fpc_atomic.ini';
+  FAdjustingSize := false;
+  fGameInitialized := false; // Game.Initialize will be called from OnIdle
+  FileloggingDir := '';
+  AutoLogFile := '';
+  ConfigDirUsed := '';
+{$IFDEF DARWIN}
+  ConfigDir := IncludeTrailingPathDelimiter(GetUserDir) + 'Library/Application Support/fpc_atomic/';
+  If Not ForceDirectoriesUTF8(ConfigDir) Then
+    ConfigDir := IncludeTrailingPathDelimiter(GetAppConfigDirUTF8(False));
+  If (ConfigDir <> '') And ForceDirectoriesUTF8(ConfigDir) Then Begin
+    IniPropStorage1.IniFileName := ConfigDir + 'fpc_atomic.ini';
+    ConfigDirUsed := ConfigDir;
+    AutoLogFile := ConfigDir + 'debug.log';
+  End
+  Else
+{$ENDIF}
+    IniPropStorage1.IniFileName := 'fpc_atomic.ini';
   DefFormat := DefaultFormatSettings;
   DefFormat.DecimalSeparator := '.';
   LogShowHandler := @ShowUserMessage;
   fUserMessages := Nil;
   DefaultFormatSettings.DecimalSeparator := '.';
   InitLogger();
-  FileloggingDir := '';
   For i := 1 To Paramcount Do Begin
 {$IFDEF Windows}
     If lowercase(ParamStrUTF8(i)) = '-c' Then Begin
@@ -283,10 +618,19 @@ Begin
       End;
     End;
   End;
+  If (FileloggingDir = '') And (AutoLogFile <> '') Then Begin
+    FileloggingDir := AutoLogFile;
+    SetLoggerLogFile(FileloggingDir);
+  End;
+  If ConfigDirUsed <> '' Then
+    log('Using config dir: ' + ConfigDirUsed, llInfo);
   log('TForm1.FormCreate', llInfo);
   log('TForm1.FormCreate', lltrace);
   If FileloggingDir = '' Then Begin
     log('Disabled, file logging.', llWarning);
+  End
+  Else Begin
+    log('Writing log to: ' + FileloggingDir, llInfo);
   End;
   caption := defCaption;
 
@@ -295,17 +639,8 @@ Begin
     halt;
   End;
 
-  (*
-  BASS_DEVICE_DMIX = Erlaubt das Mehrfache Beschreiben auf die Soundkarte.
-  Ohne dieses Flag, können keine anderen Sound anwendungen mehr laufen.
-  *)
-{$IFDEF Windows}
-  If Not Bass_init(-1, 44100, BASS_DEVICE_DMIX, 0, Nil) Then Begin
-{$ELSE}
-  // Steht der Compiler auf Object Pascal mus diese Zeile genommen werden.
-  If Not Bass_init(-1, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
-{$ENDIF}
-    showmessage('Unable to init the device, Error code :' + inttostr(BASS_ErrorGetCode));
+  // Try to initialize BASS with better error handling and fallback options
+  If Not InitializeBASS() Then Begin
     halt;
   End;
 
@@ -313,6 +648,11 @@ Begin
   ClientHeight := 480;
   Tform(self).Constraints.MinHeight := 480;
   Tform(self).Constraints.Minwidth := 640;
+{$IFDEF Darwin}
+  // Prevent fullscreen mode by limiting window size (prevents "Game Mode" activation)
+  Tform(self).Constraints.MaxWidth := Screen.Width - 1;
+  Tform(self).Constraints.MaxHeight := Screen.Height - 1;
+{$ENDIF}
   // Init dglOpenGL.pas , Teil 1
   If Not InitOpenGl Then Begin
     LogShow('Error, could not init dglOpenGL.pas', llfatal);
@@ -327,6 +667,10 @@ Begin
   *)
   Timer1.Interval := 17;
   OpenGLControl1.Align := alClient;
+  fLastControlWidth := 0;
+  fLastControlHeight := 0;
+  fLevelStartTime := 0;
+  fLastPlayingTime_s := -1;
   Game := TGame.Create();
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
@@ -377,20 +721,42 @@ End;
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
   log('TForm1.FormCloseQuery', llTrace);
-  // Todo: Speichern der Map, oder wenigstens Nachfragen ob gespeichert werden soll
-  log('Shuting down.', llInfo);
-  IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
-  IniPropStorage1.WriteString('Version', Version);
-  //setValue('MainForm', 'Left', inttostr(Form1.left));
-  //setValue('MainForm', 'Top', inttostr(Form1.top));
-  //setValue('MainForm', 'Width', inttostr(Form1.Width));
-  //setValue('MainForm', 'Height', inttostr(Form1.Height));
+  
+  // If NeedFormClose is already true, user has confirmed exit via menu/ESC
+  // Allow the close to proceed normally
+  If NeedFormClose Then Begin
+    log('Shuting down (user confirmed exit).', llInfo);
+    IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
+    IniPropStorage1.WriteString('Version', Version);
+    //setValue('MainForm', 'Left', inttostr(Form1.left));
+    //setValue('MainForm', 'Top', inttostr(Form1.top));
+    //setValue('MainForm', 'Width', inttostr(Form1.Width));
+    //setValue('MainForm', 'Height', inttostr(Form1.Height));
 
-  timer1.Enabled := false;
-  Initialized := false;
-  // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
-  Game.Disconnect;
-  Game.OnIdle;
+    timer1.Enabled := false;
+    Initialized := false;
+    // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
+    Game.Disconnect;
+    Game.OnIdle;
+    LogLeave;
+    Exit; // Allow close to proceed
+  End;
+  
+  // User clicked window close button - show confirmation dialog
+  log('Window close button clicked, showing confirmation dialog', llInfo);
+  CanClose := false; // Prevent immediate close
+  
+  // Show the same dialog as when user presses ESC or selects Exit from menu
+  If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
+    // User confirmed - switch to Exit Bomberman screen
+    // This will set NeedFormClose := true, play quit sound, and then close the form
+    // TScreenEnum is available through ugame.pas which uses uscreens.pas
+    If Assigned(Game) Then Begin
+      Game.SwitchToScreen(sExitBomberman);
+    End;
+  End;
+  // If user clicked No, CanClose remains false, so window stays open
+  
   LogLeave;
 End;
 
@@ -401,7 +767,26 @@ Var
   p: Pchar;
 {$ENDIF}
   t: int64;
+{$IFDEF Darwin}
+  MaxWidth, MaxHeight: Integer;
+{$ENDIF}
 Begin
+{$IFDEF Darwin}
+  // Convert fullscreen attempt (green button click) to large windowed mode
+  If WindowState = wsFullScreen Then Begin
+    WindowState := wsNormal;
+    MaxWidth := Screen.Width - 1;
+    MaxHeight := Screen.Height - 1;
+    Tform(self).Constraints.MaxWidth := MaxWidth;
+    Tform(self).Constraints.MaxHeight := MaxHeight;
+    Left := (Screen.Width - MaxWidth) div 2;
+    Top := (Screen.Height - MaxHeight) div 2;
+    Width := MaxWidth;
+    Height := MaxHeight;
+    fWishFullscreen := True;
+    Game.Settings.Fullscreen := True;
+  End;
+{$ENDIF}
   If Initialized Then Begin
     inc(FPS_Counter);
     t := GetTickCount64();
@@ -430,6 +815,32 @@ Var
   i, port: Integer;
   msg, ip: String;
 Begin
+  // CRITICAL: On macOS, Game.Initialize must be called from OnIdle (after Application.Run starts)
+  // This ensures OnPaint can be called during initialization to show the loading dialog
+  // On Windows, Game.Initialize is called directly from OpenGLControl1MakeCurrent
+{$IFNDEF Windows}
+  If Not fGameInitialized And Initialized And Assigned(Game) Then Begin
+    // Ensure OpenGL context is active before initializing (required for texture loading)
+    // On macOS, context might not be ready immediately after Application.Run starts
+    If Not OpenGLControl1.MakeCurrent Then Begin
+      // Context not ready yet, try again next time
+      exit;
+    End;
+    fGameInitialized := true; // Set flag first to prevent re-entry
+    // Initialize game - this will load textures and create loading dialog
+    // All texture loading happens here, so context must be active
+    Game.initialize(OpenGLControl1);
+    // Process messages to allow OnPaint to render loading dialog
+    // This is critical on macOS to show loading progress
+    Application.ProcessMessages;
+  End;
+{$ENDIF}
+  
+  // Process incoming network chunks from network thread
+  If Assigned(Game) Then Begin
+    Game.ChunkManager.ProcessIncomingChunks();
+  End;
+  
 {$IFDEF AUTOMODE}
   Case AutomodeData.State Of
     AM_Idle: Begin
@@ -557,6 +968,40 @@ Begin
     Game.Settings.Keys[ks1].AchsisIdle[1] := IniPropStorage1.readInteger('SDL_LeftRightIdle2', Game.Settings.Keys[ks1].AchsisIdle[1]);
     Game.Settings.Keys[ks1].AchsisDirection[1] := IniPropStorage1.readInteger('SDL_LeftRightDirection2', Game.Settings.Keys[ks1].AchsisDirection[1]);
   End;
+  // Load joystick mappings for ksJoy1
+  Game.Settings.Keys[ksJoy1] := AtomicDefaultKeys(ksJoy1);
+  Game.Settings.Keys[ksJoy1].UseSDL2 := IniPropStorage1.ReadBoolean('UseSDLJoy1', Game.Settings.Keys[ksJoy1].UseSDL2);
+  If Game.Settings.Keys[ksJoy1].UseSDL2 Then Begin
+    Game.Settings.Keys[ksJoy1].Name := IniPropStorage1.ReadString('SDL_NameJoy1', Game.Settings.Keys[ksJoy1].Name);
+    Game.Settings.Keys[ksJoy1].NameIndex := IniPropStorage1.readInteger('SDL_NameIndexJoy1', Game.Settings.Keys[ksJoy1].NameIndex);
+    Game.Settings.Keys[ksJoy1].ButtonIndex[0] := IniPropStorage1.readInteger('SDL_FirstJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[0]);
+    Game.Settings.Keys[ksJoy1].ButtonsIdle[0] := IniPropStorage1.ReadBoolean('SDL_FirstIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[0]);
+    Game.Settings.Keys[ksJoy1].ButtonIndex[1] := IniPropStorage1.readInteger('SDL_SecondJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[1]);
+    Game.Settings.Keys[ksJoy1].ButtonsIdle[1] := IniPropStorage1.ReadBoolean('SDL_SecondIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[1]);
+    Game.Settings.Keys[ksJoy1].AchsisIndex[0] := IniPropStorage1.readInteger('SDL_UpDownJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[0]);
+    Game.Settings.Keys[ksJoy1].AchsisIdle[0] := IniPropStorage1.readInteger('SDL_UpDownIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[0]);
+    Game.Settings.Keys[ksJoy1].AchsisDirection[0] := IniPropStorage1.readInteger('SDL_UpDownDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[0]);
+    Game.Settings.Keys[ksJoy1].AchsisIndex[1] := IniPropStorage1.readInteger('SDL_LeftRightJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[1]);
+    Game.Settings.Keys[ksJoy1].AchsisIdle[1] := IniPropStorage1.readInteger('SDL_LeftRightIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[1]);
+    Game.Settings.Keys[ksJoy1].AchsisDirection[1] := IniPropStorage1.readInteger('SDL_LeftRightDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[1]);
+  End;
+  // Load joystick mappings for ksJoy2
+  Game.Settings.Keys[ksJoy2] := AtomicDefaultKeys(ksJoy2);
+  Game.Settings.Keys[ksJoy2].UseSDL2 := IniPropStorage1.ReadBoolean('UseSDLJoy2', Game.Settings.Keys[ksJoy2].UseSDL2);
+  If Game.Settings.Keys[ksJoy2].UseSDL2 Then Begin
+    Game.Settings.Keys[ksJoy2].Name := IniPropStorage1.ReadString('SDL_NameJoy2', Game.Settings.Keys[ksJoy2].Name);
+    Game.Settings.Keys[ksJoy2].NameIndex := IniPropStorage1.readInteger('SDL_NameIndexJoy2', Game.Settings.Keys[ksJoy2].NameIndex);
+    Game.Settings.Keys[ksJoy2].ButtonIndex[0] := IniPropStorage1.readInteger('SDL_FirstJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[0]);
+    Game.Settings.Keys[ksJoy2].ButtonsIdle[0] := IniPropStorage1.ReadBoolean('SDL_FirstIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[0]);
+    Game.Settings.Keys[ksJoy2].ButtonIndex[1] := IniPropStorage1.readInteger('SDL_SecondJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[1]);
+    Game.Settings.Keys[ksJoy2].ButtonsIdle[1] := IniPropStorage1.ReadBoolean('SDL_SecondIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[1]);
+    Game.Settings.Keys[ksJoy2].AchsisIndex[0] := IniPropStorage1.readInteger('SDL_UpDownJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[0]);
+    Game.Settings.Keys[ksJoy2].AchsisIdle[0] := IniPropStorage1.readInteger('SDL_UpDownIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[0]);
+    Game.Settings.Keys[ksJoy2].AchsisDirection[0] := IniPropStorage1.readInteger('SDL_UpDownDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[0]);
+    Game.Settings.Keys[ksJoy2].AchsisIndex[1] := IniPropStorage1.readInteger('SDL_LeftRightJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[1]);
+    Game.Settings.Keys[ksJoy2].AchsisIdle[1] := IniPropStorage1.readInteger('SDL_LeftRightIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[1]);
+    Game.Settings.Keys[ksJoy2].AchsisDirection[1] := IniPropStorage1.readInteger('SDL_LeftRightDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[1]);
+  End;
   Game.Settings.ShowFPS := IniPropStorage1.ReadBoolean('ShowFPS', false);
   Game.Settings.CheckForUpdates := IniPropStorage1.ReadBoolean('CheckForUpdates', true);
   Game.Settings.LastPlayedField := IniPropStorage1.ReadString('LastPlayedField', '');
@@ -638,6 +1083,38 @@ Begin
   IniPropStorage1.WriteInteger('SDL_LeftRight2', Game.Settings.Keys[ks1].AchsisIndex[1]);
   IniPropStorage1.WriteInteger('SDL_LeftRightIdle2', Game.Settings.Keys[ks1].AchsisIdle[1]);
   IniPropStorage1.WriteInteger('SDL_LeftRightDirection2', Game.Settings.Keys[ks1].AchsisDirection[1]);
+  // Save joystick mappings for ksJoy1
+  IniPropStorage1.WriteBoolean('UseSDLJoy1', Game.Settings.Keys[ksJoy1].UseSDL2);
+  If Game.Settings.Keys[ksJoy1].UseSDL2 Then Begin
+    IniPropStorage1.WriteString('SDL_NameJoy1', Game.Settings.Keys[ksJoy1].Name);
+    IniPropStorage1.WriteInteger('SDL_NameIndexJoy1', Game.Settings.Keys[ksJoy1].NameIndex);
+    IniPropStorage1.WriteInteger('SDL_FirstJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[0]);
+    IniPropStorage1.WriteBoolean('SDL_FirstIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_SecondJoy1', Game.Settings.Keys[ksJoy1].ButtonIndex[1]);
+    IniPropStorage1.WriteBoolean('SDL_SecondIdleJoy1', Game.Settings.Keys[ksJoy1].ButtonsIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_UpDownJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[0]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightJoy1', Game.Settings.Keys[ksJoy1].AchsisIndex[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightIdleJoy1', Game.Settings.Keys[ksJoy1].AchsisIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightDirectionJoy1', Game.Settings.Keys[ksJoy1].AchsisDirection[1]);
+  End;
+  // Save joystick mappings for ksJoy2
+  IniPropStorage1.WriteBoolean('UseSDLJoy2', Game.Settings.Keys[ksJoy2].UseSDL2);
+  If Game.Settings.Keys[ksJoy2].UseSDL2 Then Begin
+    IniPropStorage1.WriteString('SDL_NameJoy2', Game.Settings.Keys[ksJoy2].Name);
+    IniPropStorage1.WriteInteger('SDL_NameIndexJoy2', Game.Settings.Keys[ksJoy2].NameIndex);
+    IniPropStorage1.WriteInteger('SDL_FirstJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[0]);
+    IniPropStorage1.WriteBoolean('SDL_FirstIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_SecondJoy2', Game.Settings.Keys[ksJoy2].ButtonIndex[1]);
+    IniPropStorage1.WriteBoolean('SDL_SecondIdleJoy2', Game.Settings.Keys[ksJoy2].ButtonsIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_UpDownJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[0]);
+    IniPropStorage1.WriteInteger('SDL_UpDownDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[0]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightJoy2', Game.Settings.Keys[ksJoy2].AchsisIndex[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightIdleJoy2', Game.Settings.Keys[ksJoy2].AchsisIdle[1]);
+    IniPropStorage1.WriteInteger('SDL_LeftRightDirectionJoy2', Game.Settings.Keys[ksJoy2].AchsisDirection[1]);
+  End;
 
   IniPropStorage1.WriteBoolean('ShowFPS', Game.Settings.ShowFPS);
   IniPropStorage1.WriteBoolean('CheckForUpdates', Game.Settings.CheckForUpdates);
@@ -650,17 +1127,33 @@ Begin
 End;
 
 Procedure TForm1.SetFullScreen(Value: Boolean);
+Var
+  MaxWidth, MaxHeight: Integer;
 Begin
   If value Then Begin
-    // TODO: Klären ob man unter Windows wirklich die Differenzierung braucht
-{$IFDEF Windows}
-    WindowState := wsMaximized;
-{$ELSE}
-    WindowState := wsFullScreen;
+    // On macOS: use large windowed mode instead of true fullscreen to avoid "Game Mode"
+    MaxWidth := Screen.Width - 1;
+    MaxHeight := Screen.Height - 1;
+{$IFDEF Darwin}
+    Tform(self).Constraints.MaxWidth := MaxWidth;
+    Tform(self).Constraints.MaxHeight := MaxHeight;
 {$ENDIF}
+    Left := (Screen.Width - MaxWidth) div 2;
+    Top := (Screen.Height - MaxHeight) div 2;
+    Width := MaxWidth;
+    Height := MaxHeight;
+    WindowState := wsNormal;
   End
   Else Begin
+{$IFDEF Darwin}
+    Tform(self).Constraints.MaxWidth := Screen.Width - 1;
+    Tform(self).Constraints.MaxHeight := Screen.Height - 1;
+{$ENDIF}
     WindowState := wsNormal;
+    Left := (Screen.Width - 640) div 2;
+    Top := (Screen.Height - 480) div 2;
+    Width := 640;
+    Height := 480;
   End;
   Game.Settings.Fullscreen := value;
   fWishFullscreen := value;
@@ -682,9 +1175,54 @@ Begin
 End;
 
 Procedure TForm1.FormResize(Sender: TObject);
+Const
+  DesiredWidth = GameWidth;
+  DesiredHeight = GameHeight;
+Var
+  TargetHeight, TargetWidth: Integer;
+{$IFDEF Darwin}
+  MaxWidth, MaxHeight: Integer;
+{$ENDIF}
 Begin
+{$IFDEF Darwin}
+  // Convert fullscreen attempt (green button click) to large windowed mode
+  If WindowState = wsFullScreen Then Begin
+    WindowState := wsNormal;
+    MaxWidth := Screen.Width - 1;
+    MaxHeight := Screen.Height - 1;
+    Tform(self).Constraints.MaxWidth := MaxWidth;
+    Tform(self).Constraints.MaxHeight := MaxHeight;
+    Left := (Screen.Width - MaxWidth) div 2;
+    Top := (Screen.Height - MaxHeight) div 2;
+    Width := MaxWidth;
+    Height := MaxHeight;
+    fWishFullscreen := True;
+    Game.Settings.Fullscreen := True;
+    Exit;
+  End;
+{$ENDIF}
+{$IFDEF Windows}
   If fWishFullscreen Then Begin
     WindowState := wsFullScreen;
+  End;
+{$ENDIF}
+  If FAdjustingSize Then
+    Exit;
+  If WindowState <> wsNormal Then
+    Exit;
+  FAdjustingSize := true;
+  Try
+    TargetHeight := Round(ClientWidth * DesiredHeight / DesiredWidth);
+    If Abs(TargetHeight - ClientHeight) > 1 Then Begin
+      ClientHeight := TargetHeight;
+    End
+    Else Begin
+      TargetWidth := Round(ClientHeight * DesiredWidth / DesiredHeight);
+      If Abs(TargetWidth - ClientWidth) > 1 Then
+        ClientWidth := TargetWidth;
+    End;
+  Finally
+    FAdjustingSize := false;
   End;
 End;
 

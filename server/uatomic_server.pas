@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uatomic_server;
 
 {$MODE ObjFPC}{$H+}
@@ -134,6 +139,7 @@ Type
 
     Procedure LoadAi();
     Procedure HurryHandling;
+    Function GetStatsFilePath: String; // Returns correct path for stats.txt (Application Support on macOS)
   public
     Constructor Create(Port, AutoTimeOut: Integer);
     Destructor Destroy(); override;
@@ -144,7 +150,57 @@ Type
 
 Implementation
 
-Uses FileUtil, uvectormath, math, IniFiles, uai;
+Uses FileUtil, LazUTF8, LazFileUtils, uvectormath, math, IniFiles, uai, uip;
+
+{ Helper function to resolve data directory path }
+
+Function ResolveResourceBase(BasePath: String): String;
+Var
+  testPath: String;
+  appBundlePath: String;
+Begin
+  // Normalize base path to absolute path
+  BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
+  
+  // Try multiple locations for data directory
+  // 1. Direct relative to executable (works with symlinks)
+  testPath := BasePath + 'data';
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 2. Relative path from MacOS directory in .app bundle
+  testPath := ExpandFileName(BasePath + '../Resources/data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 3. Try symlink path (../../data from MacOS) - for shared data directory
+  testPath := ExpandFileName(BasePath + '../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
+  testPath := ExpandFileName(BasePath + '../../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 5. Try path next to .app bundle (for cases where data is outside the bundle)
+  // If BasePath contains ".app/Contents/MacOS/", try going up to the .app bundle's parent directory
+  If Pos('.app/Contents/MacOS/', BasePath) > 0 Then Begin
+    appBundlePath := Copy(BasePath, 1, Pos('.app/Contents/MacOS/', BasePath) + 4); // Get path up to ".app"
+    appBundlePath := ExtractFilePath(ExcludeTrailingPathDelimiter(appBundlePath)); // Get parent directory of .app
+    testPath := ExpandFileName(appBundlePath + 'data');
+    If DirectoryExistsUTF8(testPath) Then Begin
+      Result := IncludeTrailingPathDelimiter(testPath);
+      exit;
+    End;
+  End;
+  // Fallback: use base path (may not exist, but at least we tried)
+  Result := BasePath + 'data' + PathDelim;
+End;
 
 { TServer }
 
@@ -152,6 +208,9 @@ Constructor TServer.Create(Port, AutoTimeOut: Integer);
 Var
   sl: TStringList;
   i: Integer;
+  adapters: TNetworkAdapterList;
+  serverIP: String;
+  j: Integer;
 Begin
   log('TServer.create', lltrace);
   Inherited create;
@@ -173,12 +232,16 @@ Begin
   fChunkManager := TChunkManager.create;
   fChunkManager.RegisterConnection(fTCP);
   fChunkManager.OnReceivedChunk := @OnReceivedChunk;
+  // Start network thread for non-blocking network processing
+  fChunkManager.StartNetworkThread();
+  log('Network thread started for server', llInfo);
 
   fLastActiveTickTimestamp := GetTickCount64;
   fTCPPort := Port;
 
   // Laden aller Felder
-  sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
+  // Resolve data directory path - check multiple locations for .app bundle compatibility
+  sl := FindAllDirectories(ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))) + 'maps', false);
   sl.Sorted := true;
   sl.Sort; // Ist beim Client wichtig, beim Server wäre es theoretisch egal, so ists aber leichter zum debuggen
   setlength(fFields, sl.Count);
@@ -192,6 +255,7 @@ Begin
   setlength(fFields, high(fFields) + 2);
   fFields[high(fFields)] := TAtomicRandomField.Create(Nil, Nil); // Die initialisiert sich bereits richtig ;)
   LoadAi();
+  
   If Not fUDP.Listen(UDPPingPort) Then Begin
     log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
     LogLeave;
@@ -457,23 +521,29 @@ Begin
   fFrameLog.AccumulatedSize := fFrameLog.AccumulatedSize + dataLen;
   fFrameLog.Count := fFrameLog.Count + 1;
   If Not result Then Begin
-    For i := low(fPLayer) To high(fPLayer) Do Begin
-      If fPLayer[i].UID = UID Then Begin
-        log('Could not send to player : ' + fPLayer[i].UserName, llCritical);
-        LogLeave;
-        exit;
-      End;
-    End;
     If uid < 0 Then Begin
       (*
+       * Ein Broadcast (negativer UID) zu allen außer einem Spieler
        * Ein Broadcast bringt nur was wenn wir mehr als 1 Spieler haben ;)
        *)
       If GetActivePlayerCount() > 1 Then Begin
-        log('Could not send, maybe no more clients connected.', llWarning);
+        log('Could not send broadcast (uid=' + inttostr(uid) + '), maybe no more clients connected.', llWarning);
+      End
+      Else Begin
+        log('Could not send broadcast (uid=' + inttostr(uid) + '), only one or no active players.', llWarning);
       End;
     End
     Else Begin
-      log('Could not send to player : ' + inttostr(uid), llCritical);
+      // Try to find the player with this UID
+      For i := low(fPLayer) To high(fPLayer) Do Begin
+        If fPLayer[i].UID = UID Then Begin
+          log('Could not send to player : ' + fPLayer[i].UserName + ' (uid=' + inttostr(uid) + ')', llCritical);
+          LogLeave;
+          exit;
+        End;
+      End;
+      // Player not found
+      log('Could not send to player with uid=' + inttostr(uid) + ' (player not found)', llCritical);
     End;
   End;
 {$IFDEF DoNotLog_CyclicMessages}
@@ -620,6 +690,11 @@ Begin
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
   // Und dem Master Die Schnittmenge Mitteilen
   EvalFieldHashList(fieldlist, true);
+  // CRITICAL: Always send available field list to all clients after evaluation
+  // This ensures all clients (including newly connected ones) receive the updated field list
+  // The master already got it from EvalFieldHashList above, but we need to send to all
+  // to ensure remote clients get the field list even if they're not the master
+  EvalFieldHashList(fieldlist, false); // Send to all clients (including the new one)
   LogLeave;
 End;
 
@@ -719,107 +794,184 @@ End;
 
 Procedure TServer.HandleChangePlayerKey(PlayerIndex, Direction: Integer;
   PlayerName: String; UID: Integer);
+  
+  // Helper function to get next input method in cycle
+  Function GetNextKeySet(Current: TKeySet; IsMaster: Boolean): TKeySet;
+  Begin
+    Case Current Of
+      ks0: result := ks1;
+      ks1: result := ksJoy1;
+      ksJoy1: result := ksJoy2;
+      ksJoy2: Begin
+          If IsMaster Then Begin
+            result := ks0; // Will be set to AI, this is just a placeholder
+          End
+          Else Begin
+            result := ks0; // Will be set to NoPlayer, this is just a placeholder
+          End;
+        End;
+    Else
+      result := ks0;
+    End;
+  End;
+  
+  // Helper function to get previous input method in cycle
+  Function GetPrevKeySet(Current: TKeySet; IsMaster: Boolean): TKeySet;
+  Begin
+    Case Current Of
+      ks0: Begin
+          If IsMaster Then Begin
+            result := ksJoy2; // Will be set to AI, this is just a placeholder
+          End
+          Else Begin
+            result := ksJoy2; // Will be set to NoPlayer, this is just a placeholder
+          End;
+        End;
+      ks1: result := ks0;
+      ksJoy1: result := ks1;
+      ksJoy2: result := ksJoy1;
+    Else
+      result := ks0;
+    End;
+  End;
+  
 Begin
   log(format('TServer.HandleChangePlayerKey (%d, %d, %s)', [PlayerIndex, Direction, PlayerName]), llTrace);
   If (PlayerIndex = -1) Or (Direction = 0) Or (UID = 0) Then Begin
     LogLeave;
     exit;
   End;
+  
+  // Master cycle: Off -> Keyboard 0 -> Keyboard 1 -> Joy 1 -> Joy 2 -> AI -> Off
+  // Non-Master cycle: Off -> Keyboard 0 -> Keyboard 1 -> Joy 1 -> Joy 2 -> Off
+  
   If Direction > 0 Then Begin
+    // Forward cycle
     If UID = fSettings.MasterUid Then Begin
+      // Master player
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> Keyboard 0
         fPLayer[PlayerIndex].UID := UID;
         fPLayer[PlayerIndex].Keyboard := ks0;
         fPLayer[PlayerIndex].UserName := PlayerName;
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = uid Then Begin
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle through input methods
           If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
             fPLayer[PlayerIndex].Keyboard := ks1;
           End
-          Else Begin
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy2;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          // Joy 2 -> AI
             fPLayer[PlayerIndex].UID := AIPlayer;
             fPLayer[PlayerIndex].UserName := '';
           End;
           RefreshAllPlayerStats(0);
         End
-        Else Begin
-          If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
+      Else If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
+        // AI -> Off
             fPLayer[PlayerIndex].UID := NoPlayer;
             fPLayer[PlayerIndex].UserName := '';
             RefreshAllPlayerStats(0);
-          End;
-        End;
       End;
     End
     Else Begin
+      // Non-Master player
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> Keyboard 0
         fPLayer[PlayerIndex].UID := UID;
         fPLayer[PlayerIndex].Keyboard := ks0;
         fPLayer[PlayerIndex].UserName := PlayerName;
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = UID Then Begin
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle through input methods
           If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
             fPLayer[PlayerIndex].Keyboard := ks1;
           End
-          Else Begin
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy2;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          // Joy 2 -> Off
             fPLayer[PlayerIndex].UID := NoPlayer;
             fPLayer[PlayerIndex].UserName := '';
           End;
           RefreshAllPlayerStats(0);
-        End;
       End;
     End;
   End
   Else Begin
+    // Backward cycle
     If UID = fSettings.MasterUid Then Begin
+      // Master player
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> AI
         fPLayer[PlayerIndex].UID := AIPlayer;
         fPLayer[PlayerIndex].UserName := '';
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
+      Else If fPLayer[PlayerIndex].UID = AIPlayer Then Begin
+        // AI -> Joy 2
           fPLayer[PlayerIndex].UID := UID;
-          fPLayer[PlayerIndex].Keyboard := ks1;
+        fPLayer[PlayerIndex].Keyboard := ksJoy2;
           fPLayer[PlayerIndex].UserName := PlayerName;
           RefreshAllPlayerStats(0);
         End
-        Else Begin
-          If fPLayer[PlayerIndex].UID = UID Then Begin
-            If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle backwards through input methods
+        If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
               fPLayer[PlayerIndex].Keyboard := ks0;
             End
-            Else Begin
+        Else If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+          // Keyboard 0 -> Off
               fPLayer[PlayerIndex].UID := NoPlayer;
               fPLayer[PlayerIndex].UserName := '';
             End;
             RefreshAllPlayerStats(0);
-          End;
-        End;
       End;
     End
     Else Begin
+      // Non-Master player
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
+        // Off -> Joy 2
         fPLayer[PlayerIndex].UID := UID;
-        fPLayer[PlayerIndex].Keyboard := ks1;
+        fPLayer[PlayerIndex].Keyboard := ksJoy2;
         fPLayer[PlayerIndex].UserName := PlayerName;
         RefreshAllPlayerStats(0);
       End
-      Else Begin
-        If fPLayer[PlayerIndex].UID = UID Then Begin
-          If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
+      Else If fPLayer[PlayerIndex].UID = UID Then Begin
+        // Same player, cycle backwards through input methods
+        If fPLayer[PlayerIndex].Keyboard = ksJoy2 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ksJoy1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ksJoy1 Then Begin
+          fPLayer[PlayerIndex].Keyboard := ks1;
+        End
+        Else If fPLayer[PlayerIndex].Keyboard = ks1 Then Begin
             fPLayer[PlayerIndex].Keyboard := ks0;
           End
-          Else Begin
+        Else If fPLayer[PlayerIndex].Keyboard = ks0 Then Begin
+          // Keyboard 0 -> Off
             fPLayer[PlayerIndex].UID := NoPlayer;
             fPLayer[PlayerIndex].UserName := '';
           End;
           RefreshAllPlayerStats(0);
-        End;
       End;
     End;
   End;
@@ -832,7 +984,7 @@ Var
   a: Array Of Integer;
   b: Boolean;
 Begin
-  log('TServer.HandleSwitchToMapProperties', llTrace);
+  log(format('TServer.HandleSwitchToMapProperties (UID=%d)', [UID]), llInfo);
   aicnt := 0;
   pcnt := 0;
   t1 := 0;
@@ -875,31 +1027,19 @@ Begin
     End;
   End;
 
-  // Sind auch Alle Clients noch wenigstens 1 mal mit dabei ?
-  (*
-   * Zählen der Spieler mit unterschiedlicher Uid
-   *)
-  a := Nil;
+  // Debug logging: Show all active player slots
   For i := 0 To high(fPLayer) Do Begin
     If fPLayer[i].UID > NoPlayer Then Begin
-      b := false;
-      For j := 0 To high(a) Do Begin
-        If a[j] = fPLayer[i].UID Then Begin
-          b := true;
-          break;
-        End;
-      End;
-      If Not b Then Begin
-        setlength(a, high(a) + 2);
-        a[high(a)] := fPLayer[i].UID;
-      End;
+      log(format('  Slot %d: UID=%d, Username=%s, Keyboard=%d', 
+        [i, fPLayer[i].UID, fPLayer[i].UserName, Ord(fPLayer[i].Keyboard)]), llInfo);
     End;
   End;
-  If length(a) <> fConnectedClientCount Then Begin
-    SendSplashMessage('Error, not all connected clients are connected to at least one playerslot.', UID);
-    LogLeave;
-    exit;
-  End;
+  
+  // Note: The check "all connected clients have at least one slot" was removed
+  // because it incorrectly flagged local co-op as an error (one UID with multiple keyboards).
+  // The existing checks are sufficient:
+  // 1. Duplicate slot check (line 925-933) prevents same UID + same Keyboard
+  // 2. Minimum player check (line 910-914) ensures enough players to start
   // Alle Checks gut -> Umschalten auf die Karteneigenschaften
   fGameState := gsMapSetup;
   SendChunk(miSwitchToFieldSetup, Nil, 0);
@@ -1214,16 +1354,79 @@ End;
 Procedure TServer.HandlePlaySoundEffect(PlayerIndex: integer;
   Effect: TSoundEffect);
 Var
-  m: TMemoryStream;
+  m, m2: TMemoryStream;
+  targetUID: Integer;
+  i: Integer;
+  playerUID: Integer;
 Begin
   log('TServer.HandlePlaySoundEffect', llTrace);
+  // Check if player is valid
+  If (PlayerIndex < 0) Or (PlayerIndex > high(fPLayer)) Then Begin
+    log('Invalid PlayerIndex: ' + inttostr(PlayerIndex), llError);
+    LogLeave;
+    exit;
+  End;
+  
+  playerUID := fPLayer[PlayerIndex].UID;
+  
+  // Skip inactive slots (UID = NoPlayer = 0)
+  If playerUID = NoPlayer Then Begin
+    log('Skipping sound for inactive player slot: ' + inttostr(PlayerIndex), llTrace);
+    LogLeave;
+    exit;
+  End;
+  
   m := TMemoryStream.Create;
   m.Write(Effect, sizeof(Effect));
-  If Effect = seOtherPlayerDied Then Begin
-    SendChunk(miPlaySoundEffekt, m, -fPLayer[PlayerIndex].UID);
+  
+  // Handle AI players (UID = AIPlayer = -1) - send sounds to all other players
+  If playerUID = AIPlayer Then Begin
+    // For AI players, send sounds to all connected players (broadcast)
+    // Use negative UID to indicate broadcast to all except sender (but sender is AI, so send to all)
+    If GetActivePlayerCount() > 0 Then Begin
+      // Send to all connected players (UID > 0)
+      targetUID := 0; // 0 means broadcast to all connected players
+      // Actually, we need to send to each connected player individually
+      // because SendChunk with negative UID excludes the sender, but we want to include all
+      For i := 0 To high(fPLayer) Do Begin
+        If fPLayer[i].UID > 0 Then Begin
+          // Create a new stream for each player
+          m2 := TMemoryStream.Create;
+          m2.Write(Effect, sizeof(Effect));
+          SendChunk(miPlaySoundEffekt, m2, fPLayer[i].UID);
+        End;
+      End;
+      m.Free; // Free the original stream
+    End
+    Else Begin
+      log('Skipping AI sound - no connected players', llInfo);
+      m.Free;
+    End;
+  End
+  Else If playerUID > 0 Then Begin
+    // Normal player (UID > 0)
+    If Effect = seOtherPlayerDied Then Begin
+      // Send to all players except this one (broadcast with negative UID)
+      // Only send if there are at least 2 active players
+      If GetActivePlayerCount() > 1 Then Begin
+        targetUID := -playerUID;
+        SendChunk(miPlaySoundEffekt, m, targetUID);
+      End
+      Else Begin
+        log('Skipping seOtherPlayerDied sound - only one player connected', llInfo);
+        m.Free;
+      End;
+    End
+    Else Begin
+      // Send to this specific player
+      targetUID := playerUID;
+      SendChunk(miPlaySoundEffekt, m, targetUID);
+    End;
   End
   Else Begin
-    SendChunk(miPlaySoundEffekt, m, fPLayer[PlayerIndex].UID);
+    // Unknown UID value
+    log('Unknown player UID: ' + inttostr(playerUID) + ' for player index: ' + inttostr(PlayerIndex), llWarning);
+    m.Free;
   End;
   LogLeave;
 End;
@@ -1372,7 +1575,7 @@ Var
   j, i: Integer;
   k: TKeySet;
 Begin
-  log('TServer.RefreshAllPlayerStats', llTrace);
+  // Removed log/logleave - was causing stack overflow on frequent calls
   m := TMemoryStream.Create;
   // Einfügen aller Spielerinformationen, dass diese übernommen werden können (z.B. nach Load Game)
   j := length(fPLayer);
@@ -1389,7 +1592,6 @@ Begin
     m.WriteAnsiString(fPLayer[i].UserName);
   End;
   SendChunk(miRefreshPlayerStats, m, UID);
-  LogLeave;
 End;
 
 Procedure TServer.PlayerLeaves(PlayerUid: integer);
@@ -1522,7 +1724,7 @@ End;
 Procedure TServer.EvalFieldHashList(Const List: TFieldHashNameList;
   SendToMaster: Boolean);
 Var
-  m: TMemorystream;
+  m, m2: TMemorystream;
   i, j: Integer;
   found: Boolean;
 Begin
@@ -1538,10 +1740,23 @@ Begin
     found := false;
     If fFields[i].Available Then Begin // karten die Früher schon ausgeschlossen wurden brauchen nicht mehr geprüft werden..
       For j := 0 To high(List) Do Begin
-        If (fFields[i].Name = list[j].Name) And
-          (fFields[i].Hash = list[j].Hash) Then Begin
-          found := true;
-          break;
+        // Use case-insensitive comparison for field names to handle Windows/Mac differences
+        // For cross-platform compatibility, accept fields if names match, even if hashes differ
+        // This handles cases where Windows and Mac have different file versions or hash calculation differences
+        If CompareText(fFields[i].Name, list[j].Name) = 0 Then Begin
+          If fFields[i].Hash = list[j].Hash Then Begin
+            // Perfect match - name and hash both match
+            found := true;
+            break;
+          End
+          Else Begin
+            // Name matches but hash differs - accept for cross-platform compatibility
+            // Log warning for debugging (commented out - too noisy in production)
+            // log(format('Field name match but hash mismatch (accepting for cross-platform): Server "%s" (hash: %d) vs Client "%s" (hash: %d)', 
+            //   [fFields[i].Name, fFields[i].Hash, list[j].Name, list[j].Hash]), llWarning);
+            found := true;
+            break;
+          End;
         End;
       End;
     End;
@@ -1558,6 +1773,15 @@ Begin
     SendChunk(miAvailableFieldList, m, fSettings.MasterUid);
   End
   Else Begin
+    // Send to all connected clients (not just master)
+    // This is needed when a new client connects and needs the field list
+    // Create a copy of the stream for each client since SendChunk takes ownership
+    For i := 0 To high(fUidInfos) Do Begin
+      m2 := TMemoryStream.Create;
+      m.Position := 0;
+      m2.CopyFrom(m, m.Size);
+      SendChunk(miAvailableFieldList, m2, fUidInfos[i].Uid);
+    End;
     m.free;
   End;
   LogLeave;
@@ -1596,14 +1820,14 @@ Begin
   // Mindestens 1 Client ist asynchron, wir leiten eine Zwangspause ein / aus
   If b Then Begin
     If Not fSyncPause Then Begin // Positive Flanke der SyncPausierung
-      log(format('Activate synchronising pause. %s is out of sync', [s]), llInfo);
+      // Removed logging - was spamming logs on slow clients
       fSyncPause := true;
       ApplyPause(fpausing);
     End;
   End
   Else Begin
     If fSyncPause Then Begin // Negative Flanke der SyncPausierung
-      log('Deactivate synchronising pause.', llInfo);
+      // Removed logging - was spamming logs
       fSyncPause := false;
       ApplyPause(fpausing);
     End;
@@ -1679,6 +1903,7 @@ Begin
       fPLayer[i].IdleTimer := fPLayer[i].IdleTimer + FrameRate; // Wir zählen den immer hoch, der läuft erst nach 41 Tagen über...
       If fPLayer[i].UID = AIPlayer Then Begin
         If assigned(AiHandlePlayer) Then Begin
+          // Removed debug logging - was causing stack overflow due to frequency
           Try
             AiCommand := AiHandlePlayer(i, aiInfo);
           Except
@@ -1805,7 +2030,9 @@ Var
   m: TMemoryStream;
   i: Integer;
   DiseasedInfo: TAtomicInfo;
+  StartTime: QWord;
 Begin
+  StartTime := GetTickCount64;
   // Gesendet werden immer 3 Datensätze
   m := TMemoryStream.Create;
   // Die Rundenzeit mit übertragen
@@ -1842,6 +2069,8 @@ Begin
   End;
   // 2. Alles was das zu Rendernde Feld angeht
   fActualField.AppendGamingData(m);
+  
+  // Removed performance logging - was causing log spam and potential stack overflow
   SendChunk(miUpdateGameData, m, 0);
 End;
 
@@ -2012,10 +2241,10 @@ Begin
     exit;
   End;
   If AiInit() Then Begin
-    log(format('Ai "%s" loaded..', [AiVersion()]), llInfo);
+    logshow(format('Ai "%s" loaded successfully!', [AiVersion()]), llInfo);
   End
   Else Begin
-    log('Failure on Ai load.', llInfo);
+    logshow('Failure on Ai load (AiInit returned false).', llError);
     UnLoadAiLib;
   End;
   If fGameState = gsPlaying Then Begin
@@ -2047,7 +2276,8 @@ Begin
   log('TServer.Execute', lltrace);
   // Loop in einer Endlosschleife, so lange bis 1000ms lang kein Client mehr connected ist, dann raus
   While factive Do Begin
-    fChunkManager.CallAction(); // Alle Aktuellen Aufgaben des TCP-Stacks Abbarbeiten
+    // Process incoming network chunks from network thread
+    fChunkManager.ProcessIncomingChunks();
     fUDP.CallAction();
     If fKickAllPlayer Then Begin
       log('KickAllPlayer', lltrace);
@@ -2096,7 +2326,10 @@ Begin
         // Egal, welcher Speedup, das Spiel wird mit konstanter Rate Aktualisiert
         If fLastClientUpdateTimestamp + UpdateRate <= n Then Begin
           fLastClientUpdateTimestamp := n; // fLastClientUpdateTimestamp + UpdateRate; Verhindern von oben beschriebener Situation
-          UpdateAllClients;
+          // Only send updates if there are connected clients
+          If GetActivePlayerCount() > 0 Then Begin
+            UpdateAllClients;
+          End;
         End;
       End;
     End;
@@ -2152,13 +2385,29 @@ Begin
   LogLeave;
 End;
 
+Function TServer.GetStatsFilePath: String;
+{$IFDEF DARWIN}
+Var
+  ConfigDir: String;
+Begin
+  // On macOS, use Application Support directory like client does
+  ConfigDir := IncludeTrailingPathDelimiter(GetUserDir) + 'Library/Application Support/fpc_atomic/';
+  If Not ForceDirectoriesUTF8(ConfigDir) Then
+    ConfigDir := IncludeTrailingPathDelimiter(GetAppConfigDirUTF8(False));
+  Result := ConfigDir + 'stats.txt';
+End;
+{$ELSE}
+Begin
+  // On Windows and Linux, use directory where executable is located
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'stats.txt';
+End;
+{$ENDIF}
+
 Procedure TServer.LoadStatistiks;
 Var
   ini: TIniFile;
-  p: String;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  ini := TIniFile.Create(p + 'stats.txt');
+  ini := TIniFile.Create(Self.GetStatsFilePath);
   fStatistik.Total[sMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
   fStatistik.Total[sGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
   fStatistik.Total[sFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
@@ -2182,10 +2431,8 @@ End;
 Procedure TServer.SaveStatistiks;
 Var
   ini: TIniFile;
-  p: String;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  ini := TIniFile.Create(p + 'stats.txt');
+  ini := TIniFile.Create(Self.GetStatsFilePath);
   Try
     ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[sMatchesStarted] + fStatistik.LastRun[sMatchesStarted]);
     ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[sGamesStarted] + fStatistik.LastRun[sGamesStarted]);

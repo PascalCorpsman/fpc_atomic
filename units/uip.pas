@@ -29,6 +29,11 @@
 (*                                                                            *)
 (******************************************************************************)
 
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uip;
 
 {$MODE ObjFPC}{$H+}
@@ -36,7 +41,7 @@ Unit uip;
 Interface
 
 Uses
-  Classes, SysUtils;
+  Classes, SysUtils, math;
 
 Type
   TIPAddress = Array[0..3] Of Byte;
@@ -104,13 +109,17 @@ Var
   sl: TStringList;
   responce, tmp: String;
 {$IFDEF Windows}
-  j,
+  j, k: Integer;
 {$ENDIF}
   i: Integer;
 Begin
   result := Nil;
   sl := TStringList.Create;
 {$IFDEF Linux}
+  RunCommand('ifconfig', [], responce, [poWaitOnExit]);
+{$ENDIF}
+{$IFDEF Darwin}
+  // macOS uses ifconfig similar to Linux
   RunCommand('ifconfig', [], responce, [poWaitOnExit]);
 {$ENDIF}
 {$IFDEF Windows}
@@ -132,26 +141,104 @@ Begin
       result[high(result)].AdapterName := copy(sl[i - 1], 1, pos(':', sl[i - 1]) - 1);
     End;
 {$ENDIF}
+{$IFDEF Darwin}
+    // macOS ifconfig format: "inet 192.168.1.100 netmask 0xffffff00 broadcast 192.168.1.255"
+    // or: "	inet 192.168.0.72 netmask 0xffffff00 broadcast 192.168.0.255"
+    If (pos('inet ', sl[i]) <> 0) And (pos('inet6 ', sl[i]) = 0) Then Begin
+      // Extract IP address (skip "inet " and get the first word)
+      tmp := trim(sl[i]);
+      tmp := copy(tmp, pos('inet ', tmp) + length('inet '), length(tmp));
+      tmp := copy(tmp, 1, pos(' ', tmp) - 1);
+      // Skip loopback interface (127.0.0.1)
+      If (tmp <> '127.0.0.1') And (tmp <> '') Then Begin
+        setlength(result, high(result) + 2);
+        result[high(result)].IpAddress := tmp;
+
+        // Extract netmask (can be in hex format like 0xffffff00 or decimal)
+        tmp := sl[i];
+        If pos('netmask ', tmp) <> 0 Then Begin
+          tmp := copy(tmp, pos('netmask ', tmp) + length('netmask '), length(tmp));
+          tmp := copy(tmp, 1, pos(' ', tmp) - 1);
+          // If netmask is in hex format (0x...), we could convert it, but for now just store as is
+          // Most common: 0xffffff00 = 255.255.255.0
+          result[high(result)].SubnetMask := tmp;
+        End Else Begin
+          result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
+        End;
+
+        // Get adapter name from previous line (format: "en0: flags=..." or "en0:")
+        If i > 0 Then Begin
+          tmp := trim(sl[i - 1]);
+          If pos(':', tmp) <> 0 Then Begin
+            tmp := copy(tmp, 1, pos(':', tmp) - 1);
+            result[high(result)].AdapterName := trim(tmp);
+          End Else Begin
+            result[high(result)].AdapterName := 'unknown';
+          End;
+        End Else Begin
+          result[high(result)].AdapterName := 'unknown';
+        End;
+      End;
+    End;
+{$ENDIF}
 {$IFDEF Windows}
-    If pos('IPv4-', sl[i]) <> 0 Then Begin
+    // Windows ipconfig format can be:
+    // "   IPv4 Address. . . . . . . . . . . : 192.168.1.100"
+    // or localized versions like "   IPv4-Adresse  . . . . . . . . . : 192.168.1.100"
+    // Look for "IPv4" followed by "Address" or "Adresse" (German) or similar
+    If (pos('IPv4', sl[i]) <> 0) And ((pos('Address', sl[i]) <> 0) Or (pos('Adresse', sl[i]) <> 0)) Then Begin
       setlength(result, high(result) + 2);
 
-      tmp := copy(sl[i], pos(':', sl[i]) + 1, length(sl[i]));
-      result[high(result)].IpAddress := trim(tmp);
+      // Extract IP address - it's after the last colon
+      tmp := sl[i];
+      j := length(tmp);
+      // Find last colon
+      While (j > 0) And (tmp[j] <> ':') Do
+        dec(j);
+      If j > 0 Then Begin
+        tmp := copy(tmp, j + 1, length(tmp));
+        result[high(result)].IpAddress := trim(tmp);
+        // Skip loopback interface
+        If result[high(result)].IpAddress = '127.0.0.1' Then Begin
+          setlength(result, high(result));
+          Continue;
+        End;
+      End Else Begin
+        setlength(result, high(result));
+        Continue;
+      End;
 
-      // TODO: Maybe implement a more "Robust" method to get the subnet mask ??
-      tmp := copy(sl[i + 1], pos(':', sl[i]) + 1, length(sl[i]));
-      result[high(result)].SubnetMask := tmp;
-
-      result[high(result)].AdapterName := 'Could not resolve adapter name';
-      For j := i Downto 1 Do Begin
-        If trim(sl[j]) = '' Then Begin
-          tmp := sl[j - 1];
-          tmp := copy(tmp, 1, pos(':', tmp) - 1);
-          If tmp <> '' Then Begin
-            result[high(result)].AdapterName := tmp;
+      // Try to find subnet mask in next few lines
+      result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
+      For j := i + 1 To min(i + 5, sl.Count - 1) Do Begin
+        If (pos('Subnet Mask', sl[j]) <> 0) Or (pos('Subnetmaske', sl[j]) <> 0) Then Begin
+          tmp := sl[j];
+          k := length(tmp);
+          While (k > 0) And (tmp[k] <> ':') Do
+            dec(k);
+          If k > 0 Then Begin
+            tmp := copy(tmp, k + 1, length(tmp));
+            result[high(result)].SubnetMask := trim(tmp);
           End;
           break;
+        End;
+      End;
+
+      // Find adapter name - look backwards for adapter name (usually before "IPv4" line)
+      result[high(result)].AdapterName := 'unknown';
+      For j := i Downto max(1, i - 10) Do Begin
+        If trim(sl[j]) = '' Then Begin
+          If j > 0 Then Begin
+            tmp := trim(sl[j - 1]);
+            // Adapter name is usually on a line ending with ":"
+            If (pos(':', tmp) <> 0) And (pos('IPv4', tmp) = 0) Then Begin
+              tmp := copy(tmp, 1, pos(':', tmp) - 1);
+              If tmp <> '' Then Begin
+                result[high(result)].AdapterName := trim(tmp);
+              End;
+              break;
+            End;
+          End;
         End;
       End;
     End;

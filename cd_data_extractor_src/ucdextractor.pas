@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit ucdextractor;
 
 {$MODE ObjFPC}{$H+}
@@ -478,11 +483,17 @@ Function CheckFPCAtomicFolder(aFolder: String): boolean;
 Var
   s: String;
 Begin
+{$IFDEF Darwin}
+  // On macOS, check for FPCAtomic.app bundle
+  s := 'FPCAtomic.app';
+  result := DirectoryExists(IncludeTrailingPathDelimiter(aFolder) + s);
+{$ELSE}
   s := 'fpc_atomic';
 {$IFDEF Windows}
   s := s + '.exe';
 {$ENDIF}
   result := FileExists(IncludeTrailingPathDelimiter(aFolder) + s);
+{$ENDIF}
 End;
 
 (*
@@ -511,6 +522,58 @@ End;
  * this is more or less only needed on Linux (Case sensitive) systems.
  * if match is not found result will be ''
  *)
+
+(*
+ * Fixes ANI files that have leading whitespace by removing it and creating a corrected version
+ * Returns the path to the corrected file (or original if no fix was needed)
+ *)
+Function FixAniFileIfNeeded(Const AniFilename: String): String;
+Var
+  fs: TFileStream;
+  firstByte: Byte;
+  correctedFilename: String;
+  correctedStream: TFileStream;
+  buffer: Array[0..1023] Of Byte;
+  bytesRead: Integer;
+Begin
+  result := AniFilename;
+  If Not FileExists(AniFilename) Then Begin
+    exit;
+  End;
+  // Check if file starts with whitespace (0x20 = space)
+  fs := TFileStream.Create(AniFilename, fmOpenRead);
+  Try
+    If fs.Size < 11 Then Begin
+      exit; // File too small
+    End;
+    fs.Read(firstByte, 1);
+    If firstByte <> $20 Then Begin
+      exit; // No leading space, file is OK
+    End;
+    // File has leading space, create corrected version
+    correctedFilename := ChangeFileExt(AniFilename, '') + '-corrected' + ExtractFileExt(AniFilename);
+    If FileExists(correctedFilename) Then Begin
+      // Corrected file already exists, use it
+      result := correctedFilename;
+      exit;
+    End;
+    // Create corrected file (skip first byte)
+    fs.Position := 1; // Skip the leading space
+    correctedStream := TFileStream.Create(correctedFilename, fmCreate);
+    Try
+      While fs.Position < fs.Size Do Begin
+        bytesRead := fs.Read(buffer[0], SizeOf(buffer));
+        correctedStream.Write(buffer[0], bytesRead);
+      End;
+      AddLog('  Fixed ANI file (removed leading space): ' + ExtractFileName(AniFilename) + ' -> ' + ExtractFileName(correctedFilename));
+      result := correctedFilename;
+    Finally
+      correctedStream.Free;
+    End;
+  Finally
+    fs.Free;
+  End;
+End;
 
 Function GetFileByMatch(Folder, Match: String): String;
 Var
@@ -573,6 +636,8 @@ Begin
     AddLog('  Error: could not find: ' + Job.SourceAni);
     exit;
   End;
+  // Fix ANI file if it has leading whitespace
+  AniFilename := FixAniFileIfNeeded(AniFilename);
   ani := TAniFile.Create();
   If Not ani.LoadFromFile(AniFilename) Then Begin
     ani.free;

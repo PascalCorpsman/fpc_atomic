@@ -44,6 +44,11 @@
 (*               0.16 - Disconnect socket instead of raising AV on error      *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uChunkmanager;
 
 {$MODE objfpc}{$H+}
@@ -62,7 +67,7 @@ Unit uChunkmanager;
 Interface
 
 Uses
-  Classes, SysUtils, lnet, ufifo
+  Classes, SysUtils, lnet, ufifo, uthreadsafequeue
 {$IFDEF UseLogger}
   , ulogger
 {$ENDIF}
@@ -89,6 +94,19 @@ Type
    * TChunk.Data darf nicht freigegeben werden. Die Daten müssen weg Kopiert werden, da sie nach dem Aufruf nicht mehr gültig sind.
    *)
   TOnReceivedChunk = Procedure(Sender: TObject; Const Chunk: TChunk) Of Object;
+
+  // Forward declaration
+  TChunkManager = Class;
+
+  { TNetworkThread - Dedicated thread for network processing }
+  TNetworkThread = Class(TThread)
+  private
+    fChunkManager: TChunkManager;
+  protected
+    Procedure Execute; override;
+  public
+    Constructor Create(AChunkManager: TChunkManager);
+  End;
 
   { TChunkManager
 
@@ -120,6 +138,10 @@ Type
 
     FOnReceivedChunk: TOnReceivedChunk; // Eventhandler für received Chunks
     fconnection: TLTcp; // the connection to which we were bind
+    
+    // Network thread support
+    fIncomingQueue: specialize TThreadSafeQueue<TChunk>; // Queue for incoming chunks from network thread
+    fNetworkThread: TNetworkThread; // Dedicated thread for network processing
 
     (*
      * Captured Events
@@ -211,11 +233,44 @@ Type
      * der TLTCPComponent ist der Aufruf nicht notwendig, bzw füht ins Leere, da hier der LCLEventer das ganze abhandelt.
      *)
     Procedure CallAction();
+    
+    (*
+     * Network thread management
+     * StartNetworkThread: Creates and starts a dedicated thread for network processing
+     * StopNetworkThread: Stops and frees the network thread
+     * ProcessIncomingChunks: Processes all pending chunks from the network thread (call from main thread!)
+     *)
+    Procedure StartNetworkThread();
+    Procedure StopNetworkThread();
+    Procedure ProcessIncomingChunks();
   End;
 
 Implementation
 
 Uses math;
+
+{ TNetworkThread }
+
+Constructor TNetworkThread.Create(AChunkManager: TChunkManager);
+Begin
+  Inherited Create(False); // Start immediately
+  FreeOnTerminate := False; // We'll free it manually
+  fChunkManager := AChunkManager;
+End;
+
+Procedure TNetworkThread.Execute;
+Begin
+  While Not Terminated Do Begin
+    // Process all pending network events
+    If Assigned(fChunkManager) Then Begin
+      fChunkManager.CallAction();
+    End;
+    
+    // Sleep for 5ms to avoid busy-wait
+    // This gives ~200 network updates per second
+    Sleep(5);
+  End;
+End;
 
 Const
 {$IFDEF UseMagicHeader}
@@ -291,6 +346,8 @@ Begin
   Funique_counter := 1; // 0 ist "ungültige" id
   fIsServer := false;
   fconnection := Nil;
+  fIncomingQueue := specialize TThreadSafeQueue<TChunk>.Create;
+  fNetworkThread := Nil;
 {$IFDEF UseLogger}
   logleave;
 {$ENDIF}
@@ -301,10 +358,12 @@ Begin
 {$IFDEF UseLogger}
   log('TChunkManager.destroy', llTrace);
 {$ENDIF}
+  StopNetworkThread();
   If Connected Then Begin
     Disconnect(true);
   End;
   RegisterConnection(Nil); // Löschen aller alten Captures..
+  fIncomingQueue.Free;
 {$IFDEF UseLogger}
   logleave;
 {$ENDIF}
@@ -481,11 +540,26 @@ Begin
             exit;
           End;
           If assigned(fOnReceivedChunk) Then Begin
-            pu^.RecvBuf.Data.Position := 0;
-            Chunk.Data := pu^.RecvBuf.Data;
-            Chunk.UID := pu^.UID;
-            Chunk.UserDefinedID := pu^.RecvBuf.UserDefinedId;
-            fOnReceivedChunk(self, Chunk);
+            // If network thread is running, enqueue the chunk for processing in main thread
+            // Otherwise, call the callback directly (legacy behavior)
+            If Assigned(fNetworkThread) Then Begin
+              // Create a copy of the data for the queue
+              Chunk.Data := TMemoryStream.Create;
+              pu^.RecvBuf.Data.Position := 0;
+              Chunk.Data.CopyFrom(pu^.RecvBuf.Data, pu^.RecvBuf.Data.Size);
+              Chunk.Data.Position := 0;
+              Chunk.UID := pu^.UID;
+              Chunk.UserDefinedID := pu^.RecvBuf.UserDefinedId;
+              fIncomingQueue.Enqueue(Chunk);
+            End
+            Else Begin
+              // Legacy mode: direct callback (no network thread)
+              pu^.RecvBuf.Data.Position := 0;
+              Chunk.Data := pu^.RecvBuf.Data;
+              Chunk.UID := pu^.UID;
+              Chunk.UserDefinedID := pu^.RecvBuf.UserDefinedId;
+              fOnReceivedChunk(self, Chunk);
+            End;
           End;
           // Wenn fOnReceivedChunk Chunkmanager.Disconnect aufruft, dann ist der Pointer nicht mehr gültig, weil schon freigegeben !
           If assigned(asocket.UserData) Then Begin
@@ -885,11 +959,14 @@ End;
 Procedure TChunkManager.SetNoDelay(Value: Boolean);
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.SetNoDelay', llTrace);
+  log('TChunkManager.SetNoDelay : ' + BoolToStr(Value, True), llTrace);
 {$ENDIF}
   fconnection.IterReset;
-  fconnection.Iterator.SetState(ssNoDelay, Value);
-  While fconnection.IterNext Do Begin // Skipt Root Socket
+  // Enable TCP_NODELAY on all platforms (including macOS/Darwin)
+  // This disables Nagle's algorithm to reduce latency for real-time games
+  If Assigned(fconnection.Iterator) Then
+    fconnection.Iterator.SetState(ssNoDelay, Value);
+  While fconnection.IterNext Do Begin // Skip Root Socket
     fconnection.Iterator.SetState(ssNoDelay, Value);
   End;
 {$IFDEF UseLogger}
@@ -901,6 +978,55 @@ Procedure TChunkManager.CallAction;
 Begin
   If assigned(fconnection) Then Begin
     fconnection.CallAction;
+  End;
+End;
+
+Procedure TChunkManager.StartNetworkThread();
+Begin
+{$IFDEF UseLogger}
+  log('TChunkManager.StartNetworkThread', llTrace);
+{$ENDIF}
+  If Not Assigned(fNetworkThread) Then Begin
+    fNetworkThread := TNetworkThread.Create(Self);
+{$IFDEF UseLogger}
+    log('Network thread started', llInfo);
+{$ENDIF}
+  End;
+{$IFDEF UseLogger}
+  logleave;
+{$ENDIF}
+End;
+
+Procedure TChunkManager.StopNetworkThread();
+Begin
+{$IFDEF UseLogger}
+  log('TChunkManager.StopNetworkThread', llTrace);
+{$ENDIF}
+  If Assigned(fNetworkThread) Then Begin
+    fNetworkThread.Terminate;
+    fNetworkThread.WaitFor;
+    fNetworkThread.Free;
+    fNetworkThread := Nil;
+{$IFDEF UseLogger}
+    log('Network thread stopped', llInfo);
+{$ENDIF}
+  End;
+{$IFDEF UseLogger}
+  logleave;
+{$ENDIF}
+End;
+
+Procedure TChunkManager.ProcessIncomingChunks();
+Var
+  Chunk: TChunk;
+Begin
+  // Process all pending chunks from the network thread
+  While fIncomingQueue.Dequeue(Chunk) Do Begin
+    If assigned(fOnReceivedChunk) Then Begin
+      fOnReceivedChunk(self, Chunk);
+    End;
+    // Free the data stream (it was created in OnReceive as a copy)
+    Chunk.Data.Free;
   End;
 End;
 

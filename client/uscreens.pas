@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uscreens;
 
 {$MODE ObjFPC}{$H+}
@@ -95,6 +100,7 @@ Type
   TJoinMenu = Class(TScreen)
   private
     fPlayerInfoString: String; // Die Spieler die Gerade auch eingewählt sind.
+    fServerIP: String; // Server IP address (for display when hosting)
 
   public
     Connected: Boolean;
@@ -102,6 +108,7 @@ Type
 
     Constructor Create(Owner: TObject); override;
     Procedure LoadPlayerdata(Const PlayerData: Array Of TPlayer);
+    Procedure SetServerIP(Const IP: String); // Set server IP address for display
     Procedure Render; override;
     Procedure Reset; override;
   End;
@@ -227,6 +234,8 @@ Uses LCLType, Math, Graphics, Dialogs, forms, StdCtrls, fileutil, StrUtils
   , ugraphics
   , ugame
   , ukeyboarddialog
+  , uip // For GetLocalIPs() to get server IP address
+  , sdl2 // For SDL joystick functions
   ;
 
 Type
@@ -256,6 +265,8 @@ Type
     Label2: TLabel;
     Button1: TButton;
     Button2: TButton;
+    Procedure EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
   public
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
   End;
@@ -309,6 +320,7 @@ Begin
   Button1.Parent := self;
   Button1.caption := 'OK';
   Button1.ModalResult := mrOK;
+  Button1.Default := True; // Make Enter key trigger this button (when focus is on button)
   Button1.Top := 128;
   Button1.Left := 229;
 
@@ -317,8 +329,46 @@ Begin
   Button2.Parent := self;
   Button2.caption := 'Cancel';
   Button2.ModalResult := mrCancel;
+  Button2.Cancel := True; // Make Esc key trigger this button
   Button2.Top := 128;
   Button2.Left := 16;
+  
+  // Add keyboard support: Enter = OK everywhere
+  // Set handlers on Edit fields to catch Enter when focus is in Edit
+  Edit1.OnKeyDown := @EditKeyDown;
+  Edit2.OnKeyDown := @EditKeyDown;
+  // Set handler on form to catch Enter when focus is on form (not on Edit or Button)
+  OnKeyDown := @FormKeyDown;
+  KeyPreview := True; // Enable form-level key handling
+End;
+
+Procedure TJoinQuestionForm.EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Begin
+  If key = VK_RETURN Then Begin
+    // Enter in Edit field = OK button
+    // Strategy: Set focus to OK button, then trigger it programmatically
+    Key := 0; // Prevent default behavior (newline in Edit)
+    Button1.SetFocus; // Focus the OK button first
+    // Now trigger the button click programmatically
+    Button1.Click; // This will set ModalResult := mrOK and close the form
+  End;
+  // Esc is handled automatically by Button2.Cancel := True
+End;
+
+Procedure TJoinQuestionForm.FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Begin
+  If key = VK_RETURN Then Begin
+    // Enter on form (when focus is NOT on Button1) = OK button
+    // Strategy: Set focus to OK button, then trigger it programmatically
+    If ActiveControl <> Button1 Then Begin
+      Key := 0; // Prevent default behavior
+      Button1.SetFocus; // Focus the OK button first
+      // Now trigger the button click programmatically
+      Button1.Click; // This will set ModalResult := mrOK and close the form
+    End;
+    // If focus is on Button1, let default behavior (Default := True) handle it
+  End;
+  // Esc is handled automatically by Button2.Cancel := True
 End;
 
 { TVictoryMenu }
@@ -738,29 +788,16 @@ Begin
    * Siehe TPlayer.UID
    *)
   For i := 0 To high(fPlayerDetails) Do Begin
-    If PlayerData[i].UID = Uid Then Begin
-      If PlayerData[i].Keyboard = ks0 Then Begin
-        fPlayerDetails[i].PlayerData := 'key 0';
-      End
-      Else Begin
-        fPlayerDetails[i].PlayerData := 'key 1';
-      End;
-      //fCursorPos := i; // Das geht leider nicht, da sonst der Cursor merkwürdig Springt wenn der Spieler 2 mal eingestellt ist..
+    // Always show the input method label for ks0/ks1/ksJoy1/ksJoy2; OFF/AI for special states
+    If PlayerData[i].UID = NoPlayer Then Begin
+      fPlayerDetails[i].PlayerData := 'OFF';
+    End
+    Else If PlayerData[i].UID = AIPlayer Then Begin
+      fPlayerDetails[i].PlayerData := 'AI';
     End
     Else Begin
-      If PlayerData[i].UID > 0 Then Begin
-        fPlayerDetails[i].PlayerData := PlayerData[i].UserName; // 'NET'; -- The Orig Game shows at this place only a "NET" entry
-      End
-      Else Begin
-        If PlayerData[i].UID = NoPlayer Then Begin
-          fPlayerDetails[i].PlayerData := 'OFF';
-        End
-        Else Begin
-          If PlayerData[i].UID = AIPlayer Then Begin
-            fPlayerDetails[i].PlayerData := 'AI';
-          End;
-        End;
-      End;
+      // Player assigned; display the control mapping label (keyboard, game controller, or joystick)
+      fPlayerDetails[i].PlayerData := TGame(fOwner).GetKeySetDisplayName(PlayerData[i].Keyboard);
     End;
   End;
 End;
@@ -773,8 +810,9 @@ End;
 
 Procedure TPlayerSetupMenu.Render;
 Var
-  i: Integer;
+  i, numJoy, joyIndex: Integer;
   s: String;
+  joyName: PAnsiChar;
 Begin
   Inherited Render;
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -807,6 +845,44 @@ Begin
     s := format('              %s', [fPlayerDetails[i].PlayerData]);
     AtomicFont.Textout(60 + 20, 37 + (i + 1) * 28 + 50, s);
   End;
+  
+  // Display available joysticks on the right side (moved left, formatted on multiple lines)
+  AtomicFont.Color := clwhite;
+  AtomicFont.BackColor := clBlack;
+  AtomicFont.Textout(300, 37 + 40, 'Available Joysticks:');
+  try
+    If Assigned(SDL_NumJoysticks) Then Begin
+      numJoy := SDL_NumJoysticks();
+      For joyIndex := 0 To numJoy - 1 Do Begin
+        try
+          // Display "Joy X" on one line
+          s := format('Joy %d', [joyIndex + 1]);
+          AtomicFont.Textout(300 + 20, 37 + (joyIndex * 2 + 2) * 28 + 50, s);
+          // Display controller name on next line
+          If Assigned(SDL_JoystickNameForIndex) Then Begin
+            joyName := SDL_JoystickNameForIndex(joyIndex);
+            If Assigned(joyName) Then Begin
+              s := String(joyName);
+            End
+            Else Begin
+              s := 'Unknown';
+            End;
+          End
+          Else Begin
+            s := 'Unknown';
+          End;
+          AtomicFont.Textout(300 + 20, 37 + (joyIndex * 2 + 3) * 28 + 50, s);
+        except
+          // On error, still show "Joy X"
+          s := format('Joy %d', [joyIndex + 1]);
+          AtomicFont.Textout(300 + 20, 37 + (joyIndex * 2 + 2) * 28 + 50, s);
+        end;
+      End;
+    End;
+  except
+    // SDL not loaded or error, don't display joysticks
+  end;
+  
   // Reset am ende
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
@@ -846,6 +922,7 @@ Begin
   fBackFile := 'join.png';
   fSoundFile := 'join_sound.wav';
   fCursorFile := '';
+  fServerIP := '';
 End;
 
 Procedure TJoinMenu.LoadPlayerdata(Const PlayerData: Array Of TPlayer);
@@ -860,7 +937,14 @@ Begin
   End;
 End;
 
+Procedure TJoinMenu.SetServerIP(Const IP: String);
+Begin
+  fServerIP := IP;
+End;
+
 Procedure TJoinMenu.Render;
+Var
+  serverInfo: String;
 Begin
   Inherited Render;
   glPushMatrix;
@@ -869,6 +953,14 @@ Begin
   AtomicFont.color := $00EAE556;
   AtomicFont.BackColor := clBlack;
   AtomicFont.Textout(100, 50, 'Our Nodename is: ''' + Tgame(fOwner).Settings.NodeName + '''');
+  
+  // Display server IP address if available (when hosting)
+  If fServerIP <> '' Then Begin
+    serverInfo := 'Server IP: ' + fServerIP + ':' + Tgame(fOwner).Settings.Router_Port;
+    AtomicFont.color := clLime; // Green color for server IP
+    AtomicFont.Textout(100, 75, serverInfo);
+  End;
+  
   If Connected Then Begin
     // Der Server hat unseren Login Versuch Grundsätzlich aktzeptiert
     // Wir zeigen nun die Infos der Spieler an, bis der 1. Spieler in den Nächsten Screen umschaltet
@@ -1107,7 +1199,16 @@ Begin
     Case fCursorPos Of
       0: logshow('Not yet implemented.', llinfo); // TAtomic(fOwner).SwitchToScreen(); -- Single Player
       1: TGame(fOwner).SwitchToScreen(sHost);
-      2: TGame(fOwner).SwitchToScreen(sJoinNetwork);
+      2: Begin
+          // Join Network Game - open IP/Port dialog (same as pressing J)
+          f := TJoinQuestionForm.CreateNew(Nil, 0);
+          f.Edit1.Text := TGame(fOwner).Settings.Router_IP;
+          f.Edit2.Text := TGame(fOwner).Settings.Router_Port;
+          If f.ShowModal = mrOK Then Begin
+            TGame(fOwner).JoinViaParams(f.Edit1.Text, strtointdef(f.Edit2.Text, 9876));
+          End;
+          f.free;
+        End;
       3: TGame(fOwner).SwitchToScreen(sOptions);
       4: logshow('Not yet implemented.', llinfo); //TGame(fOwner).SwitchToScreen(); -- About Bomberman
       5: logshow('Not yet implemented.', llinfo); //TGame(fOwner).SwitchToScreen(); -- Online Manual

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>FPC Atomic Server</string>
+  <key>CFBundleDisplayName</key>
+  <string>FPC Atomic Server</string>
+  <key>CFBundleIdentifier</key>
+  <string>cz.pavelzverina.fpcatomic.server</string>
+  <key>CFBundleVersion</key>
+  <string>0.12009</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.12009</string>
+  <key>CFBundleExecutable</key>
+  <string>run_server</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+</dict>
+</plist>
+
+
+

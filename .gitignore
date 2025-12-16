@@ -1,5 +1,16 @@
 # Source: https://github.com/github/gitignore/blob/main/Global/Lazarus.gitignore
 
+# Exception: Required libraries in bin/ directory for CI/CD builds
+# These are downloaded from GitHub releases and needed for linking
+# Must be before the global *.dll, *.so rules
+!bin/libbass.so
+!bin/libai.so
+!bin/bass.dll
+!bin/ai.dll
+!bin/SDL2.dll
+!bin/Linux_sound_install_script.sh
+!bin/fpc_atomic.version
+
 # Lazarus compiler-generated binaries (safe to delete)
 *.exe
 *.dll
@@ -27,12 +38,32 @@
 backup/
 *.bak
 lib/
-release/
 
 # Application bundle for Mac OS
 *.app/
+
+# Full game data - for flyio server
+flyio_server/data/
 
 # Atomic files
 server/stats.txt
 stats.txt
 
+.env
+macos/app_arm64/data
+macos/app_x86_64/data
+macos/app_universal/data
+bin/macos/
+data
+
+# DMG files for distribution
+releases/
+releases/*.dmg
+releases/*.temp.dmg
+
+# Notarization temporary files
+*.zip
+!*.lpi
+
+# Fly.io secrets (keep your own secrets private)
+# Note: fly.toml is now committed with placeholder, actual app name comes from .env

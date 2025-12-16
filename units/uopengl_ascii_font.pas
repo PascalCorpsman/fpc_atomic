@@ -47,6 +47,11 @@
 (*  !! Gilt seit ver 0.02 nicht mehr !!                                       *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uOpenGL_ASCII_Font;
 
 {$MODE ObjFPC}{$H+}
@@ -59,7 +64,11 @@ Uses
   uvectormath, // http://corpsman.de/index.php?doc=opengl/opengl_graphikengine
   LConvEncoding,
   uopengl_font_common,
-  math;
+  math
+{$IFDEF Windows}
+  , uearlylog // For debug logging on Windows
+{$ENDIF}
+  ;
 
 Type
 
@@ -182,8 +191,18 @@ Var
 Begin
   If Assigned(OpenGL_ASCII_Font) Then OpenGL_ASCII_Font.free;
   Bitmap := TBitmap.Create;
-  bitmap.LoadFromLazarusResource('OpenGLFont');
-  OpenGL_ASCII_Font := TOpenGL_ASCII_Font.Create(bitmap, 8, 12, 256);
+  Try
+    bitmap.LoadFromLazarusResource('OpenGLFont');
+    OpenGL_ASCII_Font := TOpenGL_ASCII_Font.Create(bitmap, 8, 12, 256);
+  Except
+    On E: Exception Do Begin
+      // Log error but don't crash - font might not be critical
+      WriteLn('ERROR: Failed to load OpenGLFont resource: ', E.Message);
+      WriteLn('Font will not be available');
+      bitmap.Free;
+      exit;
+    End;
+  End;
   bitmap.Free;
 End;
 
@@ -285,9 +304,21 @@ Var
   light: Boolean;
   //  f: GLfloat;  <-- Alte Variante mittels glPoints
   currentColor: TVector4;
+  textureEnabled: Boolean;
 Begin
   //  glGetFloatv(GL_POINT_SIZE, @f); // Bakup der Point Size, diese wird hier Verändert !!  <-- Alte Variante mittels glPoints
   light := glIsEnabled(GL_LIGHTING);
+  textureEnabled := glIsEnabled(GL_TEXTURE_2D);
+{$IFDEF Windows}
+  // Log OpenGL state on Windows for debugging (only for loading dialog text to avoid spam)
+  If (Pos('Loading', Text) > 0) Or (Pos('%', Text) > 0) Then Begin
+    Try
+      uearlylog.EarlyLog('Textout: Text="' + Text + '" x=' + IntToStr(x) + ' y=' + IntToStr(y) + ' GL_LIGHTING=' + BoolToStr(light, true) + ' GL_TEXTURE_2D=' + BoolToStr(textureEnabled, true));
+    Except
+      // Ignore errors in logging - don't crash the app
+    End;
+  End;
+{$ENDIF}
   If light Then Begin
     glDisable(GL_LIGHTING); // Deaktivieren der Beleuchtung, die können wir hier nun wirklich nicht gebrauchen..
   End;

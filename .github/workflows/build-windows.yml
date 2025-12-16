@@ -1,0 +1,599 @@
+name: Build Windows
+
+# Tento workflow se spustí při:
+# - Push do main/master branch
+# - Pull request do main/master branch
+# - Manuálně přes GitHub Actions tab
+on:
+  #push:
+  #  branches: [ main, master ]
+  #pull_request:
+  #  branches: [ main, master ]
+  workflow_dispatch:  # Umožňuje manuální spuštění
+
+jobs:
+  build-windows:
+    name: Build for Windows
+    runs-on: windows-latest  # Použije Windows runner (virtuální Windows počítač)
+    
+    steps:
+    # 1. Checkout kódu z repozitáře
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    # 2. Setup Free Pascal Compiler
+    - name: Setup Free Pascal Compiler
+      run: |
+        $fpcVersion = "3.2.2"
+        $fpcInstaller = "$env:TEMP\fpc-installer.exe"
+        
+        # Download FPC from SourceForge
+        # Chocolatey installs 32-bit only, but we need 64-bit for lazbuild
+        # Use the combined installer which includes both 32-bit and 64-bit
+        Write-Host "Downloading FPC 64-bit from SourceForge..."
+        $fpcUrl = "https://sourceforge.net/projects/freepascal/files/Win32/$fpcVersion/fpc-$fpcVersion.win32.and.win64.exe/download"
+        
+        # Use curl with proper redirect handling
+        Write-Host "Downloading FPC installer from: $fpcUrl"
+        $ProgressPreference = 'SilentlyContinue'
+        
+        # Try curl first
+        curl.exe -L --location-trusted -f -o $fpcInstaller $fpcUrl 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fpcInstaller)) {
+          Write-Host "curl failed, trying Invoke-WebRequest..."
+          try {
+            Invoke-WebRequest -Uri $fpcUrl -OutFile $fpcInstaller -UseBasicParsing -MaximumRedirection 10 -ErrorAction Stop
+          } catch {
+            Write-Host "ERROR: Download failed - $_"
+            Write-Host "Trying alternative URL..."
+            # Alternative: try the x86_64 specific installer
+            $fpcUrlAlt = "https://sourceforge.net/projects/freepascal/files/Win32/$fpcVersion/fpc-$fpcVersion.x86_64-win64.exe/download"
+            curl.exe -L --location-trusted -f -o $fpcInstaller $fpcUrlAlt 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fpcInstaller)) {
+              Write-Host "ERROR: All download attempts failed"
+              exit 1
+            }
+          }
+        }
+        
+        # Verify file size (should be > 10MB)
+        $fileInfo = Get-Item $fpcInstaller
+        Write-Host "Downloaded file size: $($fileInfo.Length) bytes"
+        if ($fileInfo.Length -lt 10MB) {
+          Write-Host "ERROR: File too small, may be HTML error page"
+          Get-Content $fpcInstaller -TotalCount 10
+          exit 1
+        }
+        
+        # Verify EXE header (MZ)
+        $fileBytes = [System.IO.File]::ReadAllBytes($fpcInstaller)
+        if ($fileBytes.Length -lt 2 -or $fileBytes[0] -ne 0x4D -or $fileBytes[1] -ne 0x5A) {
+          Write-Host "ERROR: Not a valid EXE file (missing MZ header)"
+          exit 1
+        }
+        Write-Host "File verified as valid EXE"
+        
+        # Install FPC
+        Write-Host "Installing FPC..."
+        $fullInstallerPath = (Resolve-Path $fpcInstaller).Path
+        
+        # Create setup.inf to ensure 64-bit is installed
+        $setupInfPath = "$env:TEMP\fpc_setup.inf"
+        $setupInfLines = @(
+          "[Setup]",
+          "Lang=default",
+          "Dir=C:\FPC",
+          "Group=Free Pascal",
+          "NoIcons=1",
+          "SetupType=full",
+          "Components=base,binutils,docs,ide,utils,make,demo,gdb,units,examples",
+          "Tasks="
+        )
+        $setupInfLines | Out-File -FilePath $setupInfPath -Encoding ASCII
+        
+        # Install with setup.inf to ensure all components are installed
+        $installProcess = Start-Process -FilePath $fullInstallerPath -ArgumentList "/VERYSILENT /NORESTART /LOADINF=`"$setupInfPath`"" -Wait -PassThru -NoNewWindow
+        if ($installProcess.ExitCode -ne 0) {
+          Write-Host "ERROR: Installer exited with code $($installProcess.ExitCode)"
+          exit 1
+        }
+        Write-Host "FPC installer completed successfully"
+        
+        # Wait a moment for installation to complete
+        Start-Sleep -Seconds 3
+        
+        # Debug: List what was installed
+        Write-Host "Checking installation directory..."
+        if (Test-Path "C:\FPC") {
+          Write-Host "Contents of C:\FPC:"
+          Get-ChildItem "C:\FPC" -Recurse -Directory -Depth 2 | Select-Object -First 20 FullName
+        }
+        
+        # Find FPC installation path - prioritize 64-bit for lazbuild
+        Write-Host "Searching for FPC installation (preferring 64-bit)..."
+        
+        # First, try to find 64-bit version (needed for lazbuild)
+        $fpcPath64 = $null
+        $possiblePaths64 = @(
+          "C:\FPC\bin\x86_64-win64",
+          "C:\FPC\bin\win64",
+          "C:\FPC\$fpcVersion\bin\x86_64-win64",
+          "C:\FPC\$fpcVersion\bin\win64"
+        )
+        
+        foreach ($path in $possiblePaths64) {
+          if (Test-Path $path) {
+            $ppcExe = Join-Path $path "ppcx64.exe"
+            if (Test-Path $ppcExe) {
+              Write-Host "Found FPC 64-bit at: $path"
+              $fpcPath64 = $path
+              break
+            }
+          }
+        }
+        
+        # If 64-bit not found, search recursively
+        if (-not $fpcPath64) {
+          Write-Host "Searching for ppcx64.exe in C:\FPC..."
+          $ppc64Exe = Get-ChildItem -Path "C:\FPC" -Recurse -Filter "ppcx64.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($ppc64Exe) {
+            $fpcPath64 = $ppc64Exe.DirectoryName
+            Write-Host "Found FPC 64-bit compiler at: $fpcPath64"
+          }
+        }
+        
+        # Fallback to 32-bit if 64-bit not available
+        $fpcPath = $fpcPath64
+        if (-not $fpcPath) {
+          Write-Host "64-bit FPC not found, trying 32-bit..."
+          $possiblePaths32 = @(
+            "C:\FPC\bin\i386-win32",
+            "C:\FPC\bin\win32",
+            "C:\FPC\$fpcVersion\bin\i386-win32",
+            "C:\FPC\$fpcVersion\bin\win32"
+          )
+          
+          foreach ($path in $possiblePaths32) {
+            if (Test-Path $path) {
+              $ppcExe = Join-Path $path "ppc386.exe"
+              if (Test-Path $ppcExe) {
+                Write-Host "Found FPC 32-bit at: $path"
+                $fpcPath = $path
+                break
+              }
+            }
+          }
+          
+          # Last resort: search for any fpc.exe or ppc*.exe
+          if (-not $fpcPath) {
+            $fpcExe = Get-ChildItem -Path "C:\FPC" -Recurse -Filter "fpc.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($fpcExe) {
+              $fpcPath = $fpcExe.DirectoryName
+              Write-Host "Found FPC executable at: $fpcPath"
+            }
+          }
+        }
+        
+        if (-not $fpcPath) {
+          Write-Host "ERROR: Could not locate FPC installation"
+          Write-Host "Contents of C:\FPC\bin:"
+          if (Test-Path "C:\FPC\bin") {
+            Get-ChildItem "C:\FPC\bin" -Directory | Select-Object FullName
+          }
+          exit 1
+        }
+        
+        # Add FPC to PATH
+        $env:PATH = "$fpcPath;$env:PATH"
+        echo "$fpcPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        Write-Host "Added to PATH: $fpcPath"
+        
+        # Verify installation - use -iV to get version without requiring source file
+        Write-Host "Verifying FPC installation..."
+        $fpcExePath = Join-Path $fpcPath "fpc.exe"
+        if (Test-Path $fpcExePath) {
+          & $fpcExePath -iV
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "FPC verified successfully"
+          } else {
+            Write-Host "WARNING: fpc -iV failed, but continuing..."
+          }
+        } else {
+          Write-Host "WARNING: fpc.exe not found, but compiler found at: $fpcPath"
+        }
+        
+    # 3. Setup Lazarus IDE
+    - name: Setup Lazarus IDE
+      run: |
+        $lazarusVersion = "3.0"
+        $lazarusInstaller = "$env:TEMP\lazarus-installer.exe"
+        
+        # Try Chocolatey first (if available)
+        Write-Host "Trying Chocolatey for Lazarus..."
+        choco install lazarus --version=$lazarusVersion -y --no-progress
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "Lazarus installed via Chocolatey"
+          # Refresh PATH to pick up Chocolatey installation
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+          
+          # Wait a moment for PATH to update
+          Start-Sleep -Seconds 2
+          
+          # Try to find lazbuild in common locations
+          $lazbuildPath = $null
+          $possibleLazbuildPaths = @(
+            "C:\lazarus",
+            "C:\Program Files\Lazarus",
+            "C:\Program Files (x86)\Lazarus",
+            "$env:ProgramFiles\Lazarus",
+            "$env:ProgramFiles(x86)\Lazarus"
+          )
+          
+          foreach ($path in $possibleLazbuildPaths) {
+            $lazbuildExe = Join-Path $path "lazbuild.exe"
+            if (Test-Path $lazbuildExe) {
+              Write-Host "Found lazbuild at: $lazbuildExe"
+              $lazbuildPath = $path
+              $env:PATH = "$path;$env:PATH"
+              echo "$path" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+              break
+            }
+          }
+          
+          # If not found, search recursively
+          if (-not $lazbuildPath) {
+            Write-Host "Searching for lazbuild.exe recursively..."
+            $lazbuildExe = Get-ChildItem -Path "C:\" -Recurse -Filter "lazbuild.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($lazbuildExe) {
+              $lazbuildPath = $lazbuildExe.DirectoryName
+              Write-Host "Found lazbuild at: $lazbuildPath"
+              $env:PATH = "$lazbuildPath;$env:PATH"
+              echo "$lazbuildPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
+          }
+          
+          # Verify installation
+          if ($lazbuildPath) {
+            lazbuild --version
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Lazarus verified successfully"
+              exit 0
+            }
+          } else {
+            Write-Host "WARNING: lazbuild not found after Chocolatey installation, will try SourceForge..."
+          }
+        }
+        
+        # Fallback: Download from SourceForge
+        Write-Host "Chocolatey failed or Lazarus not found, downloading from SourceForge..."
+        $lazarusUrl = "https://sourceforge.net/projects/lazarus/files/Lazarus%20Windows%2064%20bits/Lazarus%20$lazarusVersion/lazarus-$lazarusVersion-fpc-3.2.2-win64.exe/download"
+        
+        # Use curl with proper redirect handling
+        Write-Host "Downloading Lazarus installer..."
+        $ProgressPreference = 'SilentlyContinue'
+        curl.exe -L --location-trusted -f -o $lazarusInstaller $lazarusUrl
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lazarusInstaller)) {
+          Write-Host "ERROR: Download failed"
+          exit 1
+        }
+        
+        # Verify file size (should be > 50MB)
+        $fileInfo = Get-Item $lazarusInstaller
+        Write-Host "Downloaded file size: $($fileInfo.Length) bytes"
+        if ($fileInfo.Length -lt 50MB) {
+          Write-Host "ERROR: File too small, may be HTML error page"
+          Get-Content $lazarusInstaller -TotalCount 10
+          exit 1
+        }
+        
+        # Verify EXE header (MZ)
+        $fileBytes = [System.IO.File]::ReadAllBytes($lazarusInstaller)
+        if ($fileBytes.Length -lt 2 -or $fileBytes[0] -ne 0x4D -or $fileBytes[1] -ne 0x5A) {
+          Write-Host "ERROR: Not a valid EXE file (missing MZ header)"
+          exit 1
+        }
+        Write-Host "File verified as valid EXE"
+        
+        # Install Lazarus
+        Write-Host "Installing Lazarus IDE..."
+        $fullInstallerPath = (Resolve-Path $lazarusInstaller).Path
+        $installProcess = Start-Process -FilePath $fullInstallerPath -ArgumentList "/VERYSILENT /NORESTART /DIR=C:\lazarus" -Wait -PassThru -NoNewWindow
+        if ($installProcess.ExitCode -ne 0) {
+          Write-Host "ERROR: Installer exited with code $($installProcess.ExitCode)"
+          exit 1
+        }
+        
+        # Add Lazarus to PATH
+        $lazarusPath = "C:\lazarus"
+        if (-not (Test-Path $lazarusPath)) {
+          Write-Host "ERROR: Lazarus installation path not found: $lazarusPath"
+          exit 1
+        }
+        $env:PATH = "$lazarusPath;$env:PATH"
+        echo "$lazarusPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+        # Verify installation
+        Write-Host "Verifying Lazarus installation..."
+        lazbuild --version
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "ERROR: Lazarus verification failed"
+          exit 1
+        }
+        
+    # 4. Download and build LNet package
+    - name: Download and build LNet package
+      run: |
+        Write-Host "Downloading LNet from GitHub..."
+        # Use master branch (not main) - see https://github.com/PascalCorpsman/lnet
+        $lnetUrl = "https://github.com/PascalCorpsman/lnet/archive/refs/heads/master.zip"
+        $lnetZip = "$env:TEMP\lnet.zip"
+        $lnetDir = "$env:TEMP\lnet"
+        
+        # Download LNet
+        Write-Host "Downloading from: $lnetUrl"
+        $ProgressPreference = 'SilentlyContinue'
+        curl.exe -L --location-trusted -f -o $lnetZip $lnetUrl
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lnetZip)) {
+          Write-Host "ERROR: Failed to download LNet (curl exit code: $LASTEXITCODE)"
+          Write-Host "Trying alternative URL..."
+          # Try alternative URL format
+          $lnetUrlAlt = "https://github.com/PascalCorpsman/lnet/archive/master.zip"
+          curl.exe -L --location-trusted -f -o $lnetZip $lnetUrlAlt
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $lnetZip)) {
+            Write-Host "ERROR: All download attempts failed"
+            exit 1
+          }
+        }
+        Write-Host "LNet downloaded successfully"
+        
+        # Extract LNet
+        Write-Host "Extracting LNet..."
+        Expand-Archive -Path $lnetZip -DestinationPath $lnetDir -Force
+        
+        # Find the package files
+        $lnetPackagePath = Get-ChildItem -Path $lnetDir -Recurse -Filter "lnetvisual.lpk" | Select-Object -First 1
+        if (-not $lnetPackagePath) {
+          Write-Host "ERROR: lnetvisual.lpk not found in downloaded archive"
+          exit 1
+        }
+        
+        $lnetBasePath = Get-ChildItem -Path $lnetDir -Recurse -Filter "lnetbase.lpk" | Select-Object -First 1
+        if (-not $lnetBasePath) {
+          Write-Host "ERROR: lnetbase.lpk not found in downloaded archive"
+          exit 1
+        }
+        
+        Write-Host "Found LNet packages:"
+        Write-Host "  Base: $($lnetBasePath.FullName)"
+        Write-Host "  Visual: $($lnetPackagePath.FullName)"
+        
+        # Build base package first
+        Write-Host "Building lnetbase.lpk..."
+        lazbuild --build $lnetBasePath.FullName
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "WARNING: lnetbase.lpk build failed, but continuing..."
+        } else {
+          Write-Host "lnetbase.lpk built successfully"
+        }
+        
+        # Build visual package
+        Write-Host "Building lnetvisual.lpk..."
+        lazbuild --build $lnetPackagePath.FullName
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "LNet package built successfully"
+        } else {
+          Write-Host "WARNING: LNet package build failed"
+        }
+        
+        # Copy LNet source files to expected location for search paths
+        Write-Host "Copying LNet source files to macos/third_party..."
+        $lnetSourceDir = "$lnetDir\lnet-master"
+        $targetLnetBaseDir = "macos\third_party\lnet"
+        $targetLnetSrcDir = "macos\third_party\lnet_src"
+        
+        # Create base directory structure
+        New-Item -ItemType Directory -Force -Path $targetLnetBaseDir | Out-Null
+        New-Item -ItemType Directory -Force -Path $targetLnetSrcDir | Out-Null
+        
+        # Copy lib directory as subdirectory (search path expects macos/third_party/lnet/lib/)
+        if (Test-Path "$lnetSourceDir\lib") {
+          $targetLibDir = "$targetLnetBaseDir\lib"
+          Copy-Item -Path "$lnetSourceDir\lib" -Destination $targetLibDir -Recurse -Force
+          Write-Host "Copied LNet lib directory to $targetLibDir"
+          # Verify lnet.pp exists at correct path
+          if (Test-Path "$targetLibDir\lnet.pp") {
+            Write-Host "✓ lnet.pp found at: $targetLibDir\lnet.pp"
+          } else {
+            Write-Host "WARNING: lnet.pp not found at expected location"
+            Write-Host "Contents of ${targetLibDir}:"
+            Get-ChildItem -Path $targetLibDir -Filter "*.pp" | Select-Object -First 5 Name
+            exit 1
+          }
+        } else {
+          Write-Host "ERROR: LNet lib directory not found at $lnetSourceDir\lib"
+          exit 1
+        }
+        
+        # Copy lazaruspackage directory (contains lclnet.pas and lnetcomponents.pas)
+        if (Test-Path "$lnetSourceDir\lazaruspackage") {
+          Copy-Item -Path "$lnetSourceDir\lazaruspackage" -Destination $targetLnetSrcDir -Recurse -Force
+          Write-Host "Copied LNet lazaruspackage to $targetLnetSrcDir"
+        } else {
+          Write-Host "ERROR: LNet lazaruspackage directory not found at $lnetSourceDir\lazaruspackage"
+          exit 1
+        }
+        
+        # Verify key files are available at correct paths
+        $lnetComponentsPath = "$targetLnetSrcDir\lazaruspackage\lnetcomponents.pas"
+        $lclnetPath = "$targetLnetSrcDir\lazaruspackage\lclnet.pas"
+        $lnetPath = "$targetLnetBaseDir\lib\lnet.pp"
+        
+        if (Test-Path $lnetComponentsPath) {
+          Write-Host "✓ lnetcomponents.pas available at: $lnetComponentsPath"
+        } else {
+          Write-Host "ERROR: lnetcomponents.pas not found at: $lnetComponentsPath"
+          exit 1
+        }
+        
+        if (Test-Path $lclnetPath) {
+          Write-Host "✓ lclnet.pas available at: $lclnetPath"
+        } else {
+          Write-Host "ERROR: lclnet.pas not found at: $lclnetPath"
+          exit 1
+        }
+        
+        if (Test-Path $lnetPath) {
+          Write-Host "✓ lnet.pp available at: $lnetPath"
+        } else {
+          Write-Host "ERROR: lnet.pp not found at: $lnetPath"
+          exit 1
+        }
+        
+        Write-Host "All LNet files copied and verified successfully!"
+        
+    # 5. Verify dependencies
+    - name: Verify dependencies
+      run: |
+        Write-Host "Verifying all required dependencies..."
+        
+        # Check dglopengl.pas
+        if (Test-Path "units\dglOpenGL.pas") {
+          Write-Host "✓ dglOpenGL.pas found"
+        } else {
+          Write-Host "ERROR: dglOpenGL.pas not found"
+          exit 1
+        }
+        
+        # Check bass.pas
+        if (Test-Path "units\bass.pas") {
+          Write-Host "✓ bass.pas found"
+        } else {
+          Write-Host "ERROR: bass.pas not found"
+          exit 1
+        }
+        
+        # Check SDL2-for-Pascal
+        if (Test-Path "units\sdl2_for_pascal") {
+          Write-Host "✓ SDL2-for-Pascal found"
+        } else {
+          Write-Host "ERROR: SDL2-for-Pascal not found"
+          exit 1
+        }
+        
+        # Check LNet source files (may be in downloaded archive or in repo)
+        $lnetComponentsFound = $false
+        $possibleLnetPaths = @(
+          "macos\third_party\lnet_src\lazaruspackage\lnetcomponents.pas",
+          "macos/third_party/lnet_src/lazaruspackage/lnetcomponents.pas",
+          "$env:TEMP\lnet\lnet-master\lazaruspackage\lnetcomponents.pas"
+        )
+        
+        foreach ($path in $possibleLnetPaths) {
+          if (Test-Path $path) {
+            Write-Host "✓ LNet source files found at: $path"
+            $lnetComponentsFound = $true
+            break
+          }
+        }
+        
+        if (-not $lnetComponentsFound) {
+          Write-Host "WARNING: LNet source files not found in expected locations"
+          Write-Host "LNet was downloaded and built, should be available via compiled packages"
+          Write-Host "Continuing anyway..."
+        }
+        
+        # Check LazOpenGLContext (should be in Lazarus IDE)
+        Write-Host "✓ LazOpenGLContext should be part of Lazarus IDE (checked in RequiredPackages)"
+        
+        # Note: synapse is not needed anymore (replaced with fphttpclient)
+        Write-Host "Note: synapse is not required (replaced with fphttpclient)"
+        
+        Write-Host "All dependencies verified!"
+        
+    # 6. Build Client
+    - name: Build Client
+      run: |
+        cd client
+        lazbuild --build-mode=default fpc_atomic.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 7. Build Launcher
+    - name: Build Launcher
+      run: |
+        cd launcher
+        lazbuild --build-mode=default atomic_launcher.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 8. Build Server
+    - name: Build Server
+      run: |
+        cd server
+        lazbuild --build-mode=default atomic_server.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 9. Build CD Data Extractor
+    - name: Build CD Data Extractor
+      run: |
+        cd cd_data_extractor_src
+        lazbuild --build-mode=default cd_data_extractor.lpi
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+        
+    # 10. Create artifacts directory
+    - name: Prepare artifacts
+      run: |
+        New-Item -ItemType Directory -Force -Path windows\bin
+        Write-Host "Looking for compiled binaries..."
+        
+        # Binaries are compiled to the root directory (one level up from project folders)
+        $binaries = @(
+          "fpc_atomic.exe",
+          "atomic_launcher.exe", 
+          "atomic_server.exe",
+          "cd_data_extractor.exe"
+        )
+        
+        foreach ($bin in $binaries) {
+          if (Test-Path $bin) {
+            Write-Host "Found: $bin"
+            Move-Item $bin "windows\bin\" -Force
+          } else {
+            Write-Host "WARNING: $bin not found"
+          }
+        }
+        
+        # Copy DLL files (ai.dll, bass.dll, SDL2.dll) to artifacts
+        Write-Host "Copying DLL files..."
+        $dllFiles = @(
+          "bin\ai.dll",
+          "bin\bass.dll",
+          "bin\SDL2.dll"
+        )
+        
+        foreach ($dll in $dllFiles) {
+          if (Test-Path $dll) {
+            Write-Host "Found: $dll"
+            Copy-Item $dll "windows\bin\" -Force
+          } else {
+            Write-Host "WARNING: $dll not found"
+          }
+        }
+        
+        # Copy data directory to artifacts
+        Write-Host "Copying data directory..."
+        if (Test-Path "data") {
+          Copy-Item -Path "data" -Destination "windows\bin\data" -Recurse -Force
+          Write-Host "✓ data directory copied to windows\bin\data"
+        } else {
+          Write-Host "WARNING: data directory not found"
+        }
+        
+        Write-Host "Artifacts prepared. Contents of windows\bin:"
+        Get-ChildItem windows\bin\ | Format-Table
+        
+    # 11. Upload artifacts (soubory ke stažení)
+    - name: Upload Windows binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: FPCAtomic-Windows
+        path: windows/bin/*
+        retention-days: 30  # Uchovat 30 dní

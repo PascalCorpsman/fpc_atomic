@@ -1,0 +1,67 @@
+#!/bin/zsh
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+SERVER_BIN="${APP_DIR}/atomic_server"
+
+if [[ ! -x "${SERVER_BIN}" ]]; then
+  /usr/bin/osascript <<EOF
+display dialog "atomic_server executable is missing. Run build_app_bundles.command to rebuild the app bundle." buttons {"OK"} default button 1 with icon stop
+EOF
+  exit 1
+fi
+
+if [[ -n "${TERM_PROGRAM:-}" ]]; then
+  exec "${SERVER_BIN}" "$@"
+fi
+
+ARGS=("$@")
+HAS_PORT=0
+HAS_TIMEOUT=0
+
+i=0
+while [[ $i -lt ${#ARGS[@]} ]]; do
+  case "${ARGS[$i]}" in
+    -p)
+      HAS_PORT=1
+      ((i+=2))
+      continue
+      ;;
+    -t)
+      HAS_TIMEOUT=1
+      ((i+=2))
+      continue
+      ;;
+  esac
+  ((i+=1))
+done
+
+if [[ $HAS_PORT -eq 0 ]]; then
+  ARGS+=("-p" "5521")
+fi
+if [[ $HAS_TIMEOUT -eq 0 ]]; then
+  ARGS+=("-t" "0")
+fi
+
+ESC_APP_DIR="$(printf "%q" "${APP_DIR}")"
+ESC_BIN="$(printf "%q" "${SERVER_BIN}")"
+
+SAFE_ARGS=()
+for arg in "${ARGS[@]}"; do
+  SAFE_ARGS+=("$(printf "%q" "${arg}")")
+done
+ARG_STRING="${SAFE_ARGS[*]}"
+
+LIB_DIR="${APP_DIR}/../lib"
+ESC_LIB_DIR="$(printf "%q" "${LIB_DIR}")"
+
+COMMAND="cd ${ESC_APP_DIR}; export DYLD_LIBRARY_PATH=${ESC_LIB_DIR}:\$DYLD_LIBRARY_PATH; ${ESC_BIN} ${ARG_STRING}"
+
+/usr/bin/osascript <<EOF
+tell application "Terminal"
+  activate
+  do script "${COMMAND}"
+end tell
+EOF
+
+

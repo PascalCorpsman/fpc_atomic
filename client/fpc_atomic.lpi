@@ -14,8 +14,56 @@
       <Language Value=""/>
       <CharSet Value=""/>
     </VersionInfo>
-    <BuildModes Count="1">
+    <BuildModes Count="3">
       <Item1 Name="default" Default="True"/>
+      <Item2 Name="macos_arm64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="../bin/macos/arm64/fpc_atomic"/>
+          </Target>
+          <ConfigAndTarget>
+            <TargetCPU Value="aarch64"/>
+            <TargetOS Value="darwin"/>
+          </ConfigAndTarget>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
+            <OtherUnitFiles Value="../../../Graphik;../../../DatenSteuerung;../../Sample/OpenGL;../../Sample/Graphik;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../../Sample/TCP_IP;../synapse;../../Sample/Sound/Bass;../../Sample/SDL2/library;../../Sample/SDL2;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
+            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+            <Libraries Value="../lib/macos/$(TargetCPU)"/>
+          </SearchPaths>
+          <Other>
+            <CustomOptions Value="-dClient -k-L/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/aarch64 -k/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/aarch64/libbass.dylib -k-ld_classic -k-rpath -k@executable_path/../lib"/>
+            <OtherDefines Count="1">
+              <Define0 Value="Client"/>
+            </OtherDefines>
+          </Other>
+        </CompilerOptions>
+      </Item2>
+      <Item3 Name="macos_x86_64">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <Target>
+            <Filename Value="../bin/macos/x86_64/fpc_atomic"/>
+          </Target>
+          <ConfigAndTarget>
+            <TargetCPU Value="x86_64"/>
+            <TargetOS Value="darwin"/>
+          </ConfigAndTarget>
+          <SearchPaths>
+            <IncludeFiles Value="$(ProjOutDir);../macos/third_party/lnet/lib/sys"/>
+            <OtherUnitFiles Value="../../../Graphik;../../../DatenSteuerung;../../Sample/OpenGL;../../Sample/Graphik;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../../Sample/TCP_IP;../synapse;../../Sample/Sound/Bass;../../Sample/SDL2/library;../../Sample/SDL2;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
+            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+            <Libraries Value="../lib/macos/$(TargetCPU)"/>
+          </SearchPaths>
+          <Other>
+            <CustomOptions Value="-dClient -k-L/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/x86_64 -k/Users/pavelzverina/AiProjects/fpc_atomic/lib/macos/x86_64/libbass.dylib -k-ld_classic -k-rpath -k@executable_path/../lib"/>
+            <OtherDefines Count="1">
+              <Define0 Value="Client"/>
+            </OtherDefines>
+          </Other>
+        </CompilerOptions>
+      </Item3>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -33,19 +81,16 @@
         </Mode0>
       </Modes>
     </RunParams>
-    <RequiredPackages Count="4">
+    <RequiredPackages Count="3">
       <Item1>
-        <PackageName Value="lnetvisual"/>
+        <PackageName Value="ImagesForLazarus"/>
       </Item1>
       <Item2>
-        <PackageName Value="ImagesForLazarus"/>
+        <PackageName Value="LazOpenGLContext"/>
       </Item2>
       <Item3>
-        <PackageName Value="LazOpenGLContext"/>
-      </Item3>
-      <Item4>
         <PackageName Value="LCL"/>
-      </Item4>
+      </Item3>
     </RequiredPackages>
     <Units Count="33">
       <Unit0>
@@ -199,7 +244,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../../Graphik;../../../DatenSteuerung;../../Sample/OpenGL;../../Sample/Graphik;../../Sample/DatenSteuerung;../units;../../Sample/TCP_IP;../../Sample/synapse;../../Sample/Sound/Bass;../../Sample/SDL2/library;../../Sample/SDL2"/>
+      <OtherUnitFiles Value="../../../Graphik;../../../DatenSteuerung;../../Sample/OpenGL;../../Sample/Graphik;../../Sample/DatenSteuerung;../units;../units/sdl2_for_pascal;../../Sample/TCP_IP;../synapse;../../Sample/Sound/Bass;../../Sample/SDL2/library;../../Sample/SDL2;../macos/third_party/lnet/lib;../macos/third_party/lnet_src/lazaruspackage"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
@@ -210,7 +255,7 @@
       </Options>
     </Linking>
     <Other>
-      <CustomOptions Value="-dClient"/>
+      <CustomOptions Value="-dClient -k-lbass"/>
       <OtherDefines Count="1">
         <Define0 Value="Client"/>
       </OtherDefines>

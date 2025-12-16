@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uatomic_field;
 
 {$MODE ObjFPC}{$H+}
@@ -418,8 +423,14 @@ Var
 
 Var
   ini: TIniFile;
+  sl: TStringList;
+  normalizedContent: String;
+  fs: TFileStream;
+  rawContent: AnsiString;
+  normalizedBytes: TMemoryStream;
+  i: Integer;
 {$IFDEF Client}
-  i, j: Integer;
+  j: Integer;
   xBrick: TOpenGL_Animation;
 {$ENDIF}
 Begin
@@ -462,7 +473,47 @@ Begin
   End;
 {$ENDIF}
   ini.free;
-  tmphash := MD5File(dir + 'info.txt');
+  // Normalize line endings before calculating hash to ensure cross-platform consistency
+  // Windows uses CRLF (\r\n), Mac/Linux use LF (\n)
+  // We normalize to LF for consistent hashing across platforms
+  // Read file as raw bytes to avoid automatic line ending conversion
+  fs := TFileStream.Create(dir + 'info.txt', fmOpenRead);
+  Try
+    SetLength(rawContent, fs.Size);
+    fs.Read(rawContent[1], fs.Size);
+  Finally
+    fs.Free;
+  End;
+  // Normalize line endings: CRLF -> LF, CR -> LF
+  normalizedBytes := TMemoryStream.Create;
+  Try
+    i := 1;
+    While i <= Length(rawContent) Do Begin
+      If (i < Length(rawContent)) And (rawContent[i] = #13) And (rawContent[i + 1] = #10) Then Begin
+        // CRLF -> LF
+        normalizedBytes.WriteByte(10);
+        Inc(i, 2);
+      End
+      Else If rawContent[i] = #13 Then Begin
+        // CR -> LF
+        normalizedBytes.WriteByte(10);
+        Inc(i);
+      End
+      Else Begin
+        // Keep other bytes as-is
+        normalizedBytes.WriteByte(Ord(rawContent[i]));
+        Inc(i);
+      End;
+    End;
+    normalizedBytes.Position := 0;
+    // Calculate MD5 from normalized bytes
+    // Convert normalized bytes to string for MD5String
+    SetLength(normalizedContent, normalizedBytes.Size);
+    normalizedBytes.Read(normalizedContent[1], normalizedBytes.Size);
+    tmphash := MD5String(normalizedContent);
+  Finally
+    normalizedBytes.Free;
+  End;
   AppendHash;
   If name = '' Then exit; // Name ='' und Hash = 0 ist reserviert für das Random Field
 
@@ -507,6 +558,10 @@ Function TAtomicField.Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: in
   Flame: TFlame): Boolean;
 Var
   i: Integer;
+{$IFDEF Server}
+  f: TextFile;
+  flameStr: String;
+{$ENDIF}
 Begin
   result := false;
   If (x < 0) Or (y < 0) Or (x > FieldWidth - 1) Or (y > FieldHeight - 1) Then exit;
@@ -535,9 +590,40 @@ Begin
     bdBrick: Begin
         If Not fField[x, y].Exploding Then Begin
           StatisticCallback(sBricksDestroyed);
+          fField[x, y].Exploding := true;
+          fField[x, y].ExplodingRenderFlag := true;
         End;
-        fField[x, y].Exploding := true;
-        fField[x, y].ExplodingRenderFlag := true;
+        // Always set flame direction when brick is hit, even if already exploding
+        // This ensures the correct end flame animation is rendered based on the direction the explosion came from
+        // Only update if no direction is set yet, or if this is the first hit
+        If (fField[x, y].Flame = []) Or (Not (fend In fField[x, y].Flame)) Then Begin
+          fField[x, y].FlameColor := ColorIndex;
+          fField[x, y].FlamePlayer := TriggerPlayerindex;
+          // Set fend flag and direction
+          fField[x, y].Flame := [fend, Flame];
+          // Debug: log to file
+          {$IFDEF Server}
+          Try
+            flameStr := '';
+            If fup In fField[x, y].Flame Then flameStr := flameStr + 'fup ';
+            If fdown In fField[x, y].Flame Then flameStr := flameStr + 'fdown ';
+            If fleft In fField[x, y].Flame Then flameStr := flameStr + 'fleft ';
+            If fright In fField[x, y].Flame Then flameStr := flameStr + 'fright ';
+            If fend In fField[x, y].Flame Then flameStr := flameStr + 'fend ';
+            If fCross In fField[x, y].Flame Then flameStr := flameStr + 'fCross ';
+            AssignFile(f, 'debug.log');
+            If FileExists('debug.log') Then
+              Append(f)
+            Else
+              Rewrite(f);
+            WriteLn(f, Format('[SERVER] Detonate bdBrick: x=%d y=%d Flame param=%d -> fField.Flame=[%s]', 
+              [x, y, Ord(Flame), Trim(flameStr)]));
+            CloseFile(f);
+          Except
+            // Ignore file errors
+          End;
+          {$ENDIF}
+        End;
         // fField[x, y].BrickData := bdBlank; // der darf nicht Gleich weg genommen werden, da sonst  2 Bomben auch 2 Steine auf einmal wegsprengen !
         fField[x, y].Counter := 0;
         result := False;
@@ -1082,7 +1168,18 @@ Begin
     (Not FielWalkable(x, y + 1, false)) And
     (Players[PlayerIndex].info.Animation <> raLockedIn) Then Begin
     Players[PlayerIndex].info.Animation := raLockedIn;
-    Players[PlayerIndex].info.Value := random(65536);
+    // Determine corner animation based on blocked diagonal directions
+    // Check diagonal directions: top-left, top-right, bottom-left, bottom-right
+    // corner0-corner7 correspond to different corner configurations
+    // Map diagonal block pattern to corner index (0-7)
+    // Pattern: TL, TR, BL, BR as bits
+    Players[PlayerIndex].info.Value := 0;
+    If Not FielWalkable(x - 1, y - 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 1;  // bit 0: top-left
+    If Not FielWalkable(x + 1, y - 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 2;  // bit 1: top-right
+    If Not FielWalkable(x - 1, y + 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 4;  // bit 2: bottom-left
+    If Not FielWalkable(x + 1, y + 1, false) Then Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Or 8;  // bit 3: bottom-right
+    // Map 16 possible combinations to 8 corner animations (0-7)
+    Players[PlayerIndex].info.Value := Players[PlayerIndex].info.Value Mod 8;
     Players[PlayerIndex].info.Counter := 0;
   End;
   result := fField[x, y].BrickData = bdSolid;
@@ -1309,7 +1406,7 @@ Type
     End;
   End;
 
-  Procedure AddEndFlame(x, y, TriggerPlayerindex: integer);
+  Procedure AddEndFlame(x, y, TriggerPlayerindex: integer; Direction: TFlame);
   Begin
     (*
      * So überschreibt jeder Spieler ggf. einen Anderen, es sieht so aus als
@@ -1318,7 +1415,8 @@ Type
     //If fField[x, y].Flame = [] Then Begin
     fField[x, y].FlamePlayer := TriggerPlayerindex;
     //End;
-    fField[x, y].Flame := fField[x, y].Flame + [fend];
+    // Add both fend flag and direction so Render can determine the correct angle
+    fField[x, y].Flame := fField[x, y].Flame + [fend, Direction];
   End;
 
 Var
@@ -1632,37 +1730,37 @@ Begin
       If DirUp In dirs Then Begin
         If (Not Detonate(x, y - i, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fup)) Then Begin
           dirs := dirs - [DirUp];
-          AddEndFlame(x, y - i + 1, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x, y - i + 1, fBombs[index].TriggerPlayerindex, fup);
         End;
         If (i = fBombs[index].FireLen) And (y - i >= 0) Then Begin
-          AddEndFlame(x, y - i, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x, y - i, fBombs[index].TriggerPlayerindex, fup);
         End;
       End;
       If Dirdown In dirs Then Begin
         If (Not Detonate(x, y + i, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fdown)) Then Begin
           dirs := dirs - [Dirdown];
-          AddEndFlame(x, y + i - 1, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x, y + i - 1, fBombs[index].TriggerPlayerindex, fdown);
         End;
         If (i = fBombs[index].FireLen) And (y + i < FieldHeight) Then Begin
-          AddEndFlame(x, y + i, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x, y + i, fBombs[index].TriggerPlayerindex, fdown);
         End;
       End;
       If DirLeft In dirs Then Begin
         If (Not Detonate(x - i, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fleft)) Then Begin
           dirs := dirs - [DirLeft];
-          AddEndFlame(x - i + 1, y, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x - i + 1, y, fBombs[index].TriggerPlayerindex, fleft);
         End;
         If (i = fBombs[index].FireLen) And (x - i > 0) Then Begin
-          AddEndFlame(x - i, y, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x - i, y, fBombs[index].TriggerPlayerindex, fleft);
         End;
       End;
       If DirRight In dirs Then Begin
         If (Not Detonate(x + i, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fright)) Then Begin
           dirs := dirs - [DirRight];
-          AddEndFlame(x + i - 1, y, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x + i - 1, y, fBombs[index].TriggerPlayerindex, fright);
         End;
         If (i = fBombs[index].FireLen) And (x + i < FieldWidth) Then Begin
-          AddEndFlame(x + i, y, fBombs[index].TriggerPlayerindex);
+          AddEndFlame(x + i, y, fBombs[index].TriggerPlayerindex, fright);
         End;
       End;
     End;
@@ -2186,6 +2284,10 @@ Var
   i, j: Integer;
   FlameAni: TOpenGL_Animation;
   FlameAngle: integer;
+{$IFDEF Client}
+  f: TextFile;
+  flameStr: String;
+{$ENDIF}
 Begin
   glColor3f(1, 1, 1);
   glpushmatrix();
@@ -2206,32 +2308,73 @@ Begin
       Else Begin
         If fField[i, j].BrickData <> bdBlank Then Begin
           RenderBlock(i, j, fField[i, j].BrickData);
+        End;
+      End;
+      // Rendern der Flamen (render flames even if brick is exploding or still present)
+      // Flames should be rendered on top of exploding bricks to show the correct direction
+      If fField[i, j].Flame <> [] Then Begin
+        // Wählen der Richtigen Animation
+        If fCross In fField[i, j].Flame Then Begin
+          FlameAni := Atomics[fField[i, j].FlameColor].FlameCross;
         End
         Else Begin
-          // Rendern der Flamen
-          If fField[i, j].Flame <> [] Then Begin
-            // Wählen der Richtigen Animation
-            If fCross In fField[i, j].Flame Then Begin
-              FlameAni := Atomics[fField[i, j].FlameColor].FlameCross;
-            End
-            Else Begin
-              If fend In fField[i, j].Flame Then Begin
-                FlameAni := Atomics[fField[i, j].FlameColor].FlameEnd;
-              End
-              Else Begin
-                FlameAni := Atomics[fField[i, j].FlameColor].FlameMiddle;
-              End;
-            End;
-            FlameAngle := 0;
-            If fup In fField[i, j].Flame Then FlameAngle := 90;
-            If fleft In fField[i, j].Flame Then FlameAngle := 180;
-            If fdown In fField[i, j].Flame Then FlameAngle := 270;
-            glPushMatrix;
-            glTranslatef(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, 0);
-            FlameAni.Render(FlameAngle);
-            glPopMatrix;
+          If fend In fField[i, j].Flame Then Begin
+            FlameAni := Atomics[fField[i, j].FlameColor].FlameEnd;
           End
           Else Begin
+            FlameAni := Atomics[fField[i, j].FlameColor].FlameMiddle;
+          End;
+        End;
+        FlameAngle := 0;
+        // Check directions in order: up, left, down, right
+        // Note: right (0°) is default, so we check it last
+        // For FlameEnd: check direction AND fend flag
+        // For FlameMiddle: check direction WITHOUT fend flag (FlameMiddle doesn't have fend)
+        If fend In fField[i, j].Flame Then Begin
+          // FlameEnd: must have both direction and fend
+          If fup In fField[i, j].Flame Then FlameAngle := 90
+          Else If fleft In fField[i, j].Flame Then FlameAngle := 180
+          Else If fdown In fField[i, j].Flame Then FlameAngle := 270
+          Else If fright In fField[i, j].Flame Then FlameAngle := 0;
+        End
+        Else Begin
+          // FlameMiddle: check direction without fend
+          If fup In fField[i, j].Flame Then FlameAngle := 90
+          Else If fleft In fField[i, j].Flame Then FlameAngle := 180
+          Else If fdown In fField[i, j].Flame Then FlameAngle := 270
+          Else If fright In fField[i, j].Flame Then FlameAngle := 0;
+        End;
+        // If no direction found, FlameAngle remains 0 (right)
+        // Debug: log to file
+        {$IFDEF Client}
+        Try
+          flameStr := '';
+          If fup In fField[i, j].Flame Then flameStr := flameStr + 'fup ';
+          If fdown In fField[i, j].Flame Then flameStr := flameStr + 'fdown ';
+          If fleft In fField[i, j].Flame Then flameStr := flameStr + 'fleft ';
+          If fright In fField[i, j].Flame Then flameStr := flameStr + 'fright ';
+          If fend In fField[i, j].Flame Then flameStr := flameStr + 'fend ';
+          If fCross In fField[i, j].Flame Then flameStr := flameStr + 'fCross ';
+          AssignFile(f, 'debug.log');
+          If FileExists('debug.log') Then
+            Append(f)
+          Else
+            Rewrite(f);
+          WriteLn(f, Format('[CLIENT] Render FlameEnd: x=%d y=%d Flame=[%s] -> FlameAngle=%d', 
+            [i, j, Trim(flameStr), FlameAngle]));
+          CloseFile(f);
+        Except
+          // Ignore file errors
+        End;
+        {$ENDIF}
+        glPushMatrix;
+        glTranslatef(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, 0);
+        FlameAni.Render(FlameAngle);
+        glPopMatrix;
+      End
+      Else Begin
+        // Render der Powerups (only if no flame and brick is blank)
+        If fField[i, j].BrickData = bdBlank Then Begin
             // Render der Powerups
             If fField[i, j].PowerUp <> puNone Then Begin
               glPushMatrix;
@@ -2256,7 +2399,6 @@ Begin
             End;
           End;
         End;
-      End;
     End;
   End;
   glpopmatrix();

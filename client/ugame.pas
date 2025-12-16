@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit ugame;
 
 {$MODE ObjFPC}{$H+}
@@ -22,7 +27,8 @@ Interface
 
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
-  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick;
+  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick, usdl_gamecontroller,
+  uloaderdialog;
 
 Type
   TUDPPingData = Record
@@ -60,11 +66,19 @@ Type
   private
     fsdl_Loaded: Boolean;
     fsdlJoysticks: Array[TKeySet] Of TSDL_Joystick;
+    fsdlControllers: Array[TKeySet] Of TSDL_GameControllerEx;
+    fControllerLogged: Array[TKeySet] Of Boolean; // Track if we've logged controller usage
+    fMenuDpadState: record
+      up, down, left, right, buttonA, buttonB: Boolean;
+    end; // Track previous D-pad state for menu navigation
+    fBlockGameInputUntilRelease: Boolean; // Block game input until all buttons released
+    fBlockMenuInputUntilRelease: Boolean; // Block menu input until all buttons released
     fTramp, fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
     fSoundManager: TSoundManager;
     fSoundInfo: TSoundInfo;
     fLastIdleTick: QWord;
+    fLastUpdateTimestamp: QWord; // For network performance monitoring
     fLastKeyDown: Array[akFirstAction..akSecondAction] Of QWORD;
     fPlayerdeadTex: TGraphikItem;
     fPowerUpsTex: TPowerTexArray;
@@ -72,6 +86,9 @@ Type
     fBombs: Array[0..15 * 11 - 1] Of TBombInfo;
     fParamJoinIP: String;
     fParamJoinPort: integer;
+    fWaitingForLocalServer: Boolean; // True when waiting for local server to start
+    fLastConnectionAttempt: QWord; // Timestamp of last connection attempt
+    fConnectionRetryInterval: QWord; // Interval between retry attempts (ms)
     fPlayingTime_s: integer;
     fPause: Boolean;
     fNeedDisconnect: Boolean; // Wenn True, dann wird ein Disconnect via Idle Handler durchgeführt (das darf nach LNet nicht im Socket Event gemacht werden da es sonst eine AV-Gibt)
@@ -80,6 +97,7 @@ Type
     fAtomics: TAtomics;
     fBackupSettings: TAtomicSettings; // Sind wir nicht der Master Spieler, dann müssen wir unsere Settings Sichern
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
+    fLoaderDialog: TLoaderDialog; // Reference to loading dialog during initialization
     fFields: Array Of TAtomicField;
     fScheme: TScheme;
 {$IFNDEF DebuggMode}
@@ -99,6 +117,36 @@ Type
 
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
+    FViewportOffsetX: Integer;
+    FViewportOffsetY: Integer;
+    FViewportWidth: Integer;
+    FViewportHeight: Integer;
+    FControlWidth: Integer;
+    FControlHeight: Integer;
+    FViewportScale: Double;
+    fDataPath: String; // Base path to data directory
+    fServerPID: Integer; // PID of locally started server process (0 if no server started)
+
+    // === CLIENT-SIDE INTERPOLATION ===
+    // Snapshots of server state
+    fServerSnapshots: Array[0..1] Of Record
+      Timestamp: QWord;          // GetTickCount64 when received
+      ServerTime_ms: Integer;    // fPlayingTime_s * 1000
+      PlayerInfos: Array[0..9] Of TAtomicInfo;
+      Valid: Boolean;            // Is this snapshot valid?
+    End;
+    fCurrentSnapshot: Integer;   // Index of current snapshot (0 or 1)
+    
+    // Interpolated state (calculated each frame)
+    fInterpolatedState: Record
+      PlayingTime_ms: Integer;
+      PlayerInfos: Array[0..9] Of TAtomicInfo;
+    End;
+    
+    // Interpolation parameters
+    fExtrapolationLimit: Integer;   // Max extrapolation time (default 100ms)
+    
+    // Note: fInterpolationDelay and fDebugStats are now in public section for debug overlay access
 
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     Procedure FOnMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -108,16 +156,27 @@ Type
     Procedure FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
 
-    Procedure CheckKeyDown(Key: Word; Keys: TKeySet);
+    Function CheckKeyDown(Key: Word; Keys: TKeySet): Boolean;
     Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
     Procedure CheckSDLKeys();
+    Procedure ReadCurrentButtonState(var up, down, left, right, buttonA, buttonB: Boolean);
+    Function AreAllGamepadButtonsReleased(): Boolean;
+    Procedure CheckSDLKeysForMenu();
+    Procedure ReinitControllersWithLogs();
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
+    Function ResolveResourceBase(BasePath: String): String;
 
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
+    Function PointInsideViewport(ScreenX, ScreenY: Integer): Boolean;
+    Function ScreenToGameX(ScreenX: Integer): Integer;
+    Function ScreenToGameY(ScreenY: Integer): Integer;
+    
+    // Client-side interpolation
+    Procedure InterpolateGameState();
 
     Procedure Connection_Connect(aSocket: TLSocket);
     Procedure Connection_Disconnect(aSocket: TLSocket);
@@ -149,6 +208,7 @@ Type
      * Routinen die der Master Spieler Aufruft um den Rest zu Aktualisieren
      *)
     Function StartHost: Boolean;
+    Function GetServerIPAddress(): String; // Get local network IP address for server display
     Procedure SendSettings();
     Procedure UpdateFieldSetup(FieldName: String; FieldHash: Uint64; NeededWins: integer);
     Procedure SwitchToPlayerSetup;
@@ -168,9 +228,27 @@ Type
     fPlayer: TPlayers;
 {$ENDIF}
     Settings: TAtomicSettings; // für uscreens
+    
+    // Expose interpolation fields for debug overlay (must be before properties!)
+    fDebugStats: Record
+      LastRTT: Integer;
+      AvgRTT: Single;
+      MaxRTT: Integer;             // Worst RTT since game start
+      InterpolationFactor: Single;
+      MaxInterpFactor: Single;     // Worst interpolation factor
+      IsExtrapolating: Boolean;
+      SnapshotAge: Integer;
+      MaxSnapAge: Integer;         // Worst snapshot age
+    End;
+    fInterpolationDelay: Integer;
 
     OnNeedHideCursor: TNotifyEvent;
     OnNeedShowCursor: TNotifyEvent;
+    
+    Property PlayingTime_s: Integer Read fPlayingTime_s;
+    Property ChunkManager: TChunkManager Read fChunkManager; // For network thread access
+    Property LoaderDialog: TLoaderDialog Read fLoaderDialog; // For OnPaint to render loading dialog during initialization
+    Property IsInitialized: Boolean Read fInitialized; // Check if game is initialized
 
     Constructor Create();
     Destructor Destroy; override;
@@ -187,6 +265,8 @@ Type
     Procedure OnIdle; // Wird von Application.OnIdle aufgerufen
     Procedure JoinViaParams(ip: String; Port: integer); // Nur 1 mal direkt nach dem Start erlaubt (siehe TForm1.OnIdle)
 
+    Function GetControllerCount: Integer;
+
     (*
      * Werden und dürfen nur aus uScreens heraus aufgerufen werden
      *)
@@ -196,10 +276,14 @@ Type
     Procedure StartGame();
     Procedure StartPlayingSong(Filename: String);
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
+    Procedure SetViewportMetrics(ControlWidth, ControlHeight, OffsetX, OffsetY,
+      ViewportWidth, ViewportHeight: Integer);
+    Function GetKeySetDisplayName(Keys: TKeySet): String;
   End;
 
 Var
   Game: TGame; // Die SpielEngine
+  NeedFormClose: Boolean = false; // Set to true when user confirms exit, triggers form close after quit sound
 
 Implementation
 
@@ -214,7 +298,6 @@ Uses dglopengl
   , sdl2
   , uip
   , uOpenGL_ASCII_Font
-  , uloaderdialog
   , uvectormath
   , LCLType
   , process
@@ -223,10 +306,8 @@ Uses dglopengl
   , uatomicfont
   , uopengl_spriteengine
   , ugraphics
+  , uearlylog
   ;
-
-Var
-  NeedFormClose: Boolean = false;
 
   (*
    * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
@@ -309,39 +390,19 @@ End;
 
 Procedure TGame.SwitchToScreen(TargetScreen: TScreenEnum);
 Var
-  index: integer;
+  index, index2: integer;
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   log('TGame.SwitchToScreen', llTrace);
+  
+  // Blocking is now done immediately when button is pressed in CheckSDLKeysForMenu
+  // Don't reset fMenuDpadState here - let the blocking mechanism handle it
   // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
-  If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
+  // Also initialize for main menu and options to enable gamepad navigation
+  If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Or 
+     (TargetScreen = sMainScreen) Or (TargetScreen = sOptions) Then Begin
     If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
-    If (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
-      If (Not fsdl_Loaded) Then Begin
-        fsdl_Loaded := SDL_LoadLib('');
-        If fsdl_Loaded Then Begin
-          fsdl_Loaded := SDL_Init(SDL_INIT_JOYSTICK) = 0;
-        End;
-      End;
-      If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].Free;
-      If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].Free;
-      fsdlJoysticks[ks0] := Nil;
-      fsdlJoysticks[ks1] := Nil;
-      If fsdl_Loaded Then Begin
-        If Settings.Keys[ks0].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name, Settings.Keys[ks0].NameIndex);
-          If index <> -1 Then Begin
-            fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
-          End;
-        End;
-        If Settings.Keys[ks1].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name, Settings.Keys[ks1].NameIndex);
-          If index <> -1 Then Begin
-            fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
-          End;
-        End;
-      End;
-    End;
+    ReinitControllersWithLogs();
   End;
   (*
    * Wenn es "individuell" noch was zu tun gibt ...
@@ -353,6 +414,7 @@ Begin
     sMainScreen: Begin
         fgameState := gs_MainMenu;
         StopPingingForGames;
+        fWaitingForLocalServer := false; // Stop waiting for local server when returning to main menu
         Disconnect();
         HandleSetPause(false); // Sonst bleibt die Hauptmenü Animation ggf stehen, das will natürlich keiner ;)
         If assigned(OnNeedShowCursor) Then OnNeedShowCursor(Nil);
@@ -360,7 +422,10 @@ Begin
     sExitBomberman: Begin
         NeedFormClose := true;
         StartPlayingSong(''); // Disable the Background musik if playing, that speeds up the shutdown process or at least stop making noises
-        PlaySoundEffect('data' + pathdelim + 'res' + PathDelim + 'quitgame.wav', @OnQuitGameSoundFinished);
+        If fDataPath = '' Then Begin
+          fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+        End;
+        PlaySoundEffect(fDataPath + 'res' + PathDelim + 'quitgame.wav', @OnQuitGameSoundFinished);
       End;
     sHost: Begin
         fParamJoinIP := '';
@@ -368,10 +433,19 @@ Begin
           LogLeave;
           exit;
         End;
+        // After starting server, automatically connect to localhost
+        // This is faster and more reliable than UDP broadcast
+        fParamJoinIP := '127.0.0.1';
+        fParamJoinPort := Settings.Port;
+        log('Server started, will connect to localhost:' + inttostr(fParamJoinPort), llInfo);
+        
+        // Get and display server IP address for other players to connect
+        If Assigned(fScreens[sJoinNetwork]) Then Begin
+          TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(GetServerIPAddress());
+        End;
+        
         TargetScreen := sJoinNetwork;
-        //Als nächstes muss es einen Server zum Drauf verbinden geben
-        // -> Der Server Startet und macht den UDP Auf
-        //    Sobald der Client den finden verbindet er direkt, PW gibt es keins !
+        // The client will automatically connect via JoinViaParams in sJoinNetwork handler
       End;
     sPlayerSetupRequest: Begin
         SwitchToPlayerSetup;
@@ -381,6 +455,7 @@ Begin
       End;
     sPlayerSetup: Begin
         // Den Screen mit den Aktuellsten Daten versorgen
+        ReinitControllersWithLogs(); // ensure detection fresh in setup
         TPlayerSetupMenu(fScreens[sPlayerSetup]).TeamPlay := Settings.TeamPlay;
         TPlayerSetupMenu(fScreens[sPlayerSetup]).LoadPlayerdata(fPlayer, fUserID);
       End;
@@ -412,7 +487,7 @@ Begin
       exit;
     End
     Else Begin
-      If FileExists('data' + PathDelim + 'schemes' + PathDelim + Settings.SchemeFile) Then Begin
+      If (fDataPath <> '') And FileExistsUTF8(fDataPath + 'schemes' + PathDelim + Settings.SchemeFile) Then Begin
         StartPingingForGames;
       End
       Else Begin
@@ -436,8 +511,42 @@ End;
 Procedure TGame.ChangePlayerKey(PlayerIndex, Direction: Integer);
 Var
   m: TMemoryStream;
+  numJoy: Integer;
+  currentKeySet: TKeySet;
+  skipJoy1, skipJoy2: Boolean;
+  nextKeySet: TKeySet;
 Begin
   log('TGame.ChangePlayerKey', llTrace);
+  
+  // Check which joysticks are available
+  numJoy := 0;
+  skipJoy1 := false;
+  skipJoy2 := false;
+  try
+    If fsdl_Loaded And Assigned(SDL_NumJoysticks) Then Begin
+      numJoy := SDL_NumJoysticks();
+      // Joy 1 is available only if at least 1 joystick is detected
+      skipJoy1 := (numJoy < 1);
+      // Joy 2 is available only if at least 2 joysticks are detected
+      skipJoy2 := (numJoy < 2);
+    End
+    Else Begin
+      // SDL not loaded, skip both joysticks
+      skipJoy1 := true;
+      skipJoy2 := true;
+    End;
+  except
+    // On error, skip both joysticks
+    skipJoy1 := true;
+    skipJoy2 := true;
+  end;
+  
+  // If joysticks need to be skipped, we need to send multiple change requests
+  // to skip unavailable joysticks. But this is complex and could cause issues.
+  // Instead, we'll let the server cycle through all options, and the client
+  // will handle skipping unavailable joysticks in HandleRefreshPlayerStats.
+  // This is simpler and more reliable.
+  
   m := TMemoryStream.Create;
   m.Write(PlayerIndex, SizeOf(PlayerIndex));
   m.Write(Direction, SizeOf(Direction));
@@ -469,9 +578,13 @@ Procedure TGame.FOnMouseDown(Sender: TObject; Button: TMouseButton;
 Var
   xx, yy: Integer;
 Begin
-  // Umrechnen der Echten Koords in die Screencoords
-  xx := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
-  yy := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
+  If Not PointInsideViewport(X, Y) Then Begin
+    If Assigned(FOnMouseDownCapture) Then
+      FOnMouseDownCapture(Sender, Button, Shift, X, Y);
+    exit;
+  End;
+  xx := ScreenToGameX(X);
+  yy := ScreenToGameY(Y);
   Case fgameState Of
     gs_MainMenu: Begin
         If assigned(fActualScreen) Then Begin
@@ -513,6 +626,7 @@ End;
 Procedure TGame.FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
 Var
   aVolume: Dword;
+  KeyProcessed: Boolean;
 Begin
   (*
    * Der Hack zum Beenden von Atomic Bomberman im Fehlerfall ;)
@@ -522,18 +636,21 @@ Begin
     SwitchToScreen(sExitBomberman);
     exit;
   End;
+  KeyProcessed := false;
   If Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin // Sonst wird das VK_Return ggf unsinnig ausgewertet
     If key = VK_ADD Then Begin
       aVolume := fSoundManager.IncVolume;
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
       fSoundInfo.Volume := aVolume;
+      KeyProcessed := true;
     End;
     If key = VK_SUBTRACT Then Begin
       aVolume := fSoundManager.DecVolume();
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
       fSoundInfo.Volume := aVolume;
+      KeyProcessed := true;
     End;
     If key = VK_M Then Begin // Toggle Musik an aus
       Settings.PlaySounds := Not Settings.PlaySounds;
@@ -549,38 +666,70 @@ Begin
             StartPlayingSong(fActualField.Sound);
           End;
       End;
+      KeyProcessed := true;
     End;
     Case fgameState Of
       gs_MainMenu: Begin
           If assigned(fActualScreen) Then Begin
+            // Save original key value before menu processes it
+            // Check if this is a key that menu typically processes
+            KeyProcessed := (key In [VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_RETURN, VK_BACK, VK_ESCAPE]) Or
+                           ((fPlayerIndex[ks0] <> -1) And (key In [Settings.Keys[ks0].KeyPrimary, Settings.Keys[ks0].KeySecondary])) Or
+                           ((fPlayerIndex[ks1] <> -1) And (key In [Settings.Keys[ks1].KeyPrimary, Settings.Keys[ks1].KeySecondary]));
+            // Let menu process the key first - menu will play sounds and handle the key
+            // Menu needs Key to remain unchanged during OnKeyDown to properly process it
             fActualScreen.OnKeyDown(Sender, Key, Shift);
+            // If menu set key to 0, it was definitely processed and consumed
+            If (key = 0) Then KeyProcessed := true;
+            // After menu processed the key, we need to mark it as handled to prevent system beep
+            // but we do this at the end, after menu had chance to play sounds
           End;
         End;
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
-            SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
+{$ENDIF}
+              SwitchToScreen(sMainScreen);
+            KeyProcessed := true;
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
+            KeyProcessed := true;
           End;
-          If fPlayerIndex[ks0] <> -1 Then CheckKeyDown(key, ks0);
-          If fPlayerIndex[ks1] <> -1 Then CheckKeyDown(key, ks1);
+          If fPlayerIndex[ks0] <> -1 Then Begin
+            If CheckKeyDown(key, ks0) Then KeyProcessed := true;
+          End;
+          If fPlayerIndex[ks1] <> -1 Then Begin
+            If CheckKeyDown(key, ks1) Then KeyProcessed := true;
+          End;
         End;
     End;
   End;
   If assigned(FOnKeyDownCapture) Then Begin
     FOnKeyDownCapture(sender, key, shift);
   End;
+  // Mark key as handled to prevent system beep on macOS
+  // For gaming state, always set Key := 0 if processed
+  If KeyProcessed And (fgameState = gs_Gaming) Then Begin
+    Key := 0;
+  End;
+  // For menu: don't set Key := 0 to allow menu sounds to play properly
+  // Menu needs Key unchanged to process it and play sounds
+  // The menu OnKeyDown handlers should process keys and prevent system beep naturally
+  // by consuming the key events they handle
 End;
 
-Procedure TGame.CheckKeyDown(Key: Word; Keys: TKeySet);
+Function TGame.CheckKeyDown(Key: Word; Keys: TKeySet): Boolean;
 Var
   m: TMemoryStream;
   db, b: Boolean;
   ak: TAtomicKey;
   n: QWORD;
 Begin
+  result := false;
   If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary] Then Begin
+    result := true;
     m := TMemoryStream.Create;
     b := true;
     db := false;
@@ -651,6 +800,8 @@ Begin
   If fgameState = gs_Gaming Then Begin
     If fPlayerIndex[ks0] <> -1 Then CheckKeyUp(Key, ks0);
     If fPlayerIndex[ks1] <> -1 Then CheckKeyUp(key, ks1);
+    If fPlayerIndex[ksJoy1] <> -1 Then CheckKeyUp(key, ksJoy1);
+    If fPlayerIndex[ksJoy2] <> -1 Then CheckKeyUp(key, ksJoy2);
   End;
   If assigned(FOnKeyUpCapture) Then Begin
     FOnKeyUpCapture(sender, key, shift);
@@ -661,29 +812,230 @@ Procedure TGame.CheckSDLKeys();
 
   Procedure CheckKeys(Keys: TKeySet);
   Var
-    d: Integer;
+    d, d0, d1: Integer;
     up, down, left, right, first, second: Boolean;
+    wasUp, wasDown, wasLeft, wasRight: Boolean; // Previous state for hysteresis
+    diagonalThreshold: Integer; // Lower threshold when in diagonal mode
+    wasDiagonal: Boolean; // Was in diagonal mode in previous frame
+    isDiagonal: Boolean;
+    verticalStrength, horizontalStrength: Integer;
+    dominantDirection: TAtomicKey;
+    sendDominant: Boolean;
+    dpadUp, dpadDown, dpadLeft, dpadRight: Boolean; // D-Pad state
+    wasDpadUp, wasDpadDown, wasDpadLeft, wasDpadRight: Boolean; // Previous D-Pad state
+    isDpadDiagonal: Boolean; // D-Pad diagonal state
+    dpadActive: Boolean; // Whether D-Pad is currently active
   Begin
+    If fPlayerIndex[keys] = AIPlayer Then exit;
+    If fPlayerIndex[keys] = -1 Then exit;
+    // Use legacy joystick mapping if configured
     If Not Settings.Keys[keys].UseSDL2 Then exit;
     If Not assigned(fsdlJoysticks[keys]) Then exit;
-    If fPlayerIndex[keys] = AIPlayer Then exit;
+    
+    // Remember previous state for hysteresis
+    wasUp := fPlayer[fPlayerIndex[keys]].KeysPressed[akUp];
+    wasDown := fPlayer[fPlayerIndex[keys]].KeysPressed[akDown];
+    wasLeft := fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft];
+    wasRight := fPlayer[fPlayerIndex[keys]].KeysPressed[akRight];
+    
+    // 1. Check D-Pad first (digital input, should be sent immediately like keyboard)
+    // D-Pad is processed separately from analog stick to ensure smooth diagonal movement
+    dpadUp := false;
+    dpadDown := false;
+    dpadLeft := false;
+    dpadRight := false;
+    dpadActive := false;
+    
+    // Universal approach: Check both HAT and button-based D-Pad
+    // Some controllers use HAT (classic), others use buttons 11-14 (modern controllers like DualSense)
+    try
+      // First check HAT-based D-pad (classic joysticks)
+      if fsdlJoysticks[keys].HatCount > 0 then begin
+        d := fsdlJoysticks[keys].Hat[0];
+        if (d and SDL_HAT_UP) <> 0 then begin
+          dpadUp := true;
+          dpadActive := true;
+        end;
+        if (d and SDL_HAT_DOWN) <> 0 then begin
+          dpadDown := true;
+          dpadActive := true;
+        end;
+        if (d and SDL_HAT_LEFT) <> 0 then begin
+          dpadLeft := true;
+          dpadActive := true;
+        end;
+        if (d and SDL_HAT_RIGHT) <> 0 then begin
+          dpadRight := true;
+          dpadActive := true;
+        end;
+      end;
+      
+      // Also check button-based D-pad (modern controllers like DualSense, some Xbox controllers)
+      // Check if controller has enough buttons and try buttons 11-14
+      // Note: We check both HAT and buttons, so if controller has both, HAT takes priority
+      if (not dpadActive) and (fsdlJoysticks[keys].ButtonCount > 14) then begin
+        // Modern controllers: D-pad as buttons 11-14
+        // Button 11 = Up, 12 = Down, 13 = Left, 14 = Right
+        if fsdlJoysticks[keys].Button[11] then begin
+          dpadUp := true;
+          dpadActive := true;
+        end;
+        if fsdlJoysticks[keys].Button[12] then begin
+          dpadDown := true;
+          dpadActive := true;
+        end;
+        if fsdlJoysticks[keys].Button[13] then begin
+          dpadLeft := true;
+          dpadActive := true;
+        end;
+        if fsdlJoysticks[keys].Button[14] then begin
+          dpadRight := true;
+          dpadActive := true;
+        end;
+      end;
+    except
+      // Ignore D-pad errors, analog stick still works
+    end;
+    
+    // If D-Pad is active, send events immediately (like keyboard) and skip analog stick processing
+    // This ensures D-Pad behaves like keyboard input with smooth diagonal movement
+    if dpadActive then begin
+      // Remember previous D-Pad state
+      wasDpadUp := fPlayer[fPlayerIndex[keys]].KeysPressed[akUp];
+      wasDpadDown := fPlayer[fPlayerIndex[keys]].KeysPressed[akDown];
+      wasDpadLeft := fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft];
+      wasDpadRight := fPlayer[fPlayerIndex[keys]].KeysPressed[akRight];
+      
+      // Send all direction changes (like keyboard - each key is independent)
+      // This allows server to process diagonal movement when multiple directions are active
+      If wasDpadUp <> dpadUp Then Begin
+        If dpadUp Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+        End;
+      End;
+      If wasDpadDown <> dpadDown Then Begin
+        If dpadDown Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+        End;
+      End;
+      If wasDpadLeft <> dpadLeft Then Begin
+        If dpadLeft Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+        End;
+      End;
+      If wasDpadRight <> dpadRight Then Begin
+        If dpadRight Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+        End
+        Else Begin
+          CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+        End;
+      End;
+      
+      // Enhanced: When in diagonal mode, send all active directions every frame
+      // This matches keyboard behavior where all pressed keys are sent continuously
+      // Server processes diagonal movement when multiple directions are active
+      isDpadDiagonal := ((dpadUp Or dpadDown) And (dpadLeft Or dpadRight));
+      If isDpadDiagonal Then Begin
+        // Send all active directions every frame (like keyboard - keys are held down)
+        // This ensures smooth diagonal movement like keyboard
+        If dpadUp Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+        End;
+        If dpadDown Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+        End;
+        If dpadLeft Then Begin
+          CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+        End;
+        If dpadRight Then Begin
+          // Send right last so server processes it (matching keyboard behavior)
+          CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+        End;
+      End;
+      
+      // D-Pad is active, skip analog stick processing
+      // Process buttons and exit early
+      first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
+      second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
+      
+      // Das Key Up wird bei Action nicht geprüft..
+      If (fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] <> first) And first Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeyPrimary, keys);
+      End;
+      // Das Key Up wird bei Action nicht geprüft..
+      If (fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] <> second) And Second Then Begin
+        CheckKeyDown(Settings.Keys[keys].KeySecondary, keys);
+      End;
+      // 3. Speichern für die nächste Runde ;)
+      fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] := first;
+      fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] := second;
+      
+      // Exit early - D-Pad processing is complete, analog stick is skipped
+      exit;
+    end;
+    
+    // D-Pad is not active, process analog stick normally (original logic unchanged)
     // 1. Ermitteln des Aktuellen "Gedrückt" stati
     up := false;
     down := false;
     left := false;
     right := false;
-    d := Settings.Keys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[0]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = Settings.Keys[keys].AchsisDirection[0] Then Begin
+    
+    // Calculate axis differences
+    d0 := Settings.Keys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[0]];
+    d1 := Settings.Keys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[1]];
+    
+    // Use hysteresis for diagonal directions: if we were in diagonal mode (both axes active),
+    // use lower threshold to turn off. This prevents flickering when one axis slightly drops below threshold.
+    // Check if we were in diagonal mode in previous frame
+    diagonalThreshold := achsistrigger Div 2; // 50% of normal threshold when in diagonal
+    wasDiagonal := ((wasUp Or wasDown) And (wasLeft Or wasRight));
+    
+    // Check up/down axis with hysteresis
+    If abs(d0) > achsistrigger Then Begin
+      // Normal threshold for activation
+      If sign(d0) = Settings.Keys[keys].AchsisDirection[0] Then Begin
+        up := true;
+      End
+      Else Begin
+        down := true;
+      End;
+    End
+    Else If wasDiagonal And (abs(d1) > achsistrigger) And (abs(d0) > diagonalThreshold) Then Begin
+      // If we were in diagonal mode and horizontal axis is still active,
+      // use lower threshold to keep vertical direction active
+      If sign(d0) = Settings.Keys[keys].AchsisDirection[0] Then Begin
         up := true;
       End
       Else Begin
         down := true;
       End;
     End;
-    d := Settings.Keys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[1]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = Settings.Keys[keys].AchsisDirection[1] Then Begin
+    
+    // Check left/right axis with hysteresis
+    If abs(d1) > achsistrigger Then Begin
+      // Normal threshold for activation
+      If sign(d1) = Settings.Keys[keys].AchsisDirection[1] Then Begin
+        left := true;
+      End
+      Else Begin
+        right := true;
+      End;
+    End
+    Else If wasDiagonal And (abs(d0) > achsistrigger) And (abs(d1) > diagonalThreshold) Then Begin
+      // If we were in diagonal mode and vertical axis is still active,
+      // use lower threshold to keep horizontal direction active
+      If sign(d1) = Settings.Keys[keys].AchsisDirection[1] Then Begin
         left := true;
       End
       Else Begin
@@ -692,7 +1044,124 @@ Procedure TGame.CheckSDLKeys();
     End;
     first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
     second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
+    
     // 2. Rauskriegen ob ein Event abgeleitet werden muss
+    // For diagonal directions, determine which direction should win based on axis strength
+    // This matches keyboard behavior where the last key pressed determines direction
+    // When in diagonal mode, send the stronger direction last so server processes it correctly
+    
+    // Determine if we're in diagonal mode and which direction should win
+    Begin
+      isDiagonal := ((up Or down) And (left Or right));
+      verticalStrength := 0;
+      horizontalStrength := 0;
+      dominantDirection := akUp; // Default
+      sendDominant := false;
+      
+      // Calculate axis strengths for diagonal mode
+      If isDiagonal Then Begin
+        If up Or down Then verticalStrength := abs(d0);
+        If left Or right Then horizontalStrength := abs(d1);
+        
+        // Determine dominant direction based on axis strength
+        // If vertical is stronger, prioritize up/down; if horizontal is stronger, prioritize left/right
+        If (verticalStrength > horizontalStrength) Then Begin
+          If up Then dominantDirection := akUp
+          Else If down Then dominantDirection := akDown;
+          sendDominant := true;
+        End
+        Else If (horizontalStrength > verticalStrength) Then Begin
+          If left Then dominantDirection := akLeft
+          Else If right Then dominantDirection := akRight;
+          sendDominant := true;
+        End
+        Else Begin
+          // Equal strength - use priority order: Up > Down > Left > Right
+          If up Then dominantDirection := akUp
+          Else If down Then dominantDirection := akDown
+          Else If left Then dominantDirection := akLeft
+          Else If right Then dominantDirection := akRight;
+          sendDominant := true;
+        End;
+      End;
+      
+      // Send direction changes, handling diagonal mode specially
+      If isDiagonal And sendDominant Then Begin
+        // In diagonal mode, send all active directions, but send the dominant one last
+        // This ensures server processes the correct direction
+        
+        // Send non-dominant directions first (if they changed)
+        If (dominantDirection <> akUp) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
+            If up Then CheckKeyDown(Settings.Keys[keys].KeyUp, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+          End;
+        End;
+        If (dominantDirection <> akDown) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> down Then Begin
+            If down Then CheckKeyDown(Settings.Keys[keys].KeyDown, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+          End;
+        End;
+        If (dominantDirection <> akLeft) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
+            If left Then CheckKeyDown(Settings.Keys[keys].KeyLeft, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+          End;
+        End;
+        If (dominantDirection <> akRight) Then Begin
+          If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
+            If right Then CheckKeyDown(Settings.Keys[keys].KeyRight, keys)
+            Else CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+          End;
+        End;
+        
+        // Send dominant direction last so server processes it
+        Case dominantDirection Of
+          akUp: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
+              If up Then CheckKeyDown(Settings.Keys[keys].KeyUp, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
+            End
+            Else If up Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
+            End;
+          End;
+          akDown: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> down Then Begin
+              If down Then CheckKeyDown(Settings.Keys[keys].KeyDown, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
+            End
+            Else If down Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
+            End;
+          End;
+          akLeft: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
+              If left Then CheckKeyDown(Settings.Keys[keys].KeyLeft, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
+            End
+            Else If left Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
+            End;
+          End;
+          akRight: Begin
+            If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
+              If right Then CheckKeyDown(Settings.Keys[keys].KeyRight, keys)
+              Else CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+            End
+            Else If right Then Begin
+              // Re-send to ensure server processes it (in case other direction was sent first)
+              CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
+            End;
+          End;
+        End;
+      End
+      Else Begin
+        // Normal single-direction mode - send changes as before
     If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
       If up Then Begin
         CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
@@ -723,6 +1192,8 @@ Procedure TGame.CheckSDLKeys();
       End
       Else Begin
         CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
+          End;
+        End;
       End;
     End;
     // Das Key Up wird bei Action nicht geprüft..
@@ -738,44 +1209,591 @@ Procedure TGame.CheckSDLKeys();
     fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] := second;
   End;
 
-Var
-  event: TSDL_Event;
 Begin
   If Not fsdl_Loaded Then exit;
-  If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then exit;
-  SDL_PumpEvents();
-  While SDL_PollEvent(@event) <> 0 Do Begin // TODO: Braucht man das wirklich ?
+  // If neither joystick is present and UseSDL2 not configured, nothing to do
+  // Check all possible keysets that might use SDL
+  If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2 Or 
+          Settings.Keys[ksJoy1].UseSDL2 Or Settings.Keys[ksJoy2].UseSDL2) Then exit;
+  
+  // If we're blocking input until buttons are released, skip input processing
+  If fBlockGameInputUntilRelease Then Begin
+    exit;
   End;
+  
+  // SDL_PumpEvents is now called in OnIdle before this function
 
   CheckKeys(ks0);
   CheckKeys(ks1);
+  CheckKeys(ksJoy1);
+  CheckKeys(ksJoy2);
+End;
+
+Procedure TGame.ReadCurrentButtonState(var up, down, left, right, buttonA, buttonB: Boolean);
+  
+  Procedure CheckJoystick(Keys: TKeySet);
+Var
+  d: Integer;
+Begin
+    If Not Assigned(fsdlJoysticks[Keys]) Then exit;
+    try
+      // Check analog stick
+      d := fsdlJoysticks[Keys].Axis[1]; // Y axis
+      if d < -12000 then up := true;
+      if d > 12000 then down := true;
+      d := fsdlJoysticks[Keys].Axis[0]; // X axis
+      if d < -12000 then left := true;
+      if d > 12000 then right := true;
+      
+      // Check D-pad buttons (DualSense style)
+      if fsdlJoysticks[Keys].ButtonCount > 14 then begin
+        if fsdlJoysticks[Keys].Button[11] then up := true;
+        if fsdlJoysticks[Keys].Button[12] then down := true;
+        if fsdlJoysticks[Keys].Button[13] then left := true;
+        if fsdlJoysticks[Keys].Button[14] then right := true;
+      end;
+      // Check HAT (classic joysticks)
+      if fsdlJoysticks[Keys].HatCount > 0 then begin
+        d := fsdlJoysticks[Keys].Hat[0];
+        if (d and SDL_HAT_UP) <> 0 then up := true;
+        if (d and SDL_HAT_DOWN) <> 0 then down := true;
+        if (d and SDL_HAT_LEFT) <> 0 then left := true;
+        if (d and SDL_HAT_RIGHT) <> 0 then right := true;
+      end;
+      
+      // Buttons: X = button 0 (Enter), Circle = button 1 (Esc)
+      if fsdlJoysticks[Keys].ButtonCount > 0 then buttonA := fsdlJoysticks[Keys].Button[0];
+      if fsdlJoysticks[Keys].ButtonCount > 1 then buttonB := fsdlJoysticks[Keys].Button[1];
+  except
+    // Ignore errors
+  end;
+  End;
+  
+Begin
+  up := false;
+  down := false;
+  left := false;
+  right := false;
+  buttonA := false;
+  buttonB := false;
+  
+  // Check all possible joysticks - first available one wins
+  CheckJoystick(ks0);
+  CheckJoystick(ks1);
+  CheckJoystick(ksJoy1);
+  CheckJoystick(ksJoy2);
+End;
+
+Function TGame.AreAllGamepadButtonsReleased(): Boolean;
+Var
+  up, down, left, right, buttonA, buttonB: Boolean;
+Begin
+  // Read current button state
+  ReadCurrentButtonState(up, down, left, right, buttonA, buttonB);
+  
+  // Return true only if ALL buttons are released
+  result := not (up or down or left or right or buttonA or buttonB);
+End;
+
+Procedure TGame.CheckSDLKeysForMenu();
+Var
+  up, down, left, right, buttonA, buttonB: Boolean;
+  d, i: Integer;
+  key: Word;
+  shift: TShiftState;
+Begin
+  // Only process in menu, not during gameplay
+  If fgameState = gs_Gaming Then exit;
+  If Not fsdl_Loaded Then exit;
+  If Not assigned(fActualScreen) Then exit;
+  
+  // If we're blocking menu input until buttons are released, skip input processing
+  If fBlockMenuInputUntilRelease Then Begin
+    exit;
+  End;
+  
+  // Check if any joystick is available (check all possible keysets)
+  If Not (Assigned(fsdlJoysticks[ks0]) Or Assigned(fsdlJoysticks[ks1]) Or 
+          Assigned(fsdlJoysticks[ksJoy1]) Or Assigned(fsdlJoysticks[ksJoy2])) Then exit;
+  
+  // Read D-pad and button state from first available controller
+  ReadCurrentButtonState(up, down, left, right, buttonA, buttonB);
+  
+  shift := [];
+  
+  // Generate key events on state change (press only)
+  if up and not fMenuDpadState.up then begin
+    key := VK_UP;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if down and not fMenuDpadState.down then begin
+    key := VK_DOWN;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if left and not fMenuDpadState.left then begin
+    key := VK_LEFT;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if right and not fMenuDpadState.right then begin
+    key := VK_RIGHT;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if buttonA and not fMenuDpadState.buttonA then begin
+    key := VK_RETURN;
+    // Mark button as pressed AND block menu input BEFORE calling OnKeyDown to prevent double-trigger
+    fMenuDpadState.buttonA := true;
+    fBlockMenuInputUntilRelease := true;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  if buttonB and not fMenuDpadState.buttonB then begin
+    key := VK_ESCAPE;
+    // Mark button as pressed AND block menu input BEFORE calling OnKeyDown to prevent double-trigger
+    fMenuDpadState.buttonB := true;
+    fBlockMenuInputUntilRelease := true;
+    fActualScreen.OnKeyDown(nil, key, shift);
+  end;
+  
+  // Save state for next frame
+  fMenuDpadState.up := up;
+  fMenuDpadState.down := down;
+  fMenuDpadState.left := left;
+  fMenuDpadState.right := right;
+  // buttonA and buttonB are already set above if they were just pressed,
+  // otherwise update them normally
+  if not buttonA then fMenuDpadState.buttonA := false;
+  if not buttonB then fMenuDpadState.buttonB := false;
+End;
+
+Function TGame.GetControllerCount: Integer;
+begin
+  result := 0;
+  if Assigned(fsdlJoysticks[ks0]) then inc(result);
+  if Assigned(fsdlJoysticks[ks1]) then inc(result);
+  if Assigned(fsdlJoysticks[ksJoy1]) then inc(result);
+  if Assigned(fsdlJoysticks[ksJoy2]) then inc(result);
+end;
+
+Procedure TGame.ReinitControllersWithLogs();
+Var
+  index, index2: integer;
+  numJoy: Integer;
+  i: Integer;
+Begin
+  // If menu or game input is blocked, skip reinit to avoid resetting button states
+  If (fBlockMenuInputUntilRelease Or fBlockGameInputUntilRelease) And Assigned(fsdlJoysticks[ks0]) Then Begin
+    exit;
+  End;
+  
+  // Always try to init SDL and detect controllers
+  If (Not fsdl_Loaded) Then Begin
+    fsdl_Loaded := SDL_LoadLib('');
+    If fsdl_Loaded Then Begin
+      // Initialize with GAMECONTROLLER (implies JOYSTICK)
+      fsdl_Loaded := SDL_Init(SDL_INIT_GAMECONTROLLER) = 0;
+      End;
+  End;
+  
+  // Clean up old instances
+  If assigned(fsdlJoysticks[ks0]) Then Begin
+    fsdlJoysticks[ks0].Free;
+    fsdlJoysticks[ks0] := Nil;
+  End;
+  If assigned(fsdlJoysticks[ks1]) Then Begin
+    fsdlJoysticks[ks1].Free;
+    fsdlJoysticks[ks1] := Nil;
+  End;
+  If assigned(fsdlJoysticks[ksJoy1]) Then Begin
+    fsdlJoysticks[ksJoy1].Free;
+    fsdlJoysticks[ksJoy1] := Nil;
+  End;
+  If assigned(fsdlJoysticks[ksJoy2]) Then Begin
+    fsdlJoysticks[ksJoy2].Free;
+    fsdlJoysticks[ksJoy2] := Nil;
+  End;
+  If assigned(fsdlControllers[ks0]) Then Begin
+    fsdlControllers[ks0].Free;
+    fsdlControllers[ks0] := Nil;
+  End;
+  If assigned(fsdlControllers[ks1]) Then Begin
+    fsdlControllers[ks1].Free;
+    fsdlControllers[ks1] := Nil;
+  End;
+  If assigned(fsdlControllers[ksJoy1]) Then Begin
+    fsdlControllers[ksJoy1].Free;
+    fsdlControllers[ksJoy1] := Nil;
+  End;
+  If assigned(fsdlControllers[ksJoy2]) Then Begin
+    fsdlControllers[ksJoy2].Free;
+    fsdlControllers[ksJoy2] := Nil;
+  End;
+  // Reset logging flags
+  fControllerLogged[ks0] := false;
+  fControllerLogged[ks1] := false;
+  fControllerLogged[ksJoy1] := false;
+  fControllerLogged[ksJoy2] := false;
+  
+  If fsdl_Loaded Then Begin
+    // Try to detect and configure joystick-based controls (SDL_Joystick + existing mapping)
+    try
+      numJoy := SDL_NumJoysticks();
+    except
+      numJoy := 0;
+    end;
+    
+    // Auto-configure ksJoy1/ksJoy2 to use first/second joystick
+    // Note: We do NOT auto-configure ks0/ks1 anymore - they remain as keyboard inputs
+    // Users can manually select Joy 1 or Joy 2 in the player setup menu
+    // Always configure ksJoy1 and ksJoy2 so they're available for selection
+    if numJoy > 0 then begin
+      // Configure Joy 1 (ksJoy1) to use joystick 0
+      // Only set UseSDL2 if not already configured (preserve user settings)
+      if not Settings.Keys[ksJoy1].UseSDL2 then begin
+        Settings.Keys[ksJoy1].UseSDL2 := true;
+      try
+        if SDL_JoystickNameForIndex(0) <> nil then
+            Settings.Keys[ksJoy1].Name := SDL_JoystickNameForIndex(0)
+        else
+            Settings.Keys[ksJoy1].Name := '';
+      except
+          Settings.Keys[ksJoy1].Name := '';
+      end;
+        Settings.Keys[ksJoy1].NameIndex := 0;
+        Settings.Keys[ksJoy1].AchsisIndex[0] := 1;
+        Settings.Keys[ksJoy1].AchsisIdle[0] := 0;
+        Settings.Keys[ksJoy1].AchsisDirection[0] := 1;
+        Settings.Keys[ksJoy1].AchsisIndex[1] := 0;
+        Settings.Keys[ksJoy1].AchsisIdle[1] := 0;
+        Settings.Keys[ksJoy1].AchsisDirection[1] := 1;
+        Settings.Keys[ksJoy1].ButtonIndex[0] := 0;
+        Settings.Keys[ksJoy1].ButtonsIdle[0] := false;
+        Settings.Keys[ksJoy1].ButtonIndex[1] := 2;
+        Settings.Keys[ksJoy1].ButtonsIdle[1] := false;
+      end;
+    end;
+    if numJoy > 1 then begin
+      // Configure Joy 2 (ksJoy2) to use joystick 1
+      // Only set UseSDL2 if not already configured (preserve user settings)
+      if not Settings.Keys[ksJoy2].UseSDL2 then begin
+        Settings.Keys[ksJoy2].UseSDL2 := true;
+      try
+        if SDL_JoystickNameForIndex(1) <> nil then
+            Settings.Keys[ksJoy2].Name := SDL_JoystickNameForIndex(1)
+        else
+            Settings.Keys[ksJoy2].Name := '';
+      except
+          Settings.Keys[ksJoy2].Name := '';
+      end;
+        Settings.Keys[ksJoy2].NameIndex := 0;
+        Settings.Keys[ksJoy2].AchsisIndex[0] := 1;
+        Settings.Keys[ksJoy2].AchsisIdle[0] := 0;
+        Settings.Keys[ksJoy2].AchsisDirection[0] := 1;
+        Settings.Keys[ksJoy2].AchsisIndex[1] := 0;
+        Settings.Keys[ksJoy2].AchsisIdle[1] := 0;
+        Settings.Keys[ksJoy2].AchsisDirection[1] := 1;
+        Settings.Keys[ksJoy2].ButtonIndex[0] := 0;
+        Settings.Keys[ksJoy2].ButtonsIdle[0] := false;
+        Settings.Keys[ksJoy2].ButtonIndex[1] := 2;
+        Settings.Keys[ksJoy2].ButtonsIdle[1] := false;
+      end;
+    end;
+
+    // Open legacy joystick instances according to configured names
+    If Settings.Keys[ks0].UseSDL2 Then Begin
+      index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name, Settings.Keys[ks0].NameIndex);
+      If index <> -1 Then Begin
+        fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
+      End;
+    End;
+    If Settings.Keys[ks1].UseSDL2 Then Begin
+      index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name, Settings.Keys[ks1].NameIndex);
+      If index <> -1 Then Begin
+        fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
+      End;
+    End;
+    // Universal approach: Always map ksJoy1 and ksJoy2 by physical index, not by name
+    // This ensures any controller works regardless of its name
+    // ksJoy1 always maps to physical joystick index 0, ksJoy2 to index 1
+    If Settings.Keys[ksJoy1].UseSDL2 And (numJoy > 0) Then Begin
+      // Always use physical index 0 for ksJoy1, regardless of saved name
+      // This ensures universal compatibility - any controller at index 0 will work
+      try
+        fsdlJoysticks[ksJoy1] := TSDL_Joystick.Create(0);
+      except
+        On E: Exception Do Begin
+          fsdlJoysticks[ksJoy1] := Nil;
+        End;
+      end;
+    End;
+    If Settings.Keys[ksJoy2].UseSDL2 And (numJoy > 1) Then Begin
+      // Always use physical index 1 for ksJoy2, regardless of saved name
+      // This ensures universal compatibility - any controller at index 1 will work
+      try
+        fsdlJoysticks[ksJoy2] := TSDL_Joystick.Create(1);
+      except
+        On E: Exception Do Begin
+          fsdlJoysticks[ksJoy2] := Nil;
+        End;
+      end;
+    End;
+  End;
+End;
+
+Function TGame.GetKeySetDisplayName(Keys: TKeySet): String;
+begin
+	// Handle joystick-specific keysets - show just "Joy 1" or "Joy 2" without controller name
+	if keys = ksJoy1 then begin
+		exit('Joy 1');
+	end;
+	if keys = ksJoy2 then begin
+		exit('Joy 2');
+	end;
+	
+	// Keyboard labels - shortened to "Key 0" and "Key 1" for consistency with "Joy 1" and "Joy 2"
+	if keys = ks0 then exit('Key 0') else exit('Key 1');
+end;
+
+Function TGame.GetServerIPAddress(): String;
+Var
+  adapters: TNetworkAdapterList;
+  i: Integer;
+Begin
+  Result := '127.0.0.1'; // Default to localhost
+  Try
+    adapters := GetLocalIPs();
+    // Find first non-localhost IP address (prefer network IP over localhost)
+    For i := 0 To High(adapters) Do Begin
+      If (adapters[i].IpAddress <> '127.0.0.1') And (adapters[i].IpAddress <> '') Then Begin
+        Result := adapters[i].IpAddress;
+        log('Server IP address: ' + Result, llInfo);
+        exit;
+      End;
+    End;
+    // If no network IP found, use localhost
+    log('No network IP found, using localhost: ' + Result, llInfo);
+  Except
+    On E: Exception Do Begin
+      log('Error getting server IP address: ' + E.Message + ', using localhost', llWarning);
+      Result := '127.0.0.1';
+    End;
+  End;
 End;
 
 Function TGame.StartHost: Boolean;
 Var
   serv: String;
   p: TProcessUTF8;
+  basePath, clientPath: String;
+{$IFDEF DARWIN}
+  serverAppPath: String;
+  portCheck: TProcessUTF8;
+  portCheckOutput: String;
+  portCheckCount: Integer;
+  portListening: Boolean;
+{$ENDIF}
+{$IFDEF UNIX}
+{$IFNDEF DARWIN}
+  serverCmd: String;
+  terminalFound: Boolean;
+  terminalExe: String;
+{$ENDIF}
+{$ENDIF}
 Begin
   //Begin
   log('TGame.StartHost', llTrace);
   result := false;
   // Starten des Atomic_servers, dann als Client verbinden
-  serv := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'atomic_server';
+  clientPath := ExtractFilePath(ParamStrUTF8(0));
+  basePath := IncludeTrailingPathDelimiter(clientPath);
+{$IFDEF DARWIN}
+  // On macOS, check if we're in an .app bundle
+  // If so, look for FPCAtomicServer.app in the same directory as FPCAtomic.app
+  If Pos('.app/Contents/MacOS/', clientPath) > 0 Then Begin
+    // We're in an .app bundle (e.g., FPCAtomic.app/Contents/MacOS/)
+    // Go up to the app bundle directory (../../ from MacOS)
+    serverAppPath := ExpandFileName(IncludeTrailingPathDelimiter(clientPath) + '../../');
+    // Replace FPCAtomic.app with FPCAtomicServer.app
+    If Pos('FPCAtomic.app', serverAppPath) > 0 Then Begin
+      serverAppPath := StringReplace(serverAppPath, 'FPCAtomic.app', 'FPCAtomicServer.app', []);
+    End
+    Else Begin
+      // Fallback: try relative to MacOS directory
+      serverAppPath := ExpandFileName(IncludeTrailingPathDelimiter(clientPath) + '../../../FPCAtomicServer.app');
+    End;
+    log('Looking for server app at: ' + serverAppPath, llInfo);
+    If DirectoryExistsUTF8(serverAppPath) Then Begin
+      // Launch server directly with atomic_server binary (like run_server script does)
+      // This ensures DYLD_LIBRARY_PATH is set correctly and parameters are passed
+      serv := IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS/atomic_server';
+      If FileExistsUTF8(serv) Then Begin
+        log('Launching server in terminal: ' + serv, llInfo);
+        p := TProcessUTF8.Create(Nil);
+        p.Options := [poDetached];
+        // Use osascript to open Terminal and run server command
+        p.Executable := '/usr/bin/osascript';
+        p.Parameters.Add('-e');
+        p.Parameters.Add('tell application "Terminal" to do script "cd ''' + 
+          IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/MacOS''' +
+          ' && export DYLD_LIBRARY_PATH=''' + IncludeTrailingPathDelimiter(serverAppPath) + 'Contents/lib:$DYLD_LIBRARY_PATH''' +
+          ' && ''' + serv + ''' -p ' + inttostr(settings.Port) +
+          ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()) + '; echo \"\nServer terminated. Press any key to close this window...\"; read"');
+        p.Execute;
+        p.free;
+        result := true;
+        fServerPID := 0; // Server runs in terminal, no PID tracking needed
+        // Wait for server to start
+        Sleep(2000);
+        LogLeave;
+        exit;
+      End
+      Else Begin
+        log('Server binary not found at: ' + serv, llWarning);
+      End;
+    End
+    Else Begin
+      log('Server app not found at: ' + serverAppPath, llWarning);
+    End;
+  End;
+{$ENDIF}
+  // Fallback: look for atomic_server binary in the same directory
+  serv := basePath + 'atomic_server';
 {$IFDEF Windows}
   serv := serv + '.exe';
 {$ENDIF}
   If FileExistsUTF8(serv) Then Begin
+    log('Launching server in terminal: ' + serv, llInfo);
+{$IFDEF Windows}
+    // On Windows, use start command to open new console window
     p := TProcessUTF8.Create(Nil);
-    p.Options := [poNewConsole];
+    p.Options := [poDetached];
+    p.Executable := 'cmd.exe';
+    p.Parameters.Add('/c');
+    p.Parameters.Add('start');
+    p.Parameters.Add('"FPC Atomic Server"');
+    p.Parameters.Add('cmd.exe');
+    p.Parameters.Add('/k');
+    // Build the command to run server
+    p.Parameters.Add(serv + ' -p ' + inttostr(settings.Port) +
+      ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()) +
+      ' -f ' + IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
+    p.Execute;
+    p.free;
+    fServerPID := 0; // Server runs in terminal, no PID tracking needed
+    Sleep(2000); // Wait for server to start
+{$ELSE}
+{$IFDEF UNIX}
+{$IFNDEF DARWIN}
+    // On Linux/Unix (not macOS), try to find a terminal emulator
+    serverCmd := 'cd ''' + basePath + ''' && ''' + serv + ''' -p ' + inttostr(settings.Port) +
+      ' -t 0 -l ' + IntToStr(GetLoggerLoglevel()) +
+      ' -f ' + IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log' +
+      '; echo ""; echo "Server terminated. Press Enter to close..."; read';
+    terminalFound := false;
+      
+      // Try x-terminal-emulator first (works on most Linux systems)
+      terminalExe := FindDefaultExecutablePath('x-terminal-emulator');
+      If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/x-terminal-emulator') Then Begin
+        p := TProcessUTF8.Create(Nil);
+        p.Options := [poDetached];
+        If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/x-terminal-emulator';
+        p.Parameters.Add('-e');
+        p.Parameters.Add('bash');
+        p.Parameters.Add('-c');
+        p.Parameters.Add(serverCmd);
+        p.Execute;
+        p.free;
+        terminalFound := true;
+      End
+      // Try gnome-terminal
+      Else Begin
+        terminalExe := FindDefaultExecutablePath('gnome-terminal');
+        If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/gnome-terminal') Then Begin
+          p := TProcessUTF8.Create(Nil);
+          p.Options := [poDetached];
+          If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/gnome-terminal';
+          p.Parameters.Add('--');
+          p.Parameters.Add('bash');
+          p.Parameters.Add('-c');
+          p.Parameters.Add(serverCmd);
+          p.Execute;
+          p.free;
+          terminalFound := true;
+        End
+        // Try konsole (KDE)
+        Else Begin
+          terminalExe := FindDefaultExecutablePath('konsole');
+          If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/konsole') Then Begin
+            p := TProcessUTF8.Create(Nil);
+            p.Options := [poDetached];
+            If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/konsole';
+            p.Parameters.Add('-e');
+            p.Parameters.Add('bash');
+            p.Parameters.Add('-c');
+            p.Parameters.Add(serverCmd);
+            p.Execute;
+            p.free;
+            terminalFound := true;
+          End
+          // Try xterm as fallback
+          Else Begin
+            terminalExe := FindDefaultExecutablePath('xterm');
+            If (terminalExe <> '') Or FileExistsUTF8('/usr/bin/xterm') Then Begin
+              p := TProcessUTF8.Create(Nil);
+              p.Options := [poDetached];
+              If terminalExe <> '' Then p.Executable := terminalExe Else p.Executable := '/usr/bin/xterm';
+              p.Parameters.Add('-e');
+              p.Parameters.Add('bash');
+              p.Parameters.Add('-c');
+              p.Parameters.Add(serverCmd);
+              p.Execute;
+              p.free;
+              terminalFound := true;
+            End;
+          End;
+        End;
+      End;
+      
+      If Not terminalFound Then Begin
+        log('Warning: No terminal emulator found, starting server in background', llWarning);
+        // Fallback: start server without terminal
+        p := TProcessUTF8.Create(Nil);
+        p.Options := [poNewConsole, poNewProcessGroup];
+        p.Executable := serv;
+        p.Parameters.Add('-p');
+        p.Parameters.Add(inttostr(settings.Port));
+        p.Parameters.Add('-t');
+        p.Parameters.Add('0');
+        p.Parameters.Add('-l');
+        p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
+        p.Parameters.Add('-f');
+        p.Parameters.Add(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
+        p.Execute;
+        fServerPID := p.ProcessID;
+        p.free;
+      End
+      Else Begin
+        fServerPID := 0; // Server runs in terminal, no PID tracking needed
+      End;
+    Sleep(2000); // Wait for server to start
+{$ENDIF} // IFNDEF DARWIN
+{$ELSE} // UNIX
+    // Other platforms - fallback to background start
+    p := TProcessUTF8.Create(Nil);
+    p.Options := [poNewConsole, poNewProcessGroup];
     p.Executable := serv;
     p.Parameters.Add('-p');
     p.Parameters.Add(inttostr(settings.Port));
+    p.Parameters.Add('-t');
+    p.Parameters.Add('0');
     p.Parameters.Add('-l');
     p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
     p.Parameters.Add('-f');
     p.Parameters.Add(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
     p.Execute;
+    fServerPID := p.ProcessID;
     p.free;
+    Sleep(2000);
+{$ENDIF} // UNIX
+{$ENDIF} // Windows
   End
   Else Begin
     LogShow('Error: could not find server application, abort now', llError);
@@ -783,10 +1801,46 @@ Begin
     exit;
   End;
   // Bis der Server Steht dauerts ein bischen, also warten wir
+  // On macOS, .app bundles take longer to start, especially with network thread initialization
+  // Also need time for the server to initialize and start listening on the port
 {$IFDEF Windows}
-  sleep(1500); // Unter Windows scheint es deutlich "länger" zu dauern, wie lange genau wäre gut zu wissen ..
+  sleep(3000); // Unter Windows scheint es deutlich "länger" zu dauern
 {$ELSE}
-  sleep(500);
+{$IFDEF DARWIN}
+  // Wait for server to start and check if port is listening
+  sleep(3000); // Initial wait for .app bundle to start (increased from 2000ms)
+  // Check if server is actually listening on the port (up to 10 seconds)
+  portListening := false;
+  portCheckCount := 0;
+  While (portCheckCount < 20) And (Not portListening) Do Begin
+    sleep(500); // Check every 500ms
+    Inc(portCheckCount);
+    
+    // Use lsof to check if port is listening
+    portCheck := TProcessUTF8.Create(Nil);
+    portCheck.Options := [poUsePipes, poWaitOnExit];
+    portCheck.Executable := '/usr/sbin/lsof';
+    portCheck.Parameters.Add('-i');
+    portCheck.Parameters.Add(':' + inttostr(settings.Port));
+    portCheck.Execute;
+    
+    SetLength(portCheckOutput, 1024);
+    SetLength(portCheckOutput, portCheck.Output.Read(portCheckOutput[1], Length(portCheckOutput)));
+    portCheck.Free;
+    
+    // If lsof found something, port is listening
+    If Length(portCheckOutput) > 0 Then Begin
+      portListening := true;
+      log('Server is listening on port ' + inttostr(settings.Port), llInfo);
+    End;
+  End;
+  
+  If Not portListening Then Begin
+    log('Warning: Server port not detected after ' + inttostr(portCheckCount * 500) + 'ms, will try to connect anyway', llWarning);
+  End;
+{$ELSE}
+  sleep(3000); // For other Unix-like systems
+{$ENDIF}
 {$ENDIF}
   // StartClientGame; --> Das Verbinden macht der SwitchToScreen schon ;)
   Application.Restore;
@@ -874,6 +1928,10 @@ Var
 Begin
   // Der Client ist beim Server Registriert, nun gilt es um die Mitspielerlaubniss zu fragen.
   log('TGame.Connection_Connect', llTrace);
+  
+  // Stop waiting for local server - we're connected now
+  fWaitingForLocalServer := false;
+  
   fChunkManager.SetNoDelay(true);
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
@@ -911,6 +1969,16 @@ End;
 Procedure TGame.Connection_Error(Const msg: String; aSocket: TLSocket);
 Begin
   log('TGame.Connection_Error', llTrace);
+  
+  // If we're waiting for local server, don't show error and don't switch to main menu
+  // OnIdle will retry the connection periodically
+  If fWaitingForLocalServer Then Begin
+    log('Connection error while waiting for local server: ' + msg + ' - will retry', llInfo);
+    LogLeave;
+    exit;
+  End;
+  
+  // For remote servers or if we're not waiting, show error and go back to main menu
   LogShow(msg, llError);
   SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
   LogLeave;
@@ -987,12 +2055,6 @@ Var
   m: TMemoryStream;
   b: Boolean;
 Begin
-{$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miUpdateGameData) And
-    ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
-{$ENDIF}
-    log('TGame.OnReceivedChunk : ' + MessageIdentifierToString(Chunk.UserDefinedID), llTrace);
   Case (Chunk.UserDefinedID And $FFFF) Of
     miUpdateMasterID: Begin
         HandleUpdateMasterId(Chunk.Data);
@@ -1105,12 +2167,6 @@ Begin
       log('Unknown user defined id : ' + inttostr((Chunk.UserDefinedID And $FFFF)), llError);
     End;
   End;
-{$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miUpdateGameData) And
-    ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
-{$ENDIF}
-    LogLeave;
 End;
 
 Procedure TGame.SendChunk(UserDefinedID: Integer; Const Data: TStream);
@@ -1130,7 +2186,7 @@ End;
 
 Procedure TGame.HandleRefreshPlayerStats(Const Stream: TMemoryStream);
 Var
-  cnt, i, uid, j: integer;
+  cnt, i, uid, j, index, numJoy: integer;
   found: Boolean;
   k: TKeySet;
 Begin
@@ -1153,6 +2209,119 @@ Begin
     fPlayer[i].UID := uid;
     k := ks0;
     stream.Read(k, sizeof(k));
+    
+    // Check if selected joystick is available, if not, skip to next available option
+    numJoy := 0;
+    try
+      If fsdl_Loaded And Assigned(SDL_NumJoysticks) Then Begin
+        numJoy := SDL_NumJoysticks();
+      End;
+    except
+      numJoy := 0;
+    end;
+    
+    // If server set Joy 1 but no joysticks are available, skip to next option
+    If (k = ksJoy1) And (numJoy < 1) Then Begin
+      // Skip to next option by sending another change request
+      If (uid = fUserID) And (fPlayer[i].UID = uid) Then Begin
+        // This is our player, send change request to skip unavailable joystick
+        ChangePlayerKey(i, 1);
+        // Don't process this update, wait for next refresh
+        LogLeave;
+        exit;
+      End
+      Else Begin
+        // Not our player, just set to Keyboard 1 as fallback
+        k := ks1;
+      End;
+    End
+    // If server set Joy 2 but only 0-1 joysticks are available, skip to next option
+    Else If (k = ksJoy2) And (numJoy < 2) Then Begin
+      // Skip to next option by sending another change request
+      If (uid = fUserID) And (fPlayer[i].UID = uid) Then Begin
+        // This is our player, send change request to skip unavailable joystick
+        ChangePlayerKey(i, 1);
+        // Don't process this update, wait for next refresh
+        LogLeave;
+        exit;
+      End
+      Else Begin
+        // Not our player, just set to Keyboard 1 as fallback
+        k := ks1;
+      End;
+    End;
+    
+    // Reset UseSDL2 based on selected input type
+    // If player selected keyboard (ks0 or ks1), disable SDL2 and close joystick
+    // If player selected joystick (ksJoy1 or ksJoy2), enable SDL2
+    If (k = ks0) Or (k = ks1) Then Begin
+      // Keyboard input selected - disable SDL2 and close joystick
+      If Settings.Keys[k].UseSDL2 Then Begin
+        Settings.Keys[k].UseSDL2 := false;
+        // Close joystick if open
+        If assigned(fsdlJoysticks[k]) Then Begin
+          fsdlJoysticks[k].Free;
+          fsdlJoysticks[k] := Nil;
+        End;
+        If assigned(fsdlControllers[k]) Then Begin
+          fsdlControllers[k].Free;
+          fsdlControllers[k] := Nil;
+        End;
+      End;
+    End Else If (k = ksJoy1) Or (k = ksJoy2) Then Begin
+      // Joystick input selected - ensure SDL2 is enabled
+      If Not Settings.Keys[k].UseSDL2 Then Begin
+        Settings.Keys[k].UseSDL2 := true;
+        // Open joystick if not already open
+        // Universal approach: Always map by physical index, not by name
+        // ksJoy1 always maps to physical joystick index 0, ksJoy2 to index 1
+        If Not assigned(fsdlJoysticks[k]) And fsdl_Loaded Then Begin
+          If (k = ksJoy1) And (numJoy > 0) Then Begin
+            // Always use physical index 0 for ksJoy1
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(0);
+            except
+              On E: Exception Do Begin
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
+          End Else If (k = ksJoy2) And (numJoy > 1) Then Begin
+            // Always use physical index 1 for ksJoy2
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(1);
+            except
+              On E: Exception Do Begin
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
+          End;
+        End;
+      End Else Begin
+        // SDL2 already enabled, but make sure joystick is open
+        // Universal approach: Always map by physical index, not by name
+        If Not assigned(fsdlJoysticks[k]) And fsdl_Loaded Then Begin
+          If (k = ksJoy1) And (numJoy > 0) Then Begin
+            // Always use physical index 0 for ksJoy1
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(0);
+            except
+              On E: Exception Do Begin
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
+          End Else If (k = ksJoy2) And (numJoy > 1) Then Begin
+            // Always use physical index 1 for ksJoy2
+            try
+              fsdlJoysticks[k] := TSDL_Joystick.Create(1);
+            except
+              On E: Exception Do Begin
+                fsdlJoysticks[k] := Nil;
+              End;
+            end;
+          End;
+        End;
+      End;
+    End;
     fPlayer[i].Keyboard := k;
     j := -1;
     stream.Read(j, SizeOf(j));
@@ -1221,6 +2390,7 @@ Var
   i: Integer;
   ahash: uint64;
   s: String;
+  found: Boolean;
 Begin
   log('TGame.HandleUpdateAvailableFieldList', llTrace);
   For i := 0 To high(fFields) Do Begin
@@ -1231,11 +2401,27 @@ Begin
     s := stream.ReadAnsiString;
     ahash := 0;
     stream.Read(ahash, sizeof(ahash));
+    found := false;
+    // First try exact match (name and hash)
     For i := 0 To high(fFields) Do Begin
-      If (fFields[i].Name = s) And
+      If (CompareText(fFields[i].Name, s) = 0) And
         (fFields[i].Hash = ahash) Then Begin
         fFields[i].Available := true;
+        found := true;
         break;
+      End;
+    End;
+    // If exact match not found, try name-only match (for cross-platform compatibility)
+    If Not found Then Begin
+      For i := 0 To high(fFields) Do Begin
+        If CompareText(fFields[i].Name, s) = 0 Then Begin
+          // Name matches but hash differs - accept for cross-platform compatibility
+          // Log warning for debugging (commented out - too noisy in production)
+          // log(format('Field "%s": accepting despite hash mismatch (Server hash: %d, Local hash: %d)', 
+          //   [s, ahash, fFields[i].Hash]), llWarning);
+          fFields[i].Available := true;
+          break;
+        End;
       End;
     End;
   End;
@@ -1264,9 +2450,25 @@ Begin
   fActualField := Nil;
   stream.Read(FieldHash, SizeOf(FieldHash));
   stream.Read(Wins, SizeOf(Wins));
+  // First try exact match (name and hash)
   For i := 0 To high(fFields) Do Begin
-    If (fFields[i].Name = FieldName)
+    If (CompareText(fFields[i].Name, FieldName) = 0)
       And (fFields[i].Hash = FieldHash) Then Begin
+      fActualField := fFields[i];
+      TFieldSetupMenu(fScreens[sEditFieldSetup]).ActualField := fActualField;
+      TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch := wins;
+      Settings.LastWinsToWinMatch := wins;
+      LogLeave;
+      exit;
+    End;
+  End;
+  // If exact match not found, try name-only match (for cross-platform compatibility)
+  // This handles cases where Windows and Mac have different file versions but same field name
+  For i := 0 To high(fFields) Do Begin
+    If CompareText(fFields[i].Name, FieldName) = 0 Then Begin
+      // Name matches but hash differs - accept for cross-platform compatibility
+      log(format('Field name match but hash mismatch (using local field): Server "%s" (hash: %d) vs Local "%s" (hash: %d)', 
+        [FieldName, FieldHash, fFields[i].Name, fFields[i].Hash]), llWarning);
       fActualField := fFields[i];
       TFieldSetupMenu(fScreens[sEditFieldSetup]).ActualField := fActualField;
       TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch := wins;
@@ -1320,6 +2522,8 @@ Begin
   fHurry.Enabled := false;
   fPlayerIndex[ks0] := -1;
   fPlayerIndex[ks1] := -1;
+  fPlayerIndex[ksJoy1] := -1;
+  fPlayerIndex[ksJoy2] := -1;
   For i := 0 To high(fPlayer) Do Begin
     (*
      * Löschen der ggf. vorherigen Die Animation, sonst beginnt der Spieler das Spiel erst mal sterbend...
@@ -1336,11 +2540,35 @@ Begin
   End;
   fLastKeyDown[akFirstAction] := 0;
   fLastKeyDown[akSecondAction] := 0;
+  // Transfer menu blocking to game blocking if menu input was blocked (button still pressed)
+  // Otherwise set game blocking anyway to be safe
+  If fBlockMenuInputUntilRelease Then Begin
+    // Button was pressed in menu and is still blocked - transfer to game blocking
+    fBlockGameInputUntilRelease := true;
+    fBlockMenuInputUntilRelease := false;
+  End Else Begin
+    // Set game blocking anyway to prevent any stray presses
+    fBlockGameInputUntilRelease := true;
+  End;
   fActualField.Reset;
   // TODO: What ever da noch alles so fehlt
   StartPlayingSong(fActualField.Sound);
   HandleSetPause(false); // Pause auf jeden Fall, aus
   fPlayingTime_s := 0;
+  
+  // Reset interpolation snapshots when game starts
+  fServerSnapshots[0].Valid := False;
+  fServerSnapshots[0].Timestamp := 0;
+  fServerSnapshots[1].Valid := False;
+  fServerSnapshots[1].Timestamp := 0;
+  fCurrentSnapshot := 0;
+  fInterpolatedState.PlayingTime_ms := 0;
+  
+  // Reset MAX stats for new game
+  fDebugStats.MaxRTT := 0;
+  fDebugStats.MaxSnapAge := 0;
+  fDebugStats.MaxInterpFactor := 0;
+  
   fgameState := gs_Gaming;
 End;
 
@@ -1354,33 +2582,80 @@ Var
   i: Integer;
   OldValue: UInt16; // Bei Die, Zen, Locked in braucht es ebenfalls den Index
   OldAnim: TRenderAnimation;
+  CurrentTime, TimeSinceLastUpdate: QWord;
+  PacketSize: Int64;
 Begin
-  stream.Read(fPlayingTime_s, sizeof(fPlayingTime_s));
+  CurrentTime := GetTickCount64;
+  PacketSize := Stream.Size;
+  
+  // Measure time since last update (for debug stats only, no logging)
+  If fLastUpdateTimestamp > 0 Then Begin
+    TimeSinceLastUpdate := CurrentTime - fLastUpdateTimestamp;
+    // Removed logging - was slowing down client on older machines
+  End;
+  // Calculate RTT for debug stats
+  If fLastUpdateTimestamp > 0 Then Begin
+    fDebugStats.LastRTT := CurrentTime - fLastUpdateTimestamp;
+    If fDebugStats.AvgRTT = 0 Then
+      fDebugStats.AvgRTT := fDebugStats.LastRTT
+    Else
+      fDebugStats.AvgRTT := fDebugStats.AvgRTT * 0.9 + fDebugStats.LastRTT * 0.1; // Running average
+    // Track MAX RTT
+    If fDebugStats.LastRTT > fDebugStats.MaxRTT Then
+      fDebugStats.MaxRTT := fDebugStats.LastRTT;
+  End;
+  fLastUpdateTimestamp := CurrentTime;
+  
+  // === NEW: Store data in snapshot instead of directly in fPlayingTime_s ===
+  // Switch to next snapshot buffer
+  fCurrentSnapshot := 1 - fCurrentSnapshot;
+  
+  // Read server data into NEW snapshot
+  stream.Read(fPlayingTime_s, sizeof(fPlayingTime_s)); // Read temporarily
+  fServerSnapshots[fCurrentSnapshot].ServerTime_ms := fPlayingTime_s * 1000; // Convert to ms
+  fServerSnapshots[fCurrentSnapshot].Timestamp := CurrentTime;
+  fServerSnapshots[fCurrentSnapshot].Valid := True;
+  
+  // Read player positions into snapshot
   For i := 0 To high(fPlayer) Do Begin
     OldValue := fPlayer[i].Info.Value;
     OldAnim := fPlayer[i].Info.Animation;
-    Stream.Read(fPlayer[i].Info, sizeof(fPlayer[i].Info));
+    Stream.Read(fServerSnapshots[fCurrentSnapshot].PlayerInfos[i], sizeof(TAtomicInfo));
+    
+    // === IMPORTANT: Only copy NON-POSITION data to fPlayer for Edge detection ===
+    // DO NOT copy Position - that's handled by interpolation!
+    fPlayer[i].Info.Animation := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation;
+    fPlayer[i].Info.Alive := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Alive;
+    fPlayer[i].Info.Dying := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Dying;
+    fPlayer[i].Info.Direction := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Direction;
+    fPlayer[i].Info.Counter := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Counter;
+    fPlayer[i].Info.Value := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Value;
+    fPlayer[i].Info.ColorIndex := fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].ColorIndex;
+    // Position is NOT copied here - it's interpolated in InterpolateGameState()!
+    
     (*
      * Der Server sendet die OneTimeAnimations genau 1 mal
      * Wenn der Server aber schneller neu Sendet als der CLient Rendert
      * dann würde der Client diese Flanke beim Rendern gar nicht berücksichtigen
      * -> Hier ein Or und im Rendern dann das False !
      *)
-    fPlayer[i].Edge := (fPlayer[i].Info.Animation In OneTimeAnimations) And (OldAnim <> fPlayer[i].Info.Animation);
+    fPlayer[i].Edge := (fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation In OneTimeAnimations) And 
+                       (OldAnim <> fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation);
     (*
      * Wenn eine neue Animation kommt, stellen wir hier Sicher, dass die neue die alte
      * überschreiben kann z.B. "Zen" -> Die
      * Die Zen Animation, kann zusätzlich aber auch vom Laufen unterbrochen werden, da
      * diese ja nur kommt wenn der Spieler AtomicZenTime lang keine Eingaben gemacht hat.
      *)
-    If (fPlayer[i].Edge) Or (((OldAnim = raZen) Or (oldAnim = raLockedIn)) And (fPlayer[i].Info.Animation = raWalk)) Then Begin
+    If (fPlayer[i].Edge) Or (((OldAnim = raZen) Or (oldAnim = raLockedIn)) And 
+       (fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Animation = raWalk)) Then Begin
       OldAnim := raStandStill; // -- Egal es soll ja nur die OldAnim In OneTimeAnimations verhindert werden
     End;
     (*
      * Wenn die Alte Animation eine einmal ablaufen Animation ist.
      *)
     If OldAnim In OneTimeAnimations Then Begin
-      If fPlayer[i].Info.Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
+      If fServerSnapshots[fCurrentSnapshot].PlayerInfos[i].Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
         fPlayer[i].Info.Animation := OldAnim;
         fPlayer[i].Info.Value := OldValue;
       End;
@@ -1414,6 +2689,8 @@ Begin
     For ak In TAtomicKey Do Begin
       If fPlayerIndex[ks0] <> -1 Then fPlayer[fPlayerIndex[ks0]].KeysPressed[ak] := false;
       If fPlayerIndex[ks1] <> -1 Then fPlayer[fPlayerIndex[ks1]].KeysPressed[ak] := false;
+      If fPlayerIndex[ksJoy1] <> -1 Then fPlayer[fPlayerIndex[ksJoy1]].KeysPressed[ak] := false;
+      If fPlayerIndex[ksJoy2] <> -1 Then fPlayer[fPlayerIndex[ksJoy2]].KeysPressed[ak] := false;
     End;
   End;
 End;
@@ -1443,35 +2720,51 @@ End;
 Procedure TGame.HandlePlaySoundEffekt(Const Stream: TMemoryStream);
 Var
   se: TSoundEffect;
-  s: String;
+  s, soundFile: String;
 Begin
   se := seNone;
   stream.Read(se, SizeOf(TSoundEffect));
-  s := '';
+  soundFile := '';
   Case se Of
     seNone: Begin // Nix
       End;
-    seBombDrop: s := SelectRandomSound(BombDrops);
-    seBombKick: s := SelectRandomSound(BombKick);
-    seBombStop: s := SelectRandomSound(BombStop);
-    seBombJelly: s := SelectRandomSound(BombJelly);
-    seBombBounce: s := SelectRandomSound(BombBounce);
-    seBombGrab: s := SelectRandomSound(BombGrab);
-    seBombPunch: s := SelectRandomSound(BombPunch);
-    seBombExplode: s := SelectRandomSound(BombExplode);
-    seAtomicDie: s := SelectRandomSound(AtomicDie);
-    seWinner: s := SelectRandomSound(Winner);
-    seGetGoodPowerUp: s := SelectRandomSound(GetGoodPowerUp);
-    seGetBadPowerUp: s := SelectRandomSound(GetBadPowerUp);
-    seZen: s := SelectRandomSound(AtomicZen);
-    seOtherPlayerDied: s := SelectRandomSound(OtherPlayerDie);
-    seHurryBrick: s := SelectRandomSound(HurryBrick);
-    seHurry: s := SelectRandomSound(Hurry);
-    seWrapHohle: s := SelectRandomSound(AtomicWrapHole);
-    seTrampoline: s := SelectRandomSound(AtomicJump);
+    seBombDrop: soundFile := SelectRandomSound(BombDrops);
+    seBombKick: soundFile := SelectRandomSound(BombKick);
+    seBombStop: soundFile := SelectRandomSound(BombStop);
+    seBombJelly: soundFile := SelectRandomSound(BombJelly);
+    seBombBounce: soundFile := SelectRandomSound(BombBounce);
+    seBombGrab: soundFile := SelectRandomSound(BombGrab);
+    seBombPunch: soundFile := SelectRandomSound(BombPunch);
+    seBombExplode: soundFile := SelectRandomSound(BombExplode);
+    seAtomicDie: soundFile := SelectRandomSound(AtomicDie);
+    seWinner: soundFile := SelectRandomSound(Winner);
+    seGetGoodPowerUp: soundFile := SelectRandomSound(GetGoodPowerUp);
+    seGetBadPowerUp: soundFile := SelectRandomSound(GetBadPowerUp);
+    seZen: soundFile := SelectRandomSound(AtomicZen);
+    seOtherPlayerDied: soundFile := SelectRandomSound(OtherPlayerDie);
+    seHurryBrick: soundFile := SelectRandomSound(HurryBrick);
+    seHurry: soundFile := SelectRandomSound(Hurry);
+    seWrapHohle: soundFile := SelectRandomSound(AtomicWrapHole);
+    seTrampoline: soundFile := SelectRandomSound(AtomicJump);
   End;
-  If s <> '' Then s := 'data' + PathDelim + 'sounds' + PathDelim + s;
-  PlaySoundEffect(s);
+  If soundFile <> '' Then Begin
+    If fDataPath = '' Then Begin
+      fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+      log('fDataPath was empty, resolved to: ' + fDataPath, llInfo);
+    End;
+    s := fDataPath + 'sounds' + PathDelim + soundFile;
+    If Not FileExistsUTF8(s) Then Begin
+      log('Sound effect file not found: ' + s + ', trying to re-resolve data path', llWarning);
+      // Try to re-resolve data path
+      fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+      s := fDataPath + 'sounds' + PathDelim + soundFile;
+      log('Retrying with resolved path: ' + s, llInfo);
+      If Not FileExistsUTF8(s) Then Begin
+        log('Sound effect file still not found: ' + s, llError);
+      End;
+    End;
+    PlaySoundEffect(s);
+  End;
 End;
 
 Procedure TGame.HandleUpdateMasterId(Const Stream: TMemoryStream);
@@ -1663,7 +2956,10 @@ Var
 Begin
   log('TGame.LoadScheme: ' + SchemeFileName, llTrace);
   result := false;
-  fn := 'data' + PathDelim + 'schemes' + PathDelim + SchemeFileName;
+  If fDataPath = '' Then Begin
+    fDataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  End;
+  fn := fDataPath + 'schemes' + PathDelim + SchemeFileName;
   If Not FileExistsUTF8(fn) Then Begin
     logshow('Error, could not find scheme file:' + SchemeFileName, llCritical);
     LogLeave;
@@ -1752,9 +3048,10 @@ Begin
   AtomicFont.BackColor := clBlack; // Auf Jeden Fall die BackColor wieder Resetten
   (*
    * Die Verbleibende Spielzeit
+   * === CHANGED: Use interpolated time instead of raw server time ===
    *)
   glColor3f(1, 1, 1);
-  AtomicBigFont.Textout(500, 10, fPlayingTime_s);
+  AtomicBigFont.Textout(500, 10, fInterpolatedState.PlayingTime_ms div 1000);
   glPopMatrix;
 End;
 
@@ -1865,18 +3162,49 @@ Begin
 End;
 
 Procedure TGame.Join(IP: String; Port: Integer);
+Var
+  isLocalhost: Boolean;
 Begin
   log('TGame.Join', lltrace);
   log(format('Joining to %s on port %d as %s', [ip, port, Settings.NodeName]));
-  (*
-   * Sollte aus welchem Grund auch immer der Chunkmanager nicht verbinden können (ggf weil er schon verbunden ist),
-   * fliegt er hier über den Wechsel in den MainScreen raus und wird dann automatisch disconnected
-   * -> Spätestens wenn der User es nun erneut versucht kommt er wieder rein.
-   *)
-  If Not fChunkManager.Connect(ip, port) Then Begin
-    LogShow('Error could not connect to server', llError);
-    SwitchToScreen(sMainScreen);
+  
+  // Store connection parameters for retry logic
+  fParamJoinIP := ip;
+  fParamJoinPort := port;
+  
+  // Check if connecting to localhost
+  isLocalhost := (ip = '127.0.0.1') Or (ip = 'localhost');
+  
+  If isLocalhost Then Begin
+    // For localhost, enable waiting mode - will retry periodically in OnIdle
+    // This is needed because localhost "connection refused" comes back immediately
+    // while remote servers may take time to respond (allowing time for server to start)
+    fWaitingForLocalServer := true;
+    fLastConnectionAttempt := 0; // Will trigger immediate attempt in OnIdle
+    fConnectionRetryInterval := 2000; // Retry every 2 seconds
+    log('Localhost connection - will retry periodically until server is available', llInfo);
+  End
+  Else Begin
+    // For remote servers, connection attempt is async - if it fails, Connection_Error will handle it
+    fWaitingForLocalServer := false;
   End;
+  
+  // Initiate async connection attempt
+  // Note: Connect() returning True only means the async connection was initiated,
+  // not that we're actually connected. Real connection status comes via callbacks.
+  If Not fChunkManager.Connect(ip, port) Then Begin
+    // Immediate failure - connection couldn't even be initiated
+    log('Could not initiate connection', llWarning);
+    If Not isLocalhost Then Begin
+      LogShow('Error: Could not initiate connection to server', llError);
+      SwitchToScreen(sMainScreen);
+    End;
+    // For localhost, OnIdle will retry
+  End
+  Else Begin
+    log('Connection initiated (async), waiting for result...', llInfo);
+  End;
+  
   logleave;
 End;
 
@@ -1886,13 +3214,47 @@ Begin
   fsdl_Loaded := false;
   fsdlJoysticks[ks0] := Nil;
   fsdlJoysticks[ks1] := Nil;
+  fControllerLogged[ks0] := false;
+  fControllerLogged[ks1] := false;
+  fLastUpdateTimestamp := 0; // Initialize network performance monitoring
+  
+  // Initialize interpolation
+  fServerSnapshots[0].Valid := False;
+  fServerSnapshots[0].Timestamp := 0;
+  fServerSnapshots[1].Valid := False;
+  fServerSnapshots[1].Timestamp := 0;
+  fCurrentSnapshot := 0;
+  fInterpolationDelay := 0;     // 0ms delay - interpolate between last 2 snapshots immediately
+  fExtrapolationLimit := 50;    // Max 50ms extrapolation (reduced from 100ms)
+  fDebugStats.LastRTT := 0;
+  fDebugStats.AvgRTT := 0;
+  fDebugStats.MaxRTT := 0;
+  fDebugStats.InterpolationFactor := 0;
+  fDebugStats.MaxInterpFactor := 0;
+  fDebugStats.IsExtrapolating := False;
+  fDebugStats.SnapshotAge := 0;
+  fDebugStats.MaxSnapAge := 0;
+  
+  fMenuDpadState.up := false;
+  fMenuDpadState.down := false;
+  fMenuDpadState.left := false;
+  fMenuDpadState.right := false;
+  fMenuDpadState.buttonA := false;
+  fMenuDpadState.buttonB := false;
+  fBlockGameInputUntilRelease := false;
+  fBlockMenuInputUntilRelease := false;
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
+  fWaitingForLocalServer := false;
+  fLastConnectionAttempt := 0;
+  fConnectionRetryInterval := 2000; // Retry every 2 seconds
   fPause := false;
   fNeedDisconnect := false;
   fPlayerIndex[ks0] := -1;
   fPlayerIndex[ks1] := -1;
+  fPlayerIndex[ksJoy1] := -1;
+  fPlayerIndex[ksJoy2] := -1;
   fInitialized := false;
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
@@ -1901,6 +3263,15 @@ Begin
   fLastIdleTick := GetTickCount64;
   OnNeedHideCursor := Nil;
   OnNeedShowCursor := Nil;
+  FViewportOffsetX := 0;
+  FViewportOffsetY := 0;
+  FViewportWidth := GameWidth;
+  FViewportHeight := GameHeight;
+  FControlWidth := GameWidth;
+  FControlHeight := GameHeight;
+  FViewportScale := 1;
+  fDataPath := ''; // Will be set in Initialize
+  fServerPID := 0; // No server started initially
 End;
 
 Destructor TGame.Destroy;
@@ -1908,10 +3279,18 @@ Var
   i: TScreenEnum;
   j: Integer;
 Begin
+  // Server is running in terminal window - user can terminate it manually
+  // No automatic termination to avoid Access violation errors
+  fServerPID := 0;
+  
   If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].free;
   If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].free;
+  If assigned(fsdlJoysticks[ksJoy1]) Then fsdlJoysticks[ksJoy1].free;
+  If assigned(fsdlJoysticks[ksJoy2]) Then fsdlJoysticks[ksJoy2].free;
   fsdlJoysticks[ks0] := Nil;
   fsdlJoysticks[ks1] := Nil;
+  fsdlJoysticks[ksJoy1] := Nil;
+  fsdlJoysticks[ksJoy2] := Nil;
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -1944,6 +3323,9 @@ Begin
   Connection.OnError := @Connection_Error;
   fChunkManager.OnReceivedChunk := @OnReceivedChunk;
   fChunkManager.RegisterConnection(Connection);
+  // Start network thread for non-blocking network processing
+  fChunkManager.StartNetworkThread();
+  log('Network thread started for client', llInfo);
   LogLeave;
 End;
 
@@ -1990,9 +3372,37 @@ Begin
 {$IFDEF ShowInitTime}
   t := GetTickCount64;
 {$ENDIF}
+  uearlylog.EarlyLog('TGame.Initialize: Starting');
+  uearlylog.EarlyLog('TGame.Initialize: Owner assigned: ' + BoolToStr(Assigned(Owner), true));
   log('TGame.Initialize', lltrace);
+  log('TGame.Initialize: Owner assigned: ' + BoolToStr(Assigned(Owner), true), llInfo);
   fOwner := Owner;
-  Loader := TLoaderDialog.create(Owner);
+  
+  // Resolve data path BEFORE creating Loader dialog (Loader needs it)
+  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  uearlylog.EarlyLog('TGame.Initialize: Assets root: ' + p);
+  // Resolve data directory path - check multiple locations for .app bundle compatibility
+  fDataPath := ResolveResourceBase(p);
+  uearlylog.EarlyLog('TGame.Initialize: Data path: ' + fDataPath);
+  uearlylog.EarlyLog('TGame.Initialize: Data path exists: ' + BoolToStr(DirectoryExists(fDataPath), true));
+  log('Assets root: ' + p, llInfo);
+  log('Data path: ' + fDataPath, llInfo);
+  log('Data path exists: ' + BoolToStr(DirectoryExists(fDataPath), true), llInfo);
+  Try
+    uearlylog.EarlyLog('TGame.Initialize: Creating TLoaderDialog...');
+    Loader := TLoaderDialog.create(Owner, fDataPath);
+    fLoaderDialog := Loader; // Store reference for OnPaint
+    uearlylog.EarlyLog('TGame.Initialize: TLoaderDialog created successfully');
+    log('TLoaderDialog created successfully', llInfo);
+  Except
+    On E: Exception Do Begin
+      uearlylog.EarlyLog('ERROR creating TLoaderDialog: ' + E.Message);
+      uearlylog.EarlyLog('Exception class: ' + E.ClassName);
+      log('ERROR creating TLoaderDialog: ' + E.Message, llError);
+      log('Exception class: ' + E.ClassName, llError);
+      Raise;
+    End;
+  End;
   (*
    * Lade Prozente
    * 0..10 : Screens
@@ -2024,8 +3434,7 @@ Begin
   FOnKeyUpCapture := Owner.OnKeyUp;
   Owner.OnKeyUp := @FOnKeyUp;
 
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  AtomicBigFont.CreateFont(p + 'data' + PathDelim + 'res' + PathDelim);
+  AtomicBigFont.CreateFont(fDataPath + 'res' + PathDelim);
 
   // Laden aller Screens
   fScreens[sMainScreen] := TMainMenu.Create(self);
@@ -2043,9 +3452,10 @@ Begin
   fScreens[sOptions] := TOptionsMenu.Create(self);
   fScreens[sExitBomberman] := Nil;
 
+  log('Loading UI screens from ' + fDataPath + 'res', llInfo);
   For i In TScreenEnum Do Begin
     If Not assigned(fScreens[i]) Then Continue;
-    fScreens[i].LoadFromDisk(p + 'data' + PathDelim + 'res' + PathDelim);
+    fScreens[i].LoadFromDisk(fDataPath + 'res' + PathDelim);
   End;
   Loader.Percent := 10;
   Loader.Render();
@@ -2054,59 +3464,133 @@ Begin
 {$ENDIF}
 
   fPowerUpsTex[puNone] := 0; // Das Gibts ja net -> Weg
-  fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smStretchHard);
-  If fPowerUpsTex[puExtraBomb] = 0 Then exit;
-  fPowerUpsTex[puLongerFlameLength] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powflame.png', smStretchHard);
-  If fPowerUpsTex[puLongerFlameLength] = 0 Then exit;
-  fPowerUpsTex[puDisease] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powdisea.png', smStretchHard);
-  If fPowerUpsTex[puDisease] = 0 Then exit;
-  fPowerUpsTex[puCanCick] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powkick.png', smStretchHard);
-  If fPowerUpsTex[puCanCick] = 0 Then exit;
-  fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powskate.png', smStretchHard);
-  If fPowerUpsTex[puExtraSpeed] = 0 Then exit;
-  fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', smStretchHard);
-  If fPowerUpsTex[puCanPunch] = 0 Then exit;
-  fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', smStretchHard);
-  If fPowerUpsTex[puCanGrab] = 0 Then exit;
-  fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', smStretchHard);
-  If fPowerUpsTex[puCanSpooger] = 0 Then exit;
-  fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgold.png', smStretchHard);
-  If fPowerUpsTex[puGoldFlame] = 0 Then exit;
-  fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png', smStretchHard);
-  If fPowerUpsTex[puTrigger] = 0 Then exit;
-  fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', smStretchHard);
-  If fPowerUpsTex[puCanJelly] = 0 Then exit;
-  fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powebola.png', smStretchHard);
-  If fPowerUpsTex[puSuperBadDisease] = 0 Then exit;
-  fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powslow.png', smStretchHard);
-  If fPowerUpsTex[puSlow] = 0 Then exit;
-  fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powrand.png', smStretchHard);
-  If fPowerUpsTex[purandom] = 0 Then exit;
+  fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powbomb.png', smStretchHard);
+  If fPowerUpsTex[puExtraBomb] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powbomb.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puLongerFlameLength] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powflame.png', smStretchHard);
+  If fPowerUpsTex[puLongerFlameLength] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powflame.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puDisease] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powdisea.png', smStretchHard);
+  If fPowerUpsTex[puDisease] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powdisea.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puCanCick] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powkick.png', smStretchHard);
+  If fPowerUpsTex[puCanCick] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powkick.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powskate.png', smStretchHard);
+  If fPowerUpsTex[puExtraSpeed] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powskate.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powpunch.png', smStretchHard);
+  If fPowerUpsTex[puCanPunch] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powpunch.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powgrab.png', smStretchHard);
+  If fPowerUpsTex[puCanGrab] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powgrab.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powspoog.png', smStretchHard);
+  If fPowerUpsTex[puCanSpooger] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powspoog.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powgold.png', smStretchHard);
+  If fPowerUpsTex[puGoldFlame] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powgold.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powtrig.png', smStretchHard);
+  If fPowerUpsTex[puTrigger] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powtrig.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powjelly.png', smStretchHard);
+  If fPowerUpsTex[puCanJelly] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powjelly.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powebola.png', smStretchHard);
+  If fPowerUpsTex[puSuperBadDisease] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powebola.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powslow.png', smStretchHard);
+  If fPowerUpsTex[puSlow] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powslow.png', llError);
+    logleave;
+    exit;
+  End;
+  fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphik(fDataPath + 'res' + PathDelim + 'powrand.png', smStretchHard);
+  If fPowerUpsTex[purandom] = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'powrand.png', llError);
+    logleave;
+    exit;
+  End;
   // Load PlayerDead Tex correct.
-  fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
-  fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png');
-  If fPlayerdeadTex.Image = 0 Then exit;
-  fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
-  If fhurry.Texture.Image = 0 Then exit;
-  fhurry.Texture := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png');
-  hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smStretchHard);
-  If hohletex.Image = 0 Then exit;
-  hohletex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png');
+  fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fDataPath + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+  fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(fDataPath + 'res' + PathDelim + 'playerdead.png');
+  If fPlayerdeadTex.Image = 0 Then Begin
+    log('Failed to locate texture handle for playerdead.png', llError);
+    logleave;
+    exit;
+  End;
+  fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fDataPath + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+  If fhurry.Texture.Image = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'hurry.png', llError);
+    logleave;
+    exit;
+  End;
+  fhurry.Texture := OpenGL_GraphikEngine.FindItem(fDataPath + 'res' + PathDelim + 'hurry.png');
+  hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fDataPath + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smStretchHard);
+  If hohletex.Image = 0 Then Begin
+    log('Failed to load texture ' + fDataPath + 'res' + PathDelim + 'hole.png', llError);
+    logleave;
+    exit;
+  End;
+  hohletex := OpenGL_GraphikEngine.FindItem(fDataPath + 'res' + PathDelim + 'hole.png');
 {$IFDEF ShowInitTime}
   TimePoint(3);
 {$ENDIF}
 
   // Laden der Felder
   fArrows := TOpenGL_Animation.Create;
-  If Not fArrows.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'arrows.ani', true) Then Begin
+  If Not fArrows.LoadFromFile(fDataPath + 'res' + PathDelim + 'arrows.ani', true) Then Begin
+    log('Failed to load animation ' + fDataPath + 'res' + PathDelim + 'arrows.ani', llError);
+    logleave;
     Exit;
   End;
   fConveyors := TOpenGL_Animation.Create;
-  If Not fConveyors.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
+  If Not fConveyors.LoadFromFile(fDataPath + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
+    log('Failed to load animation ' + fDataPath + 'res' + PathDelim + 'conveyor.ani', llError);
+    logleave;
     Exit;
   End;
   fTramp := TOpenGL_Animation.Create;
-  If Not fTramp.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', true) Then Begin
+  If Not fTramp.LoadFromFile(fDataPath + 'res' + PathDelim + 'tramp.ani', true) Then Begin
+    log('Failed to load animation ' + fDataPath + 'res' + PathDelim + 'tramp.ani', llError);
+    logleave;
     Exit;
   End;
 {$IFDEF ShowInitTime}
@@ -2135,7 +3619,8 @@ Begin
 {$IFDEF ShowInitTime}
   TimePoint(5);
 {$ENDIF}
-  sl := FindAllDirectories(p + 'data' + PathDelim + 'maps', false);
+  log('Scanning map directories in ' + fDataPath + 'maps', llInfo);
+  sl := FindAllDirectories(fDataPath + 'maps', false);
   sl.Sorted := true;
   sl.Sort;
 {$IFDEF Only1Map}
@@ -2145,17 +3630,18 @@ Begin
 {$ENDIF}
   setlength(fFields, sl.Count);
   If sl.count = 0 Then Begin
-    LogShow('Error, no fields to load found', llFatal);
+    LogShow('Error, no fields to load found in ' + fDataPath + 'maps', llFatal);
     LogLeave;
     exit;
   End;
+  log('Found ' + inttostr(sl.Count) + ' map directories', llInfo);
 {$IFDEF ShowInitTime}
   TimePoint(6);
 {$ENDIF}
   For j := 0 To sl.count - 1 Do Begin
     fFields[j] := TAtomicField.Create();
     If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, fTramp, hohletex.Image, fTrampStatic) Then Begin
-      LogShow('Error, unable to load field:' + sl[j], llFatal);
+      LogShow('Error, unable to load field: ' + sl[j], llFatal);
       LogLeave;
       exit;
     End;
@@ -2180,8 +3666,8 @@ Begin
     Loader.Percent := 50 + round(50 * j / length(fAtomics));
     Loader.Render();
     fAtomics[j] := TAtomic.Create;
-    If Not fAtomics[j].InitAsColor(p + 'data' + PathDelim + 'atomic' + PathDelim, PlayerColors[j]) Then Begin
-      LogShow('Error, unable to load atomic.', llFatal);
+    If Not fAtomics[j].InitAsColor(fDataPath + 'atomic' + PathDelim, PlayerColors[j]) Then Begin
+      LogShow('Error, unable to load atomic from ' + fDataPath + 'atomic' + PathDelim, llFatal);
       LogLeave;
       exit;
     End;
@@ -2192,6 +3678,7 @@ Begin
   Loader.Percent := 100;
   Loader.Render(); // Als letztes kriegt der User zu sehen, dass wir fertig sind :-)
   Loader.free;
+  fLoaderDialog := Nil; // Clear reference after initialization
   fInitialized := true;
   SwitchToScreen(sMainScreen);
 {$IFDEF ShowInitTime}
@@ -2242,11 +3729,157 @@ Begin
   logleave;
 End;
 
+// Client-side interpolation implementation
+Procedure TGame.InterpolateGameState();
+Var
+  CurrentTime, RenderTime: QWord;
+  OldSnapIndex, NewSnapIndex: Integer;
+  T, Extrapolation: Single;
+  i: Integer;
+  TimeDiff, SnapAge: Int64;
+  VelX, VelY: Single;
+  PlayerSpeed: Single;
+  
+  // Linear interpolation
+  Function Lerp(A, B, T: Single): Single;
+  Begin
+    Result := A + (B - A) * T;
+  End;
+  
+  // Interpolate 2D vector
+  Function LerpVector2(Const A, B: TVector2; T: Single): TVector2;
+  Begin
+    Result.x := Lerp(A.x, B.x, T);
+    Result.y := Lerp(A.y, B.y, T);
+  End;
+  
+Begin
+  CurrentTime := GetTickCount64;
+  
+  // Get the snapshot indices
+  OldSnapIndex := 1 - fCurrentSnapshot;  // Older
+  NewSnapIndex := fCurrentSnapshot;      // Newer
+  
+  // If we don't have 2 valid snapshots yet, use the latest one
+  If (Not fServerSnapshots[OldSnapIndex].Valid) Or (Not fServerSnapshots[NewSnapIndex].Valid) Then Begin
+    If fServerSnapshots[NewSnapIndex].Valid Then Begin
+      fInterpolatedState.PlayingTime_ms := fServerSnapshots[NewSnapIndex].ServerTime_ms;
+      fInterpolatedState.PlayerInfos := fServerSnapshots[NewSnapIndex].PlayerInfos;
+      fDebugStats.InterpolationFactor := 1.0;
+      fDebugStats.IsExtrapolating := False;
+      fDebugStats.SnapshotAge := CurrentTime - fServerSnapshots[NewSnapIndex].Timestamp;
+    End;
+    Exit;
+  End;
+  
+  // Calculate snapshot age
+  SnapAge := CurrentTime - fServerSnapshots[NewSnapIndex].Timestamp;
+  fDebugStats.SnapshotAge := SnapAge;
+  // Track MAX snapshot age
+  If SnapAge > fDebugStats.MaxSnapAge Then
+    fDebugStats.MaxSnapAge := SnapAge;
+  
+  // Calculate time since last snapshot (for interpolation/extrapolation)
+  TimeDiff := fServerSnapshots[NewSnapIndex].Timestamp - fServerSnapshots[OldSnapIndex].Timestamp;
+  
+  // If snapshots are too far apart (> 150ms), don't interpolate - just use newest
+  If TimeDiff > 150 Then Begin
+    fInterpolatedState.PlayingTime_ms := fServerSnapshots[NewSnapIndex].ServerTime_ms;
+    fInterpolatedState.PlayerInfos := fServerSnapshots[NewSnapIndex].PlayerInfos;
+    fDebugStats.InterpolationFactor := 1.0;
+    fDebugStats.IsExtrapolating := False;
+    Exit;
+  End;
+  
+  // Calculate interpolation factor based on time between snapshots
+  // We want to render at the "latest safe time" which is the newest snapshot + elapsed time
+  If TimeDiff > 0 Then Begin
+    T := (CurrentTime - fServerSnapshots[OldSnapIndex].Timestamp) / TimeDiff;
+  End Else Begin
+    T := 1.0;  // Use newest if timestamps are same
+  End;
+  
+  // === INTERPOLATION (T between 0 and 1) ===
+  If (T >= 0.0) And (T <= 1.0) Then Begin
+    fDebugStats.InterpolationFactor := T;
+    fDebugStats.IsExtrapolating := False;
+    // Track MAX interpolation factor
+    If T > fDebugStats.MaxInterpFactor Then
+      fDebugStats.MaxInterpFactor := T;
+    
+    // Interpolate playing time
+    fInterpolatedState.PlayingTime_ms := Round(
+      Lerp(fServerSnapshots[OldSnapIndex].ServerTime_ms, fServerSnapshots[NewSnapIndex].ServerTime_ms, T)
+    );
+    
+    // Interpolate player positions
+    For i := 0 To 9 Do Begin
+      fInterpolatedState.PlayerInfos[i].Position := LerpVector2(
+        fServerSnapshots[OldSnapIndex].PlayerInfos[i].Position,
+        fServerSnapshots[NewSnapIndex].PlayerInfos[i].Position,
+        T
+      );
+      
+      // Don't interpolate these - use newest values
+      fInterpolatedState.PlayerInfos[i].Direction := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Direction;
+      fInterpolatedState.PlayerInfos[i].Animation := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Animation;
+      fInterpolatedState.PlayerInfos[i].Alive := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Alive;
+      fInterpolatedState.PlayerInfos[i].Dying := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Dying;
+      fInterpolatedState.PlayerInfos[i].Counter := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Counter;
+      fInterpolatedState.PlayerInfos[i].Value := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Value;
+      fInterpolatedState.PlayerInfos[i].ColorIndex := fServerSnapshots[NewSnapIndex].PlayerInfos[i].ColorIndex;
+    End;
+  End
+  // === EXTRAPOLATION (T > 1.0 - we're ahead of last snapshot) ===
+  Else If T > 1.0 Then Begin
+    // Calculate how much time has elapsed since last snapshot
+    Extrapolation := (CurrentTime - fServerSnapshots[NewSnapIndex].Timestamp) / 1000.0; // in seconds
+    
+    // Limit extrapolation aggressively to prevent jitter
+    If Extrapolation > (fExtrapolationLimit / 1000.0) Then Begin
+      Extrapolation := fExtrapolationLimit / 1000.0;
+    End;
+    
+    fDebugStats.InterpolationFactor := T;
+    fDebugStats.IsExtrapolating := True;
+    // Track MAX interpolation factor (extrapolation)
+    If T > fDebugStats.MaxInterpFactor Then
+      fDebugStats.MaxInterpFactor := T;
+    
+    // Extrapolate playing time smoothly
+    fInterpolatedState.PlayingTime_ms := fServerSnapshots[NewSnapIndex].ServerTime_ms + Round(Extrapolation * 1000);
+    
+    // For positions: DON'T extrapolate - just use latest snapshot to avoid jitter!
+    // Extrapolation causes "jittery" movement when predictions are wrong
+    For i := 0 To 9 Do Begin
+      // Just use the latest snapshot position (no prediction)
+      fInterpolatedState.PlayerInfos[i].Position := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Position;
+      
+      // Copy other fields
+      fInterpolatedState.PlayerInfos[i].Direction := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Direction;
+      fInterpolatedState.PlayerInfos[i].Animation := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Animation;
+      fInterpolatedState.PlayerInfos[i].Alive := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Alive;
+      fInterpolatedState.PlayerInfos[i].Dying := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Dying;
+      fInterpolatedState.PlayerInfos[i].Counter := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Counter;
+      fInterpolatedState.PlayerInfos[i].Value := fServerSnapshots[NewSnapIndex].PlayerInfos[i].Value;
+      fInterpolatedState.PlayerInfos[i].ColorIndex := fServerSnapshots[NewSnapIndex].PlayerInfos[i].ColorIndex;
+    End;
+  End
+  // === FALLBACK (T < 0 - should not happen, but handle it) ===
+  Else Begin
+    fDebugStats.InterpolationFactor := 0.0;
+    fDebugStats.IsExtrapolating := False;
+    fInterpolatedState.PlayingTime_ms := fServerSnapshots[OldSnapIndex].ServerTime_ms;
+    fInterpolatedState.PlayerInfos := fServerSnapshots[OldSnapIndex].PlayerInfos;
+  End;
+End;
+
 Procedure TGame.Render;
 Var
   i: Integer;
   n: QWORD;
 Begin
+  // Viewport is set in OpenGLControl1Resize, don't override it here
   Go2d(GameWidth, GameHeight);
   If Not fInitialized Then Begin
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -2264,12 +3897,16 @@ Begin
         If assigned(fActualScreen) Then fActualScreen.Render;
       End;
     gs_Gaming: Begin
+        // === NEW: Interpolate game state before rendering ===
+        InterpolateGameState();
+        
         CheckSDLKeys;
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
         For i := 0 To high(fPlayer) Do Begin
-          If fPlayer[i].Info.Alive Then Begin
-            RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
+          // Use interpolated positions instead of raw server data
+          If fInterpolatedState.PlayerInfos[i].Alive Then Begin
+            RenderPlayerbyInfo(fInterpolatedState.PlayerInfos[i], fPlayer[i].edge);
             fPlayer[i].edge := false;
           End;
         End;
@@ -2305,6 +3942,65 @@ Begin
   Exit2d();
 End;
 
+Function TGame.PointInsideViewport(ScreenX, ScreenY: Integer): Boolean;
+Begin
+  If (FViewportWidth <= 0) Or (FViewportHeight <= 0) Then
+    exit(true);
+  Result :=
+    (ScreenX >= FViewportOffsetX) And
+    (ScreenX <= FViewportOffsetX + FViewportWidth) And
+    (ScreenY >= FViewportOffsetY) And
+    (ScreenY <= FViewportOffsetY + FViewportHeight);
+End;
+
+Function TGame.ScreenToGameX(ScreenX: Integer): Integer;
+Var
+  Local: Double;
+Begin
+  If (FViewportWidth <= 0) Or (FViewportScale <= 0) Then
+    exit(ScreenX);
+  Local := (ScreenX - FViewportOffsetX) / FViewportScale;
+  If Local < 0 Then
+    Local := 0
+  Else If Local > GameWidth Then
+    Local := GameWidth;
+  Result := round(Local);
+End;
+
+Function TGame.ScreenToGameY(ScreenY: Integer): Integer;
+Var
+  Local: Double;
+Begin
+  If (FViewportHeight <= 0) Or (FViewportScale <= 0) Then
+    exit(ScreenY);
+  Local := (ScreenY - FViewportOffsetY) / FViewportScale;
+  If Local < 0 Then
+    Local := 0
+  Else If Local > GameHeight Then
+    Local := GameHeight;
+  Result := round(Local);
+End;
+
+Procedure TGame.SetViewportMetrics(ControlWidth, ControlHeight, OffsetX,
+  OffsetY, ViewportWidth, ViewportHeight: Integer);
+Begin
+  FControlWidth := ControlWidth;
+  FControlHeight := ControlHeight;
+  FViewportOffsetX := OffsetX;
+  FViewportOffsetY := OffsetY;
+  FViewportWidth := ViewportWidth;
+  FViewportHeight := ViewportHeight;
+  If (ViewportWidth > 0) Then
+    FViewportScale := ViewportWidth / GameWidth
+  Else
+    FViewportScale := 1;
+  If FViewportScale <= 0 Then
+    FViewportScale := 1;
+  log(Format('Viewport metrics: control=%dx%d viewport=%dx%d scale=%.4f offset=(%d,%d)',
+    [FControlWidth, FControlHeight, FViewportWidth, FViewportHeight, FViewportScale,
+    FViewportOffsetX, FViewportOffsetY]), llInfo);
+End;
+
 Procedure TGame.OnIdle;
 Begin
   PingForOpenGames;
@@ -2315,6 +4011,101 @@ Begin
   If fNeedDisconnect Then Begin
     DoDisconnect();
   End;
+  
+  // Periodically retry connection if we're waiting for local server to start
+  // On localhost, "connection refused" comes back immediately, so we need to retry periodically
+  If fWaitingForLocalServer And (fParamJoinIP <> '') Then Begin
+    If (fLastConnectionAttempt = 0) Or (GetTickCount64 - fLastConnectionAttempt >= fConnectionRetryInterval) Then Begin
+      fLastConnectionAttempt := GetTickCount64;
+      log(format('Retrying connection to %s:%d...', [fParamJoinIP, fParamJoinPort]), llInfo);
+      // Initiate new async connection attempt
+      If Not fChunkManager.Connect(fParamJoinIP, fParamJoinPort) Then Begin
+        log('Could not initiate connection, will retry later', llInfo);
+      End;
+      // If Connect returned True, we wait for Connection_Connect or Connection_Error callback
+    End;
+  End;
+  
+  // Always pump SDL events first to update button states
+  // Check all possible keysets that might use SDL
+  If fsdl_Loaded And (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2 Or 
+                      Settings.Keys[ksJoy1].UseSDL2 Or Settings.Keys[ksJoy2].UseSDL2) Then Begin
+    SDL_PumpEvents();
+  End;
+  
+  // Check if we need to unblock game input (waiting for all buttons to be released)
+  If fBlockGameInputUntilRelease Then Begin
+    If AreAllGamepadButtonsReleased() Then Begin
+      fBlockGameInputUntilRelease := false;
+    End;
+  End;
+  
+  // Check if we need to unblock menu input (waiting for all buttons to be released)
+  If fBlockMenuInputUntilRelease Then Begin
+    If AreAllGamepadButtonsReleased() Then Begin
+      fBlockMenuInputUntilRelease := false;
+    End;
+  End;
+  
+  // Poll controllers/joysticks each idle tick for input (both menu and game)
+  CheckSDLKeys();
+  // Also poll for menu navigation via gamepad
+  CheckSDLKeysForMenu();
+End;
+
+Function TGame.ResolveResourceBase(BasePath: String): String;
+Var
+  testPath: String;
+  appBundlePath: String;
+Begin
+  // Normalize base path to absolute path
+  BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
+  log('ResolveResourceBase: BasePath=' + BasePath, llInfo);
+  
+  // Try multiple locations for data directory
+  // 1. Direct relative to executable (works with symlinks)
+  testPath := BasePath + 'data';
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // 2. Relative path from MacOS directory in .app bundle
+  testPath := ExpandFileName(BasePath + '../Resources/data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // 3. Try symlink path (../../data from MacOS) - for shared data directory
+  testPath := ExpandFileName(BasePath + '../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
+  testPath := ExpandFileName(BasePath + '../../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    log('ResolveResourceBase: Found data at ' + Result, llInfo);
+    exit;
+  End;
+  // 5. Try path next to .app bundle (for cases where data is outside the bundle)
+  // If BasePath contains ".app/Contents/MacOS/", try going up to the .app bundle's parent directory
+  If Pos('.app/Contents/MacOS/', BasePath) > 0 Then Begin
+    appBundlePath := Copy(BasePath, 1, Pos('.app/Contents/MacOS/', BasePath) + 4); // Get path up to ".app"
+    appBundlePath := ExtractFilePath(ExcludeTrailingPathDelimiter(appBundlePath)); // Get parent directory of .app
+    testPath := ExpandFileName(appBundlePath + 'data');
+    If DirectoryExistsUTF8(testPath) Then Begin
+      Result := IncludeTrailingPathDelimiter(testPath);
+      log('ResolveResourceBase: Found data at ' + Result, llInfo);
+      exit;
+    End;
+  End;
+  // Fallback: use base path (may not exist, but at least we tried)
+  Result := BasePath + 'data' + PathDelim;
+  log('Warning: Could not resolve data directory, using fallback: ' + Result, llWarning);
 End;
 
 End.

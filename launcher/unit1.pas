@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit Unit1;
 
 {$MODE objfpc}{$H+}
@@ -45,6 +50,7 @@ Type
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
+    Timer1: TTimer;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
@@ -52,11 +58,15 @@ Type
     Procedure Button5Click(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
+    Procedure FormActivate(Sender: TObject);
+    Procedure FormShow(Sender: TObject);
+    Procedure Timer1Timer(Sender: TObject);
   private
     ini: TIniFile;
     Atomic_Version: TVersion;
     ProtocollVersion: integer;
     Version: Single;
+    fImageLoaded: Boolean; // Track if image was loaded last time we checked
 
     Procedure LoadSettings();
     Procedure StoreSettings();
@@ -74,11 +84,10 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3, LCLType
+Uses UTF8Process, process, Unit2, Unit3, LCLType, LazFileUtils, LazUTF8
   , ukeyboarddialog, uatomic_common, usynapsedownloader
 {$IFDEF Windows}
   , LResources
-  , ssl_openssl_lib, ssl_openssl, blcksock
 {$ENDIF}
   ;
 
@@ -120,8 +129,12 @@ Begin
   Constraints.MaxWidth := Width;
   SetCurrentDir(ExtractFilePath(ParamStr(0)));
   Atomic_Version := TVersion.Create();
+  fImageLoaded := false;
   LoadSideImage();
   LoadSettings();
+  // Set up timer to periodically check if image file appears (after data extraction)
+  Timer1.Interval := 1000; // Check every second
+  Timer1.Enabled := true;
   caption := format('FPC Atomic, launcher ver. %0.2f', [LauncherVersion / 100]);
   // Handle Launcher Parameters
   For i := 1 To ParamCount Do Begin
@@ -139,22 +152,37 @@ End;
 Procedure TForm1.Button4Click(Sender: TObject);
 Var
   P: TProcessUTF8;
+  extractorPath: String;
 Begin
   // run cd data extractor
   StoreSettings();
   ini.UpdateFile;
+  // Find cd_data_extractor in the same directory as the launcher (for macOS app bundle)
+  // On macOS, this will be in Contents/MacOS/ of the app bundle
+  extractorPath := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
   // Short Prechecks
-  If (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage('Error, installation not complete, please run "Check for updates"');
+  If Not FileExists(extractorPath) Then Begin
+    showmessage('Error, installation not complete, please run "Check for updates"' + LineEnding +
+                'Missing: ' + extractorPath);
     exit;
   End;
   // Run the App ;)
+  // On macOS, GUI applications need to be run detached to show GUI properly
   p := TProcessUTF8.Create(Nil);
-  p.Executable := 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
+  p.Executable := extractorPath;
+{$IFDEF Darwin}
+  // On macOS, run GUI application detached so it can show its window
+  p.Options := p.Options + [poDetached];
+{$ELSE}
+  // On other platforms, wait for exit
   p.Options := p.Options + [poWaitOnExit];
+{$ENDIF}
   p.Execute;
   p.free;
+  // Refresh image after extractor might have created data files
+  LoadSideImage();
+  Image1.Invalidate;
+  Application.ProcessMessages;
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
@@ -262,10 +290,25 @@ Begin
   ini := Nil;
 End;
 
+Procedure TForm1.FormActivate(Sender: TObject);
+Begin
+  // Refresh side image when form gets focus (in case data was extracted)
+  LoadSideImage();
+  Image1.Invalidate;
+End;
+
+Procedure TForm1.FormShow(Sender: TObject);
+Begin
+  // Refresh side image when form is shown (in case data was extracted)
+  LoadSideImage();
+  Image1.Invalidate;
+End;
+
 Procedure TForm1.Button2Click(Sender: TObject);
 Var
   P: TProcessUTF8;
   sl: TStringList;
+  exePath, serverPath, workDir: String;
 Begin
   // Launch
   StoreSettings();
@@ -280,14 +323,21 @@ Begin
   End;
   sl.free;
   // Short Prechecks
-  If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
+  workDir := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  exePath := workDir + 'fpc_atomic';
+  serverPath := workDir + 'atomic_server';
+{$IFDEF Windows}
+  exePath := exePath + '.exe';
+  serverPath := serverPath + '.exe';
+{$ENDIF}
+  If (Not FileExists(exePath)) Or (Not FileExists(serverPath)) Then Begin
     showmessage('Error, installation not complete, please run "Check for updates"');
     exit;
   End;
   // Run the App ;)
   p := TProcessUTF8.Create(Nil);
-  p.Executable := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
+  p.Executable := exePath;
+  p.CurrentDirectory := ExcludeTrailingPathDelimiter(workDir);
   If CheckBox3.Checked Then Begin
     p.Parameters.Add('-ip');
     p.Parameters.Add(Edit2.Text);
@@ -304,6 +354,12 @@ Var
   tmpFolder: String;
   dl: TSynapesDownloader;
 Begin
+{$IFDEF Darwin}
+  // Updates are not implemented on macOS yet
+  showmessage('Updates are not yet available on macOS.' + LineEnding + LineEnding +
+    'Please check the project repository for manual updates.');
+  exit;
+{$ENDIF}
 {$IFDEF Linux}
   If DirectoryExists('cd_data_extractor') Then Begin
     If id_yes = Application.MessageBox('In the launcher location there is a folder named "cd_data_extractor", this will crash the update process' + LineEnding +
@@ -360,16 +416,100 @@ Begin
   form2.Hide;
 End;
 
+Function ResolveResourceBase(BasePath: String): String;
+Var
+  testPath: String;
+  appBundlePath: String;
+Begin
+  // Normalize base path to absolute path
+  BasePath := ExpandFileName(IncludeTrailingPathDelimiter(BasePath));
+  
+  // Try multiple locations for data directory
+  // 1. Direct relative to executable (works with symlinks)
+  testPath := BasePath + 'data';
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 2. Relative path from MacOS directory in .app bundle
+  testPath := ExpandFileName(BasePath + '../Resources/data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 3. Try symlink path (../../data from MacOS) - for shared data directory
+  testPath := ExpandFileName(BasePath + '../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 4. Try symlink path (../../../data from MacOS) - alternative symlink location
+  testPath := ExpandFileName(BasePath + '../../../data');
+  If DirectoryExistsUTF8(testPath) Then Begin
+    Result := IncludeTrailingPathDelimiter(testPath);
+    exit;
+  End;
+  // 5. Try path next to .app bundle (for cases where data is outside the bundle)
+  // If BasePath contains ".app/Contents/MacOS/", try going up to the .app bundle's parent directory
+  If Pos('.app/Contents/MacOS/', BasePath) > 0 Then Begin
+    appBundlePath := Copy(BasePath, 1, Pos('.app/Contents/MacOS/', BasePath) + 4); // Get path up to ".app"
+    appBundlePath := ExtractFilePath(ExcludeTrailingPathDelimiter(appBundlePath)); // Get parent directory of .app
+    testPath := ExpandFileName(appBundlePath + 'data');
+    If DirectoryExistsUTF8(testPath) Then Begin
+      Result := IncludeTrailingPathDelimiter(testPath);
+      exit;
+    End;
+  End;
+  // Fallback: use base path (may not exist, but at least we tried)
+  Result := BasePath + 'data' + PathDelim;
+End;
+
+Procedure TForm1.Timer1Timer(Sender: TObject);
+Var
+  dataPath, imagePath: String;
+  imageExists: Boolean;
+Begin
+  // Check if image file exists now (if data was extracted)
+  dataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  imagePath := dataPath + 'res' + PathDelim + 'mainmenu.png';
+  imageExists := FileExistsUTF8(imagePath);
+  
+  // If image file status changed (appeared or disappeared), reload
+  If imageExists <> fImageLoaded Then Begin
+    LoadSideImage(); // This will update fImageLoaded internally
+    // Once image is loaded, we can slow down the timer or disable it
+    If imageExists Then Begin
+      Timer1.Interval := 5000; // Check less frequently once image is loaded
+    End;
+  End;
+End;
+
 Procedure TForm1.LoadSideImage;
 Var
   p: TPortableNetworkGraphic;
+  dataPath: String;
+  imagePath: String;
 Begin
-  If FileExists('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png') Then Begin
+  // Resolve data directory path
+  dataPath := ResolveResourceBase(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))));
+  imagePath := dataPath + 'res' + PathDelim + 'mainmenu.png';
+  If FileExistsUTF8(imagePath) Then Begin
     p := TPortableNetworkGraphic.Create;
-    p.LoadFromFile('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png');
-    p.Width := p.Width Div 2;
-    Image1.Picture.Assign(p);
-    p.free;
+    Try
+      p.LoadFromFile(imagePath);
+      p.Width := p.Width Div 2;
+      Image1.Picture.Assign(p);
+      Image1.Invalidate; // Force redraw
+      fImageLoaded := true;
+    Finally
+      p.free;
+    End;
+  End
+  Else Begin
+    // Clear image if file doesn't exist
+    Image1.Picture.Clear;
+    Image1.Invalidate;
+    fImageLoaded := false;
   End;
 End;
 
@@ -420,14 +560,15 @@ Initialization
   // TODO: Hier fehlt noch ein Hinweis wie man die .lrs Datei erzeugt ;)
 {$I atomic_launcher.lrs}
 
-  // 1. ggf. die Crypto libs entpacken und dann einrichten
-  If Not CheckAndMaybeExtract('ssleay32') Then exit;
-  If Not CheckAndMaybeExtract('libeay32') Then exit;
-
-  If SSLImplementation = TSSLNone Then Begin
-    If InitSSLInterface Then
-      SSLImplementation := TSSLOpenSSL;
-  End;
+  // SSL initialization removed - using fphttpclient instead of Synapse
+  // fphttpclient handles SSL automatically via system libraries
+  // Old Synapse SSL code:
+  // If Not CheckAndMaybeExtract('ssleay32') Then exit;
+  // If Not CheckAndMaybeExtract('libeay32') Then exit;
+  // If SSLImplementation = TSSLNone Then Begin
+  //   If InitSSLInterface Then
+  //     SSLImplementation := TSSLOpenSSL;
+  // End;
 {$ENDIF}
 
 End.

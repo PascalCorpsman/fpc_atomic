@@ -42,6 +42,11 @@
 (*                          transparency                                      *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit uopengl_graphikengine;
 
 {$IFDEF FPC}
@@ -1264,12 +1269,14 @@ Begin
         OpenGLData[c, 0] := CurColor.Red Div 256;
         OpenGLData[c, 1] := CurColor.green Div 256;
         OpenGLData[c, 2] := CurColor.blue Div 256;
-        If (OpenGLData[c, 0] = Color.r) And
-          (OpenGLData[c, 1] = Color.g) And
-          (OpenGLData[c, 2] = Color.b) Then
-          OpenGLData[c, 3] := 255
+        // Chroma key with tolerance to handle edge artifacts (e.g., FE00FE vs FF00FF)
+        // Tolerance: ±2 for each RGB component to handle compression/antialiasing artifacts
+        If (Abs(OpenGLData[c, 0] - Color.r) <= 2) And
+          (Abs(OpenGLData[c, 1] - Color.g) <= 2) And
+          (Abs(OpenGLData[c, 2] - Color.b) <= 2) Then
+          OpenGLData[c, 3] := 255 // Fully transparent
         Else
-          OpenGLData[c, 3] := 0;
+          OpenGLData[c, 3] := 0; // Fully opaque
         inc(c);
       End;
     End;
@@ -1601,12 +1608,15 @@ Begin
             OpenGLData[c, 3] := 255 - AlphaMask[i, j];
           End
           Else Begin
-            If (OpenGLData[c, 0] = Fuchsia.r) And
-              (OpenGLData[c, 1] = Fuchsia.g) And
-              (OpenGLData[c, 2] = Fuchsia.b) Then
-              OpenGLData[c, 3] := 255
+            // Chroma key with tolerance to remove magenta/fuchsia border artifacts
+            // Check if pixel is close enough to fuchsia (magenta) to be considered transparent
+            // Tolerance: ±10 for each RGB component to handle antialiasing and compression artifacts
+            If (Abs(OpenGLData[c, 0] - Fuchsia.r) <= 10) And
+              (Abs(OpenGLData[c, 1] - Fuchsia.g) <= 10) And
+              (Abs(OpenGLData[c, 2] - Fuchsia.b) <= 10) Then
+              OpenGLData[c, 3] := 255 // Fully transparent
             Else
-              OpenGLData[c, 3] := 0;
+              OpenGLData[c, 3] := 0; // Fully opaque
           End;
           inc(c);
         End;

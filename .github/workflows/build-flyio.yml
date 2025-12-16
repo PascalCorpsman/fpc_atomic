@@ -1,0 +1,157 @@
+name: Build and Release Fly.io Server
+
+# This workflow builds Docker image for Fly.io server and creates a release
+# Responds only to tags starting with "server-v" (e.g., server-v1.0.0)
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    tags:
+      - 'server-v*'  # Triggers on tags starting with 'server-v' (e.g., server-v1.0.0)
+
+jobs:
+  build-and-release:
+    name: Build Docker Image and Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 1. Checkout code
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    # 2. Prepare data directory for Docker build
+    - name: Prepare data directory
+      run: |
+        # If flyio_server/data doesn't exist, use data from project root
+        if [ ! -d "flyio_server/data" ]; then
+          echo "flyio_server/data not found, using data from project root"
+          if [ -d "data" ]; then
+            mkdir -p flyio_server
+            cp -r data flyio_server/data
+            echo "✓ Copied data from project root to flyio_server/data"
+            echo "⚠️  WARNING: This image will be built with placeholder/empty data"
+            echo "⚠️  WARNING: Server deployed from this image will NOT work properly (no game maps)"
+            echo "⚠️  WARNING: Users must add game data using deploy_prebuilt.sh with actual game data"
+          else
+            echo "WARNING: Neither flyio_server/data nor data directory found"
+            echo "Creating empty data directory (server will NOT work properly)"
+            mkdir -p flyio_server/data
+          fi
+        else
+          echo "✓ flyio_server/data exists, using it"
+          # Check if it contains actual game data (has maps directory)
+          if [ -d "flyio_server/data/maps" ] && [ "$(ls -A flyio_server/data/maps 2>/dev/null)" ]; then
+            echo "✓ flyio_server/data contains game maps - image will be fully functional"
+          else
+            echo "⚠️  WARNING: flyio_server/data exists but appears to be empty/placeholder"
+            echo "⚠️  WARNING: Server deployed from this image will NOT work properly"
+          fi
+        fi
+      
+    # 3. Setup Docker Buildx
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    # 4. Login to GitHub Container Registry
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      
+    # 5. Extract version from tag or use commit SHA
+    - name: Extract version
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/server-v* ]]; then
+          # Remove "server-" prefix from tag (server-v1.0.0 -> v1.0.0)
+          VERSION=${GITHUB_REF#refs/tags/server-}
+        else
+          VERSION="dev-${GITHUB_SHA::8}"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=ghcr.io/${{ github.repository_owner }}/fpc-atomic-server:$VERSION" >> $GITHUB_OUTPUT
+        echo "tag_latest=ghcr.io/${{ github.repository_owner }}/fpc-atomic-server:latest" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+      
+    # 6. Build Docker image
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./flyio_server/Dockerfile
+        push: true
+        tags: |
+          ${{ steps.version.outputs.tag }}
+          ${{ steps.version.outputs.tag_latest }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+      
+    # 7. Create GitHub Release (only for server tags)
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/server-v')
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Fly.io Server ${{ steps.version.outputs.version }}
+        body: |
+        
+          ☁️ Cloud Server Release
+          This release contains files for build and deploy game server to [fly.io](https://fly.io)
+          ## FPC Atomic Server for Fly.io
+          
+          ### 🚀 How to deploy to Fly.io (without Pascal compiler!)
+          
+          **Easiest way - use the pre-built Docker image:**
+          
+          1. **Install Fly.io CLI:**
+             ```bash
+             curl -L https://fly.io/install.sh | sh
+             ```
+          
+          2. **Login:**
+             ```bash
+             flyctl auth login
+             ```
+          
+          3. **Create a new directory and download configuration:**
+             ```bash
+             mkdir fpc-atomic-server && cd fpc-atomic-server
+             curl -L https://github.com/${{ github.repository }}/releases/latest/download/fly.toml.example -o fly.toml
+             ```
+          
+          4. **Edit `fly.toml` - change the image path to your GitHub username (if you have a fork):**
+             ```toml
+             [build]
+               image = "ghcr.io/${{ github.repository_owner }}/fpc-atomic-server:latest"
+             ```
+          
+          5. **Deploy to Fly.io:**
+             ```bash
+             flyctl launch
+             ```
+          
+          **Alternative - build from source code:**
+          
+          If you want to build from source code, clone the repository and use `fly.toml` from the `flyio_server/` directory.
+          
+          ### 📦 Docker Image
+          
+          Image is available on GitHub Container Registry:
+          - `ghcr.io/${{ github.repository_owner }}/fpc-atomic-server:${{ steps.version.outputs.version }}`
+          - `ghcr.io/${{ github.repository_owner }}/fpc-atomic-server:latest`
+          
+          ### 🔧 Configuration
+          
+          - **Port:** 5521
+          - **Region:** Frankfurt (fra) - can be changed in `fly.toml`
+          - **Auto-shutdown:** 30 seconds of inactivity
+          
+          ### 📝 Documentation
+          
+          For more information, see [README.md](flyio_server/README.md)
+        draft: false
+        prerelease: false
+        files: |
+          flyio_server/README.md
+          flyio_server/fly.toml.example
+          flyio_server/Dockerfile

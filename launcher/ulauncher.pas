@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit ulauncher;
 
 {$MODE ObjFPC}{$H+}
@@ -108,7 +113,7 @@ Function CheckForFiles(): TStringList;
 
 Implementation
 
-Uses unit1, unit2, ssl_openssl, httpsend, synautil, uJSON, LazFileUtils, ucdextractor;
+Uses unit1, unit2, uJSON, LazFileUtils, ucdextractor;
 
 Procedure ClearLog();
 Begin

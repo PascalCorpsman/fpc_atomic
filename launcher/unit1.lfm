@@ -8,8 +8,10 @@ object Form1: TForm1
   ClientWidth = 467
   Position = poScreenCenter
   LCLVersion = '4.99.0.0'
+  OnActivate = FormActivate
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
+  OnShow = FormShow
   object Image1: TImage
     Left = 8
     Height = 288
@@ -17,6 +19,12 @@ object Form1: TForm1
     Width = 192
     Center = True
     Stretch = True
+  end
+  object Timer1: TTimer
+    Enabled = True
+    OnTimer = Timer1Timer
+    Left = 184
+    Top = 368
   end
   object Button1: TButton
     Left = 208

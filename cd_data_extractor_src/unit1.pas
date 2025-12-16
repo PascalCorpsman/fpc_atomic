@@ -12,6 +12,11 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
+(*                                                                            *)
+(* Modified by  : Pavel Zverina                                               *)
+(* Note         : This file has been modified while preserving the original   *)
+(*                authorship and license terms.                                *)
+(*                                                                            *)
 Unit Unit1;
 
 {$MODE objfpc}{$H+}
@@ -67,6 +72,8 @@ Uses Unit2, ucdextractor;
 { TForm1 }
 
 Procedure TForm1.FormCreate(Sender: TObject);
+Var
+  defaultAtomicFolder: String;
 Begin
   IniPropStorage1.IniFileName := 'settings.ini';
   (*
@@ -74,7 +81,30 @@ Begin
    *)
   caption := DefCaption;
   label1.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('CD-Root', ''));
-  label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), IniPropStorage1.ReadString('FPC-Atomic', ''));
+  
+  // Set default FPC Atomic folder
+{$IFDEF Darwin}
+  // On macOS, set default to relative path ../../../ (three levels up from Contents/MacOS/)
+  // From: .../FPCAtomicLauncher.app/Contents/MacOS/
+  // To:   .../app_arm64/
+  defaultAtomicFolder := IniPropStorage1.ReadString('FPC-Atomic', '');
+  If defaultAtomicFolder = '' Then Begin
+    // Use relative path ../../../ from the executable location
+    defaultAtomicFolder := '..' + PathDelim + '..' + PathDelim + '..' + PathDelim;
+    defaultAtomicFolder := ExcludeTrailingPathDelimiter(defaultAtomicFolder);
+  End;
+  label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), defaultAtomicFolder);
+{$ELSE}
+  // On Windows/Linux, set default to the directory where the executable is located
+  defaultAtomicFolder := IniPropStorage1.ReadString('FPC-Atomic', '');
+  If defaultAtomicFolder = '' Then Begin
+    // Use the directory where the executable is located
+    defaultAtomicFolder := ExtractFilePath(ParamStr(0));
+    defaultAtomicFolder := ExcludeTrailingPathDelimiter(defaultAtomicFolder);
+  End;
+  label2.caption := ConcatRelativePath(ExtractFilePath(ParamStr(0)), defaultAtomicFolder);
+{$ENDIF}
+  
   memo1.clear;
   Constraints.MinWidth := Width;
   Constraints.MinHeight := Height;
@@ -109,9 +139,29 @@ Begin
 End;
 
 Procedure TForm1.Button4Click(Sender: TObject);
+Var
+  defaultDir: String;
 Begin
   // Set FPC Atomic Folder
   SelectDirectoryDialog1.Title := button4.caption;
+{$IFDEF Darwin}
+  // On macOS, always set initial directory to two levels up (../../)
+  defaultDir := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + '..' + PathDelim + '..' + PathDelim);
+  defaultDir := ExcludeTrailingPathDelimiter(defaultDir);
+  If DirectoryExists(defaultDir) Then Begin
+    SelectDirectoryDialog1.InitialDir := defaultDir;
+  End
+  Else Begin
+    // Fallback to label2.caption if ../../ doesn't exist
+    If label2.caption <> '' Then Begin
+      SelectDirectoryDialog1.InitialDir := label2.caption;
+    End;
+  End;
+{$ELSE}
+  If label2.caption <> '' Then Begin
+    SelectDirectoryDialog1.InitialDir := label2.caption;
+  End;
+{$ENDIF}
   If SelectDirectoryDialog1.Execute Then Begin
     If CheckFPCAtomicFolder(SelectDirectoryDialog1.FileName) Then Begin
       label2.Caption := SelectDirectoryDialog1.FileName;
@@ -121,7 +171,11 @@ Begin
       End;
     End
     Else Begin
+{$IFDEF Darwin}
+      showmessage('Error, the folder should at least contain FPCAtomic.app');
+{$ELSE}
       showmessage('Error, the folder should at least contain the executable for fpc_atomic');
+{$ENDIF}
     End;
   End;
 End;

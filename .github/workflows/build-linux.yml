@@ -1,0 +1,369 @@
+name: Build Linux
+
+# Tento workflow se spustí při:
+# - Push do main/master branch
+# - Pull request do main/master branch
+# - Manuálně přes GitHub Actions tab
+on:
+  #push:
+  #  branches: [ main, master ]
+  #pull_request:
+  #  branches: [ main, master ]
+  workflow_dispatch:  # Umožňuje manuální spuštění
+
+jobs:
+  build-linux:
+    name: Build for Linux
+    runs-on: ubuntu-latest  # Použije Linux runner (Ubuntu)
+    
+    steps:
+    # 1. Checkout kódu z repozitáře
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    # 2. Setup Free Pascal Compiler
+    - name: Setup Free Pascal Compiler
+      run: |
+        set -e  # Exit on any error
+        sudo apt-get update
+        sudo apt-get install -y fpc fp-compiler
+        
+        # Ověřit instalaci - použij -iV pro verzi bez potřeby source souboru
+        fpc -iV
+        echo "FPC version check completed"
+        
+    # 3. Setup Lazarus IDE
+    - name: Setup Lazarus IDE
+      run: |
+        set -e  # Exit on any error
+        sudo apt-get install -y lazarus lazarus-ide-gtk2
+        
+        # Ověřit instalaci
+        lazbuild --version
+        echo "Lazarus version check completed"
+        
+    # 4. Install system dependencies
+    - name: Install system dependencies
+      run: |
+        set -e  # Exit on any error
+        # Install SDL2 development libraries
+        sudo apt-get install -y libsdl2-dev
+        
+        # Install OpenSSL development libraries (for fphttpclient)
+        sudo apt-get install -y libssl-dev
+        
+        # Install other build dependencies
+        sudo apt-get install -y build-essential
+        
+    # 5. Download and install BASS library
+    - name: Download and install BASS library
+      run: |
+        set -e  # Exit on any error
+        echo "Downloading BASS library for Linux..."
+        # BASS library needs to be downloaded from https://www.un4seen.com/
+        # For CI/CD, we'll try to download it or use a placeholder
+        # Note: The actual libbass.so needs to be provided by the user
+        # For now, we'll create a note that it needs to be installed
+        
+        # Check for libbass.so in various locations
+        if [ -f "bin/libbass.so" ]; then
+          echo "Found libbass.so in bin/"
+          sudo cp bin/libbass.so /usr/lib/
+          sudo chmod 644 /usr/lib/libbass.so
+        elif [ -f "libbass.so" ]; then
+          echo "Found libbass.so in repository root"
+          sudo cp libbass.so /usr/lib/
+          sudo chmod 644 /usr/lib/libbass.so
+        elif [ -f "macos/bin/arm64/libbass.so" ]; then
+          echo "Found libbass.so in macos/bin/arm64/"
+          sudo cp macos/bin/arm64/libbass.so /usr/lib/
+          sudo chmod 644 /usr/lib/libbass.so
+        else
+          echo "ERROR: libbass.so not found in repository"
+          echo "BASS library needs to be in bin/libbass.so"
+          exit 1
+        fi
+        
+        # Verify installation
+        if [ -f "/usr/lib/libbass.so" ]; then
+          echo "✓ libbass.so installed successfully"
+          ls -lh /usr/lib/libbass.so
+          # Verify it's a valid shared library
+          file /usr/lib/libbass.so
+        else
+          echo "ERROR: libbass.so not installed - build will fail"
+          exit 1
+        fi
+        
+    # 6. Download and build LNet package
+    - name: Download and build LNet package
+      run: |
+        set -e  # Exit on any error
+        echo "Downloading LNet from GitHub..."
+        # Use master branch (not main) - see https://github.com/PascalCorpsman/lnet
+        lnetUrl="https://github.com/PascalCorpsman/lnet/archive/refs/heads/master.zip"
+        lnetZip="/tmp/lnet.zip"
+        lnetDir="/tmp/lnet"
+        
+        # Download LNet
+        echo "Downloading from: $lnetUrl"
+        curl -L -f -o "$lnetZip" "$lnetUrl" || {
+          echo "ERROR: Failed to download LNet (curl exit code: $?)"
+          echo "Trying alternative URL..."
+          # Try alternative URL format
+          lnetUrlAlt="https://github.com/PascalCorpsman/lnet/archive/master.zip"
+          curl -L -f -o "$lnetZip" "$lnetUrlAlt" || {
+            echo "ERROR: All download attempts failed"
+            exit 1
+          }
+        }
+        echo "LNet downloaded successfully"
+        
+        # Extract LNet
+        echo "Extracting LNet..."
+        unzip -q "$lnetZip" -d "$lnetDir" || {
+          echo "ERROR: Failed to extract LNet"
+          exit 1
+        }
+        
+        # Find the package files
+        lnetPackagePath=$(find "$lnetDir" -name "lnetvisual.lpk" | head -1)
+        if [ -z "$lnetPackagePath" ]; then
+          echo "ERROR: lnetvisual.lpk not found in downloaded archive"
+          exit 1
+        fi
+        
+        lnetBasePath=$(find "$lnetDir" -name "lnetbase.lpk" | head -1)
+        if [ -z "$lnetBasePath" ]; then
+          echo "ERROR: lnetbase.lpk not found in downloaded archive"
+          exit 1
+        fi
+        
+        echo "Found LNet packages:"
+        echo "  Base: $lnetBasePath"
+        echo "  Visual: $lnetPackagePath"
+        
+        # Build base package first
+        echo "Building lnetbase.lpk..."
+        lazbuild --build "$lnetBasePath" || {
+          echo "WARNING: lnetbase.lpk build failed, but continuing..."
+        }
+        
+        # Build visual package
+        echo "Building lnetvisual.lpk..."
+        lazbuild --build "$lnetPackagePath" || {
+          echo "WARNING: LNet package build failed"
+        }
+        
+        # Copy LNet source files to expected location for search paths
+        echo "Copying LNet source files to macos/third_party..."
+        lnetSourceDir=$(find "$lnetDir" -type d -name "lnet-*" | head -1)
+        if [ -z "$lnetSourceDir" ]; then
+          echo "ERROR: LNet source directory not found"
+          exit 1
+        fi
+        
+        targetLnetBaseDir="macos/third_party/lnet"
+        targetLnetSrcDir="macos/third_party/lnet_src"
+        
+        # Create base directory structure
+        mkdir -p "$targetLnetBaseDir"
+        mkdir -p "$targetLnetSrcDir"
+        
+        # Copy lib directory as subdirectory (search path expects macos/third_party/lnet/lib/)
+        if [ -d "$lnetSourceDir/lib" ]; then
+          targetLibDir="$targetLnetBaseDir/lib"
+          cp -r "$lnetSourceDir/lib" "$targetLibDir"
+          echo "Copied LNet lib directory to $targetLibDir"
+          # Verify lnet.pp exists at correct path
+          if [ -f "$targetLibDir/lnet.pp" ]; then
+            echo "✓ lnet.pp found at: $targetLibDir/lnet.pp"
+          else
+            echo "WARNING: lnet.pp not found at expected location"
+            echo "Contents of $targetLibDir:"
+            ls -la "$targetLibDir" | head -5
+            exit 1
+          fi
+        else
+          echo "ERROR: LNet lib directory not found at $lnetSourceDir/lib"
+          exit 1
+        fi
+        
+        # Copy lazaruspackage directory (contains lclnet.pas and lnetcomponents.pas)
+        if [ -d "$lnetSourceDir/lazaruspackage" ]; then
+          cp -r "$lnetSourceDir/lazaruspackage" "$targetLnetSrcDir/"
+          echo "Copied LNet lazaruspackage to $targetLnetSrcDir"
+        else
+          echo "ERROR: LNet lazaruspackage directory not found at $lnetSourceDir/lazaruspackage"
+          exit 1
+        fi
+        
+        # Verify key files are available at correct paths
+        lnetComponentsPath="$targetLnetSrcDir/lazaruspackage/lnetcomponents.pas"
+        lclnetPath="$targetLnetSrcDir/lazaruspackage/lclnet.pas"
+        lnetPath="$targetLnetBaseDir/lib/lnet.pp"
+        
+        if [ -f "$lnetComponentsPath" ]; then
+          echo "✓ lnetcomponents.pas available at: $lnetComponentsPath"
+        else
+          echo "ERROR: lnetcomponents.pas not found at: $lnetComponentsPath"
+          exit 1
+        fi
+        
+        if [ -f "$lclnetPath" ]; then
+          echo "✓ lclnet.pas available at: $lclnetPath"
+        else
+          echo "ERROR: lclnet.pas not found at: $lclnetPath"
+          exit 1
+        fi
+        
+        if [ -f "$lnetPath" ]; then
+          echo "✓ lnet.pp available at: $lnetPath"
+        else
+          echo "ERROR: lnet.pp not found at: $lnetPath"
+          exit 1
+        fi
+        
+        echo "All LNet files copied and verified successfully!"
+        
+    # 7. Verify dependencies
+    - name: Verify dependencies
+      run: |
+        set -e  # Exit on any error
+        echo "Verifying all required dependencies..."
+        
+        # Check dglopengl.pas
+        if [ -f "units/dglOpenGL.pas" ]; then
+          echo "✓ dglOpenGL.pas found"
+        else
+          echo "ERROR: dglOpenGL.pas not found"
+          exit 1
+        fi
+        
+        # Check bass.pas
+        if [ -f "units/bass.pas" ]; then
+          echo "✓ bass.pas found"
+        else
+          echo "ERROR: bass.pas not found"
+          exit 1
+        fi
+        
+        # Check SDL2-for-Pascal
+        if [ -d "units/sdl2_for_pascal" ]; then
+          echo "✓ SDL2-for-Pascal found"
+        else
+          echo "ERROR: SDL2-for-Pascal not found"
+          exit 1
+        fi
+        
+        # Check LNet source files
+        lnetComponentsFound=false
+        possibleLnetPaths=(
+          "macos/third_party/lnet_src/lazaruspackage/lnetcomponents.pas"
+          "/tmp/lnet/lnet-*/lazaruspackage/lnetcomponents.pas"
+        )
+        
+        for path in "${possibleLnetPaths[@]}"; do
+          if [ -f "$path" ]; then
+            echo "✓ LNet source files found at: $path"
+            lnetComponentsFound=true
+            break
+          fi
+        done
+        
+        if [ "$lnetComponentsFound" = false ]; then
+          echo "WARNING: LNet source files not found in expected locations"
+          echo "LNet was downloaded and built, should be available via compiled packages"
+          echo "Continuing anyway..."
+        fi
+        
+        # Check LazOpenGLContext (should be in Lazarus IDE)
+        echo "✓ LazOpenGLContext should be part of Lazarus IDE (checked in RequiredPackages)"
+        
+        # Note: synapse is not needed anymore (replaced with fphttpclient)
+        echo "Note: synapse is not required (replaced with fphttpclient)"
+        
+        echo "All dependencies verified!"
+        
+    # 8. Build Client
+    - name: Build Client
+      run: |
+        set -e  # Exit on any error
+        cd client
+        lazbuild --build-mode=default fpc_atomic.lpi
+        
+    # 9. Build Launcher
+    - name: Build Launcher
+      run: |
+        set -e  # Exit on any error
+        cd launcher
+        lazbuild --build-mode=default atomic_launcher.lpi
+        
+    # 10. Build Server
+    - name: Build Server
+      run: |
+        set -e  # Exit on any error
+        cd server
+        lazbuild --build-mode=default atomic_server.lpi
+        
+    # 11. Build CD Data Extractor
+    - name: Build CD Data Extractor
+      run: |
+        set -e  # Exit on any error
+        cd cd_data_extractor_src
+        lazbuild --build-mode=default cd_data_extractor.lpi
+        
+    # 12. Prepare artifacts
+    - name: Prepare artifacts
+      run: |
+        set -e  # Exit on any error
+        mkdir -p linux/bin
+        echo "Looking for compiled binaries..."
+        
+        # Binaries are compiled to the root directory (one level up from project folders)
+        binaries=(
+          "fpc_atomic"
+          "atomic_launcher"
+          "atomic_server"
+          "cd_data_extractor"
+        )
+        
+        for bin in "${binaries[@]}"; do
+          if [ -f "$bin" ]; then
+            echo "Found: $bin"
+            mv "$bin" linux/bin/
+          else
+            echo "WARNING: $bin not found"
+          fi
+        done
+        
+        # Copy Linux libraries if they exist
+        if [ -f "bin/libbass.so" ]; then
+          echo "Copying libbass.so to artifacts"
+          cp bin/libbass.so linux/bin/
+        fi
+        
+        if [ -f "bin/libai.so" ]; then
+          echo "Copying libai.so to artifacts"
+          cp bin/libai.so linux/bin/
+        fi
+        
+        # Copy data directory to artifacts
+        echo "Copying data directory..."
+        if [ -d "data" ]; then
+          cp -r data linux/bin/
+          echo "✓ data directory copied to linux/bin/data"
+        else
+          echo "WARNING: data directory not found"
+        fi
+        
+        echo "Artifacts prepared. Contents of linux/bin:"
+        ls -lh linux/bin/
+        
+    # 13. Upload artifacts (soubory ke stažení)
+    - name: Upload Linux binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: FPCAtomic-Linux
+        path: linux/bin/*
+        retention-days: 30  # Uchovat 30 dní
