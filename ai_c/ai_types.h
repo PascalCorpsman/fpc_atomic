@@ -83,7 +83,7 @@ typedef struct
     int AvailableBombs;    // The number of bombs the AI is allowed to place at the moment. This will decrease when a bomb is placed and increase if the bomb explodes. It is 0 if the player has the "no bomb" disease.
     float Speed;           // The actual speed of the player in fields per second.
     uint32_t Abilities;    // A bitfield of abilities. If the bit is 1, then the ability is available.
-    IsIll: Boolean;        // If true the Player has a Disease (Unknown which)
+    bool IsIll;            // If true the Player has a Disease (Unknown which)
 } TAiPlayerInfo_t;
 
 typedef enum
