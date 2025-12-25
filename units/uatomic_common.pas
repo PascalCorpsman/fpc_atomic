@@ -112,7 +112,7 @@ Const
    * -releaseG - 0.12007 = FIX: made Windows version more robust (start game did not really work ...)
    * -releaseG - 0.12008 = FIX: Drawgame in Teamsplay -> no finish detected
    * -releaseG - 0.12009 = FIX: if player has no bomb disease and places a bomb (which does not pop up), then it pops up exactly at that moment when the disease is over
-   *             0.12010 =
+   *             0.12010 = ADD: Feature Request Proportional Rendering
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -580,6 +580,7 @@ Type
     RandomStart: Boolean;
 {$IFDEF Client}
     NodeName: String;
+    Proportional: Boolean; // Screen mit Schwarzen Balken, oder ohne
 {$ENDIF}
     ConveyorSpeed: TConveyorSpeed;
     SchemeFile: String;

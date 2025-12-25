@@ -182,8 +182,8 @@ Begin
 
     // Der Anwendung erlauben zu Rendern.
     Initialized := True;
-    OpenGLControl1Resize(Nil);
     Game.initialize(OpenGLControl1);
+    OpenGLControl1.OnResize(OpenGLControl1);
     Timer1.Enabled := true;
   End;
   Form1.Invalidate;
@@ -308,7 +308,6 @@ Begin
     showmessage('Unable to init the device, Error code :' + inttostr(BASS_ErrorGetCode));
     halt;
   End;
-
   ClientWidth := 640;
   ClientHeight := 480;
   Tform(self).Constraints.MinHeight := 480;
@@ -498,6 +497,7 @@ Begin
   Game.Settings.Router_Port := IniPropStorage1.ReadString('Router_Port', '5521');
   IniPropStorage1.IniSection := SectionBakup;
   // Default Settings..
+  Game.settings.Proportional := IniPropStorage1.ReadBoolean('Proportional', true);
   Game.Settings.VolumeValue := IniPropStorage1.ReadInteger('Volume', 10000);
   Game.Settings.TeamPlay := IniPropStorage1.ReadBoolean('TeamPlay', false);
   Game.Settings.RandomStart := IniPropStorage1.ReadBoolean('RandomStart', true);
@@ -585,6 +585,7 @@ Begin
   IniPropStorage1.WriteString('Router_Port', Game.Settings.Router_Port);
   IniPropStorage1.IniSection := SectionBakup;
   // Default Settings..
+  IniPropStorage1.WriteBoolean('Proportional', Game.settings.Proportional);
   IniPropStorage1.WriteInteger('Volume', Game.Settings.VolumeValue);
   IniPropStorage1.WriteBoolean('TeamPlay', Game.Settings.TeamPlay);
   IniPropStorage1.WriteBoolean('RandomStart', Game.Settings.RandomStart);

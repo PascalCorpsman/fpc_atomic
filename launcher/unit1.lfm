@@ -84,6 +84,14 @@ object Form1: TForm1
       TabOrder = 4
       OnClick = Button5Click
     end
+    object CheckBox5: TCheckBox
+      Left = 136
+      Height = 22
+      Top = 32
+      Width = 67
+      Caption = 'Stretch'
+      TabOrder = 5
+    end
   end
   object Button2: TButton
     Left = 8

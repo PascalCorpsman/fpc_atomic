@@ -36,6 +36,7 @@ Type
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
     CheckBox4: TCheckBox;
+    CheckBox5: TCheckBox;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
@@ -394,6 +395,7 @@ Begin
   CheckBox2.Checked := ini.ReadBool('TApplication.Form1', 'Fullscreen', false);
   CheckBox3.Checked := false;
   CheckBox4.Checked := ini.ReadBool('TApplication.Form1', 'PlaySounds', true);
+  CheckBox5.Checked := Not ini.ReadBool('TApplication.Form1', 'Proportional', true);
   edit1.text := ini.ReadString('TApplication.Form1', 'NodeName', 'Player 1');
   ProtocollVersion := ini.ReadInteger('TApplication.Form1', 'ProtocollVersion', -1);
   Version := strtofloatdef(ini.ReadString('TApplication.Form1', 'Version', '-1'), -1, fm);
@@ -408,6 +410,7 @@ Begin
   ini.WriteBool('TApplication.Form1', 'Fullscreen', CheckBox2.Checked);
 
   ini.WriteBool('TApplication.Form1', 'PlaySounds', CheckBox4.Checked);
+  ini.WriteBool('TApplication.Form1', 'Proportional', Not CheckBox5.Checked);
   ini.WriteString('TApplication.Form1', 'NodeName', edit1.text);
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);

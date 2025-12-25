@@ -54,6 +54,13 @@ Type
     TimeStamp: qword;
   End;
 
+  TViewPortInfo = Record
+    ScreenWidth: Integer;
+    ScreenHeight: Integer;
+    TopLeft: Tpoint;
+    Scale: Single;
+  End;
+
   { TGame }
 
   TGame = Class
@@ -92,6 +99,8 @@ Type
     fScreens: Array[TScreenEnum] Of TScreen;
     fActualScreen: TScreen;
 
+    fViewPortInfo: TViewPortInfo; // Alles was man Braucht um das Spiel mit "schwarzen" Balken zu Rendern
+    fOnResizeCapture: TNotifyEvent;
     FOnMouseMoveCapture: TMouseMoveEvent;
     FOnMouseDownCapture, FOnMouseupCapture: TMouseEvent;
     FOnDblClickCapture: TNotifyEvent;
@@ -100,6 +109,7 @@ Type
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
 
+    Procedure FOnResize(Sender: TObject);
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     Procedure FOnMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     Procedure FOnMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -196,6 +206,7 @@ Type
     Procedure StartGame();
     Procedure StartPlayingSong(Filename: String);
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
+    Procedure Resize();
   End;
 
 Var
@@ -464,14 +475,57 @@ Begin
   LogLeave;
 End;
 
+Procedure TGame.Resize();
+Begin
+  FOnResize(fOwner);
+End;
+
+Procedure TGame.FOnResize(Sender: TObject);
+Var
+  ScreenRatio, GameRatio: Single;
+Begin
+  fViewPortInfo.TopLeft := point(0, 0);
+  If settings.Proportional Then Begin
+    fViewPortInfo.ScreenWidth := TOpenGLControl(sender).Width;
+    fViewPortInfo.ScreenHeight := TOpenGLControl(sender).Height;
+    (*
+     * Do a Proportional Scale like TImage, but from hand ;)
+     *)
+    Gameratio := GameWidth / GameHeight;
+    ScreenRatio := fViewPortInfo.ScreenWidth / fViewPortInfo.ScreenHeight;
+    If ScreenRatio > GameRatio Then Begin
+      fViewPortInfo.Scale := fViewPortInfo.ScreenHeight / GameHeight;
+      fViewPortInfo.TopLeft.X := trunc((fViewPortInfo.ScreenWidth - (fViewPortInfo.Scale * GameWidth)) / 2);
+    End
+    Else Begin
+      fViewPortInfo.Scale := fViewPortInfo.ScreenWidth / GameWidth;
+      fViewPortInfo.TopLeft.Y := trunc((fViewPortInfo.ScreenHeight - (fViewPortInfo.Scale * GameHeight)) / 2);
+    End;
+  End
+  Else Begin
+    fViewPortInfo.ScreenWidth := GameWidth;
+    fViewPortInfo.ScreenHeight := GameHeight;
+    fViewPortInfo.Scale := 1;
+  End;
+  If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
+End;
+
 Procedure TGame.FOnMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 Var
   xx, yy: Integer;
 Begin
   // Umrechnen der Echten Koords in die Screencoords
-  xx := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
-  yy := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
+  If settings.Proportional Then Begin
+    xx := x - fViewPortInfo.TopLeft.X;
+    yy := y - fViewPortInfo.TopLeft.Y;
+    xx := trunc(xx / fViewPortInfo.Scale);
+    yy := trunc(yy / fViewPortInfo.Scale);
+  End
+  Else Begin
+    xx := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
+    yy := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
+  End;
   Case fgameState Of
     gs_MainMenu: Begin
         If assigned(fActualScreen) Then Begin
@@ -2023,6 +2077,8 @@ Begin
   Owner.OnKeyDown := @FOnKeyDown;
   FOnKeyUpCapture := Owner.OnKeyUp;
   Owner.OnKeyUp := @FOnKeyUp;
+  fOnResizeCapture := Owner.OnResize;
+  Owner.OnResize := @FOnResize;
 
   p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
   AtomicBigFont.CreateFont(p + 'data' + PathDelim + 'res' + PathDelim);
@@ -2247,7 +2303,9 @@ Var
   i: Integer;
   n: QWORD;
 Begin
-  Go2d(GameWidth, GameHeight);
+  Go2d(fViewPortInfo.ScreenWidth, fViewPortInfo.ScreenHeight);
+  glTranslatef(fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
+  glScalef(fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
   If Not fInitialized Then Begin
     glBindTexture(GL_TEXTURE_2D, 0);
     OpenGL_ASCII_Font.Color := clred;

@@ -905,7 +905,7 @@ Begin
     Form1.IniPropStorage1SavingProperties(Nil);
   End;
   If key = VK_DOWN Then Begin
-    fCursorPos := min(fCursorPos + 1, 11);
+    fCursorPos := min(fCursorPos + 1, 12);
   End;
   If key = VK_UP Then Begin
     fCursorPos := max(fCursorPos - 1, 0);
@@ -988,6 +988,10 @@ Begin
           End;
 {$ENDIF}
         End;
+      12: Begin
+          Tgame(fOwner).Settings.Proportional := Not Tgame(fOwner).Settings.Proportional;
+          Tgame(fOwner).Resize();
+        End;
     End;
   End;
 End;
@@ -1060,7 +1064,8 @@ Begin
     'Define keyboard layouts' + LineEnding + LineEnding +
     'Network port: ' + inttostr(TGame(fOwner).Settings.Port) + LineEnding + LineEnding +
     'Show FPS: ' + BoolToStr(TGame(fOwner).Settings.ShowFPS, 'Yes', 'No') + LineEnding + LineEnding +
-    'Fullscreen: ' + BoolToStr(TGame(fOwner).Settings.Fullscreen, 'Yes', 'No')
+    'Fullscreen: ' + BoolToStr(TGame(fOwner).Settings.Fullscreen, 'Yes', 'No') + LineEnding + LineEnding +
+    'Stretch: ' + BoolToStr(TGame(fOwner).Settings.Proportional, 'No', 'Yes')
     );
 
   glPushMatrix();
