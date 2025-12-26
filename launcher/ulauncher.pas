@@ -23,8 +23,9 @@ Uses
 
 Const
   VersionInfoUrl = 'https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/bin/fpc_atomic.version'; // URL zum DL der Versionsinfo .JSON
-  Logfilename = 'fpc_atomic_launcher.log';
   JSON_ROOT = 'fpc_atomic';
+  FPC_AtomicIniSection = 'FPC_Atomic'; // Section in FPC_atomic.cfg
+
   (*
    * Historie : 0.01 = Initial version
    * -Released- 0.02 = ADD: Improve error message, if launcher needs update and no updater is present.
@@ -41,6 +42,7 @@ Const
    * -Released- 0.08 = FIX: add missing SDL_PumpEvents call
    *                   ADD: Parameter "-cti", "-ip", "-port"
    * -Released- 0.09 = - No changes
+   *            0.10 = ADD: switch to ulogger.pas in uatomic_global.pas
    * Known Bugs :
    *)
   {
@@ -48,7 +50,7 @@ Const
    Die versionsnummer des Launchers, darf nicht wie üblich eins weiter stehen, da beim automatischen FPC_Atomic Release
    immer die fpc_Atomic Version führend ist -> Die Versionsnummer immer erst hoch ziehen, wenn tatsächlich etwas geändert wurde !
   }
-  LauncherVersion: integer = 9;
+  LauncherVersion: integer = 10;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);
@@ -97,9 +99,6 @@ Type
     Function LoadFromFile(Const FIlename: String): Boolean;
   End;
 
-Procedure ClearLog();
-Procedure Log(Logtext: String);
-
 Function FileSizeToString(Value: Int64): String;
 
 Function Change_DLL_To_lib_so(Const filename: String): String;
@@ -108,33 +107,7 @@ Function CheckForFiles(): TStringList;
 
 Implementation
 
-Uses unit1, unit2, uJSON, LazFileUtils, ucdextractor;
-
-Procedure ClearLog();
-Begin
-  form2.Memo1.Clear;
-  If FileExists(Logfilename) Then
-    DeleteFile(Logfilename);
-End;
-
-Procedure Log(Logtext: String);
-Var
-  f: TextFile;
-Begin
-  form2.Memo1.Append(Logtext);
-  assignfile(f, Logfilename);
-  If FileExists(Logfilename) Then
-    append(f)
-  Else
-    Rewrite(f);
-  writeln(f, Logtext);
-  CloseFile(f);
-  If Not form2.Visible Then Begin
-    form2.top := form1.top;
-    form2.Left := form1.left + form1.Width + 10;
-    Form2.Show;
-  End;
-End;
+Uses uJSON, LazFileUtils, ucdextractor, uatomic_global;
 
 Function FileSizeToString(Value: Int64): String;
 Var

@@ -49,7 +49,7 @@ Type
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
   private
-    Procedure AddLog(aLog: String);
+    Procedure OnDoLog(Const LogText: String);
 
   public
 
@@ -62,13 +62,15 @@ Implementation
 
 {$R *.lfm}
 
-Uses Unit2, ucdextractor;
+Uses Unit2, ucdextractor, uatomic_global;
 
 { TForm1 }
 
 Procedure TForm1.FormCreate(Sender: TObject);
 Begin
-  IniPropStorage1.IniFileName := 'settings.ini';
+  InitLogger();
+  LoggerSetOnDoLog(@OnDoLog);
+  IniPropStorage1.IniFileName := GetAtomicConfigFile;
   (*
    * History is above DefCaption definition
    *)
@@ -90,11 +92,17 @@ Begin
   IniPropStorage1.WriteString('FPC-Atomic', ExtractRelativePath(ExtractFilePath(ParamStr(0)), label2.caption));
 End;
 
-Procedure TForm1.AddLog(aLog: String);
+Procedure TForm1.OnDoLog(Const LogText: String);
+Var
+  atext: String;
 Begin
-  Memo1.Lines.Add(aLog);
-  Memo1.SelStart := length(Form1.Memo1.Text); // Scroll down to see newest entry
+  atext := copy(LogText, pos('|', LogText) + 1, length(LogText));
+  atext := copy(atext, pos('|', atext) + 1, length(atext));
+  Memo1.Lines.Append(atext);
   Application.ProcessMessages;
+  If form2.Visible Then Begin
+    ShowMessage(atext);
+  End;
 End;
 
 Procedure TForm1.Button2Click(Sender: TObject);
@@ -144,7 +152,7 @@ Begin
   End;
   AtomicCDRootFolder := CheckDir(Label1.caption);
   FPCAtomicRootFolder := CheckDir(Label2.caption);
-  DoExtraction(AtomicCDRootFolder, FPCAtomicRootFolder, @AddLog, CheckBox1.Checked);
+  DoExtraction(AtomicCDRootFolder, FPCAtomicRootFolder, CheckBox1.Checked);
 End;
 
 Procedure TForm1.Button6Click(Sender: TObject);

@@ -70,7 +70,7 @@ Procedure UnLoadAiLib;
 
 Implementation
 
-Uses dynlibs, uatomic_common;
+Uses dynlibs, uatomic_global;
 
 Var
   Lib: TLibHandle = 0;

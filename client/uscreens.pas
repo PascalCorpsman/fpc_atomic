@@ -227,6 +227,7 @@ Uses LCLType, Math, Graphics, Dialogs, forms, StdCtrls, fileutil, StrUtils
   , ugraphics
   , ugame
   , ukeyboarddialog
+  , uatomic_global
   ;
 
 Type

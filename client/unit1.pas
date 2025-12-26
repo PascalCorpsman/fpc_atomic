@@ -53,7 +53,7 @@ Uses
   , uopengl_graphikengine // Die OpenGLGraphikengine ist eine Eigenproduktion von www.Corpsman.de, und kann getrennt geladen werden.
   , uOpenGL_ASCII_Font
   , ugame
-  , uatomic_common;
+  , uatomic_common, uatomic_global;
 
 {$IFDEF AUTOMODE}
 Const
@@ -241,11 +241,12 @@ Var
   FileloggingDir: String;
   i: integer;
 Begin
+  InitLogger();
   Randomize;
   ConnectParamsHandled := false;
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
   Form1ShowOnce := true;
-  IniPropStorage1.IniFileName := 'fpc_atomic.ini';
+  IniPropStorage1.IniFileName := GetAtomicConfigFile();
   DefFormat := DefaultFormatSettings;
   DefFormat.DecimalSeparator := '.';
   LogShowHandler := @ShowUserMessage;

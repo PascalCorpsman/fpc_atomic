@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* ulogger.pas                                                     06.11.2015 *)
 (*                                                                            *)
-(* Version     : 0.06                                                         *)
+(* Version     : 0.07                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -34,6 +34,7 @@
 (*               0.04 - Added loglevel llError                                *)
 (*               0.05 - Logshow für Konsole                                   *)
 (*               0.06 - laderoutine für Logfiles                              *)
+(*               0.07 - New Property OnDoLog                                  *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -46,7 +47,7 @@ Interface
 (*
  * if you get an compiler error here create the ulogger.inc and enable the following
  * defines as needed:
-   {$.define USELCL} // Use LCL instead of console output
+   {$.define USELCL} // Use showmessage to show in ShowLog
  *)
 {$I ulogger.inc}
 
@@ -89,7 +90,7 @@ Type
    *
    *(4)   Error = [llError, llCritical, llFatal]
    *              Ein Error Log, ist ein Fehler, welcher die Ausführung negativ
-   *              beeinflusst aber nicht zum Absturz führt. 
+   *              beeinflusst aber nicht zum Absturz führt.
    *              z.B.: Fehlen einer kompletten Konfigurationsdatei, das Programm kann eingeschränkt weiter genutzt werden.
    *
    *(5)Critical = [llCritical, llFatal]
@@ -111,6 +112,8 @@ Type
 
   TLogLevel = (llTrace, lldebug, llInfo, llWarning, llError, llCritical, llFatal);
   TLogLevelSet = Set Of TLogLevel;
+
+  TOnDoLog = Procedure(Const LogText: String) Of Object;
 
   (*
    * Die Loggerklasse ist nur Verfügbar, damit "eigene" instanzen erzeugt
@@ -156,6 +159,7 @@ Type
     fStack: TStringList;
     fMaxStackDepth: integer;
     fCheckStackBoundaries: Boolean;
+
     Procedure OpenLogFile; // Öffnet evtl. das Filehandle
     Procedure DoLog(Const Text: String); // Gibt den Text auf der Console aus, oder Speichert in ihn die LogDatei
     Function CreateLog(Logtext: String; Const Loglevel: TLogLevel): String; // Erzeugt den Passend Eingerückten Logeintrag, welcher Gespeichert oder auf die Konsole Ausgegeben wird
@@ -164,6 +168,7 @@ Type
     Procedure SetEnable(Const aValue: Boolean);
     Function getLoglevel(): integer;
   public
+    OnDoLog: TOnDoLog; // Callback die wärend eines Logs aufgerufen wird, falls die Anwendung ihr eigenes Log Tracing machen will
     (*
      * Stack Bezogene Optionen
      *)
@@ -261,9 +266,9 @@ Function LoadLogFile(Const Filename: String): TLogEntryArray;
 
 Implementation
 
-Uses sysutils, FileUtil, LazFileUtils,
+Uses sysutils, FileUtil,
 {$IFDEF USELCL}
-  lazutf8,
+  LazFileUtils, lazutf8,
 {$ENDIF}
   math;
 
@@ -271,6 +276,7 @@ Uses sysutils, FileUtil, LazFileUtils,
 
 Function utf8tosys(value: String): String;
 Begin
+  // At Least on Linux this is correct ;)
   result := value;
 End;
 {$ENDIF}
@@ -281,6 +287,7 @@ End;
  * Fehlgeschlagen ist, wenn dem so ist, dann result := -1
  *)
 // TODO: Diese Funktion hier könnte auch durch die "ScanDateTime" routine aus dateutil ersetzt werden.
+
 Function StrToDateTimeFormat(Input, Format: String): TDateTime;
 Var
   y, m, d, h, n, s, z: String;
@@ -402,13 +409,13 @@ Var
   cnt, i: Integer;
 Begin
   result := Nil;
-  If FileExistsutf8(Filename) Then Begin
+  If FileExists(Filename) Then Begin
     // Gepuffertes Laden des Logfiles, so kann das Logfile während des neu ladens weiter beschrieben werden.
-    s := GetTempFileNameUTF8(GetTempDir(), '');
+    s := GetTempFileName(GetTempDir(), '');
     sl := TStringList.Create;
-    If CopyFile(utf8tosys(filename), utf8tosys(s), false, false) Then Begin
+    If copyFile(filename, s, false, false) Then Begin
       sl.LoadFromFile(s);
-      If Not DeleteFileUTF8(s) Then Begin
+      If Not DeleteFile(s) Then Begin
 {$IFDEF USELCL}
         showmessage('Error on deleting temporary file : ' + s);
 {$ELSE}
@@ -498,6 +505,7 @@ End;
 Constructor TLogger.Create;
 Begin
   Inherited create;
+  OnDoLog := Nil;
   fAddRoutineNameToLogs := true;
   fCheckMaxStackDepth := 100;
   fCheckStackBoundaries := false;
@@ -671,6 +679,9 @@ Begin
   End;
   If fLogToConsole Then Begin // Wenn auch auf die Konsole ausgegeben werden soll
     writeln(Text);
+  End;
+  If assigned(OnDoLog) Then Begin
+    OnDoLog(Text);
   End;
 End;
 

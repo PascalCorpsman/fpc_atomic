@@ -31,7 +31,7 @@ Program atomic_server;
 Uses
   sysutils, lazutf8, LazFileUtils
   , uatomic_server
-  , uatomic_common
+  , uatomic_common, uatomic_global
   ;
 
 Procedure PrintHelp;
@@ -62,6 +62,7 @@ Var
   si: Single;
   Params: Array Of Boolean = Nil; // Zum Prüfen ob auch alle übergebenen Parameter verwendet wurden.
 Begin
+  InitLogger();
   (*
      OPL: - Alle Krankheiten (Speed Up, Switch Bombermen,  Fast Bomb,  Small Flame, Eject Bomb Fast + Kick)
           - Alle TODO's
@@ -78,7 +79,6 @@ Begin
   DefaultFormatSettings.DecimalSeparator := '.';
   CalculateAtomicSpeeds(AtomicDefaultSpeed);
   // Logger Konfigurieren
-  InitLogger();
   setlength(params, Paramcount + 1);
   For i := 1 To Paramcount Do Begin
     params[i] := false;

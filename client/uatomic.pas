@@ -21,7 +21,7 @@ Unit uatomic;
 Interface
 
 Uses
-  Classes, SysUtils, uvectormath, uatomic_common
+  Classes, SysUtils, uvectormath, uatomic_common, uatomic_global
   , Graphics
   , uGraphics
   , uopengl_animation

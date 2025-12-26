@@ -62,7 +62,6 @@ Type
    * Partly separated to be able to use it in the ani job creator ;)
    *)
 Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
-Procedure SetLogCallback(LogCallBack: TLogCallback);
 
 (*
  * Helper Routines, use on own will.
@@ -73,7 +72,7 @@ Function CheckFPCAtomicFolder(aFolder: String): boolean; // True, if fpc_atomic 
 (*
  * This is the routine that does all the work, it handles everyting what needs to be done
  *)
-Procedure DoExtraction(CDFolder, AtomicFolder: String; LogCallBack: TLogCallback; Iterative: Boolean);
+Procedure DoExtraction(CDFolder, AtomicFolder: String; Iterative: Boolean);
 
 Function ConcatRelativePath(Const BaseName: String; Const RelativeName: String): String;
 
@@ -92,6 +91,7 @@ Uses
   , uanifile
   , ugraphics
   , uopengl_animation
+  , uatomic_global
   ;
 
 Type
@@ -304,7 +304,6 @@ Var
   AniJobs: Array Of TAniJob; // All the .ani jobs will be set in the initialization part of the unit.
   CascadeJobs: Array Of TCascadeJob; // All jobs that where merged into one image.
   AniToAniJobs: Array Of TAniToAniJob; // All the jobs where a Atomic Bomberman Ani directly is converted into a FPC_Atomic.ani file
-  AddLog: TLogCallback = Nil; // unit global callback for logging ;)
 
 {$IFDEF Linux}
   (*
@@ -570,7 +569,7 @@ Begin
   End;
   AniFilename := GetFileByMatch(ExtractFilePath(CDFolder + Job.SourceAni), Job.SourceAni);
   If AniFilename = '' Then Begin
-    AddLog('  Error: could not find: ' + Job.SourceAni);
+    Log('  Error: could not find: ' + Job.SourceAni);
     exit;
   End;
   ani := TAniFile.Create();
@@ -627,11 +626,6 @@ Begin
   End;
 End;
 
-Procedure SetLogCallback(LogCallBack: TLogCallback);
-Begin
-  AddLog := LogCallBack;
-End;
-
 (*
  * Runs all jobs who's source is a Atomic Bomberman .ani file and the result is a single .png image
  * -> TAniJob
@@ -647,14 +641,14 @@ Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String; Iterative: Boolean);
     p := TPortableNetworkGraphic.Create;
     p.assign(b);
     If Not ForceDirectories(ExtractFilePath(Filename)) Then Begin
-      AddLog('  Error: could not create folder: ' + ExtractFilePath(Filename));
+      Log('  Error: could not create folder: ' + ExtractFilePath(Filename));
     End
     Else Begin
       Try
         p.SaveToFile(Filename);
         result := true;
       Except
-        AddLog('  Error: could not save: ' + Filename);
+        Log('  Error: could not save: ' + Filename);
       End;
     End;
     p.free;
@@ -691,7 +685,7 @@ Begin
       b.free;
     End
     Else Begin
-      AddLog(format('  Error: %s could not be done.', [AniJobs[i].SourceAni]));
+      Log(format('  Error: %s could not be done.', [AniJobs[i].SourceAni]));
     End;
   End;
   // The Cascade Jobs
@@ -706,7 +700,7 @@ Begin
           bmps[k].free;
         End;
         setlength(bmps, 0);
-        AddLog(format('  Error: %s could not be done.', [CascadeJobs[i, j].SourceAni]));
+        Log(format('  Error: %s could not be done.', [CascadeJobs[i, j].SourceAni]));
         break;
       End;
     End;
@@ -725,10 +719,10 @@ Begin
     b.free;
   End;
   If AniWarning Then Begin
-    AddLog('  Did you merge the Atomic Bomberman expansion pack from:');
-    AddLog('    https://www.oocities.org/timessquare/tower/4056/ani.html ?');
+    Log('  Did you merge the Atomic Bomberman expansion pack from:');
+    Log('    https://www.oocities.org/timessquare/tower/4056/ani.html ?');
   End;
-  AddLog(format('  %d files created', [cnt]));
+  Log(format('  %d files created', [cnt]));
 End;
 
 (*
@@ -781,7 +775,7 @@ Begin
       ani.Sprite[j] := s;
     End;
     If Not ForceDirectories(ExtractFilePath(targetAniFile)) Then Begin
-      addlog('  Error unable to create dir: ' + ExtractFilePath(targetAniFile));
+      log('  Error unable to create dir: ' + ExtractFilePath(targetAniFile));
       ani.free;
       Continue;
     End;
@@ -789,12 +783,12 @@ Begin
       ani.SaveToFile(targetAniFile);
       inc(cnt);
     Except
-      addlog('  Error unable to save: ' + targetAniFile);
+      log('  Error unable to save: ' + targetAniFile);
     End;
     // b.free; -- the sprite handles the Bitmap now !
     ani.free;
   End;
-  AddLog(format('  %d files created', [cnt]));
+  Log(format('  %d files created', [cnt]));
 End;
 
 (*
@@ -816,7 +810,7 @@ Begin
   For i := 0 To high(PCXJobs) Do Begin
     sPCXFile := GetFileByMatch(ExtractFilePath(CDFolder + PCXJobs[i].Sourcefile), PCXJobs[i].Sourcefile);
     If sPCXFile = '' Then Begin
-      AddLog('  Error could not locate: ' + PCXJobs[i].Sourcefile);
+      Log('  Error could not locate: ' + PCXJobs[i].Sourcefile);
       Continue;
     End;
     tPCXFile := AtomicFolder + PCXJobs[i].Destname;
@@ -841,7 +835,7 @@ Begin
     b.free;
     // Store the thing ;)
     If Not ForceDirectories(ExtractFilePath(tPCXFile)) Then Begin
-      addlog('  Error unable to create dir: ' + ExtractFilePath(tPCXFile));
+      Log('  Error unable to create dir: ' + ExtractFilePath(tPCXFile));
       p.free;
       Continue;
     End;
@@ -849,11 +843,11 @@ Begin
       p.SaveToFile(tPCXFile);
       inc(cnt);
     Except
-      addlog('  Error unable to save: ' + tPCXFile);
+      Log('  Error unable to save: ' + tPCXFile);
     End;
     p.free;
   End;
-  AddLog(format('  %d files created', [cnt]));
+  Log(format('  %d files created', [cnt]));
 End;
 
 (*
@@ -880,7 +874,7 @@ Begin
     // Find the source file
     sSoundFile := GetFileByMatch(ExtractFilePath(CDFolder + SoundJobs[i].Sourcefile), SoundJobs[i].Sourcefile);
     If sSoundFile = '' Then Begin
-      AddLog('  Error could not locate: ' + SoundJobs[i].Sourcefile);
+      Log('  Error could not locate: ' + SoundJobs[i].Sourcefile);
       SoundWarning := true;
       Continue;
     End;
@@ -898,7 +892,7 @@ Begin
     sFile.Free;
     // Store the thing ;)
     If Not ForceDirectories(ExtractFilePath(tSoundFile)) Then Begin
-      addlog('  Error unable to create dir: ' + ExtractFilePath(tSoundFile));
+      Log('  Error unable to create dir: ' + ExtractFilePath(tSoundFile));
       wav.free;
       Continue;
     End;
@@ -906,13 +900,13 @@ Begin
       inc(cnt);
     End
     Else Begin
-      addlog('  Error unable to save: ' + tSoundFile);
+      Log('  Error unable to save: ' + tSoundFile);
     End;
     wav.free;
   End;
-  AddLog(format('  %d files created', [cnt]));
+  Log(format('  %d files created', [cnt]));
   If SoundWarning Then Begin
-    Addlog('  with missing sounds the game is still playable, but with less fun.');
+    Log('  with missing sounds the game is still playable, but with less fun.');
   End;
 End;
 
@@ -928,12 +922,12 @@ Var
 Begin
   sSchemeFolder := GetFolderByMatch(CDFolder, 'data' + PathDelim + 'schemes');
   If sSchemeFolder = '' Then Begin
-    addlog('  Error, unable to find schemes folder.');
+    Log('  Error, unable to find schemes folder.');
     exit;
   End;
   tSchemeFolder := IncludeTrailingPathDelimiter(AtomicFolder) + 'data' + PathDelim + 'schemes';
   If Not ForceDirectories(tSchemeFolder) Then Begin
-    addlog('  Error, could not create: ' + tSchemeFolder);
+    Log('  Error, could not create: ' + tSchemeFolder);
     exit;
   End;
   tSchemeFolder := IncludeTrailingPathDelimiter(tSchemeFolder);
@@ -945,7 +939,7 @@ Begin
       If CopyFile(sl[i], tSchemeFolder + uppercase(ExtractFileName(sl[i]))) Then inc(cnt);
     End;
   End;
-  AddLog(format('  %d files copied', [cnt]));
+  Log(format('  %d files copied', [cnt]));
   sl.free;
 End;
 
@@ -953,44 +947,39 @@ End;
  * This is the routine that does all the work, it handles everyting what needs to be done
  *)
 
-Procedure DoExtraction(CDFolder, AtomicFolder: String;
-  LogCallBack: TLogCallback; Iterative: Boolean);
+Procedure DoExtraction(CDFolder, AtomicFolder: String; Iterative: Boolean);
 Var
   n: QWord;
 Begin
-  If Not assigned(LogCallBack) Then Begin
-    Raise Exception.Create('Error, missing LogCallback!');
-  End;
-  SetLogCallback(LogCallBack);
   n := GetTickCount64();
   // Start Extraction
-  AddLog('Start');
-  Addlog('  be aware the process will take some time, ...');
+  Log('Start');
+  Log('  be aware the process will take some time, ...');
   // Start extraction
   If Not CheckCDRootFolder(CDFolder) Then Begin
-    AddLog('Error: invalid atomic bomberman CD-Image folder');
+    Log('Error: invalid atomic bomberman CD-Image folder');
     exit;
   End;
   If Not CheckFPCAtomicFolder(AtomicFolder) Then Begin
-    AddLog('Error: invalid fpc-atomic folder');
+    Log('Error: invalid fpc-atomic folder');
     exit;
   End;
   If Not ForceDirectories(IncludeTrailingPathDelimiter(AtomicFolder) + 'data') Then Begin
-    addlog('Error, could not create data folder.');
+    Log('Error, could not create data folder.');
     exit;
   End;
-  AddLog('PCXs');
+  Log('PCXs');
   ExtractAtomicPCXs(CDFolder, AtomicFolder, Iterative);
-  AddLog('ANIs');
+  Log('ANIs');
   ExtractAtomicAnis(CDFolder, AtomicFolder, Iterative);
   ExtractAtomicAniToAnis(CDFolder, AtomicFolder, Iterative);
-  AddLog('Sounds');
+  Log('Sounds');
   ExtractAtomicSounds(CDFolder, AtomicFolder, Iterative);
-  AddLog('Shemes');
+  Log('Shemes');
   ExtractAtomicShemes(CDFolder, AtomicFolder, Iterative);
   n := GetTickCount64() - n;
-  Addlog('Extraction took: ' + inttostr(n Div 1000) + 's');
-  AddLog('Done, please check results.');
+  Log('Extraction took: ' + inttostr(n Div 1000) + 's');
+  Log('Done, please check results.');
 End;
 
 (*

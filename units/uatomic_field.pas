@@ -150,7 +150,7 @@ Type
 Implementation
 
 Uses
-  Graphics, IniFiles, md5
+  Graphics, IniFiles, md5, uatomic_global
 {$IFDEF server}
   , math
 {$ENDIF}

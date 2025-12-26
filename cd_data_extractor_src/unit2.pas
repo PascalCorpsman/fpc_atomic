@@ -64,7 +64,6 @@ Type
     fAni: TAniFile;
     Procedure ClearLCL;
     Function LCLToJob(): TAniJob;
-    Procedure AddLog(aLog: String);
   public
     AtomicRootFolder: String;
   End;
@@ -174,11 +173,6 @@ Begin
   End;
 End;
 
-Procedure TForm2.AddLog(aLog: String);
-Begin
-  showmessage(aLog);
-End;
-
 Procedure TForm2.Button1Click(Sender: TObject);
 Var
   i: Integer;
@@ -187,7 +181,6 @@ Var
 Begin
   OpenDialog1.InitialDir := AtomicRootFolder;
   If OpenDialog1.Execute Then Begin
-    SetLogCallback(@AddLog);
     label1.Caption := ExtractRelativePath(AtomicRootFolder, OpenDialog1.FileName);
     ClearLCL;
     s := lowercase(ExtractFileNameOnly(OpenDialog1.FileName)) + '.png';

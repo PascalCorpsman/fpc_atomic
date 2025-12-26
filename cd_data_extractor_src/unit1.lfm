@@ -7,7 +7,7 @@ object Form1: TForm1
   ClientHeight = 491
   ClientWidth = 451
   Position = poScreenCenter
-  LCLVersion = '3.99.0.0'
+  LCLVersion = '4.99.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   object Button1: TButton
@@ -34,7 +34,7 @@ object Form1: TForm1
     Left = 16
     Height = 16
     Top = 72
-    Width = 41
+    Width = 40
     Caption = 'Label1'
   end
   object Button3: TButton
@@ -61,14 +61,14 @@ object Form1: TForm1
     Left = 16
     Height = 16
     Top = 128
-    Width = 41
+    Width = 40
     Caption = 'Label2'
   end
   object Label3: TLabel
     Left = 8
     Height = 16
     Top = 160
-    Width = 87
+    Width = 86
     Caption = 'extraction log:'
   end
   object Memo1: TMemo
@@ -110,7 +110,7 @@ object Form1: TForm1
     Height = 22
     Hint = 'When selected, only new files where created (faster), '#13#10'uncheck if you want to overwrite existing files too.'
     Top = 391
-    Width = 73
+    Width = 72
     Anchors = [akLeft, akBottom]
     Caption = 'iterative'
     Checked = True
@@ -121,6 +121,7 @@ object Form1: TForm1
   end
   object IniPropStorage1: TIniPropStorage
     StoredValues = <>
+    IniSection = 'CD_Data_Extractor'
     Left = 56
     Top = 8
   end

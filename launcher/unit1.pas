@@ -63,6 +63,7 @@ Type
     Procedure StoreSettings();
 
     Procedure LoadSideImage();
+    Procedure OnDoLog(Const LogText: String);
   public
     Procedure StoreVersion(NewVersion: single);
 
@@ -76,7 +77,7 @@ Implementation
 {$R *.lfm}
 
 Uses UTF8Process, process, Unit2, Unit3, LCLType
-  , ukeyboarddialog, uatomic_common, usynapsedownloader
+  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -108,13 +109,22 @@ Begin
 End;
 {$ENDIF}
 
+Procedure ClearLog();
+Begin
+  form2.Memo1.Clear;
+  If FileExists(GetAtomicAppLogFile()) Then
+    DeleteFile(GetAtomicAppLogFile());
+End;
+
 { TForm1 }
 
 Procedure TForm1.FormCreate(Sender: TObject);
 Var
   i: Integer;
 Begin
-  ini := TIniFile.Create('fpc_atomic.ini');
+  InitLogger();
+  LoggerSetOnDoLog(@OnDoLog);
+  ini := TIniFile.Create(GetAtomicConfigFile());
   Constraints.MinHeight := Height;
   Constraints.MaxHeight := Height;
   Constraints.MinWidth := Width;
@@ -134,6 +144,7 @@ End;
 
 Procedure TForm1.Button3Click(Sender: TObject);
 Begin
+  StoreSettings();
   close;
 End;
 
@@ -166,91 +177,91 @@ Begin
   // Key Assignment
   dialog := TKeyboardDialog.CreateNew(self, 0);
   Keys[ks0] := AtomicDefaultKeys(ks0);
-  Keys[ks0].KeyUp := ini.ReadInteger('TApplication.Form1', 'KeyUp', Keys[ks0].KeyUp);
-  Keys[ks0].KeyDown := ini.ReadInteger('TApplication.Form1', 'KeyDown', Keys[ks0].KeyDown);
-  Keys[ks0].KeyLeft := ini.ReadInteger('TApplication.Form1', 'KeyLeft', Keys[ks0].KeyLeft);
-  Keys[ks0].KeyRight := ini.ReadInteger('TApplication.Form1', 'KeyRight', Keys[ks0].KeyRight);
-  Keys[ks0].KeyPrimary := ini.ReadInteger('TApplication.Form1', 'KeyPrimary', Keys[ks0].KeyPrimary);
-  Keys[ks0].KeySecondary := ini.ReadInteger('TApplication.Form1', 'KeySecondary', Keys[ks0].KeySecondary);
-  Keys[ks0].UseSDL2 := ini.ReadBool('TApplication.Form1', 'UseSDL', Keys[ks0].UseSDL2);
+  Keys[ks0].KeyUp := ini.ReadInteger(FPC_AtomicIniSection, 'KeyUp', Keys[ks0].KeyUp);
+  Keys[ks0].KeyDown := ini.ReadInteger(FPC_AtomicIniSection, 'KeyDown', Keys[ks0].KeyDown);
+  Keys[ks0].KeyLeft := ini.ReadInteger(FPC_AtomicIniSection, 'KeyLeft', Keys[ks0].KeyLeft);
+  Keys[ks0].KeyRight := ini.ReadInteger(FPC_AtomicIniSection, 'KeyRight', Keys[ks0].KeyRight);
+  Keys[ks0].KeyPrimary := ini.ReadInteger(FPC_AtomicIniSection, 'KeyPrimary', Keys[ks0].KeyPrimary);
+  Keys[ks0].KeySecondary := ini.ReadInteger(FPC_AtomicIniSection, 'KeySecondary', Keys[ks0].KeySecondary);
+  Keys[ks0].UseSDL2 := ini.ReadBool(FPC_AtomicIniSection, 'UseSDL', Keys[ks0].UseSDL2);
   If Keys[ks0].UseSDL2 Then Begin
-    Keys[ks0].Name := ini.ReadString('TApplication.Form1', 'SDL_Name', Keys[ks0].Name);
-    Keys[ks0].NameIndex := ini.readInteger('TApplication.Form1', 'SDL_NameIndex', Keys[ks0].NameIndex);
-    Keys[ks0].ButtonIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_First', Keys[ks0].ButtonIndex[0]);
-    Keys[ks0].ButtonsIdle[0] := ini.readBool('TApplication.Form1', 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
-    Keys[ks0].ButtonIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_Second', Keys[ks0].ButtonIndex[1]);
-    Keys[ks0].ButtonsIdle[1] := ini.readBool('TApplication.Form1', 'SDL_SecondIdle', Keys[ks0].ButtonsIdle[1]);
-    Keys[ks0].AchsisIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDown', Keys[ks0].AchsisIndex[0]);
-    Keys[ks0].AchsisIdle[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownIdle', Keys[ks0].AchsisIdle[0]);
-    Keys[ks0].AchsisDirection[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownDirection', Keys[ks0].AchsisDirection[0]);
-    Keys[ks0].AchsisIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
-    Keys[ks0].AchsisIdle[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
-    Keys[ks0].AchsisDirection[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
+    Keys[ks0].Name := ini.ReadString(FPC_AtomicIniSection, 'SDL_Name', Keys[ks0].Name);
+    Keys[ks0].NameIndex := ini.readInteger(FPC_AtomicIniSection, 'SDL_NameIndex', Keys[ks0].NameIndex);
+    Keys[ks0].ButtonIndex[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_First', Keys[ks0].ButtonIndex[0]);
+    Keys[ks0].ButtonsIdle[0] := ini.readBool(FPC_AtomicIniSection, 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
+    Keys[ks0].ButtonIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_Second', Keys[ks0].ButtonIndex[1]);
+    Keys[ks0].ButtonsIdle[1] := ini.readBool(FPC_AtomicIniSection, 'SDL_SecondIdle', Keys[ks0].ButtonsIdle[1]);
+    Keys[ks0].AchsisIndex[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_UpDown', Keys[ks0].AchsisIndex[0]);
+    Keys[ks0].AchsisIdle[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_UpDownIdle', Keys[ks0].AchsisIdle[0]);
+    Keys[ks0].AchsisDirection[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_UpDownDirection', Keys[ks0].AchsisDirection[0]);
+    Keys[ks0].AchsisIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
+    Keys[ks0].AchsisIdle[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
+    Keys[ks0].AchsisDirection[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
   End;
   Keys[ks1] := AtomicDefaultKeys(ks1);
-  Keys[ks1].KeyUp := ini.ReadInteger('TApplication.Form1', 'KeyUp2', Keys[ks1].KeyUp);
-  Keys[ks1].KeyDown := ini.ReadInteger('TApplication.Form1', 'KeyDown2', Keys[ks1].KeyDown);
-  Keys[ks1].KeyLeft := ini.ReadInteger('TApplication.Form1', 'KeyLeft2', Keys[ks1].KeyLeft);
-  Keys[ks1].KeyRight := ini.ReadInteger('TApplication.Form1', 'KeyRight2', Keys[ks1].KeyRight);
-  Keys[ks1].KeyPrimary := ini.ReadInteger('TApplication.Form1', 'KeyPrimary2', Keys[ks1].KeyPrimary);
-  Keys[ks1].KeySecondary := ini.ReadInteger('TApplication.Form1', 'KeySecondary2', Keys[ks1].KeySecondary);
-  Keys[ks1].UseSDL2 := ini.ReadBool('TApplication.Form1', 'UseSDL2', Keys[ks1].UseSDL2);
+  Keys[ks1].KeyUp := ini.ReadInteger(FPC_AtomicIniSection, 'KeyUp2', Keys[ks1].KeyUp);
+  Keys[ks1].KeyDown := ini.ReadInteger(FPC_AtomicIniSection, 'KeyDown2', Keys[ks1].KeyDown);
+  Keys[ks1].KeyLeft := ini.ReadInteger(FPC_AtomicIniSection, 'KeyLeft2', Keys[ks1].KeyLeft);
+  Keys[ks1].KeyRight := ini.ReadInteger(FPC_AtomicIniSection, 'KeyRight2', Keys[ks1].KeyRight);
+  Keys[ks1].KeyPrimary := ini.ReadInteger(FPC_AtomicIniSection, 'KeyPrimary2', Keys[ks1].KeyPrimary);
+  Keys[ks1].KeySecondary := ini.ReadInteger(FPC_AtomicIniSection, 'KeySecondary2', Keys[ks1].KeySecondary);
+  Keys[ks1].UseSDL2 := ini.ReadBool(FPC_AtomicIniSection, 'UseSDL2', Keys[ks1].UseSDL2);
   If Keys[ks1].UseSDL2 Then Begin
-    Keys[ks1].Name := ini.ReadString('TApplication.Form1', 'SDL_Name2', Keys[ks1].Name);
-    Keys[ks1].NameIndex := ini.readInteger('TApplication.Form1', 'SDL_NameIndex2', Keys[ks1].NameIndex);
-    Keys[ks1].ButtonIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_First2', Keys[ks1].ButtonIndex[0]);
-    Keys[ks1].ButtonsIdle[0] := ini.readBool('TApplication.Form1', 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
-    Keys[ks1].ButtonIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
-    Keys[ks1].ButtonsIdle[1] := ini.readBool('TApplication.Form1', 'SDL_SecondIdle2', Keys[ks1].ButtonsIdle[1]);
-    Keys[ks1].AchsisIndex[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDown2', Keys[ks1].AchsisIndex[0]);
-    Keys[ks1].AchsisIdle[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownIdle2', Keys[ks1].AchsisIdle[0]);
-    Keys[ks1].AchsisDirection[0] := ini.readInteger('TApplication.Form1', 'SDL_UpDownDirection2', Keys[ks1].AchsisDirection[0]);
-    Keys[ks1].AchsisIndex[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
-    Keys[ks1].AchsisIdle[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
-    Keys[ks1].AchsisDirection[1] := ini.readInteger('TApplication.Form1', 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
+    Keys[ks1].Name := ini.ReadString(FPC_AtomicIniSection, 'SDL_Name2', Keys[ks1].Name);
+    Keys[ks1].NameIndex := ini.readInteger(FPC_AtomicIniSection, 'SDL_NameIndex2', Keys[ks1].NameIndex);
+    Keys[ks1].ButtonIndex[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_First2', Keys[ks1].ButtonIndex[0]);
+    Keys[ks1].ButtonsIdle[0] := ini.readBool(FPC_AtomicIniSection, 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
+    Keys[ks1].ButtonIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
+    Keys[ks1].ButtonsIdle[1] := ini.readBool(FPC_AtomicIniSection, 'SDL_SecondIdle2', Keys[ks1].ButtonsIdle[1]);
+    Keys[ks1].AchsisIndex[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_UpDown2', Keys[ks1].AchsisIndex[0]);
+    Keys[ks1].AchsisIdle[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_UpDownIdle2', Keys[ks1].AchsisIdle[0]);
+    Keys[ks1].AchsisDirection[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_UpDownDirection2', Keys[ks1].AchsisDirection[0]);
+    Keys[ks1].AchsisIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
+    Keys[ks1].AchsisIdle[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
+    Keys[ks1].AchsisDirection[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
   End;
   Dialog.LoadKeys(Keys[ks0], Keys[ks1]);
   If Dialog.Execute() Then Begin
     Keys[ks0] := Dialog.GetKeys(ks0);
     Keys[ks1] := Dialog.GetKeys(ks1);
-    ini.WriteInteger('TApplication.Form1', 'KeyUp', Keys[ks0].KeyUp);
-    ini.WriteInteger('TApplication.Form1', 'KeyDown', Keys[ks0].KeyDown);
-    ini.WriteInteger('TApplication.Form1', 'KeyLeft', Keys[ks0].KeyLeft);
-    ini.WriteInteger('TApplication.Form1', 'KeyRight', Keys[ks0].KeyRight);
-    ini.WriteInteger('TApplication.Form1', 'KeyPrimary', Keys[ks0].KeyPrimary);
-    ini.WriteInteger('TApplication.Form1', 'KeySecondary', Keys[ks0].KeySecondary);
-    ini.WriteBool('TApplication.Form1', 'UseSDL', Keys[ks0].UseSDL2);
-    ini.WriteString('TApplication.Form1', 'SDL_Name', Keys[ks0].Name);
-    ini.WriteInteger('TApplication.Form1', 'SDL_NameIndex', Keys[ks0].NameIndex);
-    ini.WriteInteger('TApplication.Form1', 'SDL_First', Keys[ks0].ButtonIndex[0]);
-    ini.WriteBool('TApplication.Form1', 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_Second', Keys[ks0].ButtonIndex[1]);
-    ini.WriteBool('TApplication.Form1', 'SDL_SecondIdle', Keys[ks0].ButtonsIdle[1]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_UpDown', Keys[ks0].AchsisIndex[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownIdle', Keys[ks0].AchsisIdle[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownDirection', Keys[ks0].AchsisDirection[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
-    ini.WriteInteger('TApplication.Form1', 'KeyUp2', Keys[ks1].KeyUp);
-    ini.WriteInteger('TApplication.Form1', 'KeyDown2', Keys[ks1].KeyDown);
-    ini.WriteInteger('TApplication.Form1', 'KeyLeft2', Keys[ks1].KeyLeft);
-    ini.WriteInteger('TApplication.Form1', 'KeyRight2', Keys[ks1].KeyRight);
-    ini.WriteInteger('TApplication.Form1', 'KeyPrimary2', Keys[ks1].KeyPrimary);
-    ini.WriteInteger('TApplication.Form1', 'KeySecondary2', Keys[ks1].KeySecondary);
-    ini.WriteBool('TApplication.Form1', 'UseSDL2', Keys[ks1].UseSDL2);
-    ini.WriteString('TApplication.Form1', 'SDL_Name2', Keys[ks1].Name);
-    ini.WriteInteger('TApplication.Form1', 'SDL_NameIndex2', Keys[ks1].NameIndex);
-    ini.WriteInteger('TApplication.Form1', 'SDL_First2', Keys[ks1].ButtonIndex[0]);
-    ini.WriteBool('TApplication.Form1', 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
-    ini.WriteBool('TApplication.Form1', 'SDL_SecondIdle2', Keys[ks1].ButtonsIdle[1]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_UpDown2', Keys[ks1].AchsisIndex[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownIdle2', Keys[ks1].AchsisIdle[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_UpDownDirection2', Keys[ks1].AchsisDirection[0]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
-    ini.WriteInteger('TApplication.Form1', 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyUp', Keys[ks0].KeyUp);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyDown', Keys[ks0].KeyDown);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyLeft', Keys[ks0].KeyLeft);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyRight', Keys[ks0].KeyRight);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyPrimary', Keys[ks0].KeyPrimary);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeySecondary', Keys[ks0].KeySecondary);
+    ini.WriteBool(FPC_AtomicIniSection, 'UseSDL', Keys[ks0].UseSDL2);
+    ini.WriteString(FPC_AtomicIniSection, 'SDL_Name', Keys[ks0].Name);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_NameIndex', Keys[ks0].NameIndex);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_First', Keys[ks0].ButtonIndex[0]);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_Second', Keys[ks0].ButtonIndex[1]);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_SecondIdle', Keys[ks0].ButtonsIdle[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_UpDown', Keys[ks0].AchsisIndex[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_UpDownIdle', Keys[ks0].AchsisIdle[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_UpDownDirection', Keys[ks0].AchsisDirection[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyUp2', Keys[ks1].KeyUp);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyDown2', Keys[ks1].KeyDown);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyLeft2', Keys[ks1].KeyLeft);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyRight2', Keys[ks1].KeyRight);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeyPrimary2', Keys[ks1].KeyPrimary);
+    ini.WriteInteger(FPC_AtomicIniSection, 'KeySecondary2', Keys[ks1].KeySecondary);
+    ini.WriteBool(FPC_AtomicIniSection, 'UseSDL2', Keys[ks1].UseSDL2);
+    ini.WriteString(FPC_AtomicIniSection, 'SDL_Name2', Keys[ks1].Name);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_NameIndex2', Keys[ks1].NameIndex);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_First2', Keys[ks1].ButtonIndex[0]);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_SecondIdle2', Keys[ks1].ButtonsIdle[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_UpDown2', Keys[ks1].AchsisIndex[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_UpDownIdle2', Keys[ks1].AchsisIdle[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_UpDownDirection2', Keys[ks1].AchsisDirection[0]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
   End;
   dialog.free;
 End;
@@ -374,13 +385,27 @@ Begin
   End;
 End;
 
+Procedure TForm1.OnDoLog(Const LogText: String);
+Var
+  aText: String;
+Begin
+  aText := copy(LogText, pos('|', LogText) + 1, length(LogText));
+  aText := copy(aText, pos('|', aText) + 1, length(aText));
+  form2.Memo1.Append(aText);
+  If Not form2.Visible Then Begin
+    form2.top := form1.top;
+    form2.Left := form1.left + form1.Width + 10;
+    Form2.Show;
+  End;
+End;
+
 Procedure TForm1.StoreVersion(NewVersion: single);
 Var
   fm: TFormatSettings;
 Begin
   fm := DefaultFormatSettings;
   fm.DecimalSeparator := '.';
-  ini.WriteString('TApplication.Form1', 'Version', format('%0.5f', [NewVersion], fm));
+  ini.WriteString(FPC_AtomicIniSection, 'Version', format('%0.5f', [NewVersion], fm));
   ini.UpdateFile;
   Version := NewVersion;
 End;
@@ -391,14 +416,14 @@ Var
 Begin
   fm := DefaultFormatSettings;
   fm.DecimalSeparator := '.';
-  CheckBox1.Checked := ini.ReadBool('TApplication.Form1', 'ShowFPS', false);
-  CheckBox2.Checked := ini.ReadBool('TApplication.Form1', 'Fullscreen', false);
+  CheckBox1.Checked := ini.ReadBool(FPC_AtomicIniSection, 'ShowFPS', false);
+  CheckBox2.Checked := ini.ReadBool(FPC_AtomicIniSection, 'Fullscreen', false);
   CheckBox3.Checked := false;
-  CheckBox4.Checked := ini.ReadBool('TApplication.Form1', 'PlaySounds', true);
-  CheckBox5.Checked := Not ini.ReadBool('TApplication.Form1', 'Proportional', true);
-  edit1.text := ini.ReadString('TApplication.Form1', 'NodeName', 'Player 1');
-  ProtocollVersion := ini.ReadInteger('TApplication.Form1', 'ProtocollVersion', -1);
-  Version := strtofloatdef(ini.ReadString('TApplication.Form1', 'Version', '-1'), -1, fm);
+  CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySounds', true);
+  CheckBox5.Checked := Not ini.ReadBool(FPC_AtomicIniSection, 'Proportional', true);
+  edit1.text := ini.ReadString(FPC_AtomicIniSection, 'NodeName', 'Player 1');
+  ProtocollVersion := ini.ReadInteger(FPC_AtomicIniSection, 'ProtocollVersion', -1);
+  Version := strtofloatdef(ini.ReadString(FPC_AtomicIniSection, 'Version', '-1'), -1, fm);
 
   edit2.text := ini.ReadString('Launcher', 'Router_IP', '127.0.0.1');
   edit3.text := ini.ReadString('Launcher', 'Router_Port', '5521');
@@ -406,12 +431,12 @@ End;
 
 Procedure TForm1.StoreSettings;
 Begin
-  ini.WriteBool('TApplication.Form1', 'ShowFPS', CheckBox1.Checked);
-  ini.WriteBool('TApplication.Form1', 'Fullscreen', CheckBox2.Checked);
+  ini.WriteBool(FPC_AtomicIniSection, 'ShowFPS', CheckBox1.Checked);
+  ini.WriteBool(FPC_AtomicIniSection, 'Fullscreen', CheckBox2.Checked);
 
-  ini.WriteBool('TApplication.Form1', 'PlaySounds', CheckBox4.Checked);
-  ini.WriteBool('TApplication.Form1', 'Proportional', Not CheckBox5.Checked);
-  ini.WriteString('TApplication.Form1', 'NodeName', edit1.text);
+  ini.WriteBool(FPC_AtomicIniSection, 'PlaySounds', CheckBox4.Checked);
+  ini.WriteBool(FPC_AtomicIniSection, 'Proportional', Not CheckBox5.Checked);
+  ini.WriteString(FPC_AtomicIniSection, 'NodeName', edit1.text);
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);
   ini.WriteString('Launcher', 'Router_Port', edit3.text);

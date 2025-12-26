@@ -78,7 +78,7 @@ Function SelectRandomSound(Sounds: Array Of String): String;
 
 Implementation
 
-Uses math, uatomic_common
+Uses math, uatomic_common, uatomic_global
   , ugame // Nicht ideal :( wird für die Settings benötigt.
   ;
 

@@ -100,6 +100,10 @@
         <Filename Value="../../Sample/TCP_IP/usynapsedownloader.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../units/uatomic_global.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -119,6 +123,12 @@
         </Win32>
       </Options>
     </Linking>
+    <Other>
+      <CustomOptions Value="-dLauncher"/>
+      <OtherDefines Count="1">
+        <Define0 Value="Launcher"/>
+      </OtherDefines>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions>

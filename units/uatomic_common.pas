@@ -21,7 +21,7 @@ Interface
 {$I ../client/globaldefines.inc}
 
 Uses
-  Classes, SysUtils, ulogger, Graphics, ugraphics, uvectormath;
+  Classes, SysUtils, Graphics, ugraphics, uvectormath;
 
 Const
   (*
@@ -152,6 +152,7 @@ Const
 
   AtomicDefaultSpeed: single = 0.5; // Die "Grundgeschwindigkeit" in Kacheln Pro Sekunde
   AtomicSpeedChange = 1.1; // Geschwindigkeitsänderung beim aufsammeln eines Rollschuh Items 1.1 = 10% Schneller
+
 Var
   AtomicMaxSpeed: single; // Maximale Geschwindigkeit eines Atomic in Kacheln Pro Sekunde
   AtomicSlowSpeed: single; // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde
@@ -162,8 +163,8 @@ Var
   ConveyorSlowSpeed: Single;
   ConveyorMiddleSpeed: Single;
   ConveyorFastSpeed: Single;
-Const
 
+Const
   AtomicShowSoundInfoTime = 1000; // Zeit in ms wie lange die Soundinfo angezeigt wird.
 
   (*
@@ -459,6 +460,7 @@ Type
     , raZen
     , raLockedIn // -- Fertig
     );
+
 Const
   (*
    * Animationen die nur 1 mal an die Clients gesendet werden und danach wieder gelöscht werden
@@ -472,6 +474,7 @@ Const
     , raZen
     , raLockedIn
     ];
+
 Type
   (*
    * Alle Informationen, welche Zyklisch vom Server gesendet werden
@@ -552,9 +555,6 @@ Type
 
   TPlayers = Array[0..length(PlayerColors) - 1] Of TPlayer;
 
-  TLogLevel = (llTrace, lldebug, llInfo, llWarning, llError, llCritical, llFatal);
-  TLogShowHandler = Procedure(Msg: String; WarnLevel: TLogLevel);
-
   TKeys = Record
     UseSDL2: Boolean;
     // if UseSDL2 then this is used
@@ -611,22 +611,6 @@ Type
 {$ENDIF}
   End;
 
-Var
-
-  LogShowHandler: TLogShowHandler = Nil; // Debendency Injection auf eine LogShowMsg, wenn es die nicht gibt wird die von ulogger.pas genommen
-
-Procedure LogShow(LogText: String; LogLevel: TLogLevel = llInfo);
-Procedure Log(LogText: String; LogLevel: TLogLevel = llInfo);
-Procedure LogLeave;
-Function GetLoggerLoglevel(): integer;
-Procedure InitLogger();
-{$IFDEF Windows}
-Procedure EnableLogToConsole();
-{$ENDIF}
-Procedure SetLoggerLogFile(Filename: String);
-Procedure SetLogLevel(Level: integer);
-Procedure AssertLog(Criteria: Boolean; LogText: String; LogLevel: TLogLevel = llInfo); // Logt nur wenn "Criteria" = true
-Function LogLevelToString(LogLevel: TLogLevel): String;
 
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speichert ein Scheme in einen Stream
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
@@ -823,97 +807,6 @@ Begin
   result.PowerUps[puSuperBadDisease] := empty;
   result.PowerUps[puSlow] := empty;
   result.PowerUps[purandom] := empty;
-End;
-
-Function ConvertLogLevel(ll: TLogLevel): ulogger.TLogLevel;
-Begin
-  Case ll Of
-    llTrace: result := ulogger.llTrace;
-    lldebug: result := ulogger.lldebug;
-    llInfo: result := ulogger.llInfo;
-    llWarning: result := ulogger.llWarning;
-    llError: result := ulogger.llError;
-    llCritical: result := ulogger.llCritical;
-    llFatal: result := ulogger.llFatal;
-  Else
-    Raise Exception.Create('ConvertLogLevel: Hier ist was kaputt.');
-  End;
-End;
-
-Procedure Log(LogText: String; LogLevel: TLogLevel);
-Begin
-  ulogger.Log(LogText, ConvertLogLevel(LogLevel));
-End;
-
-Procedure LogLeave;
-Begin
-  ulogger.LogLeave;
-End;
-
-Function GetLoggerLoglevel: integer;
-Begin
-  result := Logger.loglevel;
-End;
-
-Procedure InitLogger;
-Begin
-{$IFDEF Server}
-  logger.LogToConsole := true;
-{$ENDIF}
-{$IFDEF Linux}
-  logger.LogToConsole := true;
-{$ENDIF}
-  logger.LogToFile := false;
-  logger.AutoLogStackOnFatal := true;
-  logger.LogStackTrace := true;
-  logger.SetLogLevel(2);
-End;
-
-{$IFDEF Windows}
-
-Procedure EnableLogToConsole();
-Begin
-  logger.LogToConsole := true;
-End;
-{$ENDIF}
-
-Procedure SetLoggerLogFile(Filename: String);
-Begin
-  // Todo : Theoretisch müsste man hier prüfen ob auch Schreibrechte existieren..
-  logger.SetLogFilename(Filename);
-  logger.LogToFile := true;
-End;
-
-Procedure SetLogLevel(Level: integer);
-Begin
-  logger.SetLogLevel(level);
-End;
-
-Procedure AssertLog(Criteria: Boolean; LogText: String; LogLevel: TLogLevel);
-Begin
-  // Alles muss durch Logshow geschleift werden
-  If Criteria Then Begin
-    LogShow(LogText, LogLevel);
-  End;
-End;
-
-Function LogLevelToString(LogLevel: TLogLevel): String;
-Begin
-  result := ulogger.LogLevelToString(ConvertLogLevel(LogLevel));
-End;
-
-Procedure LogShow(LogText: String; LogLevel: TLogLevel);
-Begin
-  If assigned(LogShowHandler) Then Begin
-    LogShowHandler(LogText, LogLevel);
-  End
-  Else Begin
-{$IFDEF Server}
-    log(LogText, LogLevel);
-{$ELSE}
-    ulogger.LogShow(LogText, ConvertLogLevel(LogLevel));
-{$ENDIF}
-  End;
 End;
 
 End.

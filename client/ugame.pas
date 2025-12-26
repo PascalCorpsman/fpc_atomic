@@ -234,6 +234,7 @@ Uses dglopengl
   , uatomicfont
   , uopengl_spriteengine
   , ugraphics
+  , uatomic_global
   ;
 
 Var
