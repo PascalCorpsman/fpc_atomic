@@ -140,7 +140,7 @@ Const
   ChunkManagerHeaderLen = 12; // uChunkmanager.pas    HeaderLen = 12
 
   FrameRate = 10; // Zeit in ms bis ein neues Frame berechnet wird
-  UpdateRate = 40; // Zeit in ms bis die Clients wieder Aktualisiert werden
+  UpdateRate = 20; // Zeit in ms bis die Clients wieder Aktualisiert werden (50 FPS for smoother gameplay)
 
   SynchonizeTimeOut = 150; // Zeit in ms Kommt mehr als 150ms lang keine Heartbeat Message von allen Clients, dann wird eine Zwangspause eingeleitet.
   HeartBeatTime = 100; // Zeit in ms Muss Sinnigerweise << SynchonizeTimeOut sein.
@@ -616,9 +616,8 @@ Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speic
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
 
-Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
-
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
+Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
 Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 {$ENDIF}
 
@@ -705,7 +704,6 @@ Begin
     result.KeySecondary := VK_TAB;
   End;
 End;
-{$ENDIF}
 
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
 Var
@@ -716,6 +714,7 @@ Begin
   b := min(255, round(aColor.b * 2.55));
   result := Graphics.RGBToColor(r, g, b);
 End;
+{$ENDIF}
 
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme);
 Begin
