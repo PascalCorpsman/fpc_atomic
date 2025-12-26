@@ -211,6 +211,7 @@ Type
 
 Var
   Game: TGame; // Die SpielEngine
+  NeedFormClose: Boolean = false; // Set to true when user confirms exit, triggers form close after quit sound
 
 Implementation
 
@@ -237,12 +238,9 @@ Uses dglopengl
   , uatomic_global
   ;
 
-Var
-  NeedFormClose: Boolean = false;
-
-  (*
-   * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
-   *)
+(*
+ * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
+ *)
 
 Function IndexOf(Value: Integer; Const aArray: Array Of Integer): integer;
 Var
@@ -613,7 +611,13 @@ Begin
         End;
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
+{$IFNDEF Only3Player}
+            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
+              SwitchToScreen(sMainScreen);
+            End;
+{$ELSE}
             SwitchToScreen(sMainScreen);
+{$ENDIF}
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);

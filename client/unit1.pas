@@ -45,7 +45,7 @@ Interface
 Uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ExtCtrls, IniPropStorage,
-  OpenGlcontext, lNetComponents, lNet,
+  OpenGlcontext, lNetComponents,
   (*
    * Kommt ein Linkerfehler wegen OpenGL dann: sudo apt-get install freeglut3-dev
    *)
@@ -375,22 +375,36 @@ Begin
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
+Var
+  Key: Word;
 Begin
   log('TForm1.FormCloseQuery', llTrace);
-  // Todo: Speichern der Map, oder wenigstens Nachfragen ob gespeichert werden soll
-  log('Shuting down.', llInfo);
-  IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
-  IniPropStorage1.WriteString('Version', Version);
-  //setValue('MainForm', 'Left', inttostr(Form1.left));
-  //setValue('MainForm', 'Top', inttostr(Form1.top));
-  //setValue('MainForm', 'Width', inttostr(Form1.Width));
-  //setValue('MainForm', 'Height', inttostr(Form1.Height));
 
-  timer1.Enabled := false;
-  Initialized := false;
-  // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
-  Game.Disconnect;
-  Game.OnIdle;
+  // If NeedFormClose is already true, user has confirmed exit via menu/ESC
+  // Allow the close to proceed normally
+  If NeedFormClose Then Begin
+    log('Shuting down (user confirmed exit).', llInfo);
+    IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
+    IniPropStorage1.WriteString('Version', Version);
+    //setValue('MainForm', 'Left', inttostr(Form1.left));
+    //setValue('MainForm', 'Top', inttostr(Form1.top));
+    //setValue('MainForm', 'Width', inttostr(Form1.Width));
+    //setValue('MainForm', 'Height', inttostr(Form1.Height));
+
+    timer1.Enabled := false;
+    Initialized := false;
+    // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
+    Game.Disconnect;
+    Game.OnIdle;
+    LogLeave;
+    Exit; // Allow close to proceed
+  End;
+
+  // User clicked window close button - Do the same as when user presses ESC or selects Exit from menu
+  log('Window close button clicked, showing confirmation dialog', llInfo);
+  CanClose := false; // Prevent immediate close
+  key := VK_ESCAPE;
+  OpenGLControl1.OnKeyDown(OpenGLControl1, key, []);
   LogLeave;
 End;
 
