@@ -21,7 +21,7 @@ Interface
 {$I globaldefines.inc}
 
 Uses
-  Classes, SysUtils, controls, uatomic_common, uopengl_animation, uatomic_field;
+  forms, Classes, SysUtils, StdCtrls, controls, uatomic_common, uopengl_animation, uatomic_field;
 
 Type
 
@@ -72,12 +72,27 @@ Type
     Procedure StartPLaySong(); virtual;
   End;
 
+  { TJoinQuestionForm }
+
+  TJoinQuestionForm = Class(TForm)
+  private
+    Edit1: TEdit;
+    Edit2: TEdit;
+    Label1: TLabel;
+    Label2: TLabel;
+    Button1: TButton;
+    Button2: TButton;
+  public
+    Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
+  End;
+
   { TMainMenu }
 
   TMainMenu = Class(TScreen)
   private
     fCursor: TOpenGL_Animation;
     fCursorPos: integer; // Position der "Bombe" in Menüpunkten
+    fJoinQuestionForm: TJoinQuestionForm;
   public
     Procedure OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState); override;
     Procedure OnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -88,6 +103,8 @@ Type
     Procedure LoadFromDisk(ResPath: String); override;
     Procedure Render; override;
     Procedure Reset; override;
+
+    Procedure StopJoinQuestion;
   End;
 
   { TJoinMenu }
@@ -218,7 +235,7 @@ Type
 
 Implementation
 
-Uses LCLType, Math, Graphics, Dialogs, forms, StdCtrls, fileutil, StrUtils
+Uses LCLType, Math, Graphics, Dialogs, fileutil, StrUtils
   , dglOpenGL
   , Unit1 // WTF, why is this unit in here ?
   , uopengl_graphikengine
@@ -244,20 +261,6 @@ Type
   public
     Procedure LoadSchemes(SelectedScheme: String);
     // Weil die Form keine Ressource hat, muss sie mittels CreateNew erzeugt werden, was auch immer das für einen unterschied macht ...
-    Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
-  End;
-
-  { TJoinQuestionForm }
-
-  TJoinQuestionForm = Class(TForm)
-  private
-    Edit1: TEdit;
-    Edit2: TEdit;
-    Label1: TLabel;
-    Label2: TLabel;
-    Button1: TButton;
-    Button2: TButton;
-  public
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
   End;
 
@@ -310,6 +313,7 @@ Begin
   Button1.Parent := self;
   Button1.caption := 'OK';
   Button1.ModalResult := mrOK;
+  Button1.Default := true; // Make Enter key trigger this button (when focus is on button)
   Button1.Top := 128;
   Button1.Left := 229;
 
@@ -318,6 +322,7 @@ Begin
   Button2.Parent := self;
   Button2.caption := 'Cancel';
   Button2.ModalResult := mrCancel;
+  Button2.Cancel := True; // Make Esc key trigger this button
   Button2.Top := 128;
   Button2.Left := 16;
 End;
@@ -1082,27 +1087,34 @@ End;
 
 { TMainMenu }
 
-Procedure TMainMenu.OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState
-  );
-Var
-  f: TJoinQuestionForm;
+Procedure TMainMenu.OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
 Begin
   If key = VK_J Then Begin
+    If assigned(fJoinQuestionForm) Then exit; // Der Dialog ist schon offen ;)
     // Frage IP und Port zum Game.JoinViaParams(ip, port);  ab !
-    f := TJoinQuestionForm.CreateNew(Nil, 0);
-    f.Edit1.Text := TGame(fOwner).Settings.Router_IP;
-    f.Edit2.Text := TGame(fOwner).Settings.Router_Port;
-    If f.ShowModal = mrOK Then Begin
-      TGame(fOwner).JoinViaParams(f.Edit1.Text, strtointdef(f.Edit2.Text, 9876));
+    fJoinQuestionForm := TJoinQuestionForm.CreateNew(Nil, 0);
+    fJoinQuestionForm.Edit1.Text := TGame(fOwner).Settings.Router_IP;
+    fJoinQuestionForm.Edit2.Text := TGame(fOwner).Settings.Router_Port;
+    // TODO:  Wie macht man dialog tatsächlich modal gegenüber Form1 ?, zumindest unter Linux geht das so nicht ..
+    Case fJoinQuestionForm.ShowModal Of
+      mrOK: Begin
+          TGame(fOwner).JoinViaParams(fJoinQuestionForm.Edit1.Text, strtointdef(fJoinQuestionForm.Edit2.Text, 9876));
+        End;
+      mrAbort: Begin
+          // CLient found a server, does not need the Join Question Dialog anymore ..
+        End
+    Else Begin
+        // User Canceled or did something else -> go back to main screen
+        TGame(fOwner).SwitchToScreen(sMainScreen);
+      End;
     End;
-    f.free;
+    fJoinQuestionForm.free;
+    fJoinQuestionForm := Nil;
   End;
   If key = VK_DOWN Then Begin
-    // fCursorPos := min(fCursorPos + 1, 6);
     fCursorPos := (fCursorPos + 1) Mod 7; // Feature Request by Community, rotating navigation
   End;
   If key = VK_UP Then Begin
-    // fCursorPos := max(fCursorPos - 1, 0);
     fCursorPos := (fCursorPos + 6) Mod 7; // Feature Request by Community, rotating navigation
   End;
   If (key >= VK_1) And (key <= VK_7) Then Begin
@@ -1117,12 +1129,7 @@ Begin
       3: TGame(fOwner).SwitchToScreen(sOptions);
       4: logshow('Not yet implemented.', llinfo); //TGame(fOwner).SwitchToScreen(); -- About Bomberman
       5: logshow('Not yet implemented.', llinfo); //TGame(fOwner).SwitchToScreen(); -- Online Manual
-      6: Begin
-{$IFNDEF Only3Player}
-          If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
-{$ENDIF}
-            TGame(fOwner).SwitchToScreen(sExitBomberman);
-        End;
+      6: key := VK_ESCAPE; // -- Exit Bomberman
     End;
   End;
   If key = VK_ESCAPE Then Begin
@@ -1154,6 +1161,7 @@ Begin
   fSoundFile := 'mainmenu_sound.wav';
   fCursorFile := 'mainmenu_cursor.ani';
   fCursor := TOpenGL_Animation.Create;
+  fJoinQuestionForm := Nil;
 End;
 
 Destructor TMainMenu.Destroy;
@@ -1181,6 +1189,13 @@ Procedure TMainMenu.Reset;
 Begin
   Inherited Reset;
   fCursorPos := 0;
+End;
+
+Procedure TMainMenu.StopJoinQuestion;
+Begin
+  If assigned(fJoinQuestionForm) Then Begin
+    fJoinQuestionForm.ModalResult := mrAbort;
+  End;
 End;
 
 { TScreen }

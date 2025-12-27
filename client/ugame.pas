@@ -27,7 +27,8 @@ Uses
 Type
   TUDPPingData = Record
     Active: Boolean;
-    LastTickValue: UInt64;
+    LastTickValue: QWord;
+    StartTickValue: QWord; // To measure time since "join" dialog -> This will automatically popup the "Join" dialog if no local game can be found..
     Connection: TLUDPComponent; // Die UDP Componente, mit welcher wir via Boradcast nach offenen Servern fragen
   End;
 
@@ -1854,6 +1855,7 @@ Var
   N: TNetworkAdapterList;
   i: Integer;
   s: String;
+  Key: Word;
 Begin
   If fNeedDisconnect Then exit;
   If Not fUDPPingData.Active Then exit;
@@ -1882,6 +1884,14 @@ Begin
       End;
     End;
     LogLeave;
+  End;
+  // If we do not find a Local game after 2 tries, bring up the "Ask for IP Dialog"
+  // First Try is in ms 0
+  // Second Try is in ms 500
+  If GetTickCount64 - fUDPPingData.StartTickValue > 550 Then Begin
+    fUDPPingData.StartTickValue := GetTickCount64 + 1000 * 60;
+    key := VK_J;
+    fScreens[sMainScreen].OnKeyDown(Nil, key, []);
   End;
 End;
 
@@ -1914,7 +1924,8 @@ Procedure TGame.StartPingingForGames;
 Begin
   log('TGame.StartPingingForGames', lltrace);
   fUDPPingData.Active := true;
-  fUDPPingData.LastTickValue := GetTickCount64 - 500;
+  fUDPPingData.StartTickValue := GetTickCount64;
+  fUDPPingData.LastTickValue := fUDPPingData.StartTickValue - 500;
   logleave;
 End;
 
@@ -1935,6 +1946,10 @@ Begin
   If Not fChunkManager.Connect(ip, port) Then Begin
     LogShow('Error could not connect to server', llError);
     SwitchToScreen(sMainScreen);
+  End
+  Else Begin
+    // Close a maybe openened join dialog ..
+    TMainMenu(fScreens[sMainScreen]).StopJoinQuestion;
   End;
   logleave;
 End;
