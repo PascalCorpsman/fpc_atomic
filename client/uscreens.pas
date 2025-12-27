@@ -82,6 +82,8 @@ Type
     Label2: TLabel;
     Button1: TButton;
     Button2: TButton;
+    Procedure EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
   public
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
   End;
@@ -112,6 +114,7 @@ Type
   TJoinMenu = Class(TScreen)
   private
     fPlayerInfoString: String; // Die Spieler die Gerade auch eingewählt sind.
+    fServerIP: String; // Server IP address (for display when hosting)
 
   public
     Connected: Boolean;
@@ -119,6 +122,7 @@ Type
 
     Constructor Create(Owner: TObject); override;
     Procedure LoadPlayerdata(Const PlayerData: Array Of TPlayer);
+    Procedure SetServerIP(Const IP: String); // Set server IP address for display
     Procedure Render; override;
     Procedure Reset; override;
   End;
@@ -313,7 +317,7 @@ Begin
   Button1.Parent := self;
   Button1.caption := 'OK';
   Button1.ModalResult := mrOK;
-  Button1.Default := true; // Make Enter key trigger this button (when focus is on button)
+  Button1.Default := True; // Make Enter key trigger this button (when focus is on button)
   Button1.Top := 128;
   Button1.Left := 229;
 
@@ -325,6 +329,43 @@ Begin
   Button2.Cancel := True; // Make Esc key trigger this button
   Button2.Top := 128;
   Button2.Left := 16;
+
+  // Add keyboard support: Enter = OK everywhere
+  // Set handlers on Edit fields to catch Enter when focus is in Edit
+  Edit1.OnKeyDown := @EditKeyDown;
+  Edit2.OnKeyDown := @EditKeyDown;
+  // Set handler on form to catch Enter when focus is on form (not on Edit or Button)
+  OnKeyDown := @FormKeyDown;
+  KeyPreview := True; // Enable form-level key handling
+End;
+
+Procedure TJoinQuestionForm.EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Begin
+  If key = VK_RETURN Then Begin
+    // Enter in Edit field = OK button
+    // Strategy: Set focus to OK button, then trigger it programmatically
+    Key := 0; // Prevent default behavior (newline in Edit)
+    Button1.SetFocus; // Focus the OK button first
+    // Now trigger the button click programmatically
+    Button1.Click; // This will set ModalResult := mrOK and close the form
+  End;
+  // Esc is handled automatically by Button2.Cancel := True
+End;
+
+Procedure TJoinQuestionForm.FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Begin
+  If key = VK_RETURN Then Begin
+    // Enter on form (when focus is NOT on Button1) = OK button
+    // Strategy: Set focus to OK button, then trigger it programmatically
+    If ActiveControl <> Button1 Then Begin
+      Key := 0; // Prevent default behavior
+      Button1.SetFocus; // Focus the OK button first
+      // Now trigger the button click programmatically
+      Button1.Click; // This will set ModalResult := mrOK and close the form
+    End;
+    // If focus is on Button1, let default behavior (Default := True) handle it
+  End;
+  // Esc is handled automatically by Button2.Cancel := True
 End;
 
 { TVictoryMenu }
@@ -852,6 +893,7 @@ Begin
   fBackFile := 'join.png';
   fSoundFile := 'join_sound.wav';
   fCursorFile := '';
+  fServerIP := '';
 End;
 
 Procedure TJoinMenu.LoadPlayerdata(Const PlayerData: Array Of TPlayer);
@@ -866,7 +908,14 @@ Begin
   End;
 End;
 
+Procedure TJoinMenu.SetServerIP(Const IP: String);
+Begin
+  fServerIP := IP;
+End;
+
 Procedure TJoinMenu.Render;
+Var
+  serverInfo: String;
 Begin
   Inherited Render;
   glPushMatrix;
@@ -875,6 +924,14 @@ Begin
   AtomicFont.color := $00EAE556;
   AtomicFont.BackColor := clBlack;
   AtomicFont.Textout(100, 50, 'Our Nodename is: ''' + Tgame(fOwner).Settings.NodeName + '''');
+
+  // Display server IP address if available (when hosting)
+  If fServerIP <> '' Then Begin
+    serverInfo := 'Server IP: ' + fServerIP + ':' + Tgame(fOwner).Settings.Router_Port;
+    AtomicFont.color := clLime; // Green color for server IP
+    AtomicFont.Textout(100, 75, serverInfo);
+  End;
+
   If Connected Then Begin
     // Der Server hat unseren Login Versuch Grundsätzlich aktzeptiert
     // Wir zeigen nun die Infos der Spieler an, bis der 1. Spieler in den Nächsten Screen umschaltet
@@ -1099,6 +1156,9 @@ Begin
     Case fJoinQuestionForm.ShowModal Of
       mrOK: Begin
           TGame(fOwner).JoinViaParams(fJoinQuestionForm.Edit1.Text, strtointdef(fJoinQuestionForm.Edit2.Text, 9876));
+          // Remember last settings, for next game ;)
+          TGame(fOwner).Settings.Router_IP := fJoinQuestionForm.Edit1.Text;
+          TGame(fOwner).Settings.Router_Port := inttostr(strtointdef(fJoinQuestionForm.Edit2.Text, 9876));
         End;
       mrAbort: Begin
           // CLient found a server, does not need the Join Question Dialog anymore ..

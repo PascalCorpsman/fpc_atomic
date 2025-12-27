@@ -153,6 +153,8 @@ Const
   AtomicDefaultSpeed: single = 0.5; // Die "Grundgeschwindigkeit" in Kacheln Pro Sekunde
   AtomicSpeedChange = 1.1; // Geschwindigkeitsänderung beim aufsammeln eines Rollschuh Items 1.1 = 10% Schneller
 
+  ConnectionRetryInterval = 2000; // Retry every 2 seconds, when connecting to a localhost game
+
 Var
   AtomicMaxSpeed: single; // Maximale Geschwindigkeit eines Atomic in Kacheln Pro Sekunde
   AtomicSlowSpeed: single; // Niedrigst mögliche Geschwindigkeit ("Schnecke") in Kacheln Pro Sekunde

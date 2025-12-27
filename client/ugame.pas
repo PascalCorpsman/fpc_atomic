@@ -80,6 +80,8 @@ Type
     fBombs: Array[0..15 * 11 - 1] Of TBombInfo;
     fParamJoinIP: String;
     fParamJoinPort: integer;
+    fWaitingForLocalServer: Boolean; // True when waiting for local server to start
+    fLastConnectionAttempt: QWord; // Timestamp of last connection attempt
     fPlayingTime_s: integer;
     fPause: Boolean;
     fNeedDisconnect: Boolean; // Wenn True, dann wird ein Disconnect via Idle Handler durchgeführt (das darf nach LNet nicht im Socket Event gemacht werden da es sonst eine AV-Gibt)
@@ -160,6 +162,7 @@ Type
      * Routinen die der Master Spieler Aufruft um den Rest zu Aktualisieren
      *)
     Function StartHost: Boolean;
+    Function GetServerIPAddress(): String; // Get local network IP address for server display
     Procedure SendSettings();
     Procedure UpdateFieldSetup(FieldName: String; FieldHash: Uint64; NeededWins: integer);
     Procedure SwitchToPlayerSetup;
@@ -326,6 +329,8 @@ Begin
   log('TGame.SwitchToScreen', llTrace);
   // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
   If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
+    TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(''); // Reset IP in case of "join"
+    fParamJoinIP := ''; // Reset last Join IP, this is needed, if player was server before, ..
     If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
     If (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
       If (Not fsdl_Loaded) Then Begin
@@ -364,6 +369,7 @@ Begin
     sMainScreen: Begin
         fgameState := gs_MainMenu;
         StopPingingForGames;
+        fWaitingForLocalServer := false; // Stop waiting for local server when returning to main menu
         Disconnect();
         HandleSetPause(false); // Sonst bleibt die Hauptmenü Animation ggf stehen, das will natürlich keiner ;)
         If assigned(OnNeedShowCursor) Then OnNeedShowCursor(Nil);
@@ -379,10 +385,19 @@ Begin
           LogLeave;
           exit;
         End;
+        // After starting server, automatically connect to localhost
+        // This is faster and more reliable than UDP broadcast
+        fParamJoinIP := '127.0.0.1';
+        fParamJoinPort := Settings.Port;
+        log('Server started, will connect to localhost:' + inttostr(fParamJoinPort), llInfo);
+
+        // Get and display server IP address for other players to connect
+        If Assigned(fScreens[sJoinNetwork]) Then Begin
+          TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(GetServerIPAddress());
+        End;
+
         TargetScreen := sJoinNetwork;
-        //Als nächstes muss es einen Server zum Drauf verbinden geben
-        // -> Der Server Startet und macht den UDP Auf
-        //    Sobald der Client den finden verbindet er direkt, PW gibt es keins !
+        // The client will automatically connect via JoinViaParams in sJoinNetwork handler
       End;
     sPlayerSetupRequest: Begin
         SwitchToPlayerSetup;
@@ -613,12 +628,9 @@ Begin
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
 {$IFNDEF Only3Player}
-            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
-              SwitchToScreen(sMainScreen);
-            End;
-{$ELSE}
-            SwitchToScreen(sMainScreen);
+            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
 {$ENDIF}
+              SwitchToScreen(sMainScreen);
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
@@ -811,6 +823,32 @@ Begin
   CheckKeys(ks1);
 End;
 
+Function TGame.GetServerIPAddress(): String;
+Var
+  adapters: TNetworkAdapterList;
+  i: Integer;
+Begin
+  Result := '127.0.0.1'; // Default to localhost
+  Try
+    adapters := GetLocalIPs();
+    // Find first non-localhost IP address (prefer network IP over localhost)
+    For i := 0 To High(adapters) Do Begin
+      If (adapters[i].IpAddress <> '127.0.0.1') And (adapters[i].IpAddress <> '') Then Begin
+        Result := adapters[i].IpAddress;
+        log('Server IP address: ' + Result, llInfo);
+        exit;
+      End;
+    End;
+    // If no network IP found, use localhost
+    log('No network IP found, using localhost: ' + Result, llInfo);
+  Except
+    On E: Exception Do Begin
+      log('Error getting server IP address: ' + E.Message + ', using localhost', llWarning);
+      Result := '127.0.0.1';
+    End;
+  End;
+End;
+
 Function TGame.StartHost: Boolean;
 Var
   serv: String;
@@ -934,6 +972,10 @@ Var
 Begin
   // Der Client ist beim Server Registriert, nun gilt es um die Mitspielerlaubniss zu fragen.
   log('TGame.Connection_Connect', llTrace);
+  
+  // Stop waiting for local server - we're connected now
+  fWaitingForLocalServer := false;
+  
   fChunkManager.SetNoDelay(true);
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
@@ -971,6 +1013,16 @@ End;
 Procedure TGame.Connection_Error(Const msg: String; aSocket: TLSocket);
 Begin
   log('TGame.Connection_Error', llTrace);
+  
+  // If we're waiting for local server, don't show error and don't switch to main menu
+  // OnIdle will retry the connection periodically
+  If fWaitingForLocalServer Then Begin
+    log('Connection error while waiting for local server: ' + msg + ' - will retry', llInfo);
+    LogLeave;
+    exit;
+  End;
+  
+  // For remote servers or if we're not waiting, show error and go back to main menu
   LogShow(msg, llError);
   SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
   LogLeave;
@@ -1924,8 +1976,7 @@ Procedure TGame.StartPingingForGames;
 Begin
   log('TGame.StartPingingForGames', lltrace);
   fUDPPingData.Active := true;
-  fUDPPingData.StartTickValue := GetTickCount64;
-  fUDPPingData.LastTickValue := fUDPPingData.StartTickValue - 500;
+  fUDPPingData.LastTickValue := GetTickCount64 - 500;
   logleave;
 End;
 
@@ -1935,17 +1986,43 @@ Begin
 End;
 
 Procedure TGame.Join(IP: String; Port: Integer);
+Var
+  isLocalhost: Boolean;
 Begin
   log('TGame.Join', lltrace);
   log(format('Joining to %s on port %d as %s', [ip, port, Settings.NodeName]));
-  (*
-   * Sollte aus welchem Grund auch immer der Chunkmanager nicht verbinden können (ggf weil er schon verbunden ist),
-   * fliegt er hier über den Wechsel in den MainScreen raus und wird dann automatisch disconnected
-   * -> Spätestens wenn der User es nun erneut versucht kommt er wieder rein.
-   *)
+  
+  // Store connection parameters for retry logic
+  fParamJoinIP := ip;
+  fParamJoinPort := port;
+  
+  // Check if connecting to localhost
+  isLocalhost := (ip = '127.0.0.1') Or (ip = 'localhost');
+  
+  If isLocalhost Then Begin
+    // For localhost, enable waiting mode - will retry periodically in OnIdle
+    // This is needed because localhost "connection refused" comes back immediately
+    // while remote servers may take time to respond (allowing time for server to start)
+    fWaitingForLocalServer := true;
+    fLastConnectionAttempt := 0; // Will trigger immediate attempt in OnIdle
+    log('Localhost connection - will retry periodically until server is available', llInfo);
+  End
+  Else Begin
+    // For remote servers, connection attempt is async - if it fails, Connection_Error will handle it
+    fWaitingForLocalServer := false;
+  End;
+  
+  // Initiate async connection attempt
+  // Note: Connect() returning True only means the async connection was initiated,
+  // not that we're actually connected. Real connection status comes via callbacks.
   If Not fChunkManager.Connect(ip, port) Then Begin
-    LogShow('Error could not connect to server', llError);
-    SwitchToScreen(sMainScreen);
+    // Immediate failure - connection couldn't even be initiated
+    log('Could not initiate connection', llWarning);
+    If Not isLocalhost Then Begin
+      LogShow('Error: Could not initiate connection to server', llError);
+      SwitchToScreen(sMainScreen);
+    End;
+    // For localhost, OnIdle will retry
   End
   Else Begin
     // Close a maybe openened join dialog ..
@@ -1963,6 +2040,7 @@ Begin
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
+  fWaitingForLocalServer := false;
   fPause := false;
   fNeedDisconnect := false;
   fPlayerIndex[ks0] := -1;
@@ -2392,6 +2470,20 @@ Begin
    *)
   If fNeedDisconnect Then Begin
     DoDisconnect();
+  End;
+  
+  // Periodically retry connection if we're waiting for local server to start
+  // On localhost, "connection refused" comes back immediately, so we need to retry periodically
+  If fWaitingForLocalServer And (fParamJoinIP <> '') Then Begin
+    If (fLastConnectionAttempt = 0) Or (GetTickCount64 - fLastConnectionAttempt >= ConnectionRetryInterval) Then Begin
+      fLastConnectionAttempt := GetTickCount64;
+      log(format('Retrying connection to %s:%d...', [fParamJoinIP, fParamJoinPort]), llInfo);
+      // Initiate new async connection attempt
+      If Not fChunkManager.Connect(fParamJoinIP, fParamJoinPort) Then Begin
+        log('Could not initiate connection, will retry later', llInfo);
+      End;
+      // If Connect returned True, we wait for Connection_Connect or Connection_Error callback
+    End;
   End;
 End;
 
