@@ -22,7 +22,8 @@ Interface
 
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
-  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field, uatomic, uopengl_graphikengine, usounds, usdl_joystick;
+  uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field,
+  uatomic, uopengl_graphikengine, usounds;
 
 Type
   TUDPPingData = Record
@@ -66,8 +67,6 @@ Type
 
   TGame = Class
   private
-    fsdl_Loaded: Boolean;
-    fsdlJoysticks: Array[TKeySet] Of TSDL_Joystick;
     fTramp, fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
     fSoundManager: TSoundManager;
@@ -123,7 +122,6 @@ Type
 
     Procedure CheckKeyDown(Key: Word; Keys: TKeySet);
     Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
-    Procedure CheckSDLKeys();
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
@@ -227,7 +225,6 @@ Uses dglopengl
   , Forms
   , Unit1 // Nur wegen Close, ggf via Dependency Injection besser lösen...
   , math
-  , sdl2
   , uip
   , uOpenGL_ASCII_Font
   , uloaderdialog
@@ -240,6 +237,7 @@ Uses dglopengl
   , uopengl_spriteengine
   , ugraphics
   , uatomic_global
+  , usdlinput
   ;
 
 (*
@@ -322,8 +320,6 @@ End;
 { TGame }
 
 Procedure TGame.SwitchToScreen(TargetScreen: TScreenEnum);
-Var
-  index: integer;
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   log('TGame.SwitchToScreen', llTrace);
@@ -332,32 +328,6 @@ Begin
     TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(''); // Reset IP in case of "join"
     fParamJoinIP := ''; // Reset last Join IP, this is needed, if player was server before, ..
     If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
-    If (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then Begin
-      If (Not fsdl_Loaded) Then Begin
-        fsdl_Loaded := SDL_LoadLib('');
-        If fsdl_Loaded Then Begin
-          fsdl_Loaded := SDL_Init(SDL_INIT_JOYSTICK) = 0;
-        End;
-      End;
-      If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].Free;
-      If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].Free;
-      fsdlJoysticks[ks0] := Nil;
-      fsdlJoysticks[ks1] := Nil;
-      If fsdl_Loaded Then Begin
-        If Settings.Keys[ks0].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks0].Name, Settings.Keys[ks0].NameIndex);
-          If index <> -1 Then Begin
-            fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
-          End;
-        End;
-        If Settings.Keys[ks1].UseSDL2 Then Begin
-          index := ResolveJoystickNameToIndex(Settings.Keys[ks1].Name, Settings.Keys[ks1].NameIndex);
-          If index <> -1 Then Begin
-            fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
-          End;
-        End;
-      End;
-    End;
   End;
   (*
    * Wenn es "individuell" noch was zu tun gibt ...
@@ -729,100 +699,6 @@ Begin
   End;
 End;
 
-Procedure TGame.CheckSDLKeys();
-
-  Procedure CheckKeys(Keys: TKeySet);
-  Var
-    d: Integer;
-    up, down, left, right, first, second: Boolean;
-  Begin
-    If Not Settings.Keys[keys].UseSDL2 Then exit;
-    If Not assigned(fsdlJoysticks[keys]) Then exit;
-    If fPlayerIndex[keys] = AIPlayer Then exit;
-    // 1. Ermitteln des Aktuellen "Gedrückt" stati
-    up := false;
-    down := false;
-    left := false;
-    right := false;
-    d := Settings.Keys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[0]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = Settings.Keys[keys].AchsisDirection[0] Then Begin
-        up := true;
-      End
-      Else Begin
-        down := true;
-      End;
-    End;
-    d := Settings.Keys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[Settings.Keys[keys].AchsisIndex[1]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = Settings.Keys[keys].AchsisDirection[1] Then Begin
-        left := true;
-      End
-      Else Begin
-        right := true;
-      End;
-    End;
-    first := Settings.Keys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[0]];
-    second := Settings.Keys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[Settings.Keys[keys].ButtonIndex[1]];
-    // 2. Rauskriegen ob ein Event abgeleitet werden muss
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akUp] <> up Then Begin
-      If up Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyUp, keys);
-      End
-      Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyUp, keys);
-      End;
-    End;
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akDown] <> Down Then Begin
-      If Down Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyDown, keys);
-      End
-      Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyDown, keys);
-      End;
-    End;
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akLeft] <> left Then Begin
-      If left Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyLeft, keys);
-      End
-      Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyLeft, keys);
-      End;
-    End;
-    If fPlayer[fPlayerIndex[keys]].KeysPressed[akRight] <> right Then Begin
-      If right Then Begin
-        CheckKeyDown(Settings.Keys[keys].KeyRight, keys);
-      End
-      Else Begin
-        CheckKeyUp(Settings.Keys[keys].KeyRight, keys);
-      End;
-    End;
-    // Das Key Up wird bei Action nicht geprüft..
-    If (fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] <> first) And first Then Begin
-      CheckKeyDown(Settings.Keys[keys].KeyPrimary, keys);
-    End;
-    // Das Key Up wird bei Action nicht geprüft..
-    If (fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] <> second) And Second Then Begin
-      CheckKeyDown(Settings.Keys[keys].KeySecondary, keys);
-    End;
-    // 3. Speichern für die nächste Runde ;)
-    fPlayer[fPlayerIndex[keys]].KeysPressed[akFirstAction] := first;
-    fPlayer[fPlayerIndex[keys]].KeysPressed[akSecondAction] := second;
-  End;
-
-Var
-  event: TSDL_Event;
-Begin
-  If Not fsdl_Loaded Then exit;
-  If Not (Settings.Keys[ks0].UseSDL2 Or Settings.Keys[ks1].UseSDL2) Then exit;
-  SDL_PumpEvents();
-  While SDL_PollEvent(@event) <> 0 Do Begin // TODO: Braucht man das wirklich ?
-  End;
-
-  CheckKeys(ks0);
-  CheckKeys(ks1);
-End;
-
 Function TGame.GetServerIPAddress(): String;
 Var
   adapters: TNetworkAdapterList;
@@ -972,10 +848,10 @@ Var
 Begin
   // Der Client ist beim Server Registriert, nun gilt es um die Mitspielerlaubniss zu fragen.
   log('TGame.Connection_Connect', llTrace);
-  
+
   // Stop waiting for local server - we're connected now
   fWaitingForLocalServer := false;
-  
+
   fChunkManager.SetNoDelay(true);
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
@@ -1013,7 +889,7 @@ End;
 Procedure TGame.Connection_Error(Const msg: String; aSocket: TLSocket);
 Begin
   log('TGame.Connection_Error', llTrace);
-  
+
   // If we're waiting for local server, don't show error and don't switch to main menu
   // OnIdle will retry the connection periodically
   If fWaitingForLocalServer Then Begin
@@ -1021,7 +897,7 @@ Begin
     LogLeave;
     exit;
   End;
-  
+
   // For remote servers or if we're not waiting, show error and go back to main menu
   LogShow(msg, llError);
   SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
@@ -1991,14 +1867,14 @@ Var
 Begin
   log('TGame.Join', lltrace);
   log(format('Joining to %s on port %d as %s', [ip, port, Settings.NodeName]));
-  
+
   // Store connection parameters for retry logic
   fParamJoinIP := ip;
   fParamJoinPort := port;
-  
+
   // Check if connecting to localhost
   isLocalhost := (ip = '127.0.0.1') Or (ip = 'localhost');
-  
+
   If isLocalhost Then Begin
     // For localhost, enable waiting mode - will retry periodically in OnIdle
     // This is needed because localhost "connection refused" comes back immediately
@@ -2011,7 +1887,7 @@ Begin
     // For remote servers, connection attempt is async - if it fails, Connection_Error will handle it
     fWaitingForLocalServer := false;
   End;
-  
+
   // Initiate async connection attempt
   // Note: Connect() returning True only means the async connection was initiated,
   // not that we're actually connected. Real connection status comes via callbacks.
@@ -2034,9 +1910,6 @@ End;
 Constructor TGame.Create;
 Begin
   Inherited Create;
-  fsdl_Loaded := false;
-  fsdlJoysticks[ks0] := Nil;
-  fsdlJoysticks[ks1] := Nil;
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
@@ -2060,10 +1933,7 @@ Var
   i: TScreenEnum;
   j: Integer;
 Begin
-  If assigned(fsdlJoysticks[ks0]) Then fsdlJoysticks[ks0].free;
-  If assigned(fsdlJoysticks[ks1]) Then fsdlJoysticks[ks1].free;
-  fsdlJoysticks[ks0] := Nil;
-  fsdlJoysticks[ks1] := Nil;
+  SDL_FreeInputs;
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -2420,7 +2290,6 @@ Begin
         If assigned(fActualScreen) Then fActualScreen.Render;
       End;
     gs_Gaming: Begin
-        CheckSDLKeys;
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
         For i := 0 To high(fPlayer) Do Begin
@@ -2472,6 +2341,9 @@ Begin
     DoDisconnect();
   End;
   
+  // Convert SDL-Inputs to "keyboard" inputs ;)
+  SDL_CheckKeys(@FOnKeyDown, @FOnKeyUp);
+
   // Periodically retry connection if we're waiting for local server to start
   // On localhost, "connection refused" comes back immediately, so we need to retry periodically
   If fWaitingForLocalServer And (fParamJoinIP <> '') Then Begin

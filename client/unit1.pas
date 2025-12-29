@@ -113,12 +113,12 @@ Type
 {$ENDIF}
     ConnectParamsHandled: Boolean; // Die Übergabe Parameter -ip, -port werden nur 1 mal ausgewertet !
     Procedure OnIdle(Sender: TObject; Var Done: Boolean);
-    Procedure Load_Atomic_Settings;
     Function GetWorkDir(Out Directory: String): Boolean;
     Procedure HideCursor(Sender: TObject);
     Procedure ShowCursor(Sender: TObject);
   public
     { public declarations }
+    Procedure Load_Atomic_Settings;
     Procedure OnConnectToServer(Sender: TObject);
     Procedure OnDisconnectFromServer(Sender: TObject);
     Procedure AddUserMessage(Msg: String; WarnLevel: TLogLevel);
@@ -144,6 +144,7 @@ Uses lazfileutils, LazUTF8, LCLType
 {$IFDEF AUTOMODE}
   , uscreens
 {$ENDIF}
+  , usdlinput
   ;
 
 Var
@@ -347,6 +348,7 @@ Begin
   // Free Bass
   If Not Bass_Free Then
     showmessage('Unable to free Bass, Error code :' + inttostr(BASS_ErrorGetCode));
+  SDL_Quit;
   LogLeave;
 End;
 
@@ -586,6 +588,13 @@ Begin
     BorderStyle := bsNone;
     SetFullScreen(True);
 {$ENDIF}
+  End;
+  If (Game.Settings.Keys[ks0].UseSDL2 Or Game.Settings.Keys[ks1].UseSDL2) Then Begin
+    SDL_Init;
+    SDL_CreateSticks(Game.settings.Keys);
+  End
+  Else Begin
+    SDL_Quit;
   End;
 End;
 

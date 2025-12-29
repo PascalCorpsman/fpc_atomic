@@ -966,6 +966,7 @@ Begin
     Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
     Tgame(fOwner).SwitchToScreen(sMainScreen);
     Form1.IniPropStorage1SavingProperties(Nil);
+    Form1.Load_Atomic_Settings;
   End;
   If key = VK_DOWN Then Begin
     fCursorPos := min(fCursorPos + 1, 12);

@@ -576,6 +576,8 @@ Type
     KeySecondary: Word;
   End;
 
+  TKeyArray = Array[TKeySet] Of TKeys;
+
   TAtomicSettings = Record
     // Werte aus den Optionen
     TeamPlay: Boolean;
@@ -590,7 +592,7 @@ Type
     LostPlayersRevertToAI: Boolean;
 {$IFDEF Client}
     PlaySounds: Boolean;
-    Keys: Array[TKeySet] Of TKeys;
+    Keys: TKeyArray;
     ShowFPS: Boolean;
 {$ENDIF}
     LastPlayedField: String;
