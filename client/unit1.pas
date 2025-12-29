@@ -144,7 +144,7 @@ Uses lazfileutils, LazUTF8, LCLType
 {$IFDEF AUTOMODE}
   , uscreens
 {$ENDIF}
-  , usdlinput
+  , usdl_input
   ;
 
 Var

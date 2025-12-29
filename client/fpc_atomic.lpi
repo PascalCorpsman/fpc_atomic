@@ -191,7 +191,7 @@
         <IsPartOfProject Value="True"/>
       </Unit32>
       <Unit33>
-        <Filename Value="usdlinput.pas"/>
+        <Filename Value="usdl_input.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit33>
     </Units>

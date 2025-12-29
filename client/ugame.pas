@@ -119,9 +119,12 @@ Type
 
     Procedure FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FOnSDLKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FOnSDLKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
 
     Procedure CheckKeyDown(Key: Word; Keys: TKeySet);
     Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
+    Procedure ConvertKeyToControl(Keys: TKeySet; Key: Word; Const Event: TKeyEvent);
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
@@ -237,7 +240,7 @@ Uses dglopengl
   , uopengl_spriteengine
   , ugraphics
   , uatomic_global
-  , usdlinput
+  , usdl_input
   ;
 
 (*
@@ -343,6 +346,8 @@ Begin
         Disconnect();
         HandleSetPause(false); // Sonst bleibt die Hauptmenü Animation ggf stehen, das will natürlich keiner ;)
         If assigned(OnNeedShowCursor) Then OnNeedShowCursor(Nil);
+        // Close a maybe openened join dialog ..
+        TMainMenu(fScreens[sMainScreen]).StopJoinQuestion;
       End;
     sExitBomberman: Begin
         NeedFormClose := true;
@@ -460,7 +465,7 @@ Begin
   LogLeave;
 End;
 
-Procedure TGame.Resize();
+Procedure TGame.Resize;
 Begin
   FOnResize(fOwner);
 End;
@@ -669,7 +674,7 @@ Begin
     End;
     fPlayer[fPlayerIndex[Keys]].KeysPressed[ak] := false;
     // Das Problem ist, das der Server bei Key Up die Animation komplett stoppt, das führt dazu, dass der Spieler "träge" wirkt
-    // Aus diesem Grund muss hier geschaut werden ob ggf noch eine Andere Taste "Aktiv" ist, wenn ja wird stattdessen derren Down gesendet !
+    // Aus diesem Grund muss hier geschaut werden ob ggf. noch eine andere Taste "Aktiv" ist, wenn ja wird stattdessen derren Down gesendet !
     b := false;
     db := false;
     For j In [akUp, akDown, akLeft, akRight] Do Begin
@@ -683,9 +688,29 @@ Begin
     m.Write(fPlayerIndex[Keys], SizeOf(fPlayerIndex[Keys]));
     m.Write(b, sizeof(b));
     m.Write(ak, SizeOf(ak));
-    m.Write(db, sizeof(db)); // Double wird beu Richtungs Key's ignoriert
+    m.Write(db, sizeof(db)); // Double wird bei Richtungs Key's ignoriert
     SendChunk(miClientKeyEvent, m);
   End;
+End;
+
+Procedure TGame.ConvertKeyToControl(Keys: TKeySet; Key: Word;
+  Const Event: TKeyEvent);
+Var
+  K: Word;
+Begin
+  If Not Settings.Keys[keys].UseSDL2 Then exit;
+  k := VK_UP;
+  If Settings.Keys[Keys].KeyUp = Key Then event(Nil, k, []);
+  k := VK_DOWN;
+  If Settings.Keys[Keys].KeyDown = Key Then event(Nil, k, []);
+  k := VK_LEFT;
+  If Settings.Keys[Keys].KeyLeft = Key Then event(Nil, k, []);
+  k := VK_RIGHT;
+  If Settings.Keys[Keys].KeyRight = Key Then event(Nil, k, []);
+  k := VK_RETURN;
+  If Settings.Keys[Keys].KeyPrimary = Key Then event(Nil, k, []);
+  k := VK_ESCAPE;
+  If Settings.Keys[Keys].KeySecondary = Key Then event(Nil, k, []);
 End;
 
 Procedure TGame.FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
@@ -699,7 +724,26 @@ Begin
   End;
 End;
 
-Function TGame.GetServerIPAddress(): String;
+Procedure TGame.FOnSDLKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState
+  );
+Var
+  i: TKeySet;
+Begin
+  For i In TKeySet Do Begin
+    ConvertKeyToControl(i, key, @FOnKeyDown);
+  End;
+End;
+
+Procedure TGame.FOnSDLKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Var
+  i: TKeySet;
+Begin
+  For i In TKeySet Do Begin
+    ConvertKeyToControl(i, key, @FOnKeyUp);
+  End;
+End;
+
+Function TGame.GetServerIPAddress: String;
 Var
   adapters: TNetworkAdapterList;
   i: Integer;
@@ -1472,7 +1516,7 @@ Begin
   UpdatePlayerIsFirst();
 End;
 
-Procedure TGame.HandleHurryUp();
+Procedure TGame.HandleHurryUp;
 Var
   m: TMemoryStream;
   se: TSoundEffect;
@@ -1933,7 +1977,7 @@ Var
   i: TScreenEnum;
   j: Integer;
 Begin
-  SDL_FreeInputs;
+  SDL_FreeSticks;
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -2340,9 +2384,15 @@ Begin
   If fNeedDisconnect Then Begin
     DoDisconnect();
   End;
-  
+
   // Convert SDL-Inputs to "keyboard" inputs ;)
-  SDL_CheckKeys(@FOnKeyDown, @FOnKeyUp);
+  If fgameState = gs_Gaming Then Begin
+    SDL_SticksToKeyEvent(@FOnKeyDown, @FOnKeyUp);
+  End
+  Else Begin
+    // During Menu's map keys to Up, Down, Left, Right, Return and Escape
+    SDL_SticksToKeyEvent(@FOnSDLKeyDown, @FOnSDLKeyUp);
+  End;
 
   // Periodically retry connection if we're waiting for local server to start
   // On localhost, "connection refused" comes back immediately, so we need to retry periodically

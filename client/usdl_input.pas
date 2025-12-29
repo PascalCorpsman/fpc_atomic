@@ -12,7 +12,7 @@
 (*               source file of the project.                                  *)
 (*                                                                            *)
 (******************************************************************************)
-Unit usdlinput;
+Unit usdl_input;
 
 {$MODE ObjFPC}{$H+}
 
@@ -26,9 +26,9 @@ Procedure SDL_Init;
 Procedure SDL_Quit;
 
 Procedure SDL_CreateSticks(Const akeys: TKeyArray);
-Procedure SDL_FreeInputs;
+Procedure SDL_FreeSticks;
 
-Procedure SDL_CheckKeys(Const OnKeyDown, OnKeyUp: TKeyEvent);
+Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TKeyEvent);
 
 Implementation
 
@@ -54,7 +54,7 @@ Begin
   If (Not fsdl_Loaded) Then Begin
     fsdl_Loaded := SDL_LoadLib('');
     If fsdl_Loaded Then Begin
-      fsdl_Loaded := sdl2.SDL_Init(SDL_INIT_JOYSTICK) = 0;
+      fsdl_Loaded := sdl2.SDL_Init(SDL_INIT_GAMECONTROLLER) = 0;
     End;
   End;
   For i In TKeySet Do Begin
@@ -66,14 +66,14 @@ End;
 Procedure SDL_Quit;
 Begin
   If fsdl_Loaded Then Begin
-    SDL_FreeInputs();
+    SDL_FreeSticks();
     sdl2.SDL_Quit();
     SDL_UnLoadLib();
   End;
   fsdl_Loaded := false;
 End;
 
-Procedure SDL_FreeInputs;
+Procedure SDL_FreeSticks;
 Var
   i: TKeySet;
 Begin
@@ -90,7 +90,7 @@ Var
   index: Integer;
 Begin
   If Not fsdl_Loaded Then exit;
-  SDL_FreeInputs; // Falls es die schon gibt ;)
+  SDL_FreeSticks; // Falls es die schon gibt ;)
   fkeys := akeys;
   If fKeys[ks0].UseSDL2 Then Begin
     index := ResolveJoystickNameToIndex(fKeys[ks0].Name, fKeys[ks0].NameIndex);
@@ -106,7 +106,7 @@ Begin
   End;
 End;
 
-Procedure SDL_CheckKeys(Const OnKeyDown, OnKeyUp: TKeyEvent);
+Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TKeyEvent);
 
   Procedure Call(Var Last: Boolean; Event: Boolean; key: word);
   Begin
