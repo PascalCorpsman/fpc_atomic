@@ -493,6 +493,7 @@ Type
   End;
 
   TAtomicKey = (
+    akNone, // Kein Gültiger Key
     akUp, akDown, akLeft, akRight,
     akFirstAction, // Die Primäraktion = vk_Return -> Bombe Legen
     akSecondAction // Die Sekundäraktoin = vk_Back -> Bombe Punchen ...
@@ -522,6 +523,8 @@ Type
     ks0 // Keyboard 0
     , ks1 // Keyboard 1
     );
+
+  TAtomicKeyEvent = Procedure(Const aKey: TAtomicKey; Const aKeyset: TKeySet) Of Object;
 
   TPlayer = Record
     UserName: String;

@@ -72,7 +72,8 @@ Type
     fSoundManager: TSoundManager;
     fSoundInfo: TSoundInfo;
     fLastIdleTick: QWord;
-    fLastKeyDown: Array[akFirstAction..akSecondAction] Of QWORD;
+    fLastKeyDown: Array[TKeySet] Of Array[akFirstAction..akSecondAction] Of QWORD;
+    fPlayerIndex: Array[TKeySet] Of integer; // Der Index in Fplayer
     fPlayerdeadTex: TGraphikItem;
     fPowerUpsTex: TPowerTexArray;
     fBombCount: integer;
@@ -85,7 +86,6 @@ Type
     fPause: Boolean;
     fNeedDisconnect: Boolean; // Wenn True, dann wird ein Disconnect via Idle Handler durchgeführt (das darf nach LNet nicht im Socket Event gemacht werden da es sonst eine AV-Gibt)
     fActualField: TAtomicField;
-    fPlayerIndex: Array[TKeySet] Of integer; // Der Index in Fplayer,
     fAtomics: TAtomics;
     fBackupSettings: TAtomicSettings; // Sind wir nicht der Master Spieler, dann müssen wir unsere Settings Sichern
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
@@ -119,12 +119,13 @@ Type
 
     Procedure FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
-    Procedure FOnSDLKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-    Procedure FOnSDLKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
+    Procedure FOnSDLKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 
-    Procedure CheckKeyDown(Key: Word; Keys: TKeySet);
-    Procedure CheckKeyUp(Key: Word; Keys: TKeySet);
-    Procedure ConvertKeyToControl(Keys: TKeySet; Key: Word; Const Event: TKeyEvent);
+    Function KeyboardkeyToAtomicKey(key: word; Const aKeyset: TKeySet): TAtomicKey;
+    Procedure CheckKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
+    Procedure CheckKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
+    Procedure ConvertKeyToControl(aKey: TAtomicKey; Const Event: TKeyEvent);
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
@@ -247,7 +248,7 @@ Uses dglopengl
  * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
  *)
 
-Function IndexOf(Value: Integer; Const aArray: Array Of Integer): integer;
+Function IndexOf(Value: TAtomicKey; Const aArray: Array Of TAtomicKey): integer;
 Var
   i: Integer;
 Begin
@@ -557,6 +558,7 @@ End;
 Procedure TGame.FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
 Var
   aVolume: Dword;
+  k: TKeySet;
 Begin
   (*
    * Der Hack zum Beenden von Atomic Bomberman im Fehlerfall ;)
@@ -610,8 +612,9 @@ Begin
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
           End;
-          If fPlayerIndex[ks0] <> -1 Then CheckKeyDown(key, ks0);
-          If fPlayerIndex[ks1] <> -1 Then CheckKeyDown(key, ks1);
+          For k In TKeySet Do Begin
+            If fPlayerIndex[k] <> -1 Then CheckKeyDown(KeyboardkeyToAtomicKey(key, k), k);
+          End;
         End;
     End;
   End;
@@ -620,127 +623,142 @@ Begin
   End;
 End;
 
-Procedure TGame.CheckKeyDown(Key: Word; Keys: TKeySet);
+Procedure TGame.CheckKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Var
   m: TMemoryStream;
   db, b: Boolean;
   ak: TAtomicKey;
   n: QWORD;
 Begin
-  If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary] Then Begin
-    m := TMemoryStream.Create;
-    b := true;
-    db := false;
-    m.Write(fPlayerIndex[keys], SizeOf(fPlayerIndex[keys]));
-    m.Write(b, sizeof(b));
-    Case IndexOf(Key, [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown, Settings.Keys[Keys].KeyPrimary, Settings.Keys[Keys].KeySecondary]) Of
-      0: ak := akLeft;
-      1: ak := akRight;
-      2: ak := akUp;
-      3: ak := akDown;
-      4: Begin
-          ak := akFirstAction;
-          n := GetTickCount64;
-          If fLastKeyDown[ak] + AtomicActionDoubleTime > n Then db := true;
-          fLastKeyDown[ak] := n;
-        End;
-      5: Begin
-          ak := akSecondAction;
-          n := GetTickCount64;
-          If fLastKeyDown[ak] + AtomicActionDoubleTime > n Then db := true;
-          fLastKeyDown[ak] := n;
-        End;
-    End;
-    fPlayer[fPlayerIndex[keys]].KeysPressed[ak] := True;
-    m.Write(ak, SizeOf(ak));
-    m.Write(db, sizeof(db));
-    SendChunk(miClientKeyEvent, m);
+  If akey = akNone Then exit;
+  m := TMemoryStream.Create;
+  b := true;
+  db := false;
+  m.Write(fPlayerIndex[aKeyset], SizeOf(fPlayerIndex[aKeyset]));
+  m.Write(b, sizeof(b));
+  Case IndexOf(aKey, [akLeft, akRight, akUp, akDown, akFirstAction, akSecondAction]) Of
+    0: ak := akLeft;
+    1: ak := akRight;
+    2: ak := akUp;
+    3: ak := akDown;
+    4: Begin
+        ak := akFirstAction;
+        n := GetTickCount64;
+        If fLastKeyDown[aKeyset][ak] + AtomicActionDoubleTime > n Then db := true;
+        fLastKeyDown[aKeyset][ak] := n;
+      End;
+    5: Begin
+        ak := akSecondAction;
+        n := GetTickCount64;
+        If fLastKeyDown[aKeyset][ak] + AtomicActionDoubleTime > n Then db := true;
+        fLastKeyDown[aKeyset][ak] := n;
+      End;
   End;
+  fPlayer[fPlayerIndex[aKeyset]].KeysPressed[ak] := True;
+  m.Write(ak, SizeOf(ak));
+  m.Write(db, sizeof(db));
+  SendChunk(miClientKeyEvent, m);
 End;
 
-Procedure TGame.CheckKeyUp(Key: Word; Keys: TKeySet);
+Procedure TGame.CheckKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Var
   m: TMemoryStream;
   ak: TAtomicKey;
   db, b: Boolean;
   j: TAtomicKey;
 Begin
-  If key In [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown] Then Begin
-    Case IndexOf(Key, [Settings.Keys[Keys].KeyLeft, Settings.Keys[Keys].KeyRight, Settings.Keys[Keys].KeyUp, Settings.Keys[Keys].KeyDown]) Of
-      0: ak := akLeft;
-      1: ak := akRight;
-      2: ak := akUp;
-      3: ak := akDown;
-    End;
-    fPlayer[fPlayerIndex[Keys]].KeysPressed[ak] := false;
-    // Das Problem ist, das der Server bei Key Up die Animation komplett stoppt, das führt dazu, dass der Spieler "träge" wirkt
-    // Aus diesem Grund muss hier geschaut werden ob ggf. noch eine andere Taste "Aktiv" ist, wenn ja wird stattdessen derren Down gesendet !
-    b := false;
-    db := false;
-    For j In [akUp, akDown, akLeft, akRight] Do Begin
-      If fPlayer[fPlayerIndex[Keys]].KeysPressed[j] Then Begin
-        b := true;
-        ak := j;
-        break;
-      End;
-    End;
-    m := TMemoryStream.Create;
-    m.Write(fPlayerIndex[Keys], SizeOf(fPlayerIndex[Keys]));
-    m.Write(b, sizeof(b));
-    m.Write(ak, SizeOf(ak));
-    m.Write(db, sizeof(db)); // Double wird bei Richtungs Key's ignoriert
-    SendChunk(miClientKeyEvent, m);
+  If akey = akNone Then exit;
+  Case IndexOf(aKey, [akLeft, akRight, akUp, akDown, akFirstAction, akSecondAction]) Of
+    0: ak := akLeft;
+    1: ak := akRight;
+    2: ak := akUp;
+    3: ak := akDown;
   End;
+  fPlayer[fPlayerIndex[aKeyset]].KeysPressed[ak] := false;
+  // Das Problem ist, das der Server bei Key Up die Animation komplett stoppt, das führt dazu, dass der Spieler "träge" wirkt
+  // Aus diesem Grund muss hier geschaut werden ob ggf. noch eine andere Taste "Aktiv" ist, wenn ja wird stattdessen derren Down gesendet !
+  b := false;
+  db := false;
+  For j In [akUp, akDown, akLeft, akRight] Do Begin
+    If fPlayer[fPlayerIndex[aKeyset]].KeysPressed[j] Then Begin
+      b := true;
+      ak := j;
+      break;
+    End;
+  End;
+  m := TMemoryStream.Create;
+  m.Write(fPlayerIndex[aKeyset], SizeOf(fPlayerIndex[aKeyset]));
+  m.Write(b, sizeof(b));
+  m.Write(ak, SizeOf(ak));
+  m.Write(db, sizeof(db)); // Double wird bei key Up ignoriert
+  SendChunk(miClientKeyEvent, m);
 End;
 
-Procedure TGame.ConvertKeyToControl(Keys: TKeySet; Key: Word;
-  Const Event: TKeyEvent);
+Procedure TGame.ConvertKeyToControl(aKey: TAtomicKey; Const Event: TKeyEvent);
 Var
   K: Word;
 Begin
-  If Not Settings.Keys[keys].UseSDL2 Then exit;
   k := VK_UP;
-  If Settings.Keys[Keys].KeyUp = Key Then event(Nil, k, []);
+  If akUp = aKey Then event(Nil, k, []);
   k := VK_DOWN;
-  If Settings.Keys[Keys].KeyDown = Key Then event(Nil, k, []);
+  If akDown = aKey Then event(Nil, k, []);
   k := VK_LEFT;
-  If Settings.Keys[Keys].KeyLeft = Key Then event(Nil, k, []);
+  If akLeft = aKey Then event(Nil, k, []);
   k := VK_RIGHT;
-  If Settings.Keys[Keys].KeyRight = Key Then event(Nil, k, []);
+  If akRight = aKey Then event(Nil, k, []);
   k := VK_RETURN;
-  If Settings.Keys[Keys].KeyPrimary = Key Then event(Nil, k, []);
+  If akFirstAction = aKey Then event(Nil, k, []);
   k := VK_ESCAPE;
-  If Settings.Keys[Keys].KeySecondary = Key Then event(Nil, k, []);
+  If akSecondAction = aKey Then event(Nil, k, []);
 End;
 
 Procedure TGame.FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
+Var
+  k: TKeySet;
 Begin
   If fgameState = gs_Gaming Then Begin
-    If fPlayerIndex[ks0] <> -1 Then CheckKeyUp(Key, ks0);
-    If fPlayerIndex[ks1] <> -1 Then CheckKeyUp(key, ks1);
+    For k In TKeySet Do Begin
+      If fPlayerIndex[k] <> -1 Then CheckKeyUp(KeyboardkeyToAtomicKey(Key, k), k);
+    End;
   End;
   If assigned(FOnKeyUpCapture) Then Begin
     FOnKeyUpCapture(sender, key, shift);
   End;
 End;
 
-Procedure TGame.FOnSDLKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState
-  );
-Var
-  i: TKeySet;
+Procedure TGame.FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
-  For i In TKeySet Do Begin
-    ConvertKeyToControl(i, key, @FOnKeyDown);
+  writeln('SDLDown');
+  If fgameState = gs_Gaming Then Begin
+    CheckKeyDown(aKey, aKeyset);
+  End
+  Else Begin
+    ConvertKeyToControl(akey, @FOnKeyDown);
   End;
 End;
 
-Procedure TGame.FOnSDLKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
-Var
-  i: TKeySet;
+Procedure TGame.FOnSDLKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
-  For i In TKeySet Do Begin
-    ConvertKeyToControl(i, key, @FOnKeyUp);
+  writeln('SDLUP');
+  If fgameState = gs_Gaming Then Begin
+    CheckKeyUp(aKey, aKeyset);
+  End
+  Else Begin
+    ConvertKeyToControl(akey, @FOnKeyUp);
   End;
+End;
+
+Function TGame.KeyboardkeyToAtomicKey(key: word; Const aKeyset: TKeySet
+  ): TAtomicKey;
+Begin
+  result := akNone;
+  If Settings.Keys[aKeyset].UseSDL2 Then exit;
+  If key = Settings.Keys[aKeyset].KeyUp Then exit(akUp);
+  If key = Settings.Keys[aKeyset].KeyDown Then exit(akDown);
+  If key = Settings.Keys[aKeyset].KeyLeft Then exit(akLeft);
+  If key = Settings.Keys[aKeyset].KeyRight Then exit(akRight);
+  If key = Settings.Keys[aKeyset].KeyPrimary Then exit(akFirstAction);
+  If key = Settings.Keys[aKeyset].KeySecondary Then exit(akSecondAction);
 End;
 
 Function TGame.GetServerIPAddress: String;
@@ -1347,11 +1365,14 @@ Procedure TGame.HandleStartGame;
 Var
   j: TAtomicKey;
   i: Integer;
+  k: TKeySet;
 Begin
-  // Für das HartBeating und zum schnelleren Zugriff auf die Player.Infos ..
   fHurry.Enabled := false;
-  fPlayerIndex[ks0] := -1;
-  fPlayerIndex[ks1] := -1;
+  For k In TKeySet Do Begin
+    fPlayerIndex[k] := -1;
+    fLastKeyDown[k][akFirstAction] := 0;
+    fLastKeyDown[k][akSecondAction] := 0;
+  End;
   For i := 0 To high(fPlayer) Do Begin
     (*
      * Löschen der ggf. vorherigen Die Animation, sonst beginnt der Spieler das Spiel erst mal sterbend...
@@ -1366,8 +1387,6 @@ Begin
       fPlayer[i].KeysPressed[j] := false;
     End;
   End;
-  fLastKeyDown[akFirstAction] := 0;
-  fLastKeyDown[akSecondAction] := 0;
   fActualField.Reset;
   // TODO: What ever da noch alles so fehlt
   StartPlayingSong(fActualField.Sound);
@@ -1433,6 +1452,7 @@ End;
 Procedure TGame.HandleSetPause(Value: Boolean);
 Var
   ak: TAtomicKey;
+  k: TKeySet;
 Begin
   fPause := Value;
   OpenGL_SpriteEngine.enabled := Not value; // Global alle Animationen anhalten
@@ -1444,8 +1464,9 @@ Begin
      * Egal was während der Pause war, nun ist es wieder "entdrückt"
      *)
     For ak In TAtomicKey Do Begin
-      If fPlayerIndex[ks0] <> -1 Then fPlayer[fPlayerIndex[ks0]].KeysPressed[ak] := false;
-      If fPlayerIndex[ks1] <> -1 Then fPlayer[fPlayerIndex[ks1]].KeysPressed[ak] := false;
+      For k In TKeySet Do Begin
+        If fPlayerIndex[k] <> -1 Then fPlayer[fPlayerIndex[k]].KeysPressed[ak] := false;
+      End;
     End;
   End;
 End;
@@ -1952,6 +1973,8 @@ Begin
 End;
 
 Constructor TGame.Create;
+Var
+  k: TKeySet;
 Begin
   Inherited Create;
   fSoundManager := TSoundManager.Create();
@@ -1960,8 +1983,9 @@ Begin
   fWaitingForLocalServer := false;
   fPause := false;
   fNeedDisconnect := false;
-  fPlayerIndex[ks0] := -1;
-  fPlayerIndex[ks1] := -1;
+  For k In TKeySet Do Begin
+    fPlayerIndex[k] := -1;
+  End;
   fInitialized := false;
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
@@ -2386,13 +2410,8 @@ Begin
   End;
 
   // Convert SDL-Inputs to "keyboard" inputs ;)
-  If fgameState = gs_Gaming Then Begin
-    SDL_SticksToKeyEvent(@FOnKeyDown, @FOnKeyUp);
-  End
-  Else Begin
     // During Menu's map keys to Up, Down, Left, Right, Return and Escape
-    SDL_SticksToKeyEvent(@FOnSDLKeyDown, @FOnSDLKeyUp);
-  End;
+  SDL_SticksToKeyEvent(@FOnSDLKeyDown, @FOnSDLKeyUp);
 
   // Periodically retry connection if we're waiting for local server to start
   // On localhost, "connection refused" comes back immediately, so we need to retry periodically

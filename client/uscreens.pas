@@ -202,7 +202,6 @@ Type
     Constructor Create(Owner: TObject); override;
 
     Procedure Render; override;
-
   End;
 
   { TVictoryMenu }
@@ -226,6 +225,9 @@ Type
   private
     fcursorTex: integer;
     fCursorPos: integer; // Position des "Kopfes" in Menüpunkten
+    SchemQuestionForm: TForm;
+    KeyboardDialog: TForm;
+    InputBoxForm: TForm;
   public
     Procedure OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState); override;
     Procedure OnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -262,13 +264,99 @@ Type
   private
     Listbox1: TListbox;
     Button1: TButton;
+  protected
+    Procedure KeyDown(Var Key: Word; Shift: TShiftState); override;
   public
     Procedure LoadSchemes(SelectedScheme: String);
     // Weil die Form keine Ressource hat, muss sie mittels CreateNew erzeugt werden, was auch immer das für einen unterschied macht ...
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
   End;
 
-  { TJoinQuestionForm }
+  { TInputBoxForm }
+
+  TInputBoxForm = Class(Tform) // Need to emulate lcl.Inputbox, so that SDL-Input can "skip" it ..
+    Procedure FormShow(Sender: Tobject);
+    Procedure EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+  private
+    Label1: TLabel;
+    Edit1: TEdit;
+    Button1: TButton;
+    Button2: TButton;
+  protected
+    Procedure KeyDown(Var Key: Word; Shift: TShiftState); override;
+  public
+    // Weil die Form keine Ressource hat, muss sie mittels CreateNew erzeugt werden, was auch immer das für einen unterschied macht ...
+    Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
+  End;
+
+  { TInputBoxForm }
+
+Procedure TInputBoxForm.FormShow(Sender: Tobject);
+Begin
+  edit1.SetFocus;
+End;
+
+Procedure TInputBoxForm.EditKeyDown(Sender: TObject; Var Key: Word;
+  Shift: TShiftState);
+Begin
+  If (key = VK_RETURN) Then button2.Click;
+  If (key = VK_ESCAPE) Then button1.Click;
+End;
+
+Procedure TInputBoxForm.KeyDown(Var Key: Word; Shift: TShiftState);
+Begin
+  If (key = VK_RETURN) Then button2.Click;
+  If (key = VK_ESCAPE) Then button1.Click;
+End;
+
+Constructor TInputBoxForm.CreateNew(AOwner: TComponent; Num: Integer);
+Begin
+  Inherited CreateNew(AOwner, Num);
+  caption := 'TInputBoxForm';
+  width := 654;
+  height := 97;
+  FormStyle := fsSystemStayOnTop;
+  Constraints.MaxWidth := Width;
+  Constraints.MinWidth := Width;
+  Constraints.MaxHeight := Height;
+  Constraints.MinHeight := Height;
+  BorderIcons := [biSystemMenu];
+  Position := poScreenCenter;
+  label1 := TLabel.Create(self);
+  label1.name := 'Label1';
+  label1.Parent := self;
+  label1.Top := 8;
+  label1.Left := 8;
+  label1.Caption := 'Label1';
+  edit1 := TEdit.Create(self);
+  edit1.name := 'Edit1';
+  edit1.Parent := self;
+  edit1.Top := 24;
+  edit1.left := 8;
+  edit1.width := width - 16;
+  edit1.OnKeyDown := @EditKeyDown;
+  edit1.Text := 'Edit1';
+  button1 := TButton.Create(self);
+  button1.Name := 'Button1';
+  button1.Parent := self;
+  button1.ModalResult := mrCancel;
+  button1.Top := 57;
+  button1.Left := 492;
+  button1.Width := 73;
+  button1.Height := 33;
+  button1.Caption := 'Cancel';
+  button2 := TButton.Create(self);
+  button2.Name := 'Button2';
+  button2.Parent := self;
+  button2.ModalResult := mrOK;
+  button2.Top := 57;
+  button2.Left := 573;
+  button2.Width := 73;
+  button2.Height := 33;
+  button2.Caption := 'OK';
+End;
+
+{ TJoinQuestionForm }
 
 Constructor TJoinQuestionForm.CreateNew(AOwner: TComponent; Num: Integer);
 Begin
@@ -277,6 +365,7 @@ Begin
   width := 312;
   height := 163;
   Position := poScreenCenter;
+  FormStyle := fsSystemStayOnTop;
   Constraints.MaxWidth := Width;
   Constraints.MinWidth := Width;
   Constraints.MaxHeight := Height;
@@ -583,6 +672,18 @@ Begin
     button1.Click;
   End;
   If key = VK_ESCAPE Then ModalResult := mrCancel;
+End;
+
+Procedure TSchemQuestionForm.KeyDown(Var Key: Word;
+  Shift: TShiftState);
+Begin
+  If (key = VK_RETURN) Or (key = VK_ESCAPE) Then Begin
+    FormButton1Click(self);
+  End;
+  If Listbox1.Items.Count <> 0 Then Begin
+    If (key = VK_UP) Then Listbox1.ItemIndex := max(0, Listbox1.ItemIndex - 1);
+    If (key = VK_DOWN) Then Listbox1.ItemIndex := min(Listbox1.Items.Count - 1, Listbox1.ItemIndex + 1);
+  End;
 End;
 
 Procedure TSchemQuestionForm.LoadSchemes(SelectedScheme: String);
@@ -957,10 +1058,24 @@ End;
 Procedure TOptionsMenu.OnKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Var
-  kd: TKeyboardDialog;
-  qf: TSchemQuestionForm;
   nn: String;
 Begin
+  // in SDL-Mode forward the keys to the dialogs
+  If assigned(SchemQuestionForm) Then Begin
+    TSchemQuestionForm(SchemQuestionForm).KeyDown(key, shift);
+    Key := 0;
+    Exit;
+  End;
+  If assigned(InputBoxForm) Then Begin
+    TInputBoxForm(InputBoxForm).KeyDown(key, shift);
+    Key := 0;
+    Exit;
+  End;
+  If assigned(KeyboardDialog) Then Begin
+    // No forwarding in keyboard dialog, just ignore..
+    Key := 0;
+    Exit;
+  End;
   // Zurück ins Hauptmenü
   If (key = VK_ESCAPE) Or (key = VK_BACK) Then Begin
     Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
@@ -981,13 +1096,21 @@ Begin
       1: Tgame(fOwner).Settings.RandomStart := Not Tgame(fOwner).Settings.RandomStart;
       2: Begin
           key := 0;
-          nn := InputBox('Edit', 'Enter Nodename', Tgame(fOwner).Settings.NodeName);
-          If trim(nn) <> '' Then Begin
-            Tgame(fOwner).Settings.NodeName := nn;
-          End
-          Else Begin
-            LogShow('Empty username not allowed', llWarning);
+          InputBoxForm := TInputBoxForm.CreateNew(Nil);
+          InputBoxForm.Caption := 'Edit';
+          TInputBoxForm(InputBoxForm).label1.caption := 'Enter Nodename';
+          TInputBoxForm(InputBoxForm).Edit1.text := Tgame(fOwner).Settings.NodeName;
+          If InputBoxForm.ShowModal = mrOK Then Begin
+            nn := TInputBoxForm(InputBoxForm).Edit1.text;
+            If trim(nn) <> '' Then Begin
+              Tgame(fOwner).Settings.NodeName := nn;
+            End
+            Else Begin
+              LogShow('Empty username not allowed', llWarning);
+            End;
           End;
+          InputBoxForm.free;
+          InputBoxForm := Nil;
         End;
       3: Begin
           If key In [VK_RETURN, VK_ADD, VK_RIGHT] Then Begin
@@ -1007,13 +1130,15 @@ Begin
         End;
       4: Begin // Scheme File
           key := 0;
-          qf := TSchemQuestionForm.CreateNew(Nil);
-          qf.LoadSchemes(Tgame(fOwner).Settings.SchemeFile);
-          qf.ShowModal;
-          If qf.ModalResult = mrOK Then Begin
-            Tgame(fOwner).Settings.SchemeFile := qf.Listbox1.Items[qf.Listbox1.ItemIndex];
+          SchemQuestionForm := TSchemQuestionForm.CreateNew(Nil);
+          TSchemQuestionForm(SchemQuestionForm).LoadSchemes(Tgame(fOwner).Settings.SchemeFile);
+          SchemQuestionForm.ShowModal;
+          SchemQuestionForm.KeyPreview := true;
+          If SchemQuestionForm.ModalResult = mrOK Then Begin
+            Tgame(fOwner).Settings.SchemeFile := TSchemQuestionForm(SchemQuestionForm).Listbox1.Items[TSchemQuestionForm(SchemQuestionForm).Listbox1.ItemIndex];
           End;
-          qf.free;
+          SchemQuestionForm.free;
+          SchemQuestionForm := Nil;
         End;
       5: Begin // Play Time
           If key In [VK_LEFT, VK_SUBTRACT] Then Begin
@@ -1033,15 +1158,28 @@ Begin
       7: Tgame(fOwner).Settings.PlaySounds := Not Tgame(fOwner).Settings.PlaySounds;
       8: Begin
           key := 0;
-          kd := TKeyboardDialog.CreateNew(Nil);
-          kd.LoadKeys(Tgame(fOwner).Settings.Keys[ks0], Tgame(fOwner).Settings.Keys[ks1]);
-          If kd.Execute() Then Begin
-            Tgame(fOwner).Settings.Keys[ks0] := kd.GetKeys(ks0);
-            Tgame(fOwner).Settings.Keys[ks1] := kd.GetKeys(ks1);
+          KeyboardDialog := TKeyboardDialog.CreateNew(Nil);
+          TKeyboardDialog(KeyboardDialog).LoadKeys(Tgame(fOwner).Settings.Keys[ks0], Tgame(fOwner).Settings.Keys[ks1]);
+          If TKeyboardDialog(KeyboardDialog).Execute() Then Begin
+            Tgame(fOwner).Settings.Keys[ks0] := TKeyboardDialog(KeyboardDialog).GetKeys(ks0);
+            Tgame(fOwner).Settings.Keys[ks1] := TKeyboardDialog(KeyboardDialog).GetKeys(ks1);
           End;
-          kd.Free;
+          KeyboardDialog.Free;
+          KeyboardDialog := Nil;
         End;
-      9: Tgame(fOwner).Settings.Port := strtointdef(InputBox('Edit', 'Enter port', inttostr(Tgame(fOwner).Settings.Port)), 1234);
+      9: Begin
+          key := 0;
+          InputBoxForm := TInputBoxForm.CreateNew(Nil);
+          InputBoxForm.Caption := 'Edit';
+          TInputBoxForm(InputBoxForm).label1.caption := 'Enter port';
+          TInputBoxForm(InputBoxForm).Edit1.text := inttostr(Tgame(fOwner).Settings.Port);
+          If InputBoxForm.ShowModal = mrOK Then Begin
+            nn := TInputBoxForm(InputBoxForm).Edit1.text;
+            Tgame(fOwner).Settings.Port := strtointdef(nn, 1234);
+          End;
+          InputBoxForm.free;
+          InputBoxForm := Nil;
+        End;
       10: Tgame(fOwner).Settings.ShowFPS := Not Tgame(fOwner).Settings.ShowFPS;
       11: Begin
           Tgame(fOwner).Settings.Fullscreen := Not Tgame(fOwner).Settings.Fullscreen;
@@ -1082,6 +1220,9 @@ Begin
   fBackFile := 'options.png';
   fSoundFile := ''; // Die Optionen haben keinen Extra "Sound"
   fCursorFile := 'options_cursor.png';
+  SchemQuestionForm := Nil;
+  KeyboardDialog := Nil;
+  InputBoxForm := Nil;
 End;
 
 Procedure TOptionsMenu.LoadFromDisk(ResPath: String);

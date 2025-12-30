@@ -19,8 +19,7 @@ Unit usdl_input;
 Interface
 
 Uses
-  Classes, SysUtils, uatomic_common, usdl_joystick, sdl2, controls;
-
+  Classes, SysUtils, controls, uatomic_common, usdl_joystick, sdl2;
 
 Procedure SDL_Init;
 Procedure SDL_Quit;
@@ -28,7 +27,7 @@ Procedure SDL_Quit;
 Procedure SDL_CreateSticks(Const akeys: TKeyArray);
 Procedure SDL_FreeSticks;
 
-Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TKeyEvent);
+Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TAtomicKeyEvent);
 
 Implementation
 
@@ -106,19 +105,19 @@ Begin
   End;
 End;
 
-Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TKeyEvent);
+Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TAtomicKeyEvent);
 
-  Procedure Call(Var Last: Boolean; Event: Boolean; key: word);
+  Procedure Call(Var Last: Boolean; Event: Boolean; key: TAtomicKey; aKeyset: TKeySet);
   Begin
     If last <> Event Then Begin
+      last := Event; // In Case the OnKey* is blocking, we need to clear the flag first!
       If Event Then Begin
-        OnKeyDown(Nil, key, []);
+        OnKeyDown(key, aKeyset);
       End
       Else Begin
-        OnKeyUp(Nil, key, []);
+        OnKeyUp(key, aKeyset);
       End;
     End;
-    last := Event;
   End;
 
   Procedure CheckKeys(Keys: TKeySet);
@@ -165,12 +164,12 @@ Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TKeyEvent);
       LastKeyState[Keys].second := second;
     End
     Else Begin
-      Call(LastKeyState[Keys].Up, up, fKeys[keys].KeyUp);
-      Call(LastKeyState[Keys].Down, Down, fKeys[keys].KeyDown);
-      Call(LastKeyState[Keys].Left, left, fKeys[keys].KeyLeft);
-      Call(LastKeyState[Keys].Right, right, fKeys[keys].KeyRight);
-      Call(LastKeyState[Keys].first, first, fKeys[keys].KeyPrimary);
-      Call(LastKeyState[Keys].second, second, fKeys[keys].KeySecondary);
+      Call(LastKeyState[Keys].Up, up, akUp, keys);
+      Call(LastKeyState[Keys].Down, Down, akDown, keys);
+      Call(LastKeyState[Keys].Left, left, akLeft, keys);
+      Call(LastKeyState[Keys].Right, right, akRight, keys);
+      Call(LastKeyState[Keys].first, first, akFirstAction, keys);
+      Call(LastKeyState[Keys].second, second, akSecondAction, keys);
     End;
   End;
 
