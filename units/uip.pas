@@ -36,7 +36,7 @@ Unit uip;
 Interface
 
 Uses
-  Classes, SysUtils, math;
+  Classes, SysUtils;
 
 Type
   TIPAddress = Array[0..3] Of Byte;
