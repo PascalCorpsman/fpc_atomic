@@ -113,7 +113,7 @@ Const
    * -releaseG - 0.12008 = FIX: Drawgame in Teamsplay -> no finish detected
    * -releaseG - 0.12009 = FIX: if player has no bomb disease and places a bomb (which does not pop up), then it pops up exactly at that moment when the disease is over
    * -releaseG - 0.12010 = ADD: Feature Request Proportional Rendering
-   *             0.12011 =
+   *             0.12011 = FIX: Crash during Key Up
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
