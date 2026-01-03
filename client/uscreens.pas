@@ -775,6 +775,21 @@ Begin
   RenderAlphaQuad(v2(320, 240), GameWidth, -GameHeight, 0, fBackTex);
   gldisable(GL_ALPHA_TEST);
   glBindTexture(GL_TEXTURE_2D, 0);
+  // In "no" stretch mode we can see the map otherwise, so we block this with 2 "black" patches ;)
+  glColor3f(0, 0, 0);
+  glBegin(GL_QUADS);
+  // 1 Patch right of the screen
+  glVertex2f(640, 0);
+  glVertex2f(640 * 2, 0);
+  glVertex2f(640 * 2, 480);
+  glVertex2f(640, 480);
+  // 1 Patch below of the Screen
+  glVertex2f(0, 480);
+  glVertex2f(640, 480);
+  glVertex2f(640, 480 * 2);
+  glVertex2f(0, 480 * 2);
+  glEnd;
+  glColor3f(1, 1, 1);
   glpopmatrix();
   If assigned(ActualField) Then Begin
     AtomicFont.Color := clwhite;
