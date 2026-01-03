@@ -20,10 +20,10 @@
       {
         "file":
         {
-          "HASH":"c72444d2429129f08cb75765464e638c",
+          "HASH":"d84e2cff47a5021494895b0a3864eb2e",
           "SIZE":"1363968",
-          "HASH2":"5fafb34a05adcc384654a2970b68206b",
-          "SIZE2":"2849488",
+          "HASH2":"48177638a1059e09a6327343884d0b9a",
+          "SIZE2":"2849504",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
@@ -53,10 +53,10 @@
       {
         "file":
         {
-          "HASH":"30229d9f5ffcc5ee95be56178d022df6",
+          "HASH":"f2dc119ac2a6b35634675ea9f17da306",
           "SIZE":"4418560",
-          "HASH2":"c3c78726206172fcaddd3c300f38aee8",
-          "SIZE2":"8861560",
+          "HASH2":"df0734af9e17508c24b15d02f0747bff",
+          "SIZE2":"8857320",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
