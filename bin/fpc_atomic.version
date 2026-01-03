@@ -1,85 +1,85 @@
 {
   "fpc_atomic":
   {
-    "Version":0.12009,
-    "LauncherVersion":9,
-    "VersionText":"ADD: Switch to Release Tagged version",
+    "Version":0.12010,
+    "LauncherVersion":10,
+    "VersionText":"ADD: Proportional Rendering\nADD: increases Joystick Support",
     "Download_core":
     [
       {
         "file":
         {
-          "HASH":"c44099ec4f815e1e48e3785cfd5581df",
+          "HASH":"c915eaae314ee958a89ff973f505fd5e",
           "SIZE":"3089920",
-          "HASH2":"e652c6e8db9fd6b359ad2820ff8c1e3f",
-          "SIZE2":"7771704",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/Animation_Editor.exe",
+          "HASH2":"9b364fbb3fcdb0f0b7c01ed5928744a1",
+          "SIZE2":"7059880",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"22f8718de4f6dbb125f3564204cf76f3",
-          "SIZE":"1337344",
-          "HASH2":"fb00c94087450399f5ef800f7669ae8a",
-          "SIZE2":"3570704",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/atomic_server.exe",
+          "HASH":"c72444d2429129f08cb75765464e638c",
+          "SIZE":"1363968",
+          "HASH2":"5fafb34a05adcc384654a2970b68206b",
+          "SIZE2":"2849488",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"76c089808be7ae22de7a7343da355838",
-          "SIZE":"5978624",
-          "HASH2":"e4447000819557a2420cc908f40024d5",
-          "SIZE2":"8160712",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/atomic_launcher.exe",
+          "HASH":"74e0f0c7dfd19e7ea0e1a261b1019ae0",
+          "SIZE":"5987328",
+          "HASH2":"6f0869fd47e4b99c27dbf00711da5574",
+          "SIZE2":"7449448",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"d723fb5a221f6c9eff7761881137108a",
+          "HASH":"8bc06a9349c83b9de659ac323243e234",
           "SIZE":"2673664",
-          "HASH2":"2d33eb9c87bf5217af00012b707655af",
-          "SIZE2":"6934904",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/updater.exe",
+          "HASH2":"696de069047e64cfedbb3ace30c3e70c",
+          "SIZE2":"6218968",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/updater.exe",
           "Filename":"updater.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"7c8878712193ce1c5ca381aba828a410",
-          "SIZE":"4401152",
-          "HASH2":"f535480ceda40db17b21aac2b9097d64",
-          "SIZE2":"8936264",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/fpc_atomic.exe",
+          "HASH":"30229d9f5ffcc5ee95be56178d022df6",
+          "SIZE":"4418560",
+          "HASH2":"c3c78726206172fcaddd3c300f38aee8",
+          "SIZE2":"8861560",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"b0a4643462aee0349560464daf98cef8",
-          "SIZE":"2948096",
-          "HASH2":"975c3b63542e06f711f37a480f38bf8e",
-          "SIZE2":"7686520",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/cd_data_extractor.exe",
+          "HASH":"b9c9bafe1b3875ed0664db801470b72a",
+          "SIZE":"2959872",
+          "HASH2":"ac087a8333df1895ff26fc52e77f25d8",
+          "SIZE2":"6992984",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"7a7fbb05b1d6aa3cab28938e311eec60",
+          "HASH":"af74cc6effe6c1178d0139a1a6f5e543",
           "SIZE":"299520",
           "HASH2":"a68a36302fee06693558654aec47cb38",
           "SIZE2":"2240904",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/ai.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/ai.dll",
           "Filename":"ai.dll"
         }
       },
@@ -90,18 +90,18 @@
           "SIZE":"1471488",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE2":"-1",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/SDL2.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/SDL2.dll",
           "Filename":"SDL2.dll"
         }
       },
       {
         "file":
         {
-          "HASH":"86c7feb93a9b7460a393dcd9ce07e19f",
-          "SIZE":"265728",
-          "HASH2":"66e086f711648cee1db87234dc0c8072",
-          "SIZE2":"255200",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/bass.dll",
+          "HASH":"5ac7b15bd0bef7ea9b3f8e9000a7f562",
+          "SIZE":"166872",
+          "HASH2":"255fb8ab523b179320f08f44db36a9fa",
+          "SIZE2":"248952",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/bass.dll",
           "Filename":"bass.dll"
         }
       },
@@ -110,7 +110,7 @@
         {
           "HASH":"777d7d007fc6c89df46e72b7f7ddf73e",
           "SIZE":"380",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12009\/Linux_sound_install_script.sh",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
       },
