@@ -631,6 +631,7 @@ Var
   n: QWORD;
 Begin
   If akey = akNone Then exit;
+  If fPlayerIndex[aKeyset] = -1 Then exit;
   m := TMemoryStream.Create;
   b := true;
   db := false;
@@ -668,11 +669,16 @@ Var
   j: TAtomicKey;
 Begin
   If akey = akNone Then exit;
+  If fPlayerIndex[aKeyset] = -1 Then exit;
   Case IndexOf(aKey, [akLeft, akRight, akUp, akDown, akFirstAction, akSecondAction]) Of
     0: ak := akLeft;
     1: ak := akRight;
     2: ak := akUp;
     3: ak := akDown;
+  Else Begin
+      // Unknown, or unused key ..
+      exit;
+    End;
   End;
   fPlayer[fPlayerIndex[aKeyset]].KeysPressed[ak] := false;
   // Das Problem ist, das der Server bei Key Up die Animation komplett stoppt, das führt dazu, dass der Spieler "träge" wirkt
