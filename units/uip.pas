@@ -72,7 +72,11 @@ Function IsNetworkPresent(): Boolean;
 Implementation
 
 Uses
-  process, StrUtils;
+  process, StrUtils
+{$IFDEF Windows}
+  , math
+{$ENDIF}
+  ;
 
 Function StrToIPAddress(Value: String): TIPAddress;
 Var
@@ -157,7 +161,8 @@ Begin
           // If netmask is in hex format (0x...), we could convert it, but for now just store as is
           // Most common: 0xffffff00 = 255.255.255.0
           result[high(result)].SubnetMask := tmp;
-        End Else Begin
+        End
+        Else Begin
           result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
         End;
 
@@ -167,10 +172,12 @@ Begin
           If pos(':', tmp) <> 0 Then Begin
             tmp := copy(tmp, 1, pos(':', tmp) - 1);
             result[high(result)].AdapterName := trim(tmp);
-          End Else Begin
+          End
+          Else Begin
             result[high(result)].AdapterName := 'unknown';
           End;
-        End Else Begin
+        End
+        Else Begin
           result[high(result)].AdapterName := 'unknown';
         End;
       End;
@@ -198,7 +205,8 @@ Begin
           setlength(result, high(result));
           Continue;
         End;
-      End Else Begin
+      End
+      Else Begin
         setlength(result, high(result));
         Continue;
       End;
