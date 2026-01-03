@@ -1226,19 +1226,19 @@ Begin
     LogLeave;
     exit;
   End;
-  
+
   playerUID := fPLayer[PlayerIndex].UID;
-  
+
   // Skip inactive slots (UID = NoPlayer = 0)
   If playerUID = NoPlayer Then Begin
     log('Skipping sound for inactive player slot: ' + inttostr(PlayerIndex), llTrace);
     LogLeave;
     exit;
   End;
-  
+
   m := TMemoryStream.Create;
   m.Write(Effect, sizeof(Effect));
-  
+
   // Handle AI players (UID = AIPlayer = -1) - send sounds to all other players
   If playerUID = AIPlayer Then Begin
     // For AI players, send sounds to all connected players (broadcast)
@@ -1468,11 +1468,17 @@ Begin
   For i := 0 To high(fPLayer) Do Begin
     If fPLayer[i].UID = PlayerUid Then Begin
       log('Lost player : ' + fPLayer[i].UserName, llInfo);
-      If fSettings.LostPlayersRevertToAI Then Begin
-        fPLayer[i].UID := AIPlayer;
+      If fGameState = gsWaitForPlayersToConnect Then Begin
+        // During waiting for other players there is no switching to AI Player as it makes no sense !
+        fPLayer[i].UID := NoPlayer;
       End
       Else Begin
-        fPLayer[i].UID := NoPlayer;
+        If fSettings.LostPlayersRevertToAI Then Begin
+          fPLayer[i].UID := AIPlayer;
+        End
+        Else Begin
+          fPLayer[i].UID := NoPlayer;
+        End;
       End;
       fPLayer[i].UserName := '';
       If fPLayer[i].Info.Alive Then Begin // Sollte der Spieler noch am Leben sein -> stirbt er evtl jetzt

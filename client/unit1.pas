@@ -248,6 +248,13 @@ Begin
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
   Form1ShowOnce := true;
   IniPropStorage1.IniFileName := GetAtomicConfigFile();
+  // On Purpose "overwrite" the location of the actual config file (mainly needed for debugging)
+  For i := 1 To ParamCount Do Begin
+    If lowercase(ParamStr(i)) = '-localsettings' Then Begin
+      Log('Use local settings instead of system settings.', llInfo);
+      IniPropStorage1.IniFileName := 'fpc_atomic.cfg';
+    End;
+  End;
   DefFormat := DefaultFormatSettings;
   DefFormat.DecimalSeparator := '.';
   LogShowHandler := @ShowUserMessage;

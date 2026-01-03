@@ -115,6 +115,7 @@ Const
    * -releaseG - 0.12010 = ADD: Feature Request Proportional Rendering
    *             0.12011 = FIX: Crash during Key Up
    *                       FIX: Gui glitch during select field screen
+   *                       ADD: alternative + and - keys for sound control
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden

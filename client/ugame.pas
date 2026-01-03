@@ -569,13 +569,13 @@ Begin
     exit;
   End;
   If Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin // Sonst wird das VK_Return ggf unsinnig ausgewertet
-    If key = VK_ADD Then Begin
+    If (key = VK_ADD) Or (key = VK_OEM_PLUS) Then Begin
       aVolume := fSoundManager.IncVolume;
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
       fSoundInfo.Volume := aVolume;
     End;
-    If key = VK_SUBTRACT Then Begin
+    If (key = VK_SUBTRACT) Or (key = VK_OEM_MINUS) Then Begin
       aVolume := fSoundManager.DecVolume();
       settings.VolumeValue := aVolume;
       fBackupSettings.VolumeValue := aVolume;
