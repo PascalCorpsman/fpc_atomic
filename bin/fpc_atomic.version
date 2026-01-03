@@ -53,9 +53,9 @@
       {
         "file":
         {
-          "HASH":"f2dc119ac2a6b35634675ea9f17da306",
+          "HASH":"f366221eb050c5eaa92ce611b0d5e631",
           "SIZE":"4418560",
-          "HASH2":"df0734af9e17508c24b15d02f0747bff",
+          "HASH2":"ff2efe1ab0d7fa729f92089425a203b5",
           "SIZE2":"8857320",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
