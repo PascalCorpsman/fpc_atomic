@@ -22,14 +22,10 @@ Interface
 
 Uses
   Classes, SysUtils, Lnet, crt,
-  uChunkmanager, uatomic_common, uatomic_messages, uatomic_field, uai_types;
+  uChunkmanager, uatomic_common, uatomic_messages, uatomic_field, uai_types,
+  uatomic_statistics;
 
 Type
-
-  TGameStatistik = Record
-    Total: Array[TStatSelector] Of UInt64;
-    LastRun: Array[TStatSelector] Of UInt64;
-  End;
 
   TGameState = (
     gsWaitForPlayersToConnect // Wir warten auf Spieler die Mit Spielen wollen
@@ -57,6 +53,7 @@ Type
     fKickAllPlayer: boolean; // If True, the server kicks every player during the next "Idle"
     fFrameLog: tFrameLog;
     fStatistik: TGameStatistik;
+    fPlayerStatistics: TPlayerStatisticEngine;
     fRandomMap: Boolean;
     fLastHeartbeatTimestamp: int64; // Der Zeitpunkt an welchen der Letzte Heartbeat versendet wird
     fPlayingTimeasc: int64; // Zeit in ms die die runde schon läuft
@@ -140,6 +137,8 @@ Type
     Procedure Execute;
     Procedure LoadStatistiks();
     Procedure SaveStatistiks();
+    Procedure LoadPlayerStatistiks();
+    Procedure SavePlayerStatistiks();
   End;
 
 Implementation
@@ -177,20 +176,22 @@ Begin
   fLastActiveTickTimestamp := GetTickCount64;
   fTCPPort := Port;
 
+  fPlayerStatistics := TPlayerStatisticEngine.create; // Muss vor den Feldern gemacht werden weils ja rein gereicht wird ;)
+
   // Laden aller Felder
   sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
   sl.Sorted := true;
   sl.Sort; // Ist beim Client wichtig, beim Server wäre es theoretisch egal, so ists aber leichter zum debuggen
   setlength(fFields, sl.Count);
   For i := 0 To sl.Count - 1 Do Begin
-    fFields[i] := TAtomicField.Create(@HandlePlaySoundEffect, @HandleStatisticCallback);
+    fFields[i] := TAtomicField.Create(@HandlePlaySoundEffect, @HandleStatisticCallback, fPlayerStatistics);
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
   End;
   sl.free;
   setlength(fFields, high(fFields) + 2);
-  fFields[high(fFields)] := TAtomicRandomField.Create(Nil, Nil); // Die initialisiert sich bereits richtig ;)
+  fFields[high(fFields)] := TAtomicRandomField.Create(Nil, Nil, Nil); // Die initialisiert sich bereits richtig ;)
   LoadAi();
   If Not fUDP.Listen(UDPPingPort) Then Begin
     log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
@@ -233,6 +234,7 @@ Begin
   End;
   setlength(fFields, 0);
   UnLoadAiLib(); // da ist das AiDeInit mit drin ;)
+  fPlayerStatistics.free;
   LogLeave(EnterID);
 End;
 
@@ -929,10 +931,23 @@ Var
 Begin
   EnterID := LogEnter('TServer.HandleStartGame');
   HandleStatisticCallback(sMatchesStarted);
+  fPlayerStatistics.ResetPlayerIDs;
   // 1. Alle Player "Initialisieren
   For i := 0 To high(fPLayer) Do Begin
     fPLayer[i].Score := 0;
     fPLayer[i].Kills := 0;
+    If fPLayer[i].UID <> NoPlayer Then Begin
+      If fPLayer[i].UID = AIPlayer Then Begin
+        // Alle KI Spieler werden "gemerged" auf einen Abstracten AI Spieler ;)
+        fPlayerStatistics.AssignPlayerID(i, 'AI', ks0);
+      End
+      Else Begin
+        fPlayerStatistics.AssignPlayerID(i,
+          fPLayer[i].UserName,
+          fPLayer[i].Keyboard
+          );
+      End;
+    End;
   End;
   fRandomMap := (fActualField.Hash = 0) And (fActualField.Name = '');
   HandleStartRound;
@@ -1043,6 +1058,9 @@ Begin
     For pu In TPowerUps Do Begin
       fPLayer[i].PowerUpCounter[pu] := 0;
     End;
+    If fPLayer[i].Info.Alive Then Begin
+      fPlayerStatistics.UpdatePlayerID(i, psPlayedRounds, 1);
+    End;
   End;
   // 2. Init der Karte
   // Steht das Match gerade auf "Zufällige" Karten dann wählen wir hier eine neue Zufällige Karte aus
@@ -1060,7 +1078,7 @@ Begin
     SendChunk(miUpdateFieldSetup, m, 0);
   End;
 
-  fActualField.Initialize(fPLayer, fSettings.Scheme);
+  fActualField.Initialize(fPLayer, fSettings.Scheme, fSettings.TeamPlay);
   SendChunk(miStartGame, Nil, 0);
   n := GetTickCount64;
   For i := 0 To high(fPLayer) Do Begin // Egal das das alle sind ..
@@ -1121,6 +1139,7 @@ Begin
   // TODO: Die Force, Override, forbidden dinge müssen hier noch berücksichtigt werden..
   //       \-> Das Forbidden wird in TAtomicField.Initialize bereits gemacht.
   If PowerUp <> puNone Then Begin
+    fPlayerStatistics.UpdatePlayerID(PlayerIndex, psPowerupsCollected);
     HandleStatisticCallback(sPowerupsCollected);
     (*
      * Mit Zählen, was der Spieler so aufsammelt
@@ -1140,6 +1159,7 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
       End;
     puDisease: Begin
+        fPlayerStatistics.UpdatePlayerID(PlayerIndex, psDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
         Case random(3) Of
           0: Player.Disease := Player.Disease + [dInvertedKeyboard];
@@ -1193,15 +1213,16 @@ Begin
         Player.Powers.JellyBombs := true;
       End;
     puSuperBadDisease: Begin
+        fPlayerStatistics.UpdatePlayerID(PlayerIndex, psDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
+        (*
+         * Mit Einer Wahrscheinlichkeit von 10 % tauschen wir die Plätze mit einem anderen Spieler ;)
+         *)
         If random(100) < 10 Then Begin
           cnt := 0;
           For i := 0 To high(fPLayer) Do Begin
             If fPLayer[i].Info.Alive Then inc(cnt);
           End;
-          (*
-           * Mit Einer Wahrscheinlichkeit von 10 % tauschen wir die Plätze mit einem anderen Spieler ;)
-           *)
           If cnt > 1 Then Begin
             Repeat
               index := random(Length(fPLayer));
@@ -1209,6 +1230,7 @@ Begin
             tmppos := fPLayer[index].Info.Position;
             fPLayer[index].Info.Position := fPLayer[PlayerIndex].Info.Position;
             fPLayer[PlayerIndex].Info.Position := tmppos;
+            fPlayerStatistics.UpdatePlayerID(index, psDiseased); // Der Andere Empfängt die Krankheit ungewollt ja auch ;)
           End;
         End
         Else Begin
@@ -1218,6 +1240,7 @@ Begin
         End;
       End;
     puSlow: Begin
+        // Das ist zwar schlecht, aber keine Krankheit -> wird daher nicht als psDiseased gewertet
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
         Player.Powers.Speed := AtomicSlowSpeed;
       End;
@@ -1796,13 +1819,20 @@ Begin
        *)
       If fPLayer[i].Disease <> [] Then Begin
         (*
-         * Das Anstecken
+         * Das Anstecken, Spieler i steckt Spieler j an
          *)
         For j := 0 To high(fPLayer) Do Begin
           If (i <> j) And
             (LenV2SQR(fPLayer[i].Info.Position - fPLayer[j].Info.Position) <= 0.5 * 0.5) And
             (fPLayer[i].Disease <> fPLayer[j].Disease) Then Begin
-            fPLayer[j].Disease := fPLayer[i].Disease;
+            If fPLayer[j].Disease = [] Then Begin // Ist Spieler j aber auch schon krank dann zählt es nicht, denn dann weis keiner so genau wer hier wen ansteckt..
+              fPlayerStatistics.UpdatePlayerID(i, psDiseaseSpreaded);
+              fPlayerStatistics.UpdatePlayerID(j, psDiseased);
+            End;
+            // Die Krankheiten vereinen sich zu was auch immer beide haben -> j
+            fPLayer[j].Disease := fPLayer[i].Disease + fPLayer[j].Disease;
+            // Und i kriegt das natürlich auch ;)
+            fPLayer[i].Disease := fPLayer[j].Disease;
             fPLayer[j].DiseaseCounter := AtomicDiseaseTime;
           End;
         End;
@@ -2017,7 +2047,7 @@ Begin
             End;
           End;
         End
-        Else Begin // Team 2 hat gewonnen
+        Else Begin // Team Rot hat gewonnen
           v := vRedTeam;
           For i := 0 To high(fPLayer) Do Begin
             If fPLayer[i].Team = 1 Then Begin
@@ -2030,6 +2060,15 @@ Begin
         m := TMemoryStream.Create;
         m.Write(v, SizeOf(v));
         SendChunk(miShowMatchStatistik, m, 0);
+        // Die Statistik ;)
+        // Im Teamplay hat man die Runde auch gewonnen, obwohl man gestorben ist, von daher zählt hier nur das Team ;)
+        For i := 0 To high(fPLayer) Do Begin
+          If (fPLayer[i].UID <> NoPlayer) Then Begin
+            If Fplayer[i].Team = WinnerTeamIndex Then Begin
+              fPlayerStatistics.UpdatePlayerID(i, psWonRounds);
+            End;
+          End;
+        End;
         fGameState := gsShowHighscore;
       End
       Else Begin
@@ -2057,6 +2096,14 @@ Begin
         m := TMemoryStream.Create;
         m.Write(v, SizeOf(v));
         SendChunk(miShowMatchStatistik, m, 0);
+        // Die Statistik ;)
+        For i := 0 To high(fPLayer) Do Begin
+          If fPLayer[i].UID <> NoPlayer Then Begin
+            If (fPLayer[i].Info.Alive) Then Begin
+              fPlayerStatistics.UpdatePlayerID(i, psWonRounds);
+            End;
+          End;
+        End;
         fGameState := gsShowHighscore;
       End;
     End;
@@ -2064,9 +2111,15 @@ Begin
   // 2. Zeit abgelaufen (wenn Zeitlimit Aktiv)
   If ((fPlayingTimedesc <> -1000) And (fPlayingTimedesc <= 0)) Or (cnt = 0) Then Begin
     (*
-     * Nachdem auf Jedenfall oben niemand gewonnen hat ist nun schluss mittels draw
+     * Nachdem auf jedenfall oben niemand gewonnen hat ist nun schluss mittels draw
      *)
     SendChunk(miDrawGame, Nil, 0);
+    // Die Statistik ;)
+    For i := 0 To high(fPLayer) Do Begin
+      If fPLayer[i].UID <> NoPlayer Then Begin
+        fPlayerStatistics.UpdatePlayerID(i, psDrawRounds);
+      End;
+    End;
     fGameState := gsShowHighscore;
   End;
 End;
@@ -2082,9 +2135,10 @@ Begin
    * ja jeder im Team einen Score bekommt ;)
    *)
   For i := 0 To high(fPLayer) Do Begin
-    If fPLayer[i].Score >= fSettings.LastWinsToWinMatch Then Begin
+    If (fPLayer[i].UID <> NoPlayer) And (fPLayer[i].Score >= fSettings.LastWinsToWinMatch) Then Begin
       result := true;
-      break;
+      // Statistik ;)
+      fPlayerStatistics.UpdatePlayerID(i, psWonMatches);
     End;
   End;
 End;
@@ -2247,7 +2301,9 @@ End;
 Procedure TServer.LoadStatistiks;
 Var
   ini: TIniFile;
+  EnterID: Integer;
 Begin
+  EnterID := LogEnter('TServer.LoadStatistiks');
   ini := TIniFile.Create(GetAtomicStatsFile());
   fStatistik.Total[sMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
   fStatistik.Total[sGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
@@ -2267,12 +2323,15 @@ Begin
    *)
   FillChar(fStatistik.LastRun, sizeof(fStatistik.LastRun), 0);
   ini.free;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.SaveStatistiks;
 Var
   ini: TIniFile;
+  EnterID: Integer;
 Begin
+  EnterID := LogEnter('TServer.SaveStatistiks');
   ini := TIniFile.Create(GetAtomicStatsFile());
   Try
     ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[sMatchesStarted] + fStatistik.LastRun[sMatchesStarted]);
@@ -2303,6 +2362,25 @@ Begin
   Finally
     ini.free;
   End;
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.LoadPlayerStatistiks();
+Var
+  EnterID: Integer;
+Begin
+  EnterID := LogEnter('TServer.LoadPlayerStatistiks');
+  fPlayerStatistics.LoadPlayerStatistics(GetAtomicPlayerStatsFile());
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.SavePlayerStatistiks();
+Var
+  EnterID: Integer;
+Begin
+  EnterID := LogEnter('TServer.SavePlayerStatistiks');
+  fPlayerStatistics.SavePlayerStatistics(GetAtomicPlayerStatsFile());
+  LogLeave(EnterID);
 End;
 
 End.

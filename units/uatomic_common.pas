@@ -116,6 +116,7 @@ Const
    *             0.12011 = FIX: Crash during Key Up
    *                       FIX: Gui glitch during select field screen
    *                       ADD: alternative + and - keys for sound control
+   *                       ADD: Player Statistiks (y)
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -286,26 +287,6 @@ Const
   Achsistrigger = 32767 Div 4; // Wert um den sich eine "Move" Achse auf dem Joystick von der Mittelstellung weg bewegen muss, damit ein "Hit" erkannt wird
 
 Type
-
-  (*
-   * Alles worüber der Server so Statistiken führt ;)
-   *)
-  TStatSelector = (
-    sMatchesStarted
-    , sGamesStarted
-    , sFramesRendered
-    , sBombsDropped
-    , sPowerupsCollected
-    , sPlayerDeaths
-    , sBricksDestroyed
-    , sPowerUpDestroyed
-    , sTotalNetworkBytesIn // UDP-Daten werden Ignoriert
-    , sTotalNetworkBytesOut // UDP-Daten werden Ignoriert
-    , sTotalNetworkPacketsIn // UDP-Daten werden Ignoriert
-    , sTotalNetworkPacketsOut // UDP-Daten werden Ignoriert
-    );
-
-  TStatisticCallback = Procedure(StatSelector: TStatSelector; Value: uint64 = 1) Of Object;
 
   TBombAnimation = (
     baNormal, // Fertig
@@ -637,6 +618,9 @@ Function BrickSchemeToString(Const Scheme: TScheme): String; // Only Debug
 // Berechnet alle Spieler abhängigen Geschwindigkeiten und setzt die Spielergeschwindigkeit auf NewDefaultSpeed
 Procedure CalculateAtomicSpeeds(NewDefaultSpeed: Single);
 
+Function KeySetToString(aKeySet: TKeySet): String;
+Function StringToKeySet(aValue: String): TKeySet;
+
 Implementation
 
 Uses math
@@ -678,6 +662,29 @@ Begin
   ConveyorSlowSpeed := AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
   ConveyorMiddleSpeed := AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange * AtomicSpeedChange);
   ConveyorFastSpeed := AtomicDefaultSpeed / (AtomicSpeedChange * AtomicSpeedChange);
+End;
+
+Function KeySetToString(aKeySet: TKeySet): String;
+Begin
+  result := '';
+  Case aKeySet Of
+    ks0: result := 'ks0';
+    ks1: result := 'ks1';
+  Else Begin
+      Raise exception.create('Error: KeySetToString, missing implementation.');
+    End;
+  End;
+End;
+
+Function StringToKeySet(aValue: String): TKeySet;
+Begin
+  Case lowercase(trim(aValue)) Of
+    'ks0': result := ks0;
+    'ks1': result := ks1;
+  Else Begin
+      Raise exception.create('Error: StringToKeySet, missing implementation for: ' + aValue);
+    End;
+  End;
 End;
 
 {$IFNDEF Server}

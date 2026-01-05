@@ -189,6 +189,7 @@ Begin
   // 3. Endlosschleife
   If assigned(server) Then Begin
     server.LoadStatistiks();
+    server.LoadPlayerStatistiks();
     Try
       server.execute;
     Except
@@ -196,6 +197,7 @@ Begin
         log(e.Message, llFatal);
       End;
     End;
+    server.SavePlayerStatistiks();
     server.SaveStatistiks();
     log('Shutting down, thanks for playing.', llInfo);
     // 4. Fertig, aufräumen
