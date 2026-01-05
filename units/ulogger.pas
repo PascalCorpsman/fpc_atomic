@@ -745,6 +745,7 @@ End;
 
 Function TLogger.LogEnter(LogText: String): Integer;
 Begin
+  If Not Enable Then exit;
   If fStackTraceValidation Then Begin
     result := fStack.Enter(LogText);
     If fStack.fStackNextIndex > MaxAllowedStackDepth Then Begin
@@ -756,6 +757,7 @@ End;
 
 Procedure TLogger.LogLeave(EnterID: Integer);
 Begin
+  If Not Enable Then exit;
   If fStackTraceValidation Then Begin
     If fStack.fStackNextIndex <= 0 Then Begin
       log('Stack underflow.', llfatal);

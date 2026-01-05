@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* TChunkmanager                                                   03.06.2015 *)
 (*                                                                            *)
-(* Version     : 0.16                                                         *)
+(* Version     : 0.17                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -42,6 +42,7 @@
 (*                      client connected.                                     *)
 (*               0.15 - Fix AV on client disconnect                           *)
 (*               0.16 - Disconnect socket instead of raising AV on error      *)
+(*               0.17 - support new ulogger.pas                               *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uChunkmanager;
@@ -282,9 +283,13 @@ Type
   { TChunkManager }
 
 Constructor TChunkManager.create;
+{$IFDEF UseLogger}
+Var
+  EnterID: Integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.create', llTrace);
+  EnterID := LogEnter('TChunkManager.create');
 {$ENDIF}
   Inherited create;
   FOnReceivedChunk := Nil;
@@ -292,21 +297,25 @@ Begin
   fIsServer := false;
   fconnection := Nil;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Destructor TChunkManager.destroy;
+{$IFDEF UseLogger}
+Var
+  EnterID: Integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.destroy', llTrace);
+  EnterID := LogEnter('TChunkManager.destroy');
 {$ENDIF}
   If Connected Then Begin
     Disconnect(true);
   End;
   RegisterConnection(Nil); // Löschen aller alten Captures..
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -327,9 +336,12 @@ Var
   sent: integer;
   Data: Array[0..ChunkSize - 1] Of byte;
   j: Integer;
+{$IFDEF UseLogger}
+  EnterID: Integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.OnCanSend' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.OnCanSend' + asocket.PeerAddress);
 {$ENDIF}
   data[0] := 0; // Totaler Quatsch, aber beruhigt den Compiler, sonst gibts bei all den Move Befehlen ne Warnung
   pu := aSocket.UserData;
@@ -346,7 +358,7 @@ Begin
       // Der Äußerst Seltene Fall, dass wir den Header nicht am Stück senden konnten ist aufgetreten
       If send^.HeaderPos < HeaderLen Then Begin
 {$IFDEF UseLogger}
-        logleave;
+        logleave(EnterID);
 {$ENDIF}
         exit;
       End;
@@ -375,7 +387,7 @@ Begin
     Until (sent = 0);
   End;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -392,9 +404,12 @@ Var
   j: Integer;
   Chunk: TChunk;
   NeedFurtherReadings: Boolean;
+{$IFDEF UseLogger}
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.OnReceive' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.OnReceive' + asocket.PeerAddress);
 {$ENDIF}
   pu := aSocket.UserData;
   // Wenn die Gegenstelle Sendet wie blöd und wir uns aber gerade freigegeben
@@ -502,16 +517,19 @@ Begin
     End;
   Until Not NeedFurtherReadings;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Procedure TChunkManager.RegisterSocket(aSocket: TLSocket);
 Var
   pu: PUserData;
+{$IFDEF UseLogger}
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.RegisterSocket' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.RegisterSocket' + asocket.PeerAddress);
 {$ENDIF}
   new(pu);
   pu^.UID := Funique_counter;
@@ -522,7 +540,7 @@ Begin
   Funique_counter := Funique_counter + 1;
   aSocket.UserData := pu;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -530,9 +548,12 @@ Procedure TChunkManager.UnRegisterSocket(aSocket: TLSocket);
 Var
   pu: PUserData;
   send: PSendData;
+{$IFDEF UseLogger}
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.UnRegisterSocket' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.UnRegisterSocket' + asocket.PeerAddress);
 {$ENDIF}
   pu := aSocket.UserData;
   If assigned(pu) Then Begin
@@ -550,7 +571,7 @@ Begin
   End;
   asocket.UserData := Nil;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -559,14 +580,17 @@ Procedure TChunkManager.AddChunkForSendToSocketQueue(aSocket: TLSocket;
 Var
   pu: PUserData;
   send: PSendData;
+{$IFDEF UseLogger}
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.AddChunkForSendToSocketQueue' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.AddChunkForSendToSocketQueue' + asocket.PeerAddress);
 {$ENDIF}
   If Not (fconnection.Iterator.ConnectionStatus = scConnected) Then Begin
     data.free;
 {$IFDEF UseLogger}
-    logleave;
+    logleave(EnterID);
 {$ENDIF}
     exit;
   End;
@@ -583,7 +607,7 @@ Begin
     pu^.Queue.Push(send);
   End;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -593,9 +617,12 @@ Var
   i, j, d: integer;
   k: int64;
   send: PSendData;
+{$IFDEF UseLogger}
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.StartSendChunk' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.StartSendChunk' + asocket.PeerAddress);
 {$ENDIF}
   pu := aSocket.UserData;
   If Not (aSocket.ConnectionStatus = scConnected) Then Begin // Der Socket ist schon gar nicht mehr verbunden, dann braucht auch nicht mehr gesendet werden..
@@ -605,7 +632,7 @@ Begin
       dispose(send);
     End;
 {$IFDEF UseLogger}
-    logleave;
+    logleave(EnterID);
 {$ENDIF}
     exit;
   End;
@@ -636,7 +663,7 @@ Begin
     OnCanSend(asocket);
   End;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -659,50 +686,66 @@ Begin
 End;
 
 Procedure TChunkManager.OnAccept(aSocket: TLSocket);
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.OnAccept' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.OnAccept' + asocket.PeerAddress);
 {$ENDIF}
   // Der Server Akzeptiert Verbindungen
   RegisterSocket(aSocket);
   If assigned(FOnAccept_Captured) Then
     FOnAccept_Captured(aSocket);
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Procedure TChunkManager.OnConnect(aSocket: TLSocket);
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.OnConnect' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.OnConnect' + asocket.PeerAddress);
 {$ENDIF}
   // Der Client Verbindet sich
   RegisterSocket(aSocket);
   If assigned(FOnConnect_Captured) Then
     FOnConnect_Captured(aSocket);
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Procedure TChunkManager.OnDisconnect(aSocket: TLSocket);
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.OnDisconnect' + asocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TChunkManager.OnDisconnect' + asocket.PeerAddress);
 {$ENDIF}
   If assigned(FOnDisconnect_Captured) Then
     FOnDisconnect_Captured(aSocket);
   UnRegisterSocket(asocket);
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Procedure TChunkManager.RegisterConnection(Const Connection: TLTcp);
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.RegisterConnection', llTrace);
+  EnterID := LogEnter('TChunkManager.RegisterConnection');
 {$ENDIF}
   If Fconnection <> Connection Then Begin
     // Alte Captures aushängen
@@ -729,43 +772,55 @@ Begin
     End;
   End;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Function TChunkManager.Connect(Const Address: String; Const APort: Word
   ): Boolean;
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.Connect : ' + Address + ':' + inttostr(aPort), llTrace);
+  EnterID := LogEnter('TChunkManager.Connect : ' + Address + ':' + inttostr(aPort));
 {$ENDIF}
   result := false;
   If Not assigned(fconnection) Then exit;
   fIsServer := false;
   result := fconnection.Connect(Address, APort);
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Function TChunkManager.Listen(Const APort: Word; Const AIntf: String): Boolean;
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.Listen : ' + inttostr(aPort), llTrace);
+  EnterID := LogEnter('TChunkManager.Listen : ' + inttostr(aPort));
 {$ENDIF}
   result := false;
   If Not assigned(fconnection) Then exit;
   fIsServer := true;
   result := fconnection.Listen(APort, AIntf);
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
 Procedure TChunkManager.Disconnect(Const Forced: Boolean);
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.Disconnect : ' + inttostr(ord(Forced)), llTrace);
+  EnterID := LogEnter('TChunkManager.Disconnect : ' + inttostr(ord(Forced)));
 {$ENDIF}
   If assigned(fconnection) Then Begin
     // Freigeben aller User Daten
@@ -788,7 +843,7 @@ Begin
     fconnection.Disconnect(Forced);
   End;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -798,9 +853,12 @@ Var
   m: TMemoryStream;
   b: Boolean;
   pu: PUserData;
+{$IFDEF UseLogger}
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.SendChunk : ' + inttostr(UserDefinedID) + ', ' + inttostr(UID), llTrace);
+  EnterID := LogEnter('TChunkManager.SendChunk : ' + inttostr(UserDefinedID) + ', ' + inttostr(UID));
 {$ENDIF}
   // Wenn Data einfach erzeugt wird wenn der Nil Pointer da ist, dann sparen wir uns eine Menge Fallunterscheidungen für diesen Sonderfall.
   If Not assigned(data) Then Begin
@@ -859,7 +917,7 @@ Begin
     End;
   End;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
@@ -883,9 +941,13 @@ Begin
 End;
 
 Procedure TChunkManager.SetNoDelay(Value: Boolean);
+{$IFDEF UseLogger}
+Var
+  EnterID: integer;
+{$ENDIF}
 Begin
 {$IFDEF UseLogger}
-  log('TChunkManager.SetNoDelay', llTrace);
+  EnterID := LogEnter('TChunkManager.SetNoDelay');
 {$ENDIF}
   fconnection.IterReset;
   fconnection.Iterator.SetState(ssNoDelay, Value);
@@ -893,7 +955,7 @@ Begin
     fconnection.Iterator.SetState(ssNoDelay, Value);
   End;
 {$IFDEF UseLogger}
-  logleave;
+  logleave(EnterID);
 {$ENDIF}
 End;
 
