@@ -1221,7 +1221,7 @@ Begin
   // Der Klick auf die Buttons ;)
   If (x > 60) And (x < 320) And
     (y > 36) And
-    (y < 36 + 12 * 28)
+    (y < 36 + 13 * 28)
     Then Begin
     fCursorPos := (y - 36) Div 28;
     key := VK_RETURN;
@@ -1285,7 +1285,7 @@ Begin
     'Network port: ' + inttostr(TGame(fOwner).Settings.Port) + LineEnding + LineEnding +
     'Show FPS: ' + BoolToStr(TGame(fOwner).Settings.ShowFPS, 'Yes', 'No') + LineEnding + LineEnding +
     'Fullscreen: ' + BoolToStr(TGame(fOwner).Settings.Fullscreen, 'Yes', 'No') + LineEnding + LineEnding +
-    'Stretch: ' + BoolToStr(TGame(fOwner).Settings.Proportional, 'No', 'Yes')
+    'Keep aspect ratio: ' + BoolToStr(TGame(fOwner).Settings.Proportional, 'Yes', 'No')
     );
 
   glPushMatrix();

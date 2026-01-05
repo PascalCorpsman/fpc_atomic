@@ -1996,8 +1996,9 @@ Var
   cnt, i, OverflowProtect, j: Integer;
   x, y: Int64;
   b, noHole: Boolean;
+  EnterID: Integer;
 Begin
-  log('TServer.RepopulatePlayersCollectedPowerUps', lltrace);
+  EnterID := LogEnter('TServer.RepopulatePlayersCollectedPowerUps');
   For pu In TPowerUps Do Begin
     If pu = puNone Then Continue;
     (*
@@ -2050,7 +2051,7 @@ Begin
       End;
     End;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TAtomicField.TelePortPlayer(Var Player: TPlayer);

@@ -45,7 +45,6 @@ Begin
   writeln('-l <LogLevel> = Sets Loglevel (default = 2)');
   writeln('-t <Timeout> = Sets automatic close on no user connected, default ' + inttostr(ServerAutoTimeout) + 'ms');
   writeln('               0 = Disabled, typing "ESC" will terminate');
-  writeln('-f <Filename> = Logs additional to a file');
   writeln('-ats <factor> = overwrite default atomic speed (default = 5)');
   writeln('-d = if set do not ignore docker ip when reporting own ip');
   writeln('-h = This screen');
@@ -60,7 +59,7 @@ Var
   Server: TServer;
   Autotimeout: integer = ServerAutoTimeout;
   Port: integer = -1;
-  i, j: integer;
+  i, j, EnterID: integer;
   s: String;
   si: Single;
   Params: Array Of Boolean = Nil; // Zum Prüfen ob auch alle übergebenen Parameter verwendet wurden.
@@ -69,6 +68,7 @@ Var
   showdockerip: Boolean;
 Begin
   InitLogger();
+  EnterID := LogEnter('atomic_server.lpr');
   (*
      OPL: - Alle Krankheiten (Speed Up, Switch Bombermen,  Fast Bomb,  Small Flame, Eject Bomb Fast + Kick)
           - Alle TODO's
@@ -106,6 +106,7 @@ Begin
       End;
       If lowercase(paramstr(i)) = '-l' Then Begin
         SetLogLevel(strtointdef(paramstr(i + 1), 2));
+        log('Set Log level to: ' + paramstr(i + 1), llInfo);
         Params[i] := true;
         Params[i + 1] := true;
       End;
@@ -113,18 +114,6 @@ Begin
         Autotimeout := strtointdef(paramstr(i + 1), ServerAutoTimeout);
         Params[i] := true;
         Params[i + 1] := true;
-      End;
-      If lowercase(paramstr(i)) = '-f' Then Begin
-        s := ExtractFilePath(ParamStr(i + 1));
-        Params[i] := true;
-        Params[i + 1] := true;
-        If Not DirectoryExists(s) Then Begin
-          If Not CreateDir(s) Then Begin
-            Log('Could not create : ' + s, llWarning);
-            Continue;
-          End;
-        End;
-        SetLoggerLogFile(paramstr(i + 1));
       End;
     End;
     // All Params that are only "Flags"
@@ -212,5 +201,8 @@ Begin
     // 4. Fertig, aufräumen
     server.free;
   End;
+  LogLeave(EnterID);
+  log('Max Stack depth: ' + IntToStr(MaxStackDepth), lldebug);
+
 End.
 

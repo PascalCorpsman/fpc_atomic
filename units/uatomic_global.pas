@@ -55,7 +55,11 @@ Procedure LoggerSetOnDoLog(LogEvent: TOnDoLog);
 
 Procedure LogShow(LogText: String; LogLevel: TLogLevel = llInfo);
 Procedure Log(LogText: String; LogLevel: TLogLevel = llInfo);
-Procedure LogLeave;
+
+Function LogEnter(LogText: String): integer;
+Procedure LogLeave(EnterID: integer {=-1});
+Function MaxStackDepth(): Integer;
+
 Function GetLoggerLoglevel(): integer;
 {$IFDEF Windows}
 Procedure EnableLogToConsole();
@@ -89,7 +93,7 @@ Begin
   VendorNameEvent := Nil;
 End;
 
-Function GetAtomicConfigFile(): String;
+Function GetAtomicConfigFile: String;
 Begin
   Setup;
   result := GetAppConfigFile(false, true);
@@ -98,7 +102,7 @@ End;
 
 {$IFDEF Server}
 
-Function GetAtomicStatsFile(): String;
+Function GetAtomicStatsFile: String;
 Begin
   Setup;
   result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'stats.txt';
@@ -106,7 +110,7 @@ Begin
 End;
 {$ENDIF}
 
-Function GetAtomicAppLogFile(): String;
+Function GetAtomicAppLogFile: String;
 Var
   AppLog: String;
 Begin
@@ -139,13 +143,12 @@ Begin
   TearDown;
 End;
 
-Function GetAtomicTempDir(): String;
+Function GetAtomicTempDir: String;
 Begin
   Setup;
   result := GetTempDir(false);
   TearDown;
 End;
-
 
 Function ConvertLogLevel(ll: TLogLevel): ulogger.TLogLevel;
 Begin
@@ -164,12 +167,22 @@ End;
 
 Procedure Log(LogText: String; LogLevel: TLogLevel);
 Begin
-  ulogger.Log(LogText, ConvertLogLevel(LogLevel));
+  logger.Log(LogText, ConvertLogLevel(LogLevel));
 End;
 
-Procedure LogLeave;
+Function LogEnter(LogText: String): integer;
 Begin
-  ulogger.LogLeave;
+  result := logger.LogEnter(LogText);
+End;
+
+Procedure LogLeave(EnterID: integer);
+Begin
+  logger.LogLeave(EnterID);
+End;
+
+Function MaxStackDepth(): Integer;
+Begin
+  result := Logger.MaxStackDepth;
 End;
 
 Function GetLoggerLoglevel: integer;
@@ -178,6 +191,8 @@ Begin
 End;
 
 Procedure InitLogger;
+Var
+  s: String;
 Begin
 {$IFDEF Server}
   logger.LogToConsole := true;
@@ -187,10 +202,18 @@ Begin
 {$ENDIF}
   // TODO: On Darwin also Log to console by default ?
   logger.LogToFile := true;
-  logger.SetLogFilename(GetAtomicAppLogFile());
+  s := GetAtomicAppLogFile();
+  // Delete the Logfile from last time, is not not needed anymore ;)
+  If FileExists(s) Then Begin
+    If Not DeleteFile(s) Then Begin
+      Raise Exception.Create('Error, not write access to log file: ' + s);
+    End;
+  End;
+  logger.SetLogFilename(s);
   logger.AutoLogStackOnFatal := true;
-  logger.LogStackTrace := true;
+  logger.StackTraceValidation := true;
   logger.SetLogLevel(2);
+  // logger.HaltOnFatal := true; -> Eigentlich sollte das schon wieder rein, oder ?
 End;
 
 Procedure LoggerSetOnDoLog(LogEvent: TOnDoLog);

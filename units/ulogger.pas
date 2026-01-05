@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* ulogger.pas                                                     06.11.2015 *)
 (*                                                                            *)
-(* Version     : 0.07                                                         *)
+(* Version     : 0.08                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -35,6 +35,7 @@
 (*               0.05 - Logshow für Konsole                                   *)
 (*               0.06 - laderoutine für Logfiles                              *)
 (*               0.07 - New Property OnDoLog                                  *)
+(*               0.08 - Rework Stack ckecks                                   *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -58,6 +59,39 @@ Uses classes
   ;
 
 Type
+
+  TLogStackEntry = Record
+    Routine: String;
+    ID: Integer;
+  End;
+
+  (*
+   * Helper Class to emulate the "stack" ;)
+   *)
+  { TLogStack }
+
+  TLogStack = Class
+  private
+    fStack: Array Of TLogStackEntry;
+    fStackNextIndex: integer; // Zeigt immer auf das nächste Freie Element (und gibt gleichzeitig die Anzahl der im Stack enthaltenen Elemente wieder)
+    fNextID: Integer;
+    Function GetCurrentRoutine: String;
+  public
+
+    MaxStackDepth: integer; // Maximal aufgetretene Stack Tiefe
+
+    Property Depth: integer read fStackNextIndex; // Aktuelle Stack Tiefe
+
+    Property CurrentRoutine: String read GetCurrentRoutine; // Name der Routine in der der Code sich gerade befindet
+
+    Constructor Create();
+    Destructor Destroy(); override;
+
+    Function Enter(Routine: String): Integer; // Wird zu begin einer Routine aufgerufen, result ist immer >= 5 !
+    Function Leave(ID: Integer = -1): Boolean; // -1 = Keine ID-Prüfung, result = true = Alles OK
+
+    Function ToString: String; override;
+  End;
 
   (*
    * Jeder Logeintrag kann einer bestimmten Log Gruppe zugeordnet werden
@@ -127,12 +161,14 @@ Type
    * gesetzt wird, und das an LogStack übergebene Loglevel aktuell ebenfalls geloggt wird.
    *
    * Procedure Dummy;
+   * var
+   *  EnterID: Integer;
    * begin
-   *   Log('Dummy', llTrace);
+   *   EnterID := LogEnter('Dummy');
    *   ..
    *   { Vor jedem "Halt"/ "Exit", muss auch LogLeave stehen }
    *
-   *   LogLeave;
+   *   LogLeave(EnterID); // Anstatt die EnterID zu Prüfen darf auch -1 übergeben werden (dann findet keine AUfrufkennung statt)
    * end;
    *
    * Dann kann zu jeder Zeit Mittels : LogStack( .. ) der Aktuelle Stack geschrieben werden.
@@ -144,7 +180,6 @@ Type
   private
     fAddRoutineNameToLogs: Boolean;
     fAutoLogStackOnFatal: Boolean;
-    fCheckMaxStackDepth: integer;
     fFilename: String;
     fHaltOnFatal: Boolean;
     fLogLevel: TLogLevelSet;
@@ -155,11 +190,10 @@ Type
     FDateFormat: String; // Todo : Soll mal dem User verfügbar gemacht werden
     fLogToConsole: Boolean;
     flogtoFile: Boolean;
-    fLogStackTrace: Boolean;
-    fStack: TStringList;
-    fMaxStackDepth: integer;
-    fCheckStackBoundaries: Boolean;
-
+    fMaxAllowedStackDepth: integer;
+    fStack: TLogStack;
+    fStackTraceValidation: Boolean;
+    Function GetMaxStackDepth: integer;
     Procedure OpenLogFile; // Öffnet evtl. das Filehandle
     Procedure DoLog(Const Text: String); // Gibt den Text auf der Console aus, oder Speichert in ihn die LogDatei
     Function CreateLog(Logtext: String; Const Loglevel: TLogLevel): String; // Erzeugt den Passend Eingerückten Logeintrag, welcher Gespeichert oder auf die Konsole Ausgegeben wird
@@ -174,10 +208,10 @@ Type
      *)
     Property AddRoutineNameToLogs: Boolean read fAddRoutineNameToLogs write fAddRoutineNameToLogs; // Wenn Stacktracing Aktiviert ist, dann kann hier der Aktuelle Methodenname Automatisch mit angefügt werden.
     Property AutoLogStackOnFatal: Boolean read fAutoLogStackOnFatal write fAutoLogStackOnFatal; // Automatisches Stack Trace Schreiben bei Fatalen Logs
-    Property CheckMaxStackDepth: integer read fCheckMaxStackDepth write fCheckMaxStackDepth; // Bei Aktivierter Stack überwachung ist dies die Grenze wogegen geprüft wird
-    Property CheckStackBoundaries: Boolean read fCheckStackBoundaries write fCheckStackBoundaries; // Wenn Gesetzt, dann Loggt der Logger einen Fatalen Log, wenn Stacktiefe > fCheckMaxStackDepth oder < 0 wird.
-    Property LogStackTrace: Boolean read fLogStackTrace write fLogStackTrace; // Wenn Aktiviert, dann muss zu jedem llTrace ein LogLeave aufgerufen werden.
-    Property MaxStackDepth: integer read fMaxStackDepth; // Gibt die bisher tiefste Stacktiefe zurück
+    Property StackTraceValidation: Boolean read fStackTraceValidation write fStackTraceValidation; // Wenn Aktiviert, dann muss zu jedem LogEnter ein LogLeave aufgerufen werden, und der Stack wird überwacht
+    Property MaxAllowedStackDepth: integer read fMaxAllowedStackDepth write fMaxAllowedStackDepth; // maximal Erlaubte Stack Tiefe, bis eine Exception geworfen wird
+
+    Property MaxStackDepth: integer read GetMaxStackDepth; // Gibt die bisher tiefste Stacktiefe zurück
 
     (*
      * Generelle Optionen
@@ -211,7 +245,9 @@ Type
 
     Function LoggerLogs(Const LogLevel_: TLogLevel): Boolean; // True, wenn Loglevel vom Logger geloggt wird
 
-    Procedure LogLeave; // Wenn LogTraceStack Aktiviert, "Ende" einer Routine
+    Function LogEnter(LogText: String): Integer; // ID is never 0!
+    Procedure LogLeave(EnterID: Integer = -1); // Wenn LogTraceStack Aktiviert, "Ende" einer Routine, die
+
     Procedure LogStack(LogLevel_: TLogLevel = llinfo); // Wenn LogTraceStack Aktiviert, dann kann so der Stacktrace geloggt werden
   End;
 
@@ -255,9 +291,11 @@ Procedure LogHex(Value: uInt32; Description: String = ''; LogLevel: TLogLevel = 
 Procedure LogInt(Value: Int32; Description: String = ''; LogLevel: TLogLevel = llInfo);
 Procedure LogUInt(Value: uInt32; Description: String = ''; LogLevel: TLogLevel = llInfo);
 
-Procedure LogLeave; // Wenn LogTraceStack Aktiviert, dann kann so der Stacktrace geloggt werden
+Function LogEnter(LogText: String): Integer;
+Procedure LogLeave(EnterID: integer = -1); // Wenn LogTraceStack Aktiviert, dann kann so der Stacktrace geloggt werden
 Procedure LogStack(LogLevel: TLogLevel = llinfo); // Wenn LogTraceStack Aktiviert, "Ende" einer Routine
 
+Function MaxStackDepth(): Integer;
 (*
  * Sonstige
  *)
@@ -362,16 +400,30 @@ Begin
   End;
 End;
 
-Procedure LogLeave;
+Function LogEnter(LogText: String): Integer;
+Begin
+  result := 0;
+  If assigned(logger) Then
+    result := logger.LogEnter(LogText);
+End;
+
+Procedure LogLeave(EnterID: integer);
 Begin
   If assigned(logger) Then
-    logger.LogLeave;
+    logger.LogLeave(EnterID);
 End;
 
 Procedure LogStack(LogLevel: TLogLevel);
 Begin
   If assigned(logger) Then
     logger.LogStack(loglevel);
+End;
+
+Function MaxStackDepth(): Integer;
+Begin
+  result := 0;
+  If assigned(logger) Then
+    result := logger.MaxStackDepth;
 End;
 
 Function LogLevelToString(LogLevel: TLogLevel): String;
@@ -470,7 +522,7 @@ Begin
   logger.AssertLog(Criteria, LogText, LogLevel);
 End;
 
-Procedure Log(LogText: String; LogLevel: TLogLevel = llInfo);
+Procedure Log(LogText: String; LogLevel: TLogLevel);
 Begin
   logger.Log(LogText, LogLevel);
 End;
@@ -480,24 +532,92 @@ Begin
   logger.LogShow(LogText, LogLevel);
 End;
 
-Procedure LogBool(Value: Boolean; Description: String = ''; LogLevel: TLogLevel = llInfo);
+Procedure LogBool(Value: Boolean; Description: String; LogLevel: TLogLevel);
 Begin
   logger.LogBool(value, Description, LogLevel);
 End;
 
-Procedure LogInt(Value: Int32; Description: String = ''; LogLevel: TLogLevel = llInfo);
+Procedure LogInt(Value: Int32; Description: String; LogLevel: TLogLevel);
 Begin
   logger.LogInt(value, Description, LogLevel);
 End;
 
-Procedure LoguInt(Value: uInt32; Description: String = ''; LogLevel: TLogLevel = llInfo);
+Procedure LogUInt(Value: uInt32; Description: String; LogLevel: TLogLevel);
 Begin
   logger.LoguInt(value, Description, LogLevel);
 End;
 
-Procedure LogHex(Value: uInt32; Description: String = ''; LogLevel: TLogLevel = llInfo);
+Procedure LogHex(Value: uInt32; Description: String; LogLevel: TLogLevel);
 Begin
   logger.LogHex(value, Description, LogLevel);
+End;
+
+{ TLogStack }
+
+Function TLogStack.GetCurrentRoutine: String;
+Var
+  index: Integer;
+Begin
+  index := fStackNextIndex - 1;
+  If index >= 0 Then Begin
+    result := fStack[index].Routine;
+  End
+  Else Begin
+    result := 'Stack is empty';
+  End;
+End;
+
+Constructor TLogStack.Create;
+Begin
+  fStack := Nil;
+  setlength(fStack, 1024);
+  fStackNextIndex := 0;
+  fNextID := 5;
+  MaxStackDepth := 0;
+End;
+
+Destructor TLogStack.Destroy;
+Begin
+  setlength(fStack, 0);
+  Inherited Destroy();
+End;
+
+Function TLogStack.Enter(Routine: String): Integer;
+Begin
+  fStack[fStackNextIndex].Routine := Routine;
+  fStack[fStackNextIndex].ID := fNextID;
+  result := fStack[fStackNextIndex].ID;
+  inc(fStackNextIndex);
+  MaxStackDepth := max(MaxStackDepth, fStackNextIndex);
+  If fStackNextIndex > high(fStack) Then Begin
+    setlength(fStack, length(fStack) + 1024);
+  End;
+  fNextID := (fNextID + 5);
+  If fNextID > high(Integer) - 10 Then fNextID := 5;
+End;
+
+Function TLogStack.Leave(ID: Integer): Boolean;
+Var
+  Index: Integer;
+Begin
+  index := fStackNextIndex - 1;
+  result := (id = -1) Or (fStack[index].ID = ID);
+  fStackNextIndex := Index;
+End;
+
+Function TLogStack.ToString: String;
+Var
+  i: Integer;
+Begin
+  If fStackNextIndex = 0 Then Begin
+    result := 'Stack is empty.';
+  End
+  Else Begin
+    result := '';
+    For i := 0 To fStackNextIndex - 1 Do Begin
+      result := result + '  ' + fStack[i].Routine + LineEnding;
+    End;
+  End;
 End;
 
 { TLogger }
@@ -507,13 +627,11 @@ Begin
   Inherited create;
   OnDoLog := Nil;
   fAddRoutineNameToLogs := true;
-  fCheckMaxStackDepth := 100;
-  fCheckStackBoundaries := false;
-  fMaxStackDepth := 0;
+  fStack := TLogStack.Create;
+  fMaxAllowedStackDepth := 100;
   fHaltOnFatal := false;
   fAutoLogStackOnFatal := false;
-  fStack := TStringList.Create;
-  fLogStackTrace := false;
+  fStackTraceValidation := false;
   fFilename := '';
   Enable := True;
   SetLogFilename(ChangeFileExt(ParamStr(0), '.log'));
@@ -528,6 +646,7 @@ End;
 Destructor TLogger.Destroy;
 Begin
   fStack.free;
+  fStack := Nil;
   CloseLogFile(true);
 End;
 
@@ -544,10 +663,8 @@ Var
   s, t: String;
   i: integer;
 Begin
-  If fAddRoutineNameToLogs And fLogStackTrace And (loglevel <> lltrace) Then Begin
-    If fStack.Count > 0 Then Begin
-      Logtext := fstack[fStack.Count - 1] + ': ' + Logtext;
-    End;
+  If fAddRoutineNameToLogs And fStackTraceValidation And (loglevel <> lltrace) Then Begin
+    Logtext := fstack.CurrentRoutine + '[' + inttostr(fstack.Depth) + ']: ' + Logtext;
   End;
   // Evtl. Vorkommende Steuerzeichen in CRT's umwandeln
   Logtext := StringReplace(Logtext, '\n', LineEnding, [rfReplaceAll, rfIgnoreCase]);
@@ -585,17 +702,8 @@ Begin
     End;
     CloseLogFile(false);
   End;
-  // Wenn ein Stacktrace geschrieben werden soll, dann
-  If fLogStackTrace And (LogLevel_ = llTrace) Then Begin
-    fStack.Add(LogText);
-    fMaxStackDepth := max(fMaxStackDepth, fstack.Count);
-    If fstack.count > fCheckMaxStackDepth Then Begin
-      log('Stack overflow.', llfatal);
-    End;
-  End;
   // Halt on Fatal
   If fHaltOnFatal And (loglevel_ = llFatal) Then Begin
-    fstack.Clear; // Wir beenden via Gewalt, also Stack auch Löschen, wenn dann wurde er eh schon geloggt.
     CloseLogFile(true);
     halt(1);
   End;
@@ -624,8 +732,8 @@ Begin
   End;
 End;
 
-Procedure TLogger.LogHex(Value: uInt32; Description: String; LogLevel_: TLogLevel
-  );
+Procedure TLogger.LogHex(Value: uInt32; Description: String;
+  LogLevel_: TLogLevel);
 Begin
   log(Description + format(' = %0.8X', [value]), LogLevel_);
 End;
@@ -635,46 +743,55 @@ Begin
   result := LogLevel_ In fLogLevel;
 End;
 
+Function TLogger.LogEnter(LogText: String): Integer;
+Begin
+  If fStackTraceValidation Then Begin
+    result := fStack.Enter(LogText);
+    If fStack.fStackNextIndex > MaxAllowedStackDepth Then Begin
+      log('Stack overflow.', llfatal);
+    End;
+  End;
+  Log(LogText, llTrace);
+End;
+
+Procedure TLogger.LogLeave(EnterID: Integer);
+Begin
+  If fStackTraceValidation Then Begin
+    If fStack.fStackNextIndex <= 0 Then Begin
+      log('Stack underflow.', llfatal);
+    End
+    Else Begin
+      If Not fStack.Leave(EnterID) Then Begin
+        log(Format('TLogger.LogLeave: Missmatch happened for: %s, expected stack id: %d, actual parameter id: %d',
+          [fStack.fStack[fStack.fStackNextIndex + 1].Routine,
+          fstack.fStack[fStack.fStackNextIndex + 1].ID,
+            EnterID]), llfatal);
+      End;
+    End;
+  End;
+End;
+
 Procedure TLogger.LogInt(Value: Int32; Description: String; LogLevel_: TLogLevel
   );
 Begin
   log(Description + format(' = %d', [value]), LogLevel_);
 End;
 
-Procedure TLogger.LogLeave;
-Begin
-  If fLogStackTrace Then Begin
-    If (fstack.Count <> 0) Then Begin
-      fstack.Delete(fstack.Count - 1);
-    End
-    Else Begin
-      If fCheckStackBoundaries Then Begin
-        log('Stack underflow.', llfatal);
-      End;
-    End;
-  End;
-End;
-
 Function TLogger.StackLog: String;
-Var
-  i: integer;
 Begin
-  result := 'Stacktrace:' + LineEnding;
-  For I := 0 To fStack.Count - 1 Do Begin
-    result := result + '  ' + fstack[i] + LineEnding;
-  End;
+  result := 'Stacktrace:' + LineEnding + fStack.ToString;
 End;
 
 Procedure TLogger.LogStack(LogLevel_: TLogLevel);
 Begin
-  If fLogStackTrace And (LogLevel_ In fLogLevel) Then Begin
+  If fStackTraceValidation And (LogLevel_ In fLogLevel) Then Begin
     Log(StackLog(), LogLevel_);
   End;
 End;
 
 Procedure TLogger.DoLog(Const Text: String);
 Begin
-  If flogfileisopened Then Begin // Wenn Keine datei geöffnet ist, kann auch nicht geschrieben werden.
+  If flogfileisopened Then Begin // Wenn Keine Datei geöffnet ist, kann auch nicht geschrieben werden.
     writeln(FLogFile, Text);
   End;
   If fLogToConsole Then Begin // Wenn auch auf die Konsole ausgegeben werden soll
@@ -704,6 +821,11 @@ Begin
     End;
     flogfileisopened := true;
   End;
+End;
+
+Function TLogger.GetMaxStackDepth: integer;
+Begin
+  result := fStack.MaxStackDepth;
 End;
 
 Procedure TLogger.SetCustomLogging(Const LogLevel_: TLogLevelSet);
@@ -737,12 +859,6 @@ Begin
   If Not FEnable Then exit;
   If Criteria Then Begin
     Log(LogText, LogLevel_);
-  End
-  Else Begin
-    If fLogStackTrace And (loglevel_ = lltrace) Then Begin
-      fstack.Add(Logtext);
-      fMaxStackDepth := max(fMaxStackDepth, fstack.Count);
-    End;
   End;
 End;
 

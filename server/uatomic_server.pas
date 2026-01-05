@@ -151,9 +151,9 @@ Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global;
 Constructor TServer.Create(Port, AutoTimeOut: Integer);
 Var
   sl: TStringList;
-  i: Integer;
+  i, EnterID: Integer;
 Begin
-  log('TServer.create', lltrace);
+  EnterID := LogEnter('TServer.create');
   Inherited create;
   fChunkManager := Nil;
   factive := false;
@@ -194,23 +194,23 @@ Begin
   LoadAi();
   If Not fUDP.Listen(UDPPingPort) Then Begin
     log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   If Not fChunkManager.Listen(Port) Then Begin
     log('Error could not listen on port: ' + inttostr(port), llFatal);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   factive := true; // Haben wir es bis hier her geschafft, darf die Execute auch "laufen"
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Destructor TServer.Destroy;
 Var
-  i: Integer;
+  i, EnterID: Integer;
 Begin
-  log('TServer.destroy', lltrace);
+  EnterID := LogEnter('TServer.destroy');
   If assigned(fChunkManager) Then Begin
     fChunkManager.Disconnect(true);
     fChunkManager.free;
@@ -233,81 +233,89 @@ Begin
   End;
   setlength(fFields, 0);
   UnLoadAiLib(); // da ist das AiDeInit mit drin ;)
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.OnAccept(aSocket: TLSocket);
+Var
+  EnterID: integer;
 Begin
   // Wir Aktzeptieren eine Engehende Verbindung
-  log('TServer.OnAccept : ' + aSocket.PeerAddress, llTrace);
+  EnterID := LogEnter('TServer.OnAccept : ' + aSocket.PeerAddress);
   fChunkManager.SetNoDelay(true);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.OnDisconnect(aSocket: TLSocket);
 Var
-  uid: integer;
+  uid, EnterID: integer;
 Begin
   // Wir verlieren einen Spieler
   If assigned(asocket) Then Begin
-    log('TServer.OnDisconnect : ' + aSocket.PeerAddress, llTrace);
+    EnterID := LogEnter('TServer.OnDisconnect : ' + aSocket.PeerAddress);
   End
   Else Begin
-    log('TServer.OnDisconnect', llTrace);
+    EnterID := LogEnter('TServer.OnDisconnect');
   End;
   uid := fChunkManager.SocketToUID(aSocket);
   PlayerLeaves(uid);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.OnError(Const msg: String; aSocket: TLSocket);
+Var
+  EnterID: integer;
 Begin
-  log('TServer.OnError', llTrace);
+  EnterID := LogEnter('TServer.OnError');
   If assigned(asocket) Then Begin
     log(asocket.PeerAddress + msg, llError)
   End
   Else Begin
     log(msg, llError)
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.OnUDPError(Const msg: String; aSocket: TLSocket);
+Var
+  EnterID: Integer;
 Begin
-  log('TServer.OnUDPError', llTrace);
+  EnterID := LogEnter('TServer.OnUDPError');
   If assigned(asocket) Then Begin
     log(asocket.PeerAddress + msg, llError)
   End
   Else Begin
     log(msg, llError)
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.OnUDPDisconnect(aSocket: TLSocket);
+Var
+  EnterID: Integer;
 Begin
-  log('TServer.OnUDPDisconnect', llTrace);
+  EnterID := LogEnter('TServer.OnUDPDisconnect');
   If assigned(asocket) Then Begin
     log('TServer.OnUDPDisconnect: ' + asocket.PeerAddress, llError)
   End
   Else Begin
     log('TServer.OnUDPDisconnect', llError)
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.OnUDPReceiveEvent(aSocket: TLSocket);
 Var
   UserName: String;
   Buffer: Array[0..1024 - 1] Of byte;
-  cnt, i, ReadCnt: Integer;
+  cnt, i, ReadCnt, EnterID: Integer;
   b: Byte;
 Begin
   If assigned(aSocket) Then Begin
-    log('TServer.OnUDPReceiveEvent : ' + aSocket.PeerAddress, llTrace);
+    EnterID := LogEnter('TServer.OnUDPReceiveEvent : ' + aSocket.PeerAddress);
   End
   Else Begin
-    log('TServer.OnUDPReceiveEvent', llTrace);
+    EnterID := LogEnter('TServer.OnUDPReceiveEvent');
   End;
   Repeat
     (*
@@ -336,23 +344,27 @@ Begin
       aSocket.Send(buffer, cnt + 1);
     End;
   Until ReadCnt = 0;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.OnReceivedChunk(Sender: TObject; Const Chunk: TChunk);
 Var
   s: String;
-  i, j: integer;
+  i, j, EnterID: integer;
+  DoLog: Boolean;
   ts: QWord;
 Begin
-  //responceID := Chunk.UserDefinedID And $FFFF0000;
   HandleStatisticCallback(sTotalNetworkPacketsIn);
   HandleStatisticCallback(sTotalNetworkBytesIn, Chunk.Data.Size + ChunkManagerHeaderLen);
+  EnterID := 0;
 {$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
+  DoLog := ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
+    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent);
+{$ELSE}
+  DoLog := true;
 {$ENDIF}
-    log(format('TServer.OnReceivedChunk : %d, %s', [Chunk.UID, MessageIdentifierToString(Chunk.UserDefinedID)]), llTrace);
+  If DoLog Then
+    EnterID := LogEnter(format('TServer.OnReceivedChunk : %d, %s', [Chunk.UID, MessageIdentifierToString(Chunk.UserDefinedID)]));
 
   Case (Chunk.UserDefinedID And $FFFF) Of
     miTogglePause: Begin
@@ -408,35 +420,37 @@ Begin
       log('Unknown user defined id : ' + inttostr(Chunk.UserDefinedID And $FFFF), llError);
     End;
   End;
-{$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
-    LogLeave;
-{$ENDIF}
+  If DoLog Then
+    LogLeave(EnterID);
 End;
 
 Procedure TServer.ResetFieldAvailabe;
 Var
-  i: integer;
+  i, EnterID: integer;
 Begin
-  log('TServer.ResetFieldAvailabe', lltrace);
+  EnterID := LogEnter('TServer.ResetFieldAvailabe');
   For i := 0 To high(fFields) Do Begin
     fFields[i].Available := true;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Function TServer.SendChunk(UserDefinedID: Integer; Data: TStream; UID: integer
   ): Boolean;
 Var
-  i: integer;
+  i, EnterID: integer;
   dataLen: int64;
+  DoLog: Boolean;
 Begin
+  EnterID := 0;
 {$IFDEF DoNotLog_CyclicMessages}
-  If ((UserDefinedID And $FFFF) <> miUpdateGameData) And
-    ((UserDefinedID And $FFFF) <> miHeartBeat) Then
+  DoLog := ((UserDefinedID And $FFFF) <> miUpdateGameData) And
+    ((UserDefinedID And $FFFF) <> miHeartBeat);
+{$ELSE}
+  DoLog := true;
 {$ENDIF}
-    log(format('TServer.SendChunk : %d, %s', [uid, MessageIdentifierToString(UserDefinedID)]), llTrace);
+  If DoLog Then
+    EnterID := LogEnter(format('TServer.SendChunk: %d, %s', [uid, MessageIdentifierToString(UserDefinedID)]));
   datalen := ChunkManagerHeaderLen;
   If assigned(data) Then dataLen := dataLen + Data.Size;
   result := fChunkManager.SendChunk(UserDefinedID, data, uid);
@@ -460,7 +474,8 @@ Begin
     For i := low(fPLayer) To high(fPLayer) Do Begin
       If fPLayer[i].UID = UID Then Begin
         log('Could not send to player : ' + fPLayer[i].UserName, llCritical);
-        LogLeave;
+        If dolog Then
+          LogLeave(EnterID);
         exit;
       End;
     End;
@@ -476,11 +491,8 @@ Begin
       log('Could not send to player : ' + inttostr(uid), llCritical);
     End;
   End;
-{$IFDEF DoNotLog_CyclicMessages}
-  If (UserDefinedID <> miUpdateGameData) And
-    (UserDefinedID <> miHeartBeat) Then
-{$ENDIF}
-    LogLeave;
+  If dolog Then
+    LogLeave(EnterID);
 End;
 
 Procedure TServer.SendSplashMessage(msg: String; TargetUID: integer);
@@ -495,13 +507,13 @@ End;
 Procedure TServer.HandleRequestUserLogin(Const Stream: TStream; UID: integer);
 Var
   m: TMemoryStream;
-  index, i, j, cnt: integer;
+  index, i, j, cnt, EnterID: integer;
   Username: String;
   ClientVersion: uint32;
   fieldlist: TFieldHashNameList;
   ClientMode: Byte;
 Begin
-  log('TServer.HandleUserLoginRequest', llTrace);
+  EnterID := LogEnter('TServer.HandleUserLoginRequest');
   ClientVersion := $FFFFFFFF;
   Stream.Read(ClientVersion, sizeof(ClientVersion));
   m := TMemoryStream.Create;
@@ -510,7 +522,7 @@ Begin
     i := EC_Invalid_Versions;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
 
@@ -526,7 +538,7 @@ Begin
     i := EC_Invalid_Mode_Versions;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   //// 1. Check : Passwort
@@ -534,7 +546,7 @@ Begin
   //  i := EC_Invalid_Password;
   //  m.Write(i, sizeof(i));
   //  SendChunk(miRequestLoginResult, m, UID);
-  //  LogLeave;
+  //  LogLeave(EnterID);
   //  exit;
   //End;
   // 2. Check : Darf der Spieler überhaupt verbinden = Läuft gerade ein Spiel ?
@@ -542,7 +554,7 @@ Begin
     i := EC_game_full;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   // 3. Check : Gibt es den Spielernamen bereits ?
@@ -554,7 +566,7 @@ Begin
         i := EC_User_already_exists;
         m.Write(i, sizeof(i));
         SendChunk(miRequestLoginResult, m, UID);
-        LogLeave;
+        LogLeave(EnterID);
         exit;
       End;
     End;
@@ -564,7 +576,7 @@ Begin
     i := EC_Too_Much_Player;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   // Alles I.O. Der User kann beitreten
@@ -582,7 +594,7 @@ Begin
   If index = -1 Then Begin
     log('Error player overflow', llCritical);
     HandleSwitchToWaitForPlayersToConnect;
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   // Der erste Spieler Loggt sich ein -> Wird zum Bestimmenden ;)
@@ -620,24 +632,27 @@ Begin
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
   // Und dem Master Die Schnittmenge Mitteilen
   EvalFieldHashList(fieldlist, true);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleSwitchToPlayerSetup;
+Var
+  EnterID: integer;
 Begin
-  log('TServer.HandleSwitchToPlayerSetup', llTrace);
+  EnterID := LogEnter('TServer.HandleSwitchToPlayerSetup');
   SendSettings(); // Alle Clients werden nun Settingstechnisch Gleich Geschaltet
   fConnectedClientCount := GetActivePlayerCount();
   fGameState := gsPlayerSetup;
   SendChunk(miSwitchToPlayerSetup, Nil, 0);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.SendSettings;
 Var
   m: TMemoryStream;
+  EnterID: integer;
 Begin
-  log('TServer.SendSettings', llTrace);
+  EnterID := LogEnter('TServer.SendSettings');
   m := TMemoryStream.Create;
   m.write(fSettings.TeamPlay, sizeof(fSettings.TeamPlay));
   m.write(fSettings.RandomStart, sizeof(fSettings.RandomStart));
@@ -657,14 +672,14 @@ Begin
    * Die Settings kamen ja von der MasterUid, also kriegen sie Alle bis auf der Master ;)
    *)
   SendChunk(miUpdateSettings, m, -fSettings.MasterUid);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleLoadSettings(Const Stream: TStream);
 Var
-  i: Integer;
+  i, EnterID: Integer;
 Begin
-  log('TServer.HandleLoadSettings', llTrace);
+  EnterID := LogEnter('TServer.HandleLoadSettings');
   Stream.read(fSettings.TeamPlay, sizeof(fSettings.TeamPlay));
   Stream.read(fSettings.RandomStart, sizeof(fSettings.RandomStart));
   // Nodename hat der Server nicht
@@ -672,7 +687,7 @@ Begin
   If Not SchemeFromStream(Stream, fSettings.Scheme) Then Begin
     log('Error, could not load scheme from stream', llCritical);
     HandleSwitchToWaitForPlayersToConnect();
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   Stream.read(fSettings.PlayTime, sizeof(fSettings.PlayTime));
@@ -689,7 +704,7 @@ Begin
   For i := 0 To high(fPLayer) Do Begin
     fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 
@@ -719,10 +734,12 @@ End;
 
 Procedure TServer.HandleChangePlayerKey(PlayerIndex, Direction: Integer;
   PlayerName: String; UID: Integer);
+Var
+  EnterID: Integer;
 Begin
-  log(format('TServer.HandleChangePlayerKey (%d, %d, %s)', [PlayerIndex, Direction, PlayerName]), llTrace);
+  EnterID := LogEnter(format('TServer.HandleChangePlayerKey (%d, %d, %s)', [PlayerIndex, Direction, PlayerName]));
   If (PlayerIndex = -1) Or (Direction = 0) Or (UID = 0) Then Begin
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   If Direction > 0 Then Begin
@@ -823,16 +840,16 @@ Begin
       End;
     End;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleSwitchToMapProperties(UID: Integer);
 Var
-  t1, t2, i, j, aicnt, pcnt: integer;
+  t1, t2, i, j, aicnt, pcnt, EnterID: integer;
   a: Array Of Integer;
   b: Boolean;
 Begin
-  log(format('TServer.HandleSwitchToMapProperties (UID=%d)', [UID]), llInfo);
+  EnterID := LogEnter(format('TServer.HandleSwitchToMapProperties (UID=%d)', [UID]));
   aicnt := 0;
   pcnt := 0;
   t1 := 0;
@@ -852,14 +869,14 @@ Begin
   End;
   If (pcnt = 1) And (aicnt = 0) Then Begin
     SendSplashMessage('Only one player on the map makes no sense, please wait for other players or activate at least one ai player.', UID);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
 
   If fSettings.TeamPlay Then Begin
     If (t1 = 0) Or (t2 = 0) Then Begin
       SendSplashMessage('In teamplay at least one player per team ist needed.', UID);
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
   End;
@@ -869,7 +886,7 @@ Begin
     For j := i + 1 To high(fPLayer) Do Begin
       If (fPLayer[i].UID > 0) And (fPLayer[i].UID = fPLayer[j].UID) And (fPLayer[i].Keyboard = fPLayer[j].Keyboard) Then Begin
         SendSplashMessage('Error, client "' + fPLayer[i].UserName + '" uses two playerslots with the same key settings.', UID);
-        LogLeave;
+        LogLeave(EnterID);
         exit;
       End;
     End;
@@ -897,20 +914,20 @@ Begin
   End;
   If length(a) <> fConnectedClientCount Then Begin
     SendSplashMessage('Error, not all connected clients are connected to at least one playerslot.', UID);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   // Alle Checks gut -> Umschalten auf die Karteneigenschaften
   fGameState := gsMapSetup;
   SendChunk(miSwitchToFieldSetup, Nil, 0);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleStartGame;
 Var
-  i: Integer;
+  i, EnterID: Integer;
 Begin
-  log('TServer.HandleStartGame', llTrace);
+  EnterID := LogEnter('TServer.HandleStartGame');
   HandleStatisticCallback(sMatchesStarted);
   // 1. Alle Player "Initialisieren
   For i := 0 To high(fPLayer) Do Begin
@@ -919,7 +936,7 @@ Begin
   End;
   fRandomMap := (fActualField.Hash = 0) And (fActualField.Name = '');
   HandleStartRound;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleStartRound;
@@ -974,13 +991,13 @@ Procedure TServer.HandleStartRound;
   End;
 
 Var
-  a, b, c, i: Integer;
+  a, b, c, i, EnterID: Integer;
   n: QWord;
   m: TMemoryStream;
   Startindex: Array[0..length(PlayerColors) - 1] Of Integer;
   pu: TPowerUps;
 Begin
-  log('TServer.HandleStartRound', llTrace);
+  EnterID := LogEnter('TServer.HandleStartRound');
   HandleStatisticCallback(sGamesStarted);
 
   If fSettings.PlayTime = 0 Then Begin
@@ -1063,15 +1080,15 @@ Begin
     AiNewRound(100);
   End;
   UpdateAllClients(); // Sofort alle Clients informieren, auf dass die auch gleich was sinnvolles sehen ..
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleTogglePause;
 Var
   m: TMemoryStream;
-  i: Integer;
+  i, EnterID: Integer;
 Begin
-  log('TServer.HandleTogglePause', llTrace);
+  EnterID := LogEnter('TServer.HandleTogglePause');
   fpausing := Not fpausing;
   ApplyPause(fpausing);
   If fpausing Then Begin
@@ -1083,7 +1100,7 @@ Begin
   m := TMemoryStream.Create;
   m.Write(fpausing, sizeof(fpausing));
   SendChunk(miTogglePause, m, 0);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleShowVictory;
@@ -1097,10 +1114,10 @@ End;
 Procedure TServer.HandlePlayerGetsPowerUp(Var Player: TPlayer;
   PlayerIndex: integer; PowerUp: TPowerUps);
 Var
-  index, cnt, i: integer;
+  index, cnt, i, EnterID: integer;
   tmppos: TVector2;
 Begin
-  log('TServer.HandlePlayerGetsPowerUp', llTrace);
+  EnterID := LogEnter('TServer.HandlePlayerGetsPowerUp');
   // TODO: Die Force, Override, forbidden dinge müssen hier noch berücksichtigt werden..
   //       \-> Das Forbidden wird in TAtomicField.Initialize bereits gemacht.
   If PowerUp <> puNone Then Begin
@@ -1208,7 +1225,7 @@ Begin
         log('TServer.HandlePlayerGetsPowerUp: Missing implementation for purandom', llError);
       End;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandlePlaySoundEffect(PlayerIndex: integer;
@@ -1217,13 +1234,13 @@ Var
   m, m2: TMemoryStream;
   targetUID: Integer;
   i: Integer;
-  playerUID: Integer;
+  playerUID, EnterID: Integer;
 Begin
-  log('TServer.HandlePlaySoundEffect', llTrace);
+  EnterID := LogEnter('TServer.HandlePlaySoundEffect');
   // Check if player is valid
   If (PlayerIndex < 0) Or (PlayerIndex > high(fPLayer)) Then Begin
     log('Invalid PlayerIndex: ' + inttostr(PlayerIndex), llError);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
 
@@ -1231,8 +1248,8 @@ Begin
 
   // Skip inactive slots (UID = NoPlayer = 0)
   If playerUID = NoPlayer Then Begin
-    log('Skipping sound for inactive player slot: ' + inttostr(PlayerIndex), llTrace);
-    LogLeave;
+    log('Skipping sound for inactive player slot: ' + inttostr(PlayerIndex), lldebug);
+    LogLeave(EnterID);
     exit;
   End;
 
@@ -1288,7 +1305,7 @@ Begin
     log('Unknown player UID: ' + inttostr(playerUID) + ' for player index: ' + inttostr(PlayerIndex), llWarning);
     m.Free;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleStatisticCallback(StatSelector: TStatSelector;
@@ -1299,9 +1316,9 @@ End;
 
 Procedure TServer.HandleSwitchToWaitForPlayersToConnect;
 Var
-  cnt, i: Integer;
+  cnt, i, EnterID: Integer;
 Begin
-  log('TServer.HandleSwitchToWaitForPlayersToConnect', llTrace);
+  EnterID := LogEnter('TServer.HandleSwitchToWaitForPlayersToConnect');
   fGameState := gsWaitForPlayersToConnect;
   fConnectedClientCount := 0;
   cnt := GetActivePlayerCount();
@@ -1318,17 +1335,17 @@ Begin
   fSettings.MasterUid := -1;
   fActualField := Nil;
   fSettings.LastWinsToWinMatch := 3; // Default der Clients
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleUpdateFieldSetup(Const Stream: TStream; Uid: integer);
 Var
   FieldName: String;
   FieldHash: UInt64;
-  Wins, i: INteger;
+  Wins, i, EnterID: INteger;
   m: TMemoryStream;
 Begin
-  log('TServer.HandleUpdateFieldSetup', llTrace);
+  EnterID := LogEnter('TServer.HandleUpdateFieldSetup');
   m := TMemoryStream.Create;
   m.CopyFrom(Stream, Stream.Size - Stream.Position);
   m.Position := 0;
@@ -1347,7 +1364,7 @@ Begin
       // !! Achtung, das ist doppelt implementiert (siehe TServer.HandleStartRound;);
       m.Position := 0;
       SendChunk(miUpdateFieldSetup, m, -uid);
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
   End;
@@ -1356,7 +1373,7 @@ Begin
    *)
   Log('Error, could not find field: ' + FieldName, llCritical);
   HandleSwitchToWaitForPlayersToConnect();
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleReceiveHeartBeat(p: integer; t: int64);
@@ -1455,13 +1472,13 @@ End;
 
 Procedure TServer.PlayerLeaves(PlayerUid: integer);
 Var
-  t0, t1, i, cnt, c: integer;
+  t0, t1, i, cnt, c, EnterID: integer;
   m: TMemoryStream;
 Begin
-  log('TServer.PlayerLeaves', llTrace);
+  EnterID := LogEnter('TServer.PlayerLeaves');
   If PlayerUid = 0 Then Begin
     Log('Disconnect user with unknown uid', llCritical);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   cnt := 0;
@@ -1572,7 +1589,7 @@ Begin
   If (cnt = 0) And (fAutotimeout <> 0) Then Begin
     log(format('Lost last client, will shut down in %0.3fs', [fAutotimeout / 1000]), llInfo);
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Function TServer.GetActivePlayerCount: Integer;
@@ -1590,7 +1607,7 @@ Procedure TServer.EvalFieldHashList(Const List: TFieldHashNameList;
   SendToMaster: Boolean);
 Var
   m: TMemorystream;
-  i, j: Integer;
+  i, j, EnterID: Integer;
   found: Boolean;
 Begin
   (*
@@ -1599,7 +1616,7 @@ Begin
    *
    * Danach wird diese "kleinste" Schnittmenge an den Master gesendet.
    *)
-  log('TServer.EvalMapHashList', lltrace);
+  EnterID := LogEnter('TServer.EvalMapHashList');
   m := TMemoryStream.Create;
   For i := 0 To high(fFields) Do Begin
     found := false;
@@ -1627,7 +1644,7 @@ Begin
   Else Begin
     m.free;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.CheckSynchrons;
@@ -1870,9 +1887,10 @@ End;
 Procedure TServer.UpdateAllClients;
 Var
   m: TMemoryStream;
-  i: Integer;
+  i, EnterID: Integer;
   DiseasedInfo: TAtomicInfo;
 Begin
+  EnterID := LogEnter('TServer.UpdateAllClients');
   // Gesendet werden immer 3 Datensätze
   m := TMemoryStream.Create;
   // Die Rundenzeit mit übertragen
@@ -1910,21 +1928,22 @@ Begin
   // 2. Alles was das zu Rendernde Feld angeht
   fActualField.AppendGamingData(m);
   SendChunk(miUpdateGameData, m, 0);
+  LogLeave(EnterId);
 End;
 
 Procedure TServer.SendPlayerStatistiks;
 Var
   m: TMemoryStream;
-  i: Integer;
+  i, EnterID: Integer;
 Begin
-  log('TServer.SendPlayerStatistiks', lltrace);
+  EnterID := LogEnter('TServer.SendPlayerStatistiks');
   m := TMemoryStream.Create;
   For i := 0 To high(fPLayer) Do Begin
     m.Write(fPLayer[i].Score, sizeof(fPLayer[i].Score));
     m.Write(fPLayer[i].Kills, sizeof(fPLayer[i].Kills));
   End;
   SendChunk(miUpdatePlayerStatistik, m, 0);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.EndGameCheck;
@@ -2071,11 +2090,13 @@ Begin
 End;
 
 Procedure TServer.LoadAi;
+Var
+  EnterID: integer;
 Begin
-  log('TServer.LoadAi', lltrace);
+  EnterID := LogEnter('TServer.LoadAi');
   If Not LoadAiLib() Then Begin
     logshow('Could not load ai, ai functions are not available.', llError);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   If AiInit() Then Begin
@@ -2089,7 +2110,7 @@ Begin
     // TODO: Diese 100% müssen noch einstellbar gemacht werden !
     AiNewRound(100);
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HurryHandling;
@@ -2110,17 +2131,18 @@ End;
 Procedure TServer.Execute;
 Var
   n: QWord;
+  EnterID, EnterID2: integer;
 Begin
-  log('TServer.Execute', lltrace);
+  EnterID := LogEnter('TServer.Execute');
   // Loop in einer Endlosschleife, so lange bis 1000ms lang kein Client mehr connected ist, dann raus
   While factive Do Begin
     fChunkManager.CallAction(); // Alle Aktuellen Aufgaben des TCP-Stacks Abbarbeiten
     fUDP.CallAction();
     If fKickAllPlayer Then Begin
-      log('KickAllPlayer', lltrace);
+      EnterID2 := LogEnter('KickAllPlayer');
       fKickAllPlayer := false;
       HandleSwitchToWaitForPlayersToConnect();
-      LogLeave;
+      LogLeave(EnterID2);
     End;
     If fGameState = gsPlaying Then Begin // Im Spielmodus Frames und Updates der Clients Berechnen
       //  alle 10 s Loggen wie Groß die Spieldaten waren, welche gesandt
@@ -2219,7 +2241,7 @@ Begin
       sleep(1);
     End;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.LoadStatistiks;

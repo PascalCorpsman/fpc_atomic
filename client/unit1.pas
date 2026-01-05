@@ -239,10 +239,11 @@ End;
 
 Procedure TForm1.FormCreate(Sender: TObject);
 Var
-  FileloggingDir: String;
-  i: integer;
+  EnterID, i: integer;
 Begin
   InitLogger();
+  LogShowHandler := @ShowUserMessage;
+
   Randomize;
   ConnectParamsHandled := false;
   Initialized := false; // Wenn True dann ist OpenGL initialisiert
@@ -257,11 +258,8 @@ Begin
   End;
   DefFormat := DefaultFormatSettings;
   DefFormat.DecimalSeparator := '.';
-  LogShowHandler := @ShowUserMessage;
   fUserMessages := Nil;
   DefaultFormatSettings.DecimalSeparator := '.';
-  InitLogger();
-  FileloggingDir := '';
   For i := 1 To Paramcount Do Begin
 {$IFDEF Windows}
     If lowercase(ParamStrUTF8(i)) = '-c' Then Begin
@@ -273,34 +271,19 @@ Begin
     End;
 {$ENDIF}
     If i < Paramcount Then Begin // Alle Parameter, welche einen weiteren Parameter auslesen
-      // FileLogging
-      If lowercase(ParamStrUTF8(i)) = '-f' Then Begin
-        FileloggingDir := ExtractFilePath(ParamStrUTF8(i + 1));
-        If Not DirectoryExistsUTF8(FileloggingDir) Then Begin
-          If Not CreateDirUTF8(FileloggingDir) Then Begin
-            FileloggingDir := '';
-          End;
-        End;
-        If FileloggingDir <> '' Then Begin
-          FileloggingDir := ParamStrUTF8(i + 1);
-          SetLoggerLogFile(FileloggingDir);
-        End;
-      End;
       // Loglevel
       If lowercase(ParamStrUTF8(i)) = '-l' Then Begin
         SetLogLevel(strtointdef(ParamStrUTF8(i + 1), 2));
       End;
     End;
   End;
+  EnterID := LogEnter('TForm1.FormCreate');
   log('TForm1.FormCreate', llInfo);
-  log('TForm1.FormCreate', lltrace);
-  If FileloggingDir = '' Then Begin
-    log('Disabled, file logging.', llWarning);
-  End;
   caption := defCaption;
 
   If (BASS_GetVersion() Shr 16) <> Bassversion Then Begin
     showmessage('Unable to init the Bass Library ver. :' + BASSVERSIONTEXT);
+    LogLeave(EnterID);
     halt;
   End;
 
@@ -315,6 +298,7 @@ Begin
   If Not Bass_init(-1, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
 {$ENDIF}
     showmessage('Unable to init the device, Error code :' + inttostr(BASS_ErrorGetCode));
+    LogLeave(EnterID);
     halt;
   End;
   ClientWidth := 640;
@@ -324,7 +308,7 @@ Begin
   // Init dglOpenGL.pas , Teil 1
   If Not InitOpenGl Then Begin
     LogShow('Error, could not init dglOpenGL.pas', llfatal);
-    LogLeave;
+    LogLeave(EnterID);
     Halt(1);
   End;
   (*
@@ -343,12 +327,14 @@ Begin
   AutomodeData.State := AM_Idle;
 {$ENDIF}
   Application.AddOnIdleHandler(@OnIdle);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TForm1.FormDestroy(Sender: TObject);
+Var
+  EnterID: Integer;
 Begin
-  log('TForm1.FormDestroy', llTrace);
+  EnterID := LogEnter('TForm1.FormDestroy');
   If assigned(Game) Then
     Game.free;
   Game := Nil;
@@ -356,7 +342,8 @@ Begin
   If Not Bass_Free Then
     showmessage('Unable to free Bass, Error code :' + inttostr(BASS_ErrorGetCode));
   SDL_Quit;
-  LogLeave;
+  LogLeave(EnterID);
+  log('Max Stack depth: ' + IntToStr(MaxStackDepth), lldebug);
 End;
 
 Procedure TForm1.FormShow(Sender: TObject);
@@ -386,8 +373,9 @@ End;
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Var
   Key: Word;
+  EnterID: Integer;
 Begin
-  log('TForm1.FormCloseQuery', llTrace);
+  EnterID := LogEnter('TForm1.FormCloseQuery');
 
   // If NeedFormClose is already true, user has confirmed exit via menu/ESC
   // Allow the close to proceed normally
@@ -405,7 +393,7 @@ Begin
     // Eine Evtl bestehende Verbindung Kappen, so lange die LCL und alles andere noch Lebt.
     Game.Disconnect;
     Game.OnIdle;
-    LogLeave;
+    LogLeave(EnterID);
     Exit; // Allow close to proceed
   End;
 
@@ -414,7 +402,7 @@ Begin
   CanClose := false; // Prevent immediate close
   key := VK_ESCAPE;
   OpenGLControl1.OnKeyDown(OpenGLControl1, key, []);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TForm1.Timer1Timer(Sender: TObject);
@@ -742,49 +730,22 @@ Begin
 End;
 
 Procedure TForm1.OnConnectToServer(Sender: TObject);
+Var
+  EnterID: Integer;
 Begin
-  log('TForm1.OnConnectToServer', lltrace);
-  //MenuItem7.Enabled := True; // New Map
-  //MenuItem8.Enabled := True; // Load Map
-  //MenuItem9.Enabled := True; // Load game
-  //MenuItem19.Enabled := True; // Open Chat
-  LogLeave;
+  EnterID := LogEnter('TForm1.OnConnectToServer');
+
+  LogLeave(EnterID);
 End;
 
 Procedure TForm1.OnDisconnectFromServer(Sender: TObject);
+Var
+  EnterID: Integer;
 Begin
-  log('TForm1.OnDisconnectFromServer', lltrace);
+  EnterID := LogEnter('TForm1.OnDisconnectFromServer');
   // TODO: Rauswurf in Toplevel Ebene
-  //caption := defCaption;
-  //MenuItem7.Enabled := false; // New Map
-  //MenuItem8.Enabled := false; // Load Map
-  //MenuItem18.Enabled := false; // Start / Restart game
-  //MenuItem19.Enabled := false; // Open Chat
-  //MenuItem20.enabled := false; // Transfer
-  ////  MenuItem23.enabled := false; // Restart last Wave
-  //MenuItem24.enabled := false; // Continue Game
-  //MenuItem25.Enabled := false; // Abort Round
-  //MenuItem27.enabled := false; // Save Game
-  //MenuItem29.enabled := false; // Map Tex Editor
-  //
-  //// Form2 = Connect Dialog
-  //If form3.Visible Then form3.Close; // Select Map Size Dialog (New Map)
-  //If form4.Visible Then form4.Close; // Map Editor Dialog
-  //// Form5 = Optionen
-  //If form6.Visible Then form6.Close; // Building Editor
-  //If form7.Visible Then form7.Close; // Opponent Editor
-  //If form8.Visible Then form8.Close; // Game Statistiks
-  //If form9.Visible Then form9.Close; // Map Highscores
-  //If form10.Visible Then form10.ModalResult := mrCancel; // Load Map Dialog
-  //If form11.Visible Then form11.ModalResult := mrCancel; // New Game Dialog mit Spieler Plazierungs auswahl
-  //If form12.Visible Then form12.close; // Player infos
-  //If form13.Visible Then form13.close; // Chat Dialog
-  //If form14.Visible Then form14.close; // Building / Oppenent Übersicht Global / Local
-  //If form15.Visible Then form15.close; // Abfrage beim copieren von Opponents / Gebäuden in Unit14
-  //If form16.Visible Then form16.close; // Savegame Dialog
-  //If form17.Visible Then form17.close; // Map Textrure Generator Dialog
 
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TForm1.AddUserMessage(Msg: String; WarnLevel: TLogLevel);

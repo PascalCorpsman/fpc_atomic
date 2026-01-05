@@ -324,9 +324,11 @@ End;
 { TGame }
 
 Procedure TGame.SwitchToScreen(TargetScreen: TScreenEnum);
+Var
+  EnterID: Integer;
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
-  log('TGame.SwitchToScreen', llTrace);
+  EnterID := LogEnter('TGame.SwitchToScreen');
   // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
   If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
     TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(''); // Reset IP in case of "join"
@@ -358,7 +360,7 @@ Begin
     sHost: Begin
         fParamJoinIP := '';
         If Not StartHost Then Begin // Wenn der Server nicht gestartet werden kann -> Raus
-          LogLeave;
+          LogLeave(EnterID);
           exit;
         End;
         // After starting server, automatically connect to localhost
@@ -378,7 +380,7 @@ Begin
     sPlayerSetupRequest: Begin
         SwitchToPlayerSetup;
         // Egal wie da es diesen Screen nicht gibt wird er nicht übernommen
-        LogLeave;
+        LogLeave(EnterID);
         exit;
       End;
     sPlayerSetup: Begin
@@ -389,7 +391,7 @@ Begin
     sEditFieldSetupRequest: Begin
         SwitchToFieldSetup;
         // Egal wie da es diesen Screen nicht gibt wird er nicht übernommen
-        LogLeave;
+        LogLeave(EnterID);
         exit;
       End;
     sEditFieldSetup: Begin
@@ -411,6 +413,7 @@ Begin
      *)
     If fParamJoinIP <> '' Then Begin
       JoinViaParams(fParamJoinIP, fParamJoinPort);
+      LogLeave(EnterID);
       exit;
     End
     Else Begin
@@ -420,6 +423,7 @@ Begin
       Else Begin
         logshow('Error, unable to load scheme file: ' + Settings.SchemeFile + LineEnding + 'please adjust in options.', llError);
         SwitchToScreen(sMainScreen);
+        LogLeave(EnterID);
         exit;
       End;
     End;
@@ -432,38 +436,43 @@ Begin
     fActualScreen.reset;
   End;
   UpdatePlayerIsFirst();
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.ChangePlayerKey(PlayerIndex, Direction: Integer);
 Var
   m: TMemoryStream;
+  EnterID: Integer;
 Begin
-  log('TGame.ChangePlayerKey', llTrace);
+  EnterID := LogEnter('TGame.ChangePlayerKey');
   m := TMemoryStream.Create;
   m.Write(PlayerIndex, SizeOf(PlayerIndex));
   m.Write(Direction, SizeOf(Direction));
   m.WriteAnsiString(Settings.NodeName);
   SendChunk(miChangePlayerKey, m);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.StartPlayingSong(Filename: String);
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.StartPlayingSong', llTrace);
+  EnterID := LogEnter('TGame.StartPlayingSong');
   fSoundManager.PlaySound(Filename);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent);
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.PlaySoundEffect', llTrace);
+  EnterID := LogEnter('TGame.PlaySoundEffect');
   If Not fSoundManager.PlaySoundEffekt(Filename, EndCallback) Then Begin
     If assigned(EndCallback) Then Begin
       EndCallback(Nil);
     End;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.Resize;
@@ -797,9 +806,9 @@ Function TGame.StartHost: Boolean;
 Var
   serv: String;
   p: TProcessUTF8;
+  EnterID: Integer;
 Begin
-  //Begin
-  log('TGame.StartHost', llTrace);
+  EnterID := LogEnter('TGame.StartHost');
   result := false;
   // Starten des Atomic_servers, dann als Client verbinden
   serv := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'atomic_server';
@@ -821,7 +830,7 @@ Begin
   End
   Else Begin
     LogShow('Error: could not find server application, abort now', llError);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   // Bis der Server Steht dauerts ein bischen, also warten wir
@@ -834,21 +843,23 @@ Begin
   Application.Restore;
   Application.BringToFront;
   result := true;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.SwitchToPlayerSetup;
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.SwitchToPlayerSetup', llTrace);
+  EnterID := LogEnter('TGame.SwitchToPlayerSetup');
   SendChunk(miSwitchToPlayerSetup, Nil);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.SwitchToFieldSetup;
 Var
-  i: integer;
+  i, EnterID: integer;
 Begin
-  log('TGame.SwitchToMapSetup', llTrace);
+  EnterID := LogEnter('TGame.SwitchToMapSetup');
   (*
    * Alle Prüfungen ob die Spieler Einstellungen Richtig sind macht der Server
    * Er antwortet entweder mit ner SpashWarning oder schaltet um.
@@ -875,7 +886,7 @@ Begin
 
   If fActualField = Nil Then Begin
     LogShow('Error, could not find a field to play on.', llError);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
 
@@ -883,7 +894,7 @@ Begin
     TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch);
 
   SendChunk(miSwitchToFieldSetup, Nil);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.UpdatePlayerIsFirst;
@@ -911,11 +922,11 @@ End;
 Procedure TGame.Connection_Connect(aSocket: TLSocket);
 Var
   m: TMemoryStream;
-  i: Integer;
+  i, EnterID: Integer;
   B: Byte;
 Begin
   // Der Client ist beim Server Registriert, nun gilt es um die Mitspielerlaubniss zu fragen.
-  log('TGame.Connection_Connect', llTrace);
+  EnterID := LogEnter('TGame.Connection_Connect');
 
   // Stop waiting for local server - we're connected now
   fWaitingForLocalServer := false;
@@ -939,47 +950,53 @@ Begin
   fBackupSettings := Settings; // Wir Sichern unsere Einstellungen !
   SendChunk(miRequestLogin, m);
   fUserID := -1;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.Connection_Disconnect(aSocket: TLSocket);
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.Connection_Disconnect', llTrace);
+  EnterID := LogEnter('TGame.Connection_Disconnect');
   // Verbindung zum Server verloren / getrennt
   Settings := fBackupSettings;
   // Im Victory Screen können wir beliebig lange bleiben, von da aus geht es eh nur noch ins Hauptmenü ;)
   If fActualScreen <> fScreens[sVictory] Then Begin
     SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.Connection_Error(Const msg: String; aSocket: TLSocket);
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.Connection_Error', llTrace);
+  EnterID := LogEnter('TGame.Connection_Error');
 
   // If we're waiting for local server, don't show error and don't switch to main menu
   // OnIdle will retry the connection periodically
   If fWaitingForLocalServer Then Begin
     log('Connection error while waiting for local server: ' + msg + ' - will retry', llInfo);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
 
   // For remote servers or if we're not waiting, show error and go back to main menu
   LogShow(msg, llError);
   SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.OnUDPConnection_Error(Const msg: String; aSocket: TLSocket);
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.UDPConnection_Error', llTrace);
+  EnterID := LogEnter('TGame.UDPConnection_Error');
   StopPingingForGames();
   Disconnect();
   LogShow(msg, llError);
   SwitchToScreen(sMainScreen); // Wir Fliegen raus auf die Top ebene
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.OnUDPConnection_Receive(aSocket: TLSocket);
@@ -989,9 +1006,9 @@ Var
   B: Byte;
   i: Integer;
   serverIP, ServerText: String;
-  serverPort: integer;
+  serverPort, EnterID: integer;
 Begin
-  log('TGame.OnUDPConnection_Receive', llTrace);
+  EnterID := LogEnter('TGame.OnUDPConnection_Receive');
   Repeat
     cnt := aSocket.Get(buffer, 1024);
     (*
@@ -1021,7 +1038,7 @@ Begin
         End;
         If serverPort = -1 Then Begin
           log('Could not resolve port informations', llWarning);
-          LogLeave;
+          LogLeave(EnterID);
           exit;
         End;
         (*
@@ -1032,23 +1049,28 @@ Begin
       End;
     End;
   Until cnt = 0;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.OnReceivedChunk(Sender: TObject; Const Chunk: TChunk);
 Var
-  i: integer;
+  i, EnterID: integer;
   ts: QWORD;
   s: String;
   m: TMemoryStream;
   b: Boolean;
+  DoLog: Boolean;
 Begin
 {$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miUpdateGameData) And
+  dolog := ((Chunk.UserDefinedID And $FFFF) <> miUpdateGameData) And
     ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
+    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent);
+{$ELSE}
+  DoLog := true;
 {$ENDIF}
-    log('TGame.OnReceivedChunk : ' + MessageIdentifierToString(Chunk.UserDefinedID), llTrace);
+  EnterID := 0;
+  If DoLog Then
+    EnterID := LogEnter('TGame.OnReceivedChunk : ' + MessageIdentifierToString(Chunk.UserDefinedID));
   Case (Chunk.UserDefinedID And $FFFF) Of
     miUpdateMasterID: Begin
         HandleUpdateMasterId(Chunk.Data);
@@ -1161,44 +1183,45 @@ Begin
       log('Unknown user defined id : ' + inttostr((Chunk.UserDefinedID And $FFFF)), llError);
     End;
   End;
-{$IFDEF DoNotLog_CyclicMessages}
-  If ((Chunk.UserDefinedID And $FFFF) <> miUpdateGameData) And
-    ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent) Then
-{$ENDIF}
-    LogLeave;
+  If DoLog Then
+    LogLeave(EnterID);
 End;
 
 Procedure TGame.SendChunk(UserDefinedID: Integer; Const Data: TStream);
+Var
+  DoLog: Boolean;
+  EnterID: Integer;
 Begin
 {$IFDEF DoNotLog_CyclicMessages}
-  If ((UserDefinedID And $FFFF) <> miHeartBeat) Then
+  DoLog := ((UserDefinedID And $FFFF) <> miHeartBeat);
+{$ELSE}
+  DoLog := true;
 {$ENDIF}
-    log('Tctd.SendChunk : ' + MessageIdentifierToString(UserDefinedID), llTrace);
+  EnterID := 0;
+  If DoLog Then
+    EnterID := LogEnter('Tctd.SendChunk : ' + MessageIdentifierToString(UserDefinedID));
   If Not fChunkManager.SendChunk(UserDefinedID, data) Then Begin
     log('Could not send.', llCritical);
   End;
-{$IFDEF DoNotLog_CyclicMessages}
-  If ((UserDefinedID And $FFFF) <> miHeartBeat) Then
-{$ENDIF}
-    LogLeave;
+  If DoLog Then
+    LogLeave(EnterID);
 End;
 
 Procedure TGame.HandleRefreshPlayerStats(Const Stream: TMemoryStream);
 Var
-  cnt, i, uid, j: integer;
+  cnt, i, uid, j, EnterID: integer;
   found: Boolean;
   k: TKeySet;
 Begin
   (*
    * Das muss immer 1:1 zu TServer.RefreshAllPlayerStats sein !
    *)
-  log('TGame.HandleRefreshPlayerStats', llTrace);
+  EnterID := LogEnter('TGame.HandleRefreshPlayerStats');
   cnt := -1;
   stream.Read(cnt, sizeof(cnt));
   If cnt = -1 Then Begin
     log('Error, invalid playerstats', llError);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   found := false;
@@ -1223,7 +1246,7 @@ Begin
     If fActualScreen <> fScreens[sPlayerSetup] Then Begin
       LogShow('Error user not known anymore to server, exiting actual session', llError);
       SwitchToScreen(sMainScreen);
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
   End;
@@ -1235,18 +1258,19 @@ Begin
   If fActualScreen = fScreens[sPlayerSetup] Then Begin
     TPlayerSetupMenu(fScreens[sPlayerSetup]).LoadPlayerdata(fPlayer, fUserID);
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.SendSettings;
 Var
   m: TMemoryStream;
+  EnterID: Integer;
 Begin
-  log('TGame.SendSettings', llTrace);
+  EnterID := LogEnter('TGame.SendSettings');
   If Not LoadSchemeFromFile(Settings.SchemeFile) Then Begin
     LogShow('Could not load:' + Settings.SchemeFile, llFatal);
     SwitchToScreen(sMainScreen); // Wir schmeißen uns wieder Raus, da hier offensichtlich was nicht geklappt hat
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   m := TMemoryStream.Create;
@@ -1269,16 +1293,16 @@ Begin
    * Da der Server das nicht mehr zu uns zurück schickt muss der passende Screen dazu hier "händisch" gesetzt werden.
    *)
   TPlayerSetupMenu(fscreens[sPlayerSetup]).LoadScheme(fScheme);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.HandleUpdateAvailableFieldList(Const Stream: TMemoryStream);
 Var
-  i: Integer;
+  i, EnterID: Integer;
   ahash: uint64;
   s: String;
 Begin
-  log('TGame.HandleUpdateAvailableFieldList', llTrace);
+  EnterID := LogEnter('TGame.HandleUpdateAvailableFieldList');
   For i := 0 To high(fFields) Do Begin
     fFields[i].Available := false;
   End;
@@ -1298,22 +1322,22 @@ Begin
   // Prüfen ob wir wenigstens noch eine Verfügbare Karte haben
   For i := 0 To high(fFields) - 1 Do Begin // Das Letzte Field ist das Random Field, das zählt nicht
     If fFields[i].Available Then Begin
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
   End;
   // Wenn wir bis hier her kamen, dann gibt es keine Verfügbaren Karten mehr
   LogShow('The cutset of available fields over all player is zero, at least one player has to leafe the game to be able to play.', llError);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.HandleUpdateFieldSetup(Const Stream: TMemoryStream);
 Var
   FieldName: String;
   FieldHash: UInt64;
-  Wins, i: INteger;
+  Wins, i, EnterID: INteger;
 Begin
-  log('TGame.HandleUpdateFieldSetup', llTrace);
+  EnterID := LogEnter('TGame.HandleUpdateFieldSetup');
   FieldName := Stream.ReadAnsiString;
   FieldHash := 0;
   Wins := 0;
@@ -1327,7 +1351,7 @@ Begin
       TFieldSetupMenu(fScreens[sEditFieldSetup]).ActualField := fActualField;
       TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch := wins;
       Settings.LastWinsToWinMatch := wins;
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
   End;
@@ -1336,12 +1360,14 @@ Begin
   // Nicht weiterschalten kann wenn nicht alle Spieler die Karten haben ..
   LogShow('Error, could not find: ' + FieldName, llFatal);
   SwitchToScreen(sMainScreen);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.HandleLoadSettings(Const Stream: TMemoryStream);
+Var
+  EnterID: integer;
 Begin
-  log('TGame.HandleSettingsFromStream', llTrace);
+  EnterID := LogEnter('TGame.HandleSettingsFromStream');
   Stream.Read(Settings.TeamPlay, SizeOf(Settings.TeamPlay));
   Stream.Read(Settings.RandomStart, SizeOf(Settings.RandomStart));
   // Nodename hat der Server nicht
@@ -1353,7 +1379,7 @@ Begin
   Else Begin
     logShow('Error, could not extract scheme send from server', llCritical);
     SwitchToScreen(sMainScreen);
-    logleave;
+    logleave(EnterID);
     exit;
   End;
   Stream.Read(Settings.PlayTime, sizeof(Settings.PlayTime));
@@ -1365,6 +1391,7 @@ Begin
   Stream.Read(Settings.LastWinsToWinMatch, sizeof(Settings.LastWinsToWinMatch));
   // Port hat der Server nicht
   // CheckForUpdates hat der Server nicht
+  logleave(EnterID);
 End;
 
 Procedure TGame.HandleStartGame;
@@ -1489,14 +1516,14 @@ End;
 
 Procedure TGame.HandleUpdatePlayerStatistik(Const Stream: TMemoryStream);
 Var
-  i: integer;
+  i, EnterID: integer;
 Begin
-  log('TGame.HandleUpdatePlayerStatistik', lltrace);
+  EnterID := LogEnter('TGame.HandleUpdatePlayerStatistik');
   For i := 0 To high(fPLayer) Do Begin
     Stream.Read(fPLayer[i].Score, sizeof(fPLayer[i].Score));
     Stream.Read(fPLayer[i].Kills, sizeof(fPLayer[i].Kills));
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.HandlePlaySoundEffekt(Const Stream: TMemoryStream);
@@ -1562,8 +1589,9 @@ Procedure TGame.UpdateFieldSetup(FieldName: String; FieldHash: Uint64;
   NeededWins: integer);
 Var
   m: TMemoryStream;
+  EnterID: Integer;
 Begin
-  log('TGame.HandleUpdateFieldSetup', llTrace);
+  EnterID := LogEnter('TGame.HandleUpdateFieldSetup');
   Settings.LastPlayedField := FieldName;
   Settings.LastPlayedFieldHash := FieldHash;
   Settings.LastWinsToWinMatch := NeededWins;
@@ -1572,14 +1600,14 @@ Begin
   m.write(FieldHash, sizeof(FieldHash));
   m.Write(NeededWins, SizeOf(NeededWins));
   SendChunk(miUpdateFieldSetup, m);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.UpdateWinsToWin(Delta: Integer);
 Var
-  PrevVal: integer;
+  PrevVal, EnterID: integer;
 Begin
-  log('TGame.UpdateWinsToWin', llTrace);
+  EnterID := LogEnter('TGame.UpdateWinsToWin');
   PrevVal := Settings.LastWinsToWinMatch;
   Settings.LastWinsToWinMatch := max(1, Settings.LastWinsToWinMatch + Delta);
   fBackupSettings.LastWinsToWinMatch := Settings.LastWinsToWinMatch;
@@ -1587,14 +1615,14 @@ Begin
     TFieldSetupMenu(fScreens[sEditFieldSetup]).LastWinsToWinMatch := Settings.LastWinsToWinMatch;
     UpdateFieldSetup(Settings.LastPlayedField, Settings.LastPlayedFieldHash, Settings.LastWinsToWinMatch);
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.UpdateSelectedField(Delta: Integer);
 Var
-  i, index, OldIndex: integer;
+  i, index, OldIndex, EnterID: integer;
 Begin
-  log('TGame.UpdateSelectedField', llTrace);
+  EnterID := LogEnter('TGame.UpdateSelectedField');
   // 1. Den Aktuellen Index Raus Kriegen
   index := -1;
   For i := 0 To high(fFields) Do Begin
@@ -1622,7 +1650,7 @@ Begin
     fBackupSettings.LastPlayedFieldHash := fFields[index].Hash;
     UpdateFieldSetup(Settings.LastPlayedField, Settings.LastPlayedFieldHash, Settings.LastWinsToWinMatch);
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Function TGame.LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
@@ -1718,14 +1746,14 @@ Function TGame.LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
 Var
   fn, s: String;
   sl: TStringList;
-  i: Integer;
+  i, EnterID: Integer;
 Begin
-  log('TGame.LoadScheme: ' + SchemeFileName, llTrace);
+  EnterID := LogEnter('TGame.LoadScheme: ' + SchemeFileName);
   result := false;
   fn := 'data' + PathDelim + 'schemes' + PathDelim + SchemeFileName;
   If Not FileExistsUTF8(fn) Then Begin
     logshow('Error, could not find scheme file:' + SchemeFileName, llCritical);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
   fScheme := GetDefaultScheme();
@@ -1751,13 +1779,13 @@ Begin
   Except
     On av: Exception Do Begin
       logshow('Error, invalid scheme file: ' + SchemeFileName + LineEnding + av.Message, llCritical);
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
   End;
   sl.free;
   result := true;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.OnQuitGameSoundFinished(Sender: TObject);
@@ -1852,7 +1880,7 @@ End;
 Procedure TGame.PingForOpenGames;
 Var
   N: TNetworkAdapterList;
-  i: Integer;
+  i, EnterID: Integer;
   s: String;
   Key: Word;
 Begin
@@ -1860,7 +1888,7 @@ Begin
   If Not fUDPPingData.Active Then exit;
   If GetTickCount64 - fUDPPingData.LastTickValue >= 500 Then Begin
     fUDPPingData.LastTickValue := GetTickCount64;
-    log('TGame.PingForOpenGames', llTrace);
+    EnterID := LogEnter('TGame.PingForOpenGames');
     If assigned(fUDPPingData.Connection) Then Begin
       (*
        * Sollte warum auch immer der UDP Down sein, versuchen wir ihn neu zu starten ..
@@ -1869,7 +1897,7 @@ Begin
         If Not fUDPPingData.Connection.Connect('', UDPPingPort) Then Begin
           LogShow('Error, could not start UDP Server.', llError);
           SwitchToScreen(sMainScreen);
-          LogLeave;
+          LogLeave(EnterID);
         End;
       End;
       Try
@@ -1882,7 +1910,7 @@ Begin
         log('Could not ping, maybe there is no valid network card present.', llCritical);
       End;
     End;
-    LogLeave;
+    LogLeave(EnterID);
   End;
   // If we do not find a Local game after 2 tries, bring up the "Ask for IP Dialog"
   // First Try is in ms 0
@@ -1895,13 +1923,15 @@ Begin
 End;
 
 Procedure TGame.JoinViaParams(ip: String; Port: integer);
+Var
+  EnterID: Integer;
 Begin
   (*
    * Beim Verbinden via Parameter müssen wir die
    * SwitchToScreen umgehen und passend initialisieren das die Spielengine genau gleich
    * initialisiert ist wie sie das via "Join" gewesen wäre ;)
    *)
-  log(format('TGame.JoinViaParams: %s:%d', [ip, port]), lltrace);
+  EnterID := LogEnter(format('TGame.JoinViaParams: %s:%d', [ip, port]));
   Settings.Router_IP := ip;
   Settings.Router_Port := inttostr(Port);
   fBackupSettings.Router_IP := ip;
@@ -1911,7 +1941,7 @@ Begin
   fParamJoinIP := ip;
   fParamJoinPort := port;
   Join(ip, port);
-  logleave;
+  logleave(EnterID);
 End;
 
 Procedure TGame.StartGame;
@@ -1920,11 +1950,13 @@ Begin
 End;
 
 Procedure TGame.StartPingingForGames;
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.StartPingingForGames', lltrace);
+  EnterID := LogEnter('TGame.StartPingingForGames');
   fUDPPingData.Active := true;
   fUDPPingData.LastTickValue := GetTickCount64 - 500;
-  logleave;
+  logleave(EnterID);
 End;
 
 Procedure TGame.StopPingingForGames;
@@ -1935,8 +1967,9 @@ End;
 Procedure TGame.Join(IP: String; Port: Integer);
 Var
   isLocalhost: Boolean;
+  EnterID: Integer;
 Begin
-  log('TGame.Join', lltrace);
+  EnterID := LogEnter('TGame.Join');
   log(format('Joining to %s on port %d as %s', [ip, port, Settings.NodeName]));
 
   // Store connection parameters for retry logic
@@ -1975,7 +2008,7 @@ Begin
     // Close a maybe openened join dialog ..
     TMainMenu(fScreens[sMainScreen]).StopJoinQuestion;
   End;
-  logleave;
+  logleave(EnterID);
 End;
 
 Constructor TGame.Create;
@@ -2033,19 +2066,23 @@ Begin
 End;
 
 Procedure TGame.RegisterTCPConnection(Const Connection: TLTCPComponent);
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.RegisterTCPConnection', llTrace);
+  EnterID := LogEnter('TGame.RegisterTCPConnection');
   Connection.OnConnect := @Connection_Connect;
   Connection.OnDisconnect := @Connection_Disconnect;
   Connection.OnError := @Connection_Error;
   fChunkManager.OnReceivedChunk := @OnReceivedChunk;
   fChunkManager.RegisterConnection(Connection);
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.RegisterUDPConnection(Const Connection: TLUDPComponent);
+Var
+  EnterID: Integer;
 Begin
-  log('TGame.RegisterUDPConnection', llTrace);
+  EnterID := LogEnter('TGame.RegisterUDPConnection');
   fUDPPingData.Connection := Connection;
   StopPingingForGames();
   If assigned(Connection) Then Begin
@@ -2056,7 +2093,7 @@ Begin
       LogShow('Error, could not start UDP Server.', llError);
     End;
   End;
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.Initialize(Const Owner: TOpenGLControl);
@@ -2068,7 +2105,8 @@ Var
   j: integer;
   field: TAtomicRandomField;
   hohletex: TGraphikItem;
-  fTrampStatic: Integer; // Wenn das Trampolin gerade nicht "an wackelt"
+  fTrampStatic,
+    EnterID: Integer; // Wenn das Trampolin gerade nicht "an wackelt"
 {$IFDEF ShowInitTime}
   t: UInt64;
 
@@ -2086,7 +2124,7 @@ Begin
 {$IFDEF ShowInitTime}
   t := GetTickCount64;
 {$ENDIF}
-  log('TGame.Initialize', lltrace);
+  EnterID := LogEnter('TGame.Initialize');
   fOwner := Owner;
   Loader := TLoaderDialog.create(Owner);
   (*
@@ -2104,7 +2142,7 @@ Begin
   fSoundInfo.Volume := Settings.VolumeValue;
   If Not fSoundManager.SetVolumeValue(Settings.VolumeValue) Then Begin
     log('Could not adjust sound volume.', llError);
-    logleave;
+    logleave(EnterID);
     exit;
   End;
   FOnMouseMoveCapture := Owner.OnMousemove;
@@ -2244,7 +2282,7 @@ Begin
   setlength(fFields, sl.Count);
   If sl.count = 0 Then Begin
     LogShow('Error, no fields to load found', llFatal);
-    LogLeave;
+    LogLeave(EnterID);
     exit;
   End;
 {$IFDEF ShowInitTime}
@@ -2254,7 +2292,7 @@ Begin
     fFields[j] := TAtomicField.Create();
     If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, fTramp, hohletex.Image, fTrampStatic) Then Begin
       LogShow('Error, unable to load field:' + sl[j], llFatal);
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
     Loader.Percent := 10 + round(40 * j / sl.count);
@@ -2280,7 +2318,7 @@ Begin
     fAtomics[j] := TAtomic.Create;
     If Not fAtomics[j].InitAsColor(p + 'data' + PathDelim + 'atomic' + PathDelim, PlayerColors[j]) Then Begin
       LogShow('Error, unable to load atomic.', llFatal);
-      LogLeave;
+      LogLeave(EnterID);
       exit;
     End;
 {$IFDEF ShowInitTime}
@@ -2304,7 +2342,7 @@ Begin
 {$IFDEF ShowInitTime}
   TimePoint(100);
 {$ENDIF}
-  LogLeave;
+  LogLeave(EnterID);
 End;
 
 Procedure TGame.Disconnect;
@@ -2319,12 +2357,14 @@ Begin
 End;
 
 Procedure TGame.DoDisconnect;
+Var
+  EnterID: Integer;
 Begin
   (*
    * Wird über den Idle Handler aufgerufen und ist damit definitiv außerhalb der LEventer Eventloop
    *)
   fNeedDisconnect := false;
-  log('TGame.DoDisconnect', lltrace);
+  EnterID := LogEnter('TGame.DoDisconnect');
   If fChunkManager.Connected Then Begin
     fChunkManager.Disconnect(true);
     While fChunkManager.Connected Do Begin
@@ -2337,7 +2377,7 @@ Begin
       fUDPPingData.Connection.Disconnect(true);
     End;
   End;
-  logleave;
+  logleave(EnterID);
 End;
 
 Procedure TGame.Render;

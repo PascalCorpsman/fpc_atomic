@@ -21,7 +21,7 @@ Uses
   cthreads,
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Classes, imagesforlazarus, ucdextractor, IniFiles, sysutils
+  Classes, imagesforlazarus, ucdextractor, IniFiles, sysutils, uatomic_global
   { you can add units after this };
 
 Procedure PrintHelp();
@@ -36,14 +36,6 @@ Begin
   halt();
 End;
 
-Type
-
-  { TDummy }
-
-  TDummy = Class
-    Procedure Log(Logtext: String);
-  End;
-
 Function CheckDir(aDir: String): String;
 Begin
   result := aDir;
@@ -57,16 +49,9 @@ Var
   CDFolder: String;
   AtomicFolder: String;
   i: Integer;
-  dummy: TDummy;
-
-  { TDummy }
-
-Procedure TDummy.Log(Logtext: String);
-Begin
-  writeln(Logtext);
-End;
 
 Begin
+  InitLogger();
   ini := TIniFile.Create('settings.ini');
   CDFolder := ini.ReadString('TApplication.Form1', 'CD-Root', '');
   AtomicFolder := ini.ReadString('TApplication.Form1', 'FPC-Atomic', '');
@@ -85,9 +70,7 @@ Begin
   If (CDFolder = '') Or (AtomicFolder = '') Then Begin
     PrintHelp();
   End;
-  dummy := TDummy.Create;
-  DoExtraction(CDFolder, AtomicFolder, @dummy.Log, false);
-  dummy.free;
+  DoExtraction(CDFolder, AtomicFolder, false);
 
 End.
 

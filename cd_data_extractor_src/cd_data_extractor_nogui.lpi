@@ -69,6 +69,10 @@
         <Filename Value="..\..\Sample\DatenSteuerung\uvectormath.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="..\units\uatomic_global.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -79,9 +83,15 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..\..\Sample\Sound;..\..\Sample\Graphik;..\..\Sample\OpenGL;..\..\Sample\DatenSteuerung"/>
+      <OtherUnitFiles Value="..\..\Sample\Sound;..\..\Sample\Graphik;..\..\Sample\OpenGL;..\..\Sample\DatenSteuerung;..\units"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
+    <Other>
+      <CustomOptions Value="-dCD_Data_Extractor"/>
+      <OtherDefines Count="1">
+        <Define0 Value="CD_Data_Extractor"/>
+      </OtherDefines>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions>
