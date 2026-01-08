@@ -27,18 +27,18 @@ Type
    * Alles worüber der Server so Statistiken führt ;)
    *)
   TStatSelector = (
-    sMatchesStarted
-    , sGamesStarted
-    , sFramesRendered
-    , sBombsDropped
-    , sPowerupsCollected
-    , sPlayerDeaths
-    , sBricksDestroyed
-    , sPowerUpDestroyed
-    , sTotalNetworkBytesIn // UDP-Daten werden Ignoriert
-    , sTotalNetworkBytesOut // UDP-Daten werden Ignoriert
-    , sTotalNetworkPacketsIn // UDP-Daten werden Ignoriert
-    , sTotalNetworkPacketsOut // UDP-Daten werden Ignoriert
+    ssMatchesStarted
+    , ssGamesStarted
+    , ssFramesRendered
+    , ssBombsDropped
+    , ssPowerupsCollected
+    , ssPlayerDeaths
+    , ssBricksDestroyed
+    , ssPowerupDestroyed
+    , ssTotalNetworkBytesIn // UDP-Daten werden Ignoriert
+    , ssTotalNetworkBytesOut // UDP-Daten werden Ignoriert
+    , ssTotalNetworkPacketsIn // UDP-Daten werden Ignoriert
+    , ssTotalNetworkPacketsOut // UDP-Daten werden Ignoriert
     );
 
   TStatisticCallback = Procedure(StatSelector: TStatSelector; Value: uint64 = 1) Of Object;
@@ -49,33 +49,33 @@ Type
   End;
 
   TPlayerStatSelector = (
-    psKills // -- Fertig
-    , psFriendlyFireKills // -- Fertig -- dazu zählen auch Selbstkills
-    , psDeaths // -- Fertig
-    , psPlayedMatches // -- Fertig
-    , psWonMatches // -- Fertig
-    , psPlayedRounds // -- Fertig
-    , psWonRounds // -- Fertig
-    , psDrawRounds // -- Fertig
-    , psPlacedBombs // -- Fertig
-    , psTriggeredBombs // -- Fertig -- Mit dem BombenTrigger
-    , psThrownBombs // -- Fertig -- Mit dem Blauen Handschuh
-    , psPunshedBombs // -- Fertig -- Mit dem Roten Handschuh
-    , psSpoogedBombs // -- Fertig -- Mit dem Spooger auf einmal gelegt
-    , psKickedBombs // -- Fertig -- Mit dem Kicker PowerUp
-    , psBricksDestroyed // -- Fertig
-    , psPowerupsCollected // -- Fertig
-    , psPowerupsDestroyed // -- Fertig
-    , psDiseased // -- Fertig -- Anzahl der Krankheiten die ein Spieler bekommen hat
-    , psDiseaseSpreaded // -- Fertig -- Anzahl der "Ansteckungen" die ein Spieler an andere übergeben hat
+    pssKills // -- Fertig
+    , pssFriendlyFireKills // -- Fertig -- dazu zählen auch Selbstkills
+    , pssDeaths // -- Fertig
+    , pssPlayedMatches // -- Fertig
+    , pssWonMatches // -- Fertig
+    , pssPlayedRounds // -- Fertig
+    , pssWonRounds // -- Fertig
+    , pssDrawRounds // -- Fertig
+    , pssPlacedBombs // -- Fertig
+    , pssTriggeredBombs // -- Fertig -- Mit dem BombenTrigger
+    , pssThrownBombs // -- Fertig -- Mit dem Blauen Handschuh
+    , pssPushedBombs // -- Fertig -- Mit dem Roten Handschuh
+    , pssSpoogedBombs // -- Fertig -- Mit dem Spooger auf einmal gelegt
+    , pssKickedBombs // -- Fertig -- Mit dem Kicker PowerUp
+    , pssBricksDestroyed // -- Fertig
+    , pssPowerupsCollected // -- Fertig
+    , pssPowerupsDestroyed // -- Fertig
+    , pssDiseased // -- Fertig -- Anzahl der Krankheiten die ein Spieler bekommen hat
+    , pssDiseaseSpread // -- Fertig -- Anzahl der "Ansteckungen" die ein Spieler an andere übergeben hat
     );
 
-  TPlayerStatistic = Array[TPlayerStatSelector] Of uint64;
+  TPlayerStatSelectorCounts = Array[TPlayerStatSelector] Of uint64;
 
   TPlayerStatistics = Record
     UserName: String;
     KeySet: TKeySet;
-    stats: TPlayerStatistic;
+    stats: TPlayerStatSelectorCounts;
   End;
 
   TPlayerStatisticCallback = Procedure(PlayerIndex: Integer; StatSelector: TPlayerStatSelector; Value: uint64 = 1) Of Object;
@@ -98,7 +98,7 @@ Type
     // Initialisiert alles Notwendige um via Index auf die Interne Struktur zugreifen zu können
     // Wird zu begin eines Matches aufgrufen
     // -> Match Counter ++
-    Procedure AssignPlayerID(
+    Procedure InitPlayerID(
       Index: integer; // Index, den der Server für Alle Callbacks übergeben wird
       UserName: String; // Zur Identifizierung des Spielers
       KeySet: TKeySet // Zur Identifizierung des Spielers
@@ -119,25 +119,25 @@ Function PlayerStatSelectorToString(aValue: TPlayerStatSelector): String;
 Begin
   result := '';
   Case aValue Of
-    psKills: result := 'Kills';
-    psFriendlyFireKills: result := 'Friendly fire kills';
-    psDeaths: result := 'Deaths';
-    psPlayedMatches: result := 'Played Matches';
-    psWonMatches: result := 'Matches won';
-    psPlayedRounds: result := 'Played rounds';
-    psWonRounds: result := 'Rounds won';
-    psDrawRounds: result := 'Draw rounds';
-    psPlacedBombs: result := 'Placed bombs';
-    psTriggeredBombs: result := 'Triggered bombs';
-    psThrownBombs: result := 'Thrown bombs';
-    psPunshedBombs: result := 'Punshed bombs';
-    psSpoogedBombs: result := 'Spooged bombs';
-    psKickedBombs: result := 'Kicked bombs';
-    psBricksDestroyed: result := 'Bricks destroyed';
-    psPowerupsCollected: result := 'Powerups collected';
-    psPowerupsDestroyed: result := 'Powerups destroyed';
-    psDiseased: result := 'Diseased';
-    psDiseaseSpreaded: result := 'Disease spreaded';
+    pssKills: result := 'Kills';
+    pssFriendlyFireKills: result := 'Friendly fire kills';
+    pssDeaths: result := 'Deaths';
+    pssPlayedMatches: result := 'Played Matches';
+    pssWonMatches: result := 'Matches won';
+    pssPlayedRounds: result := 'Played rounds';
+    pssWonRounds: result := 'Rounds won';
+    pssDrawRounds: result := 'Draw rounds';
+    pssPlacedBombs: result := 'Placed bombs';
+    pssTriggeredBombs: result := 'Triggered bombs';
+    pssThrownBombs: result := 'Thrown bombs';
+    pssPushedBombs: result := 'Pushed bombs';
+    pssSpoogedBombs: result := 'Spooged bombs';
+    pssKickedBombs: result := 'Kicked bombs';
+    pssBricksDestroyed: result := 'Bricks destroyed';
+    pssPowerupsCollected: result := 'Power-up collected';
+    pssPowerupsDestroyed: result := 'Power-up destroyed';
+    pssDiseased: result := 'Diseased';
+    pssDiseaseSpread: result := 'Disease spread';
   Else Begin
       Raise exception.Create('Error: PlayerStatSelectorToString, missing implementation.');
     End;
@@ -163,27 +163,45 @@ Procedure TPlayerStatisticEngine.LoadPlayerStatistics(Const aFilename: String);
 Var
   sl: TStringList;
   tmp, players: TStringArray;
-  i, k: Integer;
+  i, k, EnterID: Integer;
   j: TPlayerStatSelector;
   s: String;
 Begin
-  If Not FileExists(aFilename) Then exit;
+  EnterID := LogEnter('TPlayerStatisticEngine.LoadPlayerStatistics');
+  If Not FileExists(aFilename) Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
   sl := TStringList.Create;
   sl.LoadFromFile(aFilename);
-  If trim(sl[0]) = '' Then exit;
+  If (sl.Count = 0) Or (trim(sl[0]) = '') Then Begin
+    sl.free;
+    LogLeave(EnterID);
+    exit;
+  End;
   players := trim(sl[0]).Split(#9);
   setlength(fPlayerStatistics, length(players));
   For i := 0 To high(players) Do Begin
     tmp := players[i].Split(';');
-    fPlayerStatistics[i].UserName := tmp[0];
-    fPlayerStatistics[i].KeySet := StringToKeySet(tmp[1]);
+    If length(tmp) >= 2 Then Begin
+      fPlayerStatistics[i].UserName := tmp[0];
+      fPlayerStatistics[i].KeySet := StringToKeySet(tmp[1]);
+    End
+    Else Begin
+      fPlayerStatistics[i].UserName := 'Invalid';
+      fPlayerStatistics[i].KeySet := ks0;
+      log(players[i] + ' invalid username / keyset', llError);
+    End;
     // Reset alles zu 0
     FillChar(fPlayerStatistics[i].stats, sizeof(fPlayerStatistics[i].stats), 0);
   End;
   For i := 1 To sl.Count - 1 Do Begin
     tmp := trim(sl[i]).Split(#9);
     // Ja das ist Umständlich aber dafür "robust"
-    If length(tmp) <> length(fPlayerStatistics) + 1 Then Continue;
+    If length(tmp) <> length(fPlayerStatistics) + 1 Then Begin
+      log('Drop invalid line: ' + sl[i], llWarning);
+      Continue;
+    End;
     For j In TPlayerStatSelector Do Begin
       s := PlayerStatSelectorToString(j);
       If tmp[0] = s Then Begin
@@ -195,6 +213,7 @@ Begin
     End;
   End;
   sl.free;
+  LogLeave(EnterID);
 End;
 
 Procedure TPlayerStatisticEngine.SavePlayerStatistics(Const aFilename: String);
@@ -228,8 +247,8 @@ Begin
   setlength(fIndexMapper, 0);
 End;
 
-Procedure TPlayerStatisticEngine.AssignPlayerID(Index: integer;
-  UserName: String; KeySet: TKeySet);
+Procedure TPlayerStatisticEngine.InitPlayerID(Index: integer; UserName: String;
+  KeySet: TKeySet);
 Var
   ol, i, Localindex: Integer;
 Var
@@ -239,7 +258,7 @@ Begin
   // Löschen Verbotener Zeichen, man weis ja nie was spieler sich für namen ausdenken ..
   username := StringReplace(UserName, #9, '', [rfReplaceAll]);
   username := StringReplace(UserName, ';', '', [rfReplaceAll]);
-  Log(format('Username: %s, KeySet %s', [UserName, KeySetToString(KeySet)]), llTrace);
+  Log(format('Username: %s, KeySet %s', [UserName, KeySetToString(KeySet)]), lldebug);
   Localindex := -1;
   // Den Index bestimmen, auf welchem der Spieler getrackt wird ..
   For i := 0 To high(fPlayerStatistics) Do Begin
@@ -257,7 +276,7 @@ Begin
     Localindex := high(fPlayerStatistics);
   End;
   // Hochzählen der Gestarteten Matches
-  inc(fPlayerStatistics[Localindex].stats[psPlayedMatches]);
+  inc(fPlayerStatistics[Localindex].stats[pssPlayedMatches]);
   // Abspeichern des Mappings
   If index > high(fIndexMapper) Then Begin
     ol := length(fIndexMapper);

@@ -135,10 +135,10 @@ Type
     Constructor Create(Port, AutoTimeOut: Integer);
     Destructor Destroy(); override;
     Procedure Execute;
-    Procedure LoadStatistiks();
-    Procedure SaveStatistiks();
-    Procedure LoadPlayerStatistiks();
-    Procedure SavePlayerStatistiks();
+    Procedure LoadStatistics();
+    Procedure SaveStatistics();
+    Procedure LoadPlayerStatistics();
+    Procedure SavePlayerStatistics();
   End;
 
 Implementation
@@ -147,7 +147,7 @@ Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global;
 
 { TServer }
 
-Constructor TServer.Create(Port, AutoTimeOut: Integer);
+constructor TServer.Create(Port, AutoTimeOut: Integer);
 Var
   sl: TStringList;
   i, EnterID: Integer;
@@ -191,7 +191,7 @@ Begin
   End;
   sl.free;
   setlength(fFields, high(fFields) + 2);
-  fFields[high(fFields)] := TAtomicRandomField.Create(Nil, Nil, Nil); // Die initialisiert sich bereits richtig ;)
+  fFields[high(fFields)] := TAtomicRandomField.Create();
   LoadAi();
   If Not fUDP.Listen(UDPPingPort) Then Begin
     log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
@@ -207,7 +207,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Destructor TServer.Destroy;
+destructor TServer.Destroy;
 Var
   i, EnterID: Integer;
 Begin
@@ -238,7 +238,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.OnAccept(aSocket: TLSocket);
+procedure TServer.OnAccept(aSocket: TLSocket);
 Var
   EnterID: integer;
 Begin
@@ -248,7 +248,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.OnDisconnect(aSocket: TLSocket);
+procedure TServer.OnDisconnect(aSocket: TLSocket);
 Var
   uid, EnterID: integer;
 Begin
@@ -264,7 +264,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.OnError(Const msg: String; aSocket: TLSocket);
+procedure TServer.OnError(const msg: String; aSocket: TLSocket);
 Var
   EnterID: integer;
 Begin
@@ -278,7 +278,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.OnUDPError(Const msg: String; aSocket: TLSocket);
+procedure TServer.OnUDPError(const msg: String; aSocket: TLSocket);
 Var
   EnterID: Integer;
 Begin
@@ -292,7 +292,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.OnUDPDisconnect(aSocket: TLSocket);
+procedure TServer.OnUDPDisconnect(aSocket: TLSocket);
 Var
   EnterID: Integer;
 Begin
@@ -306,7 +306,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.OnUDPReceiveEvent(aSocket: TLSocket);
+procedure TServer.OnUDPReceiveEvent(aSocket: TLSocket);
 Var
   UserName: String;
   Buffer: Array[0..1024 - 1] Of byte;
@@ -349,15 +349,15 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.OnReceivedChunk(Sender: TObject; Const Chunk: TChunk);
+procedure TServer.OnReceivedChunk(Sender: TObject; const Chunk: TChunk);
 Var
   s: String;
   i, j, EnterID: integer;
   DoLog: Boolean;
   ts: QWord;
 Begin
-  HandleStatisticCallback(sTotalNetworkPacketsIn);
-  HandleStatisticCallback(sTotalNetworkBytesIn, Chunk.Data.Size + ChunkManagerHeaderLen);
+  HandleStatisticCallback(ssTotalNetworkPacketsIn);
+  HandleStatisticCallback(ssTotalNetworkBytesIn, Chunk.Data.Size + ChunkManagerHeaderLen);
   EnterID := 0;
 {$IFDEF DoNotLog_CyclicMessages}
   DoLog := ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
@@ -426,7 +426,7 @@ Begin
     LogLeave(EnterID);
 End;
 
-Procedure TServer.ResetFieldAvailabe;
+procedure TServer.ResetFieldAvailabe;
 Var
   i, EnterID: integer;
 Begin
@@ -437,7 +437,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Function TServer.SendChunk(UserDefinedID: Integer; Data: TStream; UID: integer
+function TServer.SendChunk(UserDefinedID: Integer; Data: TStream; UID: integer
   ): Boolean;
 Var
   i, EnterID: integer;
@@ -468,8 +468,8 @@ Begin
       // Die Länge stimmt es geht ja nur an einen ;)
     End;
   End;
-  HandleStatisticCallback(sTotalNetworkPacketsOut);
-  HandleStatisticCallback(sTotalNetworkBytesOut, dataLen);
+  HandleStatisticCallback(ssTotalNetworkPacketsOut);
+  HandleStatisticCallback(ssTotalNetworkBytesOut, dataLen);
   fFrameLog.AccumulatedSize := fFrameLog.AccumulatedSize + dataLen;
   fFrameLog.Count := fFrameLog.Count + 1;
   If Not result Then Begin
@@ -497,7 +497,7 @@ Begin
     LogLeave(EnterID);
 End;
 
-Procedure TServer.SendSplashMessage(msg: String; TargetUID: integer);
+procedure TServer.SendSplashMessage(msg: String; TargetUID: integer);
 Var
   m: TMemoryStream;
 Begin
@@ -506,7 +506,7 @@ Begin
   SendChunk(miSplashHint, m, TargetUID);
 End;
 
-Procedure TServer.HandleRequestUserLogin(Const Stream: TStream; UID: integer);
+procedure TServer.HandleRequestUserLogin(const Stream: TStream; UID: integer);
 Var
   m: TMemoryStream;
   index, i, j, cnt, EnterID: integer;
@@ -637,7 +637,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleSwitchToPlayerSetup;
+procedure TServer.HandleSwitchToPlayerSetup;
 Var
   EnterID: integer;
 Begin
@@ -649,7 +649,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.SendSettings;
+procedure TServer.SendSettings;
 Var
   m: TMemoryStream;
   EnterID: integer;
@@ -677,7 +677,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleLoadSettings(Const Stream: TStream);
+procedure TServer.HandleLoadSettings(const Stream: TStream);
 Var
   i, EnterID: Integer;
 Begin
@@ -734,7 +734,7 @@ End;
  * Alles Andere ist nicht erlaubt -> Keine Änderung
  *)
 
-Procedure TServer.HandleChangePlayerKey(PlayerIndex, Direction: Integer;
+procedure TServer.HandleChangePlayerKey(PlayerIndex, Direction: Integer;
   PlayerName: String; UID: Integer);
 Var
   EnterID: Integer;
@@ -845,7 +845,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleSwitchToMapProperties(UID: Integer);
+procedure TServer.HandleSwitchToMapProperties(UID: Integer);
 Var
   t1, t2, i, j, aicnt, pcnt, EnterID: integer;
   a: Array Of Integer;
@@ -925,12 +925,12 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleStartGame;
+procedure TServer.HandleStartGame;
 Var
   i, EnterID: Integer;
 Begin
   EnterID := LogEnter('TServer.HandleStartGame');
-  HandleStatisticCallback(sMatchesStarted);
+  HandleStatisticCallback(ssMatchesStarted);
   fPlayerStatistics.ResetPlayerIDs;
   // 1. Alle Player "Initialisieren
   For i := 0 To high(fPLayer) Do Begin
@@ -938,11 +938,11 @@ Begin
     fPLayer[i].Kills := 0;
     If fPLayer[i].UID <> NoPlayer Then Begin
       If fPLayer[i].UID = AIPlayer Then Begin
-        // Alle KI Spieler werden "gemerged" auf einen Abstracten AI Spieler ;)
-        fPlayerStatistics.AssignPlayerID(i, 'AI', ks0);
+        // Alle KI Spieler werden auf einen abstrakten KI Spieler zusammengeführt.
+        fPlayerStatistics.InitPlayerID(i, AiVersion(), ks0);
       End
       Else Begin
-        fPlayerStatistics.AssignPlayerID(i,
+        fPlayerStatistics.InitPlayerID(i,
           fPLayer[i].UserName,
           fPLayer[i].Keyboard
           );
@@ -954,7 +954,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleStartRound;
+procedure TServer.HandleStartRound;
   Function PowersFromScheme(Const Scheme: TScheme): TAtomicPowers;
   Begin
     result.Speed := AtomicDefaultSpeed;
@@ -1013,7 +1013,7 @@ Var
   pu: TPowerUps;
 Begin
   EnterID := LogEnter('TServer.HandleStartRound');
-  HandleStatisticCallback(sGamesStarted);
+  HandleStatisticCallback(ssGamesStarted);
 
   If fSettings.PlayTime = 0 Then Begin
     fPlayingTimedesc := -1000; // Unendlich  ;)
@@ -1059,7 +1059,7 @@ Begin
       fPLayer[i].PowerUpCounter[pu] := 0;
     End;
     If fPLayer[i].Info.Alive Then Begin
-      fPlayerStatistics.UpdatePlayerID(i, psPlayedRounds, 1);
+      fPlayerStatistics.UpdatePlayerID(i, pssPlayedRounds, 1);
     End;
   End;
   // 2. Init der Karte
@@ -1101,7 +1101,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleTogglePause;
+procedure TServer.HandleTogglePause;
 Var
   m: TMemoryStream;
   i, EnterID: Integer;
@@ -1121,7 +1121,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleShowVictory;
+procedure TServer.HandleShowVictory;
 Begin
   // Den Victory Screen auswählen
   // Der Gewinner wurde bereits in EndGameCheck bestimmt.
@@ -1129,7 +1129,7 @@ Begin
   fKickAllPlayer := true;
 End;
 
-Procedure TServer.HandlePlayerGetsPowerUp(Var Player: TPlayer;
+procedure TServer.HandlePlayerGetsPowerUp(var Player: TPlayer;
   PlayerIndex: integer; PowerUp: TPowerUps);
 Var
   index, cnt, i, EnterID: integer;
@@ -1139,8 +1139,8 @@ Begin
   // TODO: Die Force, Override, forbidden dinge müssen hier noch berücksichtigt werden..
   //       \-> Das Forbidden wird in TAtomicField.Initialize bereits gemacht.
   If PowerUp <> puNone Then Begin
-    fPlayerStatistics.UpdatePlayerID(PlayerIndex, psPowerupsCollected);
-    HandleStatisticCallback(sPowerupsCollected);
+    fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssPowerupsCollected);
+    HandleStatisticCallback(ssPowerupsCollected);
     (*
      * Mit Zählen, was der Spieler so aufsammelt
      *)
@@ -1159,7 +1159,7 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
       End;
     puDisease: Begin
-        fPlayerStatistics.UpdatePlayerID(PlayerIndex, psDiseased);
+        fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
         Case random(3) Of
           0: Player.Disease := Player.Disease + [dInvertedKeyboard];
@@ -1213,7 +1213,7 @@ Begin
         Player.Powers.JellyBombs := true;
       End;
     puSuperBadDisease: Begin
-        fPlayerStatistics.UpdatePlayerID(PlayerIndex, psDiseased);
+        fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
         (*
          * Mit Einer Wahrscheinlichkeit von 10 % tauschen wir die Plätze mit einem anderen Spieler ;)
@@ -1230,7 +1230,7 @@ Begin
             tmppos := fPLayer[index].Info.Position;
             fPLayer[index].Info.Position := fPLayer[PlayerIndex].Info.Position;
             fPLayer[PlayerIndex].Info.Position := tmppos;
-            fPlayerStatistics.UpdatePlayerID(index, psDiseased); // Der Andere Empfängt die Krankheit ungewollt ja auch ;)
+            fPlayerStatistics.UpdatePlayerID(index, pssDiseased); // Der Andere Empfängt die Krankheit ungewollt ja auch ;)
           End;
         End
         Else Begin
@@ -1251,7 +1251,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandlePlaySoundEffect(PlayerIndex: integer;
+procedure TServer.HandlePlaySoundEffect(PlayerIndex: integer;
   Effect: TSoundEffect);
 Var
   m, m2: TMemoryStream;
@@ -1331,13 +1331,13 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleStatisticCallback(StatSelector: TStatSelector;
+procedure TServer.HandleStatisticCallback(StatSelector: TStatSelector;
   Value: uint64);
 Begin
   fStatistik.LastRun[StatSelector] := fStatistik.LastRun[StatSelector] + Value;
 End;
 
-Procedure TServer.HandleSwitchToWaitForPlayersToConnect;
+procedure TServer.HandleSwitchToWaitForPlayersToConnect;
 Var
   cnt, i, EnterID: Integer;
 Begin
@@ -1361,7 +1361,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleUpdateFieldSetup(Const Stream: TStream; Uid: integer);
+procedure TServer.HandleUpdateFieldSetup(const Stream: TStream; Uid: integer);
 Var
   FieldName: String;
   FieldHash: UInt64;
@@ -1399,7 +1399,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleReceiveHeartBeat(p: integer; t: int64);
+procedure TServer.HandleReceiveHeartBeat(p: integer; t: int64);
 Var
   i: Integer;
 Begin
@@ -1411,7 +1411,7 @@ Begin
   End;
 End;
 
-Procedure TServer.HandleClientKeyEvent(Const Stream: TStream);
+procedure TServer.HandleClientKeyEvent(const Stream: TStream);
 Var
   Player: integer;
   Double, State: Boolean;
@@ -1469,7 +1469,7 @@ Begin
   End;
 End;
 
-Procedure TServer.RefreshAllPlayerStats(Uid: integer);
+procedure TServer.RefreshAllPlayerStats(Uid: integer);
 Var
   m: TMemoryStream;
   j, i: Integer;
@@ -1493,7 +1493,7 @@ Begin
   SendChunk(miRefreshPlayerStats, m, UID);
 End;
 
-Procedure TServer.PlayerLeaves(PlayerUid: integer);
+procedure TServer.PlayerLeaves(PlayerUid: integer);
 Var
   t0, t1, i, cnt, c, EnterID: integer;
   m: TMemoryStream;
@@ -1615,7 +1615,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Function TServer.GetActivePlayerCount: Integer;
+function TServer.GetActivePlayerCount: Integer;
 Var
   i: Integer;
 Begin
@@ -1626,7 +1626,7 @@ Begin
   End;
 End;
 
-Procedure TServer.EvalFieldHashList(Const List: TFieldHashNameList;
+procedure TServer.EvalFieldHashList(const List: TFieldHashNameList;
   SendToMaster: Boolean);
 Var
   m: TMemorystream;
@@ -1670,7 +1670,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.CheckSynchrons;
+procedure TServer.CheckSynchrons;
 Var
   n: int64;
   i: integer;
@@ -1717,7 +1717,7 @@ Begin
   End;
 End;
 
-Procedure TServer.ApplyPause(Value: Boolean);
+procedure TServer.ApplyPause(Value: Boolean);
 Var
   t: int64;
   i: integer;
@@ -1749,7 +1749,7 @@ Begin
   foldpausevalue := value;
 End;
 
-Procedure TServer.CreateNewFrame;
+procedure TServer.CreateNewFrame;
 Var
   Alive: Array[0..1] Of Integer;
   i, j: Integer;
@@ -1757,7 +1757,7 @@ Var
   AiCommand: TAiCommand;
   OldCounter: UInt16;
 Begin
-  HandleStatisticCallback(sFramesRendered);
+  HandleStatisticCallback(ssFramesRendered);
   If fPlayingTimedesc <> -1000 Then Begin
     fPlayingTimedesc := fPlayingTimedesc - FrameRate;
   End;
@@ -1826,8 +1826,8 @@ Begin
             (LenV2SQR(fPLayer[i].Info.Position - fPLayer[j].Info.Position) <= 0.5 * 0.5) And
             (fPLayer[i].Disease <> fPLayer[j].Disease) Then Begin
             If fPLayer[j].Disease = [] Then Begin // Ist Spieler j aber auch schon krank dann zählt es nicht, denn dann weis keiner so genau wer hier wen ansteckt..
-              fPlayerStatistics.UpdatePlayerID(i, psDiseaseSpreaded);
-              fPlayerStatistics.UpdatePlayerID(j, psDiseased);
+              fPlayerStatistics.UpdatePlayerID(i, pssDiseaseSpread);
+              fPlayerStatistics.UpdatePlayerID(j, pssDiseased);
             End;
             // Die Krankheiten vereinen sich zu was auch immer beide haben -> j
             fPLayer[j].Disease := fPLayer[i].Disease + fPLayer[j].Disease;
@@ -1914,7 +1914,7 @@ Begin
   EndGameCheck();
 End;
 
-Procedure TServer.UpdateAllClients;
+procedure TServer.UpdateAllClients;
 Var
   m: TMemoryStream;
   i, EnterID: Integer;
@@ -1961,7 +1961,7 @@ Begin
   LogLeave(EnterId);
 End;
 
-Procedure TServer.SendPlayerStatistiks;
+procedure TServer.SendPlayerStatistiks;
 Var
   m: TMemoryStream;
   i, EnterID: Integer;
@@ -1976,7 +1976,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.EndGameCheck;
+procedure TServer.EndGameCheck;
 Var
   (*
   Merken wem wir alles schon einen "Winner" gesendet haben
@@ -2050,7 +2050,7 @@ Begin
         Else Begin // Team Rot hat gewonnen
           v := vRedTeam;
           For i := 0 To high(fPLayer) Do Begin
-            If fPLayer[i].Team = 1 Then Begin
+            If (fPLayer[i].Team = 1) Then Begin
               SendWinner(fPLayer[i].UID, i);
               inc(fPLayer[i].Score);
             End;
@@ -2064,8 +2064,8 @@ Begin
         // Im Teamplay hat man die Runde auch gewonnen, obwohl man gestorben ist, von daher zählt hier nur das Team ;)
         For i := 0 To high(fPLayer) Do Begin
           If (fPLayer[i].UID <> NoPlayer) Then Begin
-            If Fplayer[i].Team = WinnerTeamIndex Then Begin
-              fPlayerStatistics.UpdatePlayerID(i, psWonRounds);
+            If (Fplayer[i].Team = WinnerTeamIndex) Then Begin
+              fPlayerStatistics.UpdatePlayerID(i, pssWonRounds);
             End;
           End;
         End;
@@ -2098,9 +2098,9 @@ Begin
         SendChunk(miShowMatchStatistik, m, 0);
         // Die Statistik ;)
         For i := 0 To high(fPLayer) Do Begin
-          If fPLayer[i].UID <> NoPlayer Then Begin
+          If (fPLayer[i].UID <> NoPlayer) Then Begin
             If (fPLayer[i].Info.Alive) Then Begin
-              fPlayerStatistics.UpdatePlayerID(i, psWonRounds);
+              fPlayerStatistics.UpdatePlayerID(i, pssWonRounds);
             End;
           End;
         End;
@@ -2111,20 +2111,20 @@ Begin
   // 2. Zeit abgelaufen (wenn Zeitlimit Aktiv)
   If ((fPlayingTimedesc <> -1000) And (fPlayingTimedesc <= 0)) Or (cnt = 0) Then Begin
     (*
-     * Nachdem auf jedenfall oben niemand gewonnen hat ist nun schluss mittels draw
+     * Nachdem auf jeden Fall oben niemand gewonnen hat ist nun schluss mittels draw
      *)
     SendChunk(miDrawGame, Nil, 0);
     // Die Statistik ;)
     For i := 0 To high(fPLayer) Do Begin
       If fPLayer[i].UID <> NoPlayer Then Begin
-        fPlayerStatistics.UpdatePlayerID(i, psDrawRounds);
+        fPlayerStatistics.UpdatePlayerID(i, pssDrawRounds);
       End;
     End;
     fGameState := gsShowHighscore;
   End;
 End;
 
-Function TServer.MatchFinished: Boolean;
+function TServer.MatchFinished: Boolean;
 Var
   i: Integer;
 Begin
@@ -2138,12 +2138,12 @@ Begin
     If (fPLayer[i].UID <> NoPlayer) And (fPLayer[i].Score >= fSettings.LastWinsToWinMatch) Then Begin
       result := true;
       // Statistik ;)
-      fPlayerStatistics.UpdatePlayerID(i, psWonMatches);
+      fPlayerStatistics.UpdatePlayerID(i, pssWonMatches);
     End;
   End;
 End;
 
-Procedure TServer.LoadAi;
+procedure TServer.LoadAi;
 Var
   EnterID: integer;
 Begin
@@ -2167,7 +2167,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HurryHandling;
+procedure TServer.HurryHandling;
 Begin
   If fPlayingTimedesc = -1000 Then exit; // Nicht im Infinity Mode
   If Not fActualField.BombsEnabled Then exit; // Es gibt wohl keine Spieler mehr auf der Karte -> kein Hurry mehr ;)
@@ -2182,7 +2182,7 @@ Begin
   End;
 End;
 
-Procedure TServer.Execute;
+procedure TServer.Execute;
 Var
   n: QWord;
   EnterID, EnterID2: integer;
@@ -2298,25 +2298,25 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.LoadStatistiks;
+procedure TServer.LoadStatistics;
 Var
   ini: TIniFile;
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TServer.LoadStatistiks');
   ini := TIniFile.Create(GetAtomicStatsFile());
-  fStatistik.Total[sMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
-  fStatistik.Total[sGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
-  fStatistik.Total[sFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
-  fStatistik.Total[sBombsDropped] := ini.ReadInt64('Total', 'BombsDropped', 0);
-  fStatistik.Total[sPowerupsCollected] := ini.ReadInt64('Total', 'PowerupsCollected', 0);
-  fStatistik.Total[sPlayerDeaths] := ini.ReadInt64('Total', 'PlayerDeaths', 0);
-  fStatistik.Total[sBricksDestroyed] := ini.ReadInt64('Total', 'BricksDestroyed', 0);
-  fStatistik.Total[sPowerUpDestroyed] := ini.ReadInt64('Total', 'PowerUpDestroyed', 0);
-  fStatistik.Total[sTotalNetworkBytesIn] := ini.ReadInt64('Total', 'TotalNetworkBytesIn', 0);
-  fStatistik.Total[sTotalNetworkBytesOut] := ini.ReadInt64('Total', 'TotalNetworkBytesOut', 0);
-  fStatistik.Total[sTotalNetworkPacketsIn] := ini.ReadInt64('Total', 'TotalNetworkPacketsIn', 0);
-  fStatistik.Total[sTotalNetworkPacketsOut] := ini.ReadInt64('Total', 'TotalNetworkPacketsOut', 0);
+  fStatistik.Total[ssMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
+  fStatistik.Total[ssGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
+  fStatistik.Total[ssFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
+  fStatistik.Total[ssBombsDropped] := ini.ReadInt64('Total', 'BombsDropped', 0);
+  fStatistik.Total[ssPowerupsCollected] := ini.ReadInt64('Total', 'PowerupsCollected', 0);
+  fStatistik.Total[ssPlayerDeaths] := ini.ReadInt64('Total', 'PlayerDeaths', 0);
+  fStatistik.Total[ssBricksDestroyed] := ini.ReadInt64('Total', 'BricksDestroyed', 0);
+  fStatistik.Total[ssPowerUpDestroyed] := ini.ReadInt64('Total', 'PowerUpDestroyed', 0);
+  fStatistik.Total[ssTotalNetworkBytesIn] := ini.ReadInt64('Total', 'TotalNetworkBytesIn', 0);
+  fStatistik.Total[ssTotalNetworkBytesOut] := ini.ReadInt64('Total', 'TotalNetworkBytesOut', 0);
+  fStatistik.Total[ssTotalNetworkPacketsIn] := ini.ReadInt64('Total', 'TotalNetworkPacketsIn', 0);
+  fStatistik.Total[ssTotalNetworkPacketsOut] := ini.ReadInt64('Total', 'TotalNetworkPacketsOut', 0);
 
   (*
    * Alles Aktuelle = 0 ;)
@@ -2326,7 +2326,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.SaveStatistiks;
+procedure TServer.SaveStatistics;
 Var
   ini: TIniFile;
   EnterID: Integer;
@@ -2334,38 +2334,38 @@ Begin
   EnterID := LogEnter('TServer.SaveStatistiks');
   ini := TIniFile.Create(GetAtomicStatsFile());
   Try
-    ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[sMatchesStarted] + fStatistik.LastRun[sMatchesStarted]);
-    ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[sGamesStarted] + fStatistik.LastRun[sGamesStarted]);
-    ini.writeInt64('Total', 'FramesRendered', fStatistik.Total[sFramesRendered] + fStatistik.LastRun[sFramesRendered]);
-    ini.writeInt64('Total', 'BombsDropped', fStatistik.Total[sBombsDropped] + fStatistik.LastRun[sBombsDropped]);
-    ini.writeInt64('Total', 'PowerupsCollected', fStatistik.Total[sPowerupsCollected] + fStatistik.LastRun[sPowerupsCollected]);
-    ini.writeInt64('Total', 'PlayerDeaths', fStatistik.Total[sPlayerDeaths] + fStatistik.LastRun[sPlayerDeaths]);
-    ini.writeInt64('Total', 'BricksDestroyed', fStatistik.Total[sBricksDestroyed] + fStatistik.LastRun[sBricksDestroyed]);
-    ini.writeInt64('Total', 'PowerUpDestroyed', fStatistik.Total[sPowerUpDestroyed] + fStatistik.LastRun[sPowerUpDestroyed]);
-    ini.writeInt64('Total', 'TotalNetworkBytesIn', fStatistik.Total[sTotalNetworkBytesIn] + fStatistik.LastRun[sTotalNetworkBytesIn]);
-    ini.writeInt64('Total', 'TotalNetworkBytesOut', fStatistik.Total[sTotalNetworkBytesOut] + fStatistik.LastRun[sTotalNetworkBytesOut]);
-    ini.writeInt64('Total', 'TotalNetworkPacketsIn', fStatistik.Total[sTotalNetworkPacketsIn] + fStatistik.LastRun[sTotalNetworkPacketsIn]);
-    ini.writeInt64('Total', 'TotalNetworkPacketsOut', fStatistik.Total[sTotalNetworkPacketsOut] + fStatistik.LastRun[sTotalNetworkPacketsOut]);
+    ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[ssMatchesStarted] + fStatistik.LastRun[ssMatchesStarted]);
+    ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[ssGamesStarted] + fStatistik.LastRun[ssGamesStarted]);
+    ini.writeInt64('Total', 'FramesRendered', fStatistik.Total[ssFramesRendered] + fStatistik.LastRun[ssFramesRendered]);
+    ini.writeInt64('Total', 'BombsDropped', fStatistik.Total[ssBombsDropped] + fStatistik.LastRun[ssBombsDropped]);
+    ini.writeInt64('Total', 'PowerupsCollected', fStatistik.Total[ssPowerupsCollected] + fStatistik.LastRun[ssPowerupsCollected]);
+    ini.writeInt64('Total', 'PlayerDeaths', fStatistik.Total[ssPlayerDeaths] + fStatistik.LastRun[ssPlayerDeaths]);
+    ini.writeInt64('Total', 'BricksDestroyed', fStatistik.Total[ssBricksDestroyed] + fStatistik.LastRun[ssBricksDestroyed]);
+    ini.writeInt64('Total', 'PowerUpDestroyed', fStatistik.Total[ssPowerUpDestroyed] + fStatistik.LastRun[ssPowerUpDestroyed]);
+    ini.writeInt64('Total', 'TotalNetworkBytesIn', fStatistik.Total[ssTotalNetworkBytesIn] + fStatistik.LastRun[ssTotalNetworkBytesIn]);
+    ini.writeInt64('Total', 'TotalNetworkBytesOut', fStatistik.Total[ssTotalNetworkBytesOut] + fStatistik.LastRun[ssTotalNetworkBytesOut]);
+    ini.writeInt64('Total', 'TotalNetworkPacketsIn', fStatistik.Total[ssTotalNetworkPacketsIn] + fStatistik.LastRun[ssTotalNetworkPacketsIn]);
+    ini.writeInt64('Total', 'TotalNetworkPacketsOut', fStatistik.Total[ssTotalNetworkPacketsOut] + fStatistik.LastRun[ssTotalNetworkPacketsOut]);
 
-    ini.writeInt64('LastRun', 'MatchesStarted', fStatistik.LastRun[sMatchesStarted]);
-    ini.writeInt64('LastRun', 'GamesStarted', fStatistik.LastRun[sGamesStarted]);
-    ini.writeInt64('LastRun', 'FramesRendered', fStatistik.LastRun[sFramesRendered]);
-    ini.writeInt64('LastRun', 'BombsDropped', fStatistik.LastRun[sBombsDropped]);
-    ini.writeInt64('LastRun', 'PowerupsCollected', fStatistik.LastRun[sPowerupsCollected]);
-    ini.writeInt64('LastRun', 'PlayerDeaths', fStatistik.LastRun[sPlayerDeaths]);
-    ini.writeInt64('LastRun', 'BricksDestroyed', fStatistik.LastRun[sBricksDestroyed]);
-    ini.writeInt64('LastRun', 'PowerUpDestroyed', fStatistik.LastRun[sPowerUpDestroyed]);
-    ini.writeInt64('LastRun', 'TotalNetworkBytesIn', fStatistik.LastRun[sTotalNetworkBytesIn]);
-    ini.writeInt64('LastRun', 'TotalNetworkBytesOut', fStatistik.LastRun[sTotalNetworkBytesOut]);
-    ini.writeInt64('LastRun', 'TotalNetworkPacketsIn', fStatistik.LastRun[sTotalNetworkPacketsIn]);
-    ini.writeInt64('LastRun', 'TotalNetworkPacketsOut', fStatistik.LastRun[sTotalNetworkPacketsOut]);
+    ini.writeInt64('LastRun', 'MatchesStarted', fStatistik.LastRun[ssMatchesStarted]);
+    ini.writeInt64('LastRun', 'GamesStarted', fStatistik.LastRun[ssGamesStarted]);
+    ini.writeInt64('LastRun', 'FramesRendered', fStatistik.LastRun[ssFramesRendered]);
+    ini.writeInt64('LastRun', 'BombsDropped', fStatistik.LastRun[ssBombsDropped]);
+    ini.writeInt64('LastRun', 'PowerupsCollected', fStatistik.LastRun[ssPowerupsCollected]);
+    ini.writeInt64('LastRun', 'PlayerDeaths', fStatistik.LastRun[ssPlayerDeaths]);
+    ini.writeInt64('LastRun', 'BricksDestroyed', fStatistik.LastRun[ssBricksDestroyed]);
+    ini.writeInt64('LastRun', 'PowerUpDestroyed', fStatistik.LastRun[ssPowerUpDestroyed]);
+    ini.writeInt64('LastRun', 'TotalNetworkBytesIn', fStatistik.LastRun[ssTotalNetworkBytesIn]);
+    ini.writeInt64('LastRun', 'TotalNetworkBytesOut', fStatistik.LastRun[ssTotalNetworkBytesOut]);
+    ini.writeInt64('LastRun', 'TotalNetworkPacketsIn', fStatistik.LastRun[ssTotalNetworkPacketsIn]);
+    ini.writeInt64('LastRun', 'TotalNetworkPacketsOut', fStatistik.LastRun[ssTotalNetworkPacketsOut]);
   Finally
     ini.free;
   End;
   LogLeave(EnterID);
 End;
 
-Procedure TServer.LoadPlayerStatistiks();
+procedure TServer.LoadPlayerStatistics;
 Var
   EnterID: Integer;
 Begin
@@ -2374,7 +2374,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.SavePlayerStatistiks();
+procedure TServer.SavePlayerStatistics;
 Var
   EnterID: Integer;
 Begin

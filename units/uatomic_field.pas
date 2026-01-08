@@ -145,6 +145,8 @@ Type
     fPreviewGrid: Array[0..4, 0..4] Of Integer;
 {$ENDIF}
   public
+    Constructor Create(); reintroduce;
+
 {$IFDEF Client}
     Procedure CreatePreview(Const Fields: Array Of TAtomicField);
     Procedure RenderPreview; override;
@@ -541,8 +543,8 @@ Begin
       End;
     bdBrick: Begin
         If Not fField[x, y].Exploding Then Begin
-          fPlayerStatistics.UpdatePlayerID(TriggerPlayerindex, psBricksDestroyed);
-          StatisticCallback(sBricksDestroyed);
+          fPlayerStatistics.UpdatePlayerID(TriggerPlayerindex, pssBricksDestroyed);
+          StatisticCallback(ssBricksDestroyed);
         End;
         fField[x, y].Exploding := true;
         fField[x, y].ExplodingRenderFlag := true;
@@ -868,7 +870,7 @@ Begin
   cSpeed := 0;
   rSpeed := Players[PlayerIndex].Powers.Speed / FrameRate; // So Umrechnen dass Speed = Kachel Pro Sekunde ist.
 
-  // Das Bewegen des Atomics anhand seiner Daten
+  // Das Bewegen der Spielfigur anhand seiner Daten
   Case Players[PlayerIndex].MoveState Of
     msStill: Players[PlayerIndex].Info.Animation := raStandStill;
     msRight: Begin
@@ -893,7 +895,7 @@ Begin
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
               If FielWalkable(x + 1, y, true) Then Begin // Kann die Bombe sich bewegen ?
                 If fBombs[index].MoveDir <> bmRight Then Begin
-                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, psKickedBombs);
+                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssKickedBombs);
                   fPlaySoundEffect(PlayerIndex, seBombKick);
                   Players[PlayerIndex].Info.Animation := raKick;
                   Players[PlayerIndex].Info.Counter := 0;
@@ -946,7 +948,7 @@ Begin
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
               If FielWalkable(x - 1, y, true) Then Begin // Kann die Bombe sich bewegen ?
                 If fBombs[index].MoveDir <> bmLeft Then Begin
-                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, psKickedBombs);
+                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssKickedBombs);
                   fPlaySoundEffect(PlayerIndex, seBombKick);
                   Players[PlayerIndex].Info.Animation := raKick;
                   Players[PlayerIndex].Info.Counter := 0;
@@ -999,7 +1001,7 @@ Begin
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
               If FielWalkable(x, y - 1, true) Then Begin // Kann die Bombe sich bewegen ?
                 If fBombs[index].MoveDir <> bmUp Then Begin
-                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, psKickedBombs);
+                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssKickedBombs);
                   fPlaySoundEffect(PlayerIndex, seBombKick);
                   Players[PlayerIndex].Info.Animation := raKick;
                   Players[PlayerIndex].Info.Counter := 0;
@@ -1052,7 +1054,7 @@ Begin
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
               If FielWalkable(x, y + 1, true) Then Begin // Kann die Bombe sich bewegen ?
                 If fBombs[index].MoveDir <> bmDown Then Begin
-                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, psKickedBombs);
+                  fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssKickedBombs);
                   fPlaySoundEffect(PlayerIndex, seBombKick);
                   Players[PlayerIndex].Info.Animation := raKick;
                   Players[PlayerIndex].Info.Counter := 0;
@@ -1181,9 +1183,9 @@ Begin
             End;
             If PlaceBombOn(x + i * dx + 0.5, y + i * dy + 0.5) Then Begin
               fPlaySoundEffect(PlayerIndex, seBombDrop);
-              fPlayerStatistics.UpdatePlayerID(PlayerIndex, psPlacedBombs);
-              fPlayerStatistics.UpdatePlayerID(PlayerIndex, psSpoogedBombs);
-              StatisticCallback(sBombsDropped);
+              fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssPlacedBombs);
+              fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssSpoogedBombs);
+              StatisticCallback(ssBombsDropped);
             End;
           End;
         End;
@@ -1210,7 +1212,7 @@ Begin
               fBombs[i].FlyTime := 0;
               fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
               fPlaySoundEffect(PlayerIndex, seBombGrab);
-              fPlayerStatistics.UpdatePlayerID(PlayerIndex, psThrownBombs);
+              fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssThrownBombs);
               Player.Info.Animation := raPup;
               Player.Info.Counter := 0;
               break;
@@ -1221,8 +1223,8 @@ Begin
     aaFirst: Begin
         If PlaceBombOn(trunc(player.Info.Position.x) + 0.5, trunc(player.Info.Position.y) + 0.5) Then Begin
           fPlaySoundEffect(PlayerIndex, seBombDrop);
-          fPlayerStatistics.UpdatePlayerID(PlayerIndex, psPlacedBombs);
-          StatisticCallback(sBombsDropped);
+          fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssPlacedBombs);
+          StatisticCallback(ssBombsDropped);
         End;
       End;
     aaSecond: Begin
@@ -1251,7 +1253,7 @@ Begin
               fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
               fBombs[i].Lifetime := 0; // Reset Bomb timer when punch
               fPlaySoundEffect(PlayerIndex, seBombPunch);
-              fPlayerStatistics.UpdatePlayerID(PlayerIndex, psPunshedBombs);
+              fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssPushedBombs);
               Player.Info.Animation := raPunch;
               Player.Info.Counter := 0;
               handled := true;
@@ -1267,7 +1269,7 @@ Begin
             If (fBombs[i].PlayerIndex = PlayerIndex) And (fBombs[i].Animation = baTimeTriggered) And (fBombs[i].MoveDir <> bmFly) Then Begin
               fBombs[i].Animation := baNormal;
               fBombs[i].Lifetime := AtomicBombDetonateTime;
-              fPlayerStatistics.UpdatePlayerID(PlayerIndex, psTriggeredBombs);
+              fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssTriggeredBombs);
             End;
           End;
         End;
@@ -1713,8 +1715,8 @@ Begin
   While Not fPowerUpClearFifo.isempty Do Begin
     p := fPowerUpClearFifo.Pop;
     If fField[p.x, p.y].PowerUp <> puNone Then Begin
-      fPlayerStatistics.UpdatePlayerID(fField[p.x, p.y].FlamePlayer, psPowerupsDestroyed);
-      StatisticCallback(sPowerUpDestroyed);
+      fPlayerStatistics.UpdatePlayerID(fField[p.x, p.y].FlamePlayer, pssPowerupsDestroyed);
+      StatisticCallback(ssPowerUpDestroyed);
     End;
     fField[p.x, p.y].PowerUp := puNone;
   End;
@@ -1790,7 +1792,7 @@ Begin
         If i = fField[x, y].FlamePlayer Then Begin
           // Selfkill
           Players[fField[x, y].FlamePlayer].Kills := Players[fField[x, y].FlamePlayer].Kills - 1;
-          fPlayerStatistics.UpdatePlayerID(i, psFriendlyFireKills);
+          fPlayerStatistics.UpdatePlayerID(i, pssFriendlyFireKills);
         End
         Else Begin
           // Echter Kill ;)
@@ -1798,16 +1800,16 @@ Begin
           // Die Player Statistik unterscheidet allerdings "feiner" ;), denn obiger Code würde einen Teamplayer Killen als Kill werten
           // Die Spieler Statistik wertet es als Friendly fire
           If (Not fTeamPlay) Or (Players[fField[x, y].FlamePlayer].Team <> Players[i].Team) Then Begin
-            fPlayerStatistics.UpdatePlayerID(fField[x, y].FlamePlayer, psKills);
+            fPlayerStatistics.UpdatePlayerID(fField[x, y].FlamePlayer, pssKills);
           End
           Else Begin
-            fPlayerStatistics.UpdatePlayerID(i, psFriendlyFireKills);
+            fPlayerStatistics.UpdatePlayerID(i, pssFriendlyFireKills);
           End;
         End;
         fPlaySoundEffect(i, seAtomicDie);
         fPlaySoundEffect(i, seOtherPlayerDied);
-        StatisticCallback(sPlayerDeaths);
-        fPlayerStatistics.UpdatePlayerID(i, psDeaths);
+        StatisticCallback(ssPlayerDeaths);
+        fPlayerStatistics.UpdatePlayerID(i, pssDeaths);
         KillPlayer(Players, i);
       End;
     End;
@@ -2107,6 +2109,17 @@ Begin
       Player.Info.Position.y := 2.5;
     End;
   End;
+End;
+
+{ TAtomicRandomField }
+
+Constructor TAtomicRandomField.Create();
+Begin
+  Inherited create(
+{$IFDEF Server}
+    Nil, Nil, Nil
+{$ENDIF}
+    );
 End;
 
 {$ENDIF}

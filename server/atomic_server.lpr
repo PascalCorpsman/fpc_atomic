@@ -188,8 +188,8 @@ Begin
 
   // 3. Endlosschleife
   If assigned(server) Then Begin
-    server.LoadStatistiks();
-    server.LoadPlayerStatistiks();
+    server.LoadStatistics();
+    server.LoadPlayerStatistics();
     Try
       server.execute;
     Except
@@ -197,8 +197,8 @@ Begin
         log(e.Message, llFatal);
       End;
     End;
-    server.SavePlayerStatistiks();
-    server.SaveStatistiks();
+    server.SavePlayerStatistics();
+    server.SaveStatistics();
     log('Shutting down, thanks for playing.', llInfo);
     // 4. Fertig, aufräumen
     server.free;
