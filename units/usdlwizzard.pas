@@ -20,18 +20,19 @@ Interface
 
 Uses
   forms, Classes, SysUtils, ComCtrls, StdCtrls, ExtCtrls, Controls, Buttons,
-  usdl_joystick;
+  usdl_joystick, usdl_gamecontroller;
 
 Type
 
   TDeviceInfo = Record
     Name: String;
-    Nameindex: Integer;
+    Nameindex: Integer; // Gibt es mehrere Devices mit dem selben Namen, dann gibt NameIndex an, der wievielte es ist ..
     AchsisIdle: Array Of Integer;
     ButtonsIdle: Array Of Boolean;
     FirstButtonIndex, SecondButtonIndex: integer;
     UpDownIndex, LeftRightIndex: integer;
     UpDirection, LeftDirection: Integer;
+    IsGameController: Boolean;
   End;
 
   TWizzardState = (
@@ -52,15 +53,18 @@ Type
     Button4: TButton;
     Button5: TButton;
     Button6: TButton;
+    Button7: TButton;
     PageControl1: TPageControl;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
     ComboBox1: TComboBox;
+    ComboBox2: TComboBox;
     ImageList1: TImageList;
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
+    Label5: TLabel;
     Timer1: TTimer;
     SpeedButton1: TSpeedButton;
     SpeedButton2: TSpeedButton;
@@ -69,7 +73,8 @@ Type
     First: TShape;
     Second: TShape;
     Procedure OnRefreshDeviceList(Sender: TObject);
-    Procedure OnSelectDeviceNext(Sender: TObject);
+    Procedure OnSelectJoystikNext(Sender: TObject);
+    Procedure OnSelectGameControllerNext(Sender: TObject);
     Procedure OnCenterDeviceNext(Sender: TObject);
     Procedure Timer1Timer(Sender: TObject);
     Procedure OnRestartWizzard(Sender: TObject);
@@ -78,6 +83,8 @@ Type
     fsdlJoyStick: TSDL_Joystick;
     pb: Array Of TProgressBar;
     sp: Array Of TShape;
+    GameControllerMapper: Array Of Integer;
+    Procedure CreateLCLFromJoyStick;
   public
     Device: TDeviceInfo; // Nur Gültig, wenn Execute = True !
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
@@ -96,16 +103,28 @@ Procedure TSDLWizzard.OnRefreshDeviceList(Sender: TObject);
 Var
   i: Integer;
 Begin
+  SDL_Quit;
+  SDL_Init(SDL_INIT_GAMECONTROLLER);
   ComboBox1.Clear;
+  ComboBox2.Clear;
+  setlength(GameControllerMapper, 0);
   For i := 0 To SDL_NumJoysticks() - 1 Do Begin
     ComboBox1.Items.Add(SDL_JoystickNameForIndex(i));
+    If SDL_IsGameController(i) Then Begin
+      ComboBox2.Items.Add(SDL_GameControllerNameForIndex(i));
+      setlength(GameControllerMapper, high(GameControllerMapper) + 2);
+      GameControllerMapper[high(GameControllerMapper)] := i;
+    End;
   End;
   If ComboBox1.Items.Count <> 0 Then Begin
     ComboBox1.ItemIndex := 0;
   End;
+  If ComboBox2.Items.Count <> 0 Then Begin
+    ComboBox2.ItemIndex := 0;
+  End;
 End;
 
-Procedure TSDLWizzard.OnSelectDeviceNext(Sender: TObject);
+Procedure TSDLWizzard.OnSelectJoystikNext(Sender: TObject);
 
   Function GetDeviceIndex(aName: String; aIndex: Integer): Integer;
   Var
@@ -117,9 +136,8 @@ Procedure TSDLWizzard.OnSelectDeviceNext(Sender: TObject);
     End;
   End;
 
-Var
-  i: Integer;
 Begin
+  // Select Joystick
   If (ComboBox1.Items.Count = 0) Or (ComboBox1.ItemIndex = -1) Then Begin
     showmessage('Error, nothing selected.');
     exit;
@@ -134,37 +152,60 @@ Begin
   End;
   Device.Name := ComboBox1.Text;
   Device.Nameindex := GetDeviceIndex(Device.Name, ComboBox1.ItemIndex);
-  setlength(pb, fsdlJoyStick.AxisCount);
-  For i := 0 To fsdlJoyStick.AxisCount - 1 Do Begin
-    pb[i] := TProgressBar.Create(TabSheet2);
-    pb[i].Name := 'Progressbar' + inttostr(i + 1);
-    pb[i].Parent := TabSheet2;
-    pb[i].Min := -32768;
-    pb[i].Max := 32767;
-    pb[i].Orientation := pbVertical;
-    pb[i].Top := 48;
-    pb[i].Left := 16 + i * (44 - 16);
-    pb[i].Width := 20;
-    pb[i].Height := 180;
-    pb[i].Position := fsdlJoyStick.Axis[i];
-  End;
-  setlength(sp, fsdlJoyStick.ButtonCount);
-  For i := 0 To fsdlJoyStick.ButtonCount - 1 Do Begin
-    sp[i] := TShape.Create(TabSheet2);
-    sp[i].name := 'Shape' + IntToStr(i + 1);
-    sp[i].Parent := TabSheet2;
-    sp[i].Shape := stCircle;
-    sp[i].Width := 20;
-    sp[i].Height := 20;
-    sp[i].Top := 48 + 180 + 10;
-    sp[i].Left := 16 + i * (20 + 5);
-    If fsdlJoyStick.Button[i] Then Begin
-      sp[i].Brush.Color := clRed;
-    End
-    Else Begin
-      sp[i].Brush.Color := clWhite;
+  Device.IsGameController := false;
+  CreateLCLFromJoyStick;
+  Device.FirstButtonIndex := -1;
+  Device.SecondButtonIndex := -1;
+  Device.UpDownIndex := -1;
+  Device.LeftRightIndex := -1;
+  timer1.Enabled := true;
+  SpeedButton1.ImageIndex := -1;
+  SpeedButton2.ImageIndex := -1;
+  SpeedButton3.ImageIndex := -1;
+  SpeedButton4.ImageIndex := -1;
+  WizzardState := wsCenter;
+  PageControl1.ActivePageIndex := 1;
+End;
+
+Procedure TSDLWizzard.OnSelectGameControllerNext(Sender: TObject);
+
+  Function GetDeviceIndex(aName: String; aIndex: Integer): Integer;
+  Var
+    i: Integer;
+  Begin
+    result := 0;
+    For i := 0 To aIndex - 1 Do Begin
+      If ComboBox2.Items[i] = aName Then inc(result);
     End;
   End;
+
+Begin
+  // Select GameController
+  If (ComboBox2.Items.Count = 0) Or (ComboBox2.ItemIndex = -1) Then Begin
+    showmessage('Error, nothing selected.');
+    exit;
+  End;
+  Try
+    fsdlJoyStick := TSDL_GameController.Create(GameControllerMapper[ComboBox2.ItemIndex]);
+  Except
+    fsdlJoyStick.free;
+    fsdlJoyStick := Nil;
+    showmessage('Error could not init gamecontroller.');
+    exit;
+  End;
+  If (Not TSDL_GameController(fsdlJoyStick).ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_UP]) Or
+    (Not TSDL_GameController(fsdlJoyStick).ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_DOWN]) Or
+    (Not TSDL_GameController(fsdlJoyStick).ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_LEFT]) Or
+    (Not TSDL_GameController(fsdlJoyStick).ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_RIGHT]) Then Begin
+    fsdlJoyStick.free;
+    fsdlJoyStick := Nil;
+    showmessage('Error gamecontroller does not support dpad buttons.');
+    exit;
+  End;
+  Device.Name := ComboBox2.Text;
+  Device.Nameindex := GetDeviceIndex(Device.Name, GameControllerMapper[ComboBox2.ItemIndex]);
+  Device.IsGameController := true;
+  CreateLCLFromJoyStick;
   Device.FirstButtonIndex := -1;
   Device.SecondButtonIndex := -1;
   Device.UpDownIndex := -1;
@@ -209,6 +250,16 @@ Begin
       SDL_JOYAXISMOTION: Begin // Eine Joystick Achse wurde geändert, diese überbehmen wir
           pb[event.jaxis.axis].Position := fsdlJoyStick.Axis[event.jaxis.axis];
         End;
+      SDL_CONTROLLERBUTTONDOWN,
+        SDL_CONTROLLERBUTTONUP: Begin
+          If fsdlJoyStick.Button[event.cbutton.button]
+            Then Begin
+            sp[event.cbutton.button].Brush.Color := clRed;
+          End
+          Else Begin
+            sp[event.cbutton.button].Brush.Color := clWhite;
+          End;
+        End;
       SDL_JOYBUTTONUP,
         SDL_JOYBUTTONDOWN: Begin
           If fsdlJoyStick.Button[event.jbutton.button]
@@ -229,7 +280,15 @@ Begin
                   If event.jbutton.button <> Device.FirstButtonIndex Then Begin
                     Device.SecondButtonIndex := event.jbutton.button;
                     label2.caption := 'Press up and confirm' + LineEnding + 'with first action';
-                    WizzardState := wsSearchUpDown;
+                    If fsdlJoyStick Is TSDL_GameController Then Begin
+                      label2.caption := 'Finished, press OK to confirm';
+                      WizzardState := wsIdle;
+                      Button2.Enabled := true;
+                      break;
+                    End
+                    Else Begin
+                      WizzardState := wsSearchUpDown;
+                    End;
                   End;
                 End;
               wsSearchUpDown: Begin
@@ -305,6 +364,16 @@ Begin
       End;
     End;
   End;
+  If fsdlJoyStick Is TSDL_GameController Then Begin
+    SpeedButton1.ImageIndex := -1;
+    SpeedButton2.ImageIndex := -1;
+    SpeedButton3.ImageIndex := -1;
+    SpeedButton4.ImageIndex := -1;
+    If TSDL_GameController(fsdlJoyStick).Button[SDL_CONTROLLER_BUTTON_DPAD_UP] Then SpeedButton2.ImageIndex := 0;
+    If TSDL_GameController(fsdlJoyStick).Button[SDL_CONTROLLER_BUTTON_DPAD_DOWN] Then SpeedButton3.ImageIndex := 1;
+    If TSDL_GameController(fsdlJoyStick).Button[SDL_CONTROLLER_BUTTON_DPAD_LEFT] Then SpeedButton1.ImageIndex := 2;
+    If TSDL_GameController(fsdlJoyStick).Button[SDL_CONTROLLER_BUTTON_DPAD_RIGHT] Then SpeedButton4.ImageIndex := 3;
+  End;
 End;
 
 Procedure TSDLWizzard.OnRestartWizzard(Sender: TObject);
@@ -328,6 +397,48 @@ Begin
   fsdlJoyStick := Nil;
   OnRefreshDeviceList(Nil);
   label2.caption := 'Center All axis and do not press' + LineEnding + 'any buttons then click next.';
+End;
+
+Procedure TSDLWizzard.CreateLCLFromJoyStick;
+Var
+  i: Integer;
+Begin
+  setlength(pb, fsdlJoyStick.AxisCount);
+  For i := 0 To fsdlJoyStick.AxisCount - 1 Do Begin
+    pb[i] := TProgressBar.Create(TabSheet2);
+    pb[i].Name := 'Progressbar' + inttostr(i + 1);
+    pb[i].Parent := TabSheet2;
+    pb[i].Min := -32768;
+    pb[i].Max := 32767;
+    pb[i].Orientation := pbVertical;
+    pb[i].Top := 48;
+    pb[i].Left := 16 + i * (44 - 16);
+    pb[i].Width := 20;
+    pb[i].Height := 180;
+    pb[i].Position := fsdlJoyStick.Axis[i];
+  End;
+  setlength(sp, fsdlJoyStick.ButtonCount);
+  For i := 0 To fsdlJoyStick.ButtonCount - 1 Do Begin
+    sp[i] := TShape.Create(TabSheet2);
+    sp[i].name := 'Shape' + IntToStr(i + 1);
+    sp[i].Parent := TabSheet2;
+    sp[i].Shape := stCircle;
+    sp[i].Width := 20;
+    sp[i].Height := 20;
+    sp[i].Top := 48 + 180 + 10;
+    sp[i].Left := 16 + i * (20 + 5);
+    If fsdlJoyStick.Button[i] Then Begin
+      sp[i].Brush.Color := clRed;
+    End
+    Else Begin
+      sp[i].Brush.Color := clWhite;
+    End;
+    If fsdlJoyStick Is TSDL_GameController Then Begin
+      If Not TSDL_GameController(fsdlJoyStick).ButtonAvailable[i] Then Begin
+        sp[i].Brush.Color := clGray;
+      End;
+    End;
+  End;
 End;
 
 Constructor TSDLWizzard.CreateNew(AOwner: TComponent; Num: Integer);
@@ -398,19 +509,35 @@ Begin
   PageControl1.Height := 304;
   // Tab Select Device
   TabSheet1 := PageControl1.AddTabSheet;
-  CreateLabel(label1, 'Label1', 'Select', 92, 48, TabSheet1);
+  CreateLabel(label1, 'Label1', 'Select joystick', 92, 8, TabSheet1);
   ComboBox1 := TComboBox.Create(TabSheet1);
   ComboBox1.Name := 'ComboBox1';
   ComboBox1.Parent := TabSheet1;
-  ComboBox1.Left := 104;
+  ComboBox1.Left := 154;
   ComboBox1.Top := 80;
-  ComboBox1.Width := 400;
+  ComboBox1.Width := 350;
   ComboBox1.Style := csDropDownList;
-  CreateButton(Button3, 'Button3', 'R', 83, 512, mrNone, TabSheet1);
+  CreateLabel(label5, 'Label5', 'Select gamecontroller', 124, 8, TabSheet1);
+
+  ComboBox2 := TComboBox.Create(TabSheet1);
+  ComboBox2.Name := 'ComboBox2';
+  ComboBox2.Parent := TabSheet1;
+  ComboBox2.Left := 154;
+  ComboBox2.Top := 112;
+  ComboBox2.Width := 350;
+  ComboBox2.Style := csDropDownList;
+
+  CreateButton(Button3, 'Button3', 'R', 80, 512, mrNone, TabSheet1);
   Button3.Width := 25;
+  Button3.Height := 56;
   Button3.OnClick := @OnRefreshDeviceList;
-  CreateButton(Button4, 'Button4', 'Next', 264, 464, mrNone, TabSheet1);
-  button4.OnClick := @OnSelectDeviceNext;
+  // Die Buttons sind 115 Bixel Breit
+  CreateButton(Button4, 'Button4', 'Use joystick', 264, 464 - 23 - 8, mrNone, TabSheet1);
+  CreateButton(Button7, 'Button7', 'Use gamecontroller', 264, 464 - 23 - 24 - 138, mrNone, TabSheet1);
+  Button4.width := 138 + 8;
+  Button7.width := 138 + 8;
+  button4.OnClick := @OnSelectJoystikNext;
+  button7.OnClick := @OnSelectGameControllerNext;
 
   // Tab Select
   TabSheet2 := PageControl1.AddTabSheet;

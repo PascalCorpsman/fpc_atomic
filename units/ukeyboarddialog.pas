@@ -126,9 +126,11 @@ Procedure TKeyboardDialog.OnSetKeyBoardEvent(Sender: TObject);
 Begin
   If Sender = Button5 Then Begin
     fkeys[ks0].UseSDL2 := false;
+    label25.caption := 'Keyboard 0';
   End
   Else Begin
     fkeys[ks1].UseSDL2 := false;
+    label26.caption := 'Keyboard 1';
   End;
 End;
 
@@ -151,7 +153,7 @@ Begin
       );
     exit;
   End;
-  If SDL_Init(SDL_INIT_JOYSTICK) <> 0 Then Begin
+  If SDL_Init(SDL_INIT_GAMECONTROLLER) <> 0 Then Begin
     showmessage('Error could not init SDL');
     exit;
   End;
@@ -167,6 +169,7 @@ Begin
       fkeys[ks0].UseSDL2 := true;
       fkeys[ks0].Name := SDL_DeviceInfo.Name;
       fkeys[ks0].NameIndex := SDL_DeviceInfo.Nameindex;
+      fkeys[ks0].IsGameController := SDL_DeviceInfo.IsGameController;
       fkeys[ks0].ButtonIndex[0] := SDL_DeviceInfo.FirstButtonIndex;
       fkeys[ks0].ButtonIndex[1] := SDL_DeviceInfo.SecondButtonIndex;
       fkeys[ks0].ButtonsIdle[0] := SDL_DeviceInfo.ButtonsIdle[SDL_DeviceInfo.FirstButtonIndex];
@@ -182,6 +185,7 @@ Begin
       fkeys[ks1].UseSDL2 := true;
       fkeys[ks1].Name := SDL_DeviceInfo.Name;
       fkeys[ks1].NameIndex := SDL_DeviceInfo.Nameindex;
+      fkeys[ks1].IsGameController := SDL_DeviceInfo.IsGameController;
       fkeys[ks1].ButtonIndex[0] := SDL_DeviceInfo.FirstButtonIndex;
       fkeys[ks1].ButtonIndex[1] := SDL_DeviceInfo.SecondButtonIndex;
       fkeys[ks1].ButtonsIdle[0] := SDL_DeviceInfo.ButtonsIdle[SDL_DeviceInfo.FirstButtonIndex];
@@ -303,6 +307,18 @@ Procedure TKeyboardDialog.LoadKeys(Keys0, keys1: Tkeys);
 Begin
   fkeys[ks0] := Keys0;
   fkeys[ks1] := Keys1;
+  If fkeys[ks0].UseSDL2 Then Begin
+    label25.caption := 'Keyboard 0(' + keys0.Name + ')';
+  End
+  Else Begin
+    label25.caption := 'Keyboard 0';
+  End;
+  If fkeys[ks1].UseSDL2 Then Begin
+    label26.caption := 'Keyboard 1(' + keys1.Name + ')';
+  End
+  Else Begin
+    label26.caption := 'Keyboard 1';
+  End;
   label7.Caption := VkKeyToString(fkeys[ks0].KeyUp);
   label8.Caption := VkKeyToString(fkeys[ks0].KeyDown);
   label9.Caption := VkKeyToString(fkeys[ks0].KeyLeft);

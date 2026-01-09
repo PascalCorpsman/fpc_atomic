@@ -145,8 +145,9 @@ Type
     fPreviewGrid: Array[0..4, 0..4] Of Integer;
 {$ENDIF}
   public
+{$IFDEF Server}
     Constructor Create(); reintroduce;
-
+{$ENDIF}
 {$IFDEF Client}
     Procedure CreatePreview(Const Fields: Array Of TAtomicField);
     Procedure RenderPreview; override;
@@ -2116,9 +2117,7 @@ End;
 Constructor TAtomicRandomField.Create();
 Begin
   Inherited create(
-{$IFDEF Server}
     Nil, Nil, Nil
-{$ENDIF}
     );
 End;
 

@@ -19,7 +19,7 @@ Unit usdl_input;
 Interface
 
 Uses
-  Classes, SysUtils, controls, uatomic_common, usdl_joystick, sdl2;
+  Classes, SysUtils, controls, uatomic_common, usdl_joystick, usdl_gamecontroller, sdl2;
 
 Procedure SDL_Init;
 Procedure SDL_Quit;
@@ -87,20 +87,25 @@ End;
 Procedure SDL_CreateSticks(Const akeys: TKeyArray);
 Var
   index: Integer;
+  i: TKeySet;
 Begin
   If Not fsdl_Loaded Then exit;
   SDL_FreeSticks; // Falls es die schon gibt ;)
   fkeys := akeys;
-  If fKeys[ks0].UseSDL2 Then Begin
-    index := ResolveJoystickNameToIndex(fKeys[ks0].Name, fKeys[ks0].NameIndex);
-    If index <> -1 Then Begin
-      fsdlJoysticks[ks0] := TSDL_Joystick.Create(index);
-    End;
-  End;
-  If fKeys[ks1].UseSDL2 Then Begin
-    index := ResolveJoystickNameToIndex(fKeys[ks1].Name, fKeys[ks1].NameIndex);
-    If index <> -1 Then Begin
-      fsdlJoysticks[ks1] := TSDL_Joystick.Create(index);
+  For i In TKeySet Do Begin
+    If fKeys[i].UseSDL2 Then Begin
+      If fKeys[i].IsGameController Then Begin
+        index := ResolveGameControllerNameToIndex(fKeys[i].Name, fKeys[i].NameIndex);
+        If index <> -1 Then Begin
+          fsdlJoysticks[i] := TSDL_GameController.create(index);
+        End;
+      End
+      Else Begin
+        index := ResolveJoystickNameToIndex(fKeys[i].Name, fKeys[i].NameIndex);
+        If index <> -1 Then Begin
+          fsdlJoysticks[i] := TSDL_Joystick.Create(index);
+        End;
+      End;
     End;
   End;
 End;
@@ -126,29 +131,35 @@ Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TAtomicKeyEvent);
     up, down, left, right, first, second: Boolean;
   Begin
     If Not assigned(fsdlJoysticks[keys]) Then exit;
-    //    If fPlayerIndex[keys] = AIPlayer Then exit;
-
     // 1. Ermitteln des Aktuellen "Gedrückt" stati
     up := false;
     down := false;
     left := false;
     right := false;
-    d := fKeys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[0]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = fKeys[keys].AchsisDirection[0] Then Begin
-        up := true;
-      End
-      Else Begin
-        down := true;
+    If fsdlJoysticks[keys] Is TSDL_GameController Then Begin
+      up := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_UP];
+      down := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_DOWN];
+      left := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_LEFT];
+      right := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_RIGHT];
+    End
+    Else Begin
+      d := fKeys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[0]];
+      If abs(d) > achsistrigger Then Begin
+        If sign(d) = fKeys[keys].AchsisDirection[0] Then Begin
+          up := true;
+        End
+        Else Begin
+          down := true;
+        End;
       End;
-    End;
-    d := fKeys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[1]];
-    If abs(d) > achsistrigger Then Begin
-      If sign(d) = fKeys[keys].AchsisDirection[1] Then Begin
-        left := true;
-      End
-      Else Begin
-        right := true;
+      d := fKeys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[1]];
+      If abs(d) > achsistrigger Then Begin
+        If sign(d) = fKeys[keys].AchsisDirection[1] Then Begin
+          left := true;
+        End
+        Else Begin
+          right := true;
+        End;
       End;
     End;
     first := fKeys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[fKeys[keys].ButtonIndex[0]];

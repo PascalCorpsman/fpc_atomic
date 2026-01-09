@@ -50,17 +50,20 @@ Type
   private
     fAxisCount: integer;
     fButtonCount: integer;
+  protected
     fInstance: Pointer;
-    Function GetAxisValue(index: integer): integer;
-    Function GetButtonValue(index: integer): boolean;
+    Function GetAxisCount: integer; virtual;
+    Function GetAxisValue(index: integer): integer; virtual;
+    Function GetButtonCount: integer; virtual;
+    Function GetButtonValue(index: integer): boolean; virtual;
   public
-    Property ButtonCount: integer read fButtonCount;
+    Property ButtonCount: integer read getButtonCount;
     Property Button[index: integer]: boolean read GetButtonValue;
 
-    Property AxisCount: integer read fAxisCount;
+    Property AxisCount: integer read getAxisCount;
     Property Axis[index: integer]: integer read GetAxisValue; // ranging from -32768 to 32767
 
-    Constructor Create(Index: integer);
+    Constructor Create(Index: integer); virtual;
     Destructor Destroy; override;
   End;
 
@@ -91,6 +94,16 @@ Begin
 End;
 
 { TSDL_Joystick }
+
+Function TSDL_Joystick.getButtonCount: integer;
+Begin
+  result := fButtonCount;
+End;
+
+Function TSDL_Joystick.getAxisCount: integer;
+Begin
+  result := fAxisCount;
+End;
 
 Function TSDL_Joystick.GetAxisValue(index: integer): integer;
 Begin

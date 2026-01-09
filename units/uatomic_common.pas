@@ -117,6 +117,7 @@ Const
    *                       FIX: Gui glitch during select field screen
    *                       ADD: alternative + and - keys for sound control
    *                       ADD: Player Statistiks (y)
+   *                       ADD: GameController Support
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -554,6 +555,7 @@ Type
     AchsisDirection: Array[0..1] Of integer; // 0 = Hoch Runter, 1 = Links Rechts
     ButtonsIdle: Array[0..1] Of Boolean; // 0 = First, 1 = Second
     ButtonIndex: Array[0..1] Of integer; // 0 = First, 1 = Second
+    IsGameController: Boolean; // Wenn True, dann werden anstadt der Achsen die D_Pads verwendet
     // if not UseSDL2 then this key's are valid
     KeyUp: Word;
     KeyDown: Word;
@@ -692,6 +694,7 @@ End;
 Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 Begin
   result.UseSDL2 := false;
+  result.IsGameController := false;
   result.Name := '';
   result.NameIndex := 0;
   result.AchsisIndex[0] := -1;

@@ -187,6 +187,7 @@ Begin
   If Keys[ks0].UseSDL2 Then Begin
     Keys[ks0].Name := ini.ReadString(FPC_AtomicIniSection, 'SDL_Name', Keys[ks0].Name);
     Keys[ks0].NameIndex := ini.readInteger(FPC_AtomicIniSection, 'SDL_NameIndex', Keys[ks0].NameIndex);
+    Keys[ks0].IsGameController := ini.ReadBool(FPC_AtomicIniSection, 'SDL_IsGameController', Keys[ks0].IsGameController);
     Keys[ks0].ButtonIndex[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_First', Keys[ks0].ButtonIndex[0]);
     Keys[ks0].ButtonsIdle[0] := ini.readBool(FPC_AtomicIniSection, 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
     Keys[ks0].ButtonIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_Second', Keys[ks0].ButtonIndex[1]);
@@ -209,6 +210,7 @@ Begin
   If Keys[ks1].UseSDL2 Then Begin
     Keys[ks1].Name := ini.ReadString(FPC_AtomicIniSection, 'SDL_Name2', Keys[ks1].Name);
     Keys[ks1].NameIndex := ini.readInteger(FPC_AtomicIniSection, 'SDL_NameIndex2', Keys[ks1].NameIndex);
+    Keys[ks1].IsGameController := ini.ReadBool(FPC_AtomicIniSection, 'SDL_IsGameController2', Keys[ks1].IsGameController);
     Keys[ks1].ButtonIndex[0] := ini.readInteger(FPC_AtomicIniSection, 'SDL_First2', Keys[ks1].ButtonIndex[0]);
     Keys[ks1].ButtonsIdle[0] := ini.readBool(FPC_AtomicIniSection, 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
     Keys[ks1].ButtonIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
@@ -233,6 +235,7 @@ Begin
     ini.WriteBool(FPC_AtomicIniSection, 'UseSDL', Keys[ks0].UseSDL2);
     ini.WriteString(FPC_AtomicIniSection, 'SDL_Name', Keys[ks0].Name);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_NameIndex', Keys[ks0].NameIndex);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_IsGameController', Keys[ks0].IsGameController);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_First', Keys[ks0].ButtonIndex[0]);
     ini.WriteBool(FPC_AtomicIniSection, 'SDL_FirstIdle', Keys[ks0].ButtonsIdle[0]);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_Second', Keys[ks0].ButtonIndex[1]);
@@ -252,6 +255,7 @@ Begin
     ini.WriteBool(FPC_AtomicIniSection, 'UseSDL2', Keys[ks1].UseSDL2);
     ini.WriteString(FPC_AtomicIniSection, 'SDL_Name2', Keys[ks1].Name);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_NameIndex2', Keys[ks1].NameIndex);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_IsGameController2', Keys[ks1].IsGameController);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_First2', Keys[ks1].ButtonIndex[0]);
     ini.WriteBool(FPC_AtomicIniSection, 'SDL_FirstIdle2', Keys[ks1].ButtonsIdle[0]);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_Second2', Keys[ks1].ButtonIndex[1]);
