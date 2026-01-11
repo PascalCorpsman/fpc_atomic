@@ -823,8 +823,6 @@ Begin
     p.Parameters.Add(inttostr(settings.Port));
     p.Parameters.Add('-l');
     p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
-    p.Parameters.Add('-f');
-    p.Parameters.Add(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStrUTF8(0))) + 'logs' + PathDelim + 'server.log');
     p.Execute;
     p.free;
   End
@@ -2475,4 +2473,6 @@ Begin
 End;
 
 End.
+
+
 
