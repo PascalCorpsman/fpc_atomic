@@ -113,15 +113,16 @@ Const
    * -releaseG - 0.12008 = FIX: Drawgame in Teamsplay -> no finish detected
    * -releaseG - 0.12009 = FIX: if player has no bomb disease and places a bomb (which does not pop up), then it pops up exactly at that moment when the disease is over
    * -releaseG - 0.12010 = ADD: Feature Request Proportional Rendering
-   *             0.12011 = FIX: Crash during Key Up
+   * -releaseG - 0.12011 = FIX: Crash during Key Up
    *                       FIX: Gui glitch during select field screen
    *                       ADD: alternative + and - keys for sound control
    *                       ADD: Player Statistiks (y)
    *                       ADD: GameController Support
+   *             0.12012 =
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12011';
+  Version = '0.12012';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
