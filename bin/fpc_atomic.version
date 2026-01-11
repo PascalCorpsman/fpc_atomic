@@ -1,85 +1,85 @@
 {
   "fpc_atomic":
   {
-    "Version":0.12010,
+    "Version":0.12011,
     "LauncherVersion":10,
-    "VersionText":"ADD: Proportional Rendering\nADD: increases Joystick Support",
+    "VersionText":"FIX: crash server start on Nobara Linux\nADD: Gamecontroller support\nADD: more player Statistics to server log\nADD: alternative + and - keys for volume change\nFIX: gui glitches during field selection in no stretch mode",
     "Download_core":
     [
       {
         "file":
         {
-          "HASH":"c915eaae314ee958a89ff973f505fd5e",
+          "HASH":"7e640f6de6d68dff76ceefb7d9d88c87",
           "SIZE":"3089920",
           "HASH2":"9b364fbb3fcdb0f0b7c01ed5928744a1",
           "SIZE2":"7059880",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/Animation_Editor.exe",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"d84e2cff47a5021494895b0a3864eb2e",
-          "SIZE":"1363968",
-          "HASH2":"48177638a1059e09a6327343884d0b9a",
-          "SIZE2":"2849504",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/atomic_server.exe",
+          "HASH":"ad7729d0da104472b00dacdc98eaa08b",
+          "SIZE":"1378816",
+          "HASH2":"46e6e07fd7112e330a905e5c3e12386a",
+          "SIZE2":"2868368",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"74e0f0c7dfd19e7ea0e1a261b1019ae0",
-          "SIZE":"5987328",
-          "HASH2":"6f0869fd47e4b99c27dbf00711da5574",
-          "SIZE2":"7449448",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/atomic_launcher.exe",
+          "HASH":"4ed0c44078480e1832911cfcdfaa6eed",
+          "SIZE":"5995520",
+          "HASH2":"67829e43f72d57a6c5ab74f045b2b963",
+          "SIZE2":"7459016",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"8bc06a9349c83b9de659ac323243e234",
+          "HASH":"48d82ef1879771b1f4798032d62016f7",
           "SIZE":"2673664",
           "HASH2":"696de069047e64cfedbb3ace30c3e70c",
           "SIZE2":"6218968",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/updater.exe",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/updater.exe",
           "Filename":"updater.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"f366221eb050c5eaa92ce611b0d5e631",
-          "SIZE":"4418560",
-          "HASH2":"ff2efe1ab0d7fa729f92089425a203b5",
-          "SIZE2":"8857320",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/fpc_atomic.exe",
+          "HASH":"4e0b043634dab6d1e8bb0f0e966cc1a9",
+          "SIZE":"4429824",
+          "HASH2":"aeb7d3a05848ff379cf252e0fcb6ca09",
+          "SIZE2":"8870920",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"b9c9bafe1b3875ed0664db801470b72a",
-          "SIZE":"2959872",
-          "HASH2":"ac087a8333df1895ff26fc52e77f25d8",
-          "SIZE2":"6992984",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/cd_data_extractor.exe",
+          "HASH":"6f70d6c0e63243c4b935de62aff8db85",
+          "SIZE":"2960896",
+          "HASH2":"ea71a4c905a646c6cba783940ab29977",
+          "SIZE2":"6993528",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"af74cc6effe6c1178d0139a1a6f5e543",
+          "HASH":"049c53244bd6dd4f05126e562941539b",
           "SIZE":"299520",
           "HASH2":"a68a36302fee06693558654aec47cb38",
           "SIZE2":"2240904",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/ai.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/ai.dll",
           "Filename":"ai.dll"
         }
       },
@@ -90,7 +90,7 @@
           "SIZE":"1471488",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE2":"-1",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/SDL2.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/SDL2.dll",
           "Filename":"SDL2.dll"
         }
       },
@@ -101,7 +101,7 @@
           "SIZE":"166872",
           "HASH2":"255fb8ab523b179320f08f44db36a9fa",
           "SIZE2":"248952",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/bass.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/bass.dll",
           "Filename":"bass.dll"
         }
       },
@@ -110,7 +110,7 @@
         {
           "HASH":"777d7d007fc6c89df46e72b7f7ddf73e",
           "SIZE":"380",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12010\/Linux_sound_install_script.sh",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
       },
