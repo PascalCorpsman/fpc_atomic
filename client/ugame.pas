@@ -817,7 +817,7 @@ Begin
 {$ENDIF}
   If FileExistsUTF8(serv) Then Begin
     p := TProcessUTF8.Create(Nil);
-    p.Options := [poNewConsole];
+    p.Options := [poDetached];
     p.Executable := serv;
     p.Parameters.Add('-p');
     p.Parameters.Add(inttostr(settings.Port));
@@ -2473,6 +2473,4 @@ Begin
 End;
 
 End.
-
-
 
