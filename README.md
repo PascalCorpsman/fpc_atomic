@@ -57,6 +57,13 @@ By using the launcher you can click the "check for update" feature to check weth
 ## Manual
 See the [manual](MANUAL.md) for detailed information.
 
+## FAQ
+Q: The game tells me "Info : Not yet implemented."?<br>
+A: The game was never intended to be fully reimplemented. Only the network features are functional, so only "Start Network," "Join Network," "Options," and "Exit Bomberman" will work.
+
+Q: I am running Linux and get the error "Could not detect X-Terminal program. Press OK to ignore and risk data corruption. Press Abort to kill the program." when trying to start a network game.<br>
+A: This error occurs because the game cannot detect a "bash" shell on your Linux system. Try starting the server manually (see the [server control commands](MANUAL.md#server-control-commands) section in the manual), and then connect to the manually started server.
+
 ## License
 See the license.md file located at [license.md](license.md) for details about the license.
 
