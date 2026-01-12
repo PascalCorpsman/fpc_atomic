@@ -303,6 +303,7 @@ Begin
   End;
   // Run the App ;)
   p := TProcessUTF8.Create(Nil);
+  p.Options := [poDetached];
   p.Executable := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
   If CheckBox3.Checked Then Begin
     p.Parameters.Add('-ip');
