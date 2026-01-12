@@ -64,6 +64,9 @@ A: The game was never intended to be fully reimplemented. Only the network featu
 Q: I am running Linux and get the error "Could not detect X-Terminal program. Press OK to ignore and risk data corruption. Press Abort to kill the program." when trying to start a network game.<br>
 A: This error occurs because the game cannot detect a "bash" shell on your Linux system. Try starting the server manually (see the [server control commands](MANUAL.md#server-control-commands) section in the manual), and then connect to the manually started server.
 
+Q: I got "Error: could not find: DATA/ANI/xplode18.ani" warning during CD-Data Extraction<br>
+A: This means, that you did not add the additional .ani file from step1, see [issue14](https://github.com/PascalCorpsman/fpc_atomic/issues/14) for more details or ignore and enjoy the game with a little less dead animations.
+
 ## License
 See the license.md file located at [license.md](license.md) for details about the license.
 
