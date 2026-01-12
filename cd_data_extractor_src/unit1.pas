@@ -147,6 +147,7 @@ Var
   AtomicCDRootFolder, FPCAtomicRootFolder: String;
 Begin
   // Start Extraction
+  memo1.Clear;
   If label1.caption = label2.caption Then Begin
     showmessage('Error, its not allowed to have CD-Image root folder = fpc atomic folder');
   End;

@@ -51,6 +51,7 @@ Type
     ImageSequence: String; // The sequence of subimages taken from .Ani and packet into the resulting image
     DestPng: String; // Filename to store the result to
     TransparentMode: TTransparentMode; // Transparent color creation mode
+    WarningInsteadOfError: Boolean; // Create Warnings instead of Errors (for the extension pack)
   End;
 
   (*
@@ -569,7 +570,12 @@ Begin
   End;
   AniFilename := GetFileByMatch(ExtractFilePath(CDFolder + Job.SourceAni), Job.SourceAni);
   If AniFilename = '' Then Begin
-    Log('  Error: could not find: ' + Job.SourceAni);
+    If job.WarningInsteadOfError Then Begin
+      Log('  Warning: could not find: ' + Job.SourceAni);
+    End
+    Else Begin
+      Log('  Error: could not find: ' + Job.SourceAni);
+    End;
     exit;
   End;
   ani := TAniFile.Create();
@@ -720,7 +726,7 @@ Begin
   End;
   If AniWarning Then Begin
     Log('  Did you merge the Atomic Bomberman expansion pack from:');
-    Log('    https://www.oocities.org/timessquare/tower/4056/ani.html ?');
+    Log('    https://www.geocities.ws/mheid.geo/download/ani.zip ?');
   End;
   Log(format('  %d files created', [cnt]));
 End;
@@ -986,7 +992,7 @@ End;
  * Helper during initialization section
  *)
 
-Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentMode: TTransparentMode);
+Procedure AddAniJob(SourceAni: String; Width, Height, FPR: integer; Alignment: TAlignment; Layout: ttextlayout; ImageSequence, DestPng: String; TransparentMode: TTransparentMode; WarningInsteadOfError: Boolean = false);
 Begin
   setlength(AniJobs, high(AniJobs) + 2);
   AniJobs[high(AniJobs)].SourceAni := SourceAni;
@@ -998,6 +1004,7 @@ Begin
   AniJobs[high(AniJobs)].ImageSequence := ImageSequence;
   AniJobs[high(AniJobs)].DestPng := DestPng;
   AniJobs[high(AniJobs)].TransparentMode := TransparentMode;
+  AniJobs[high(AniJobs)].WarningInsteadOfError := WarningInsteadOfError;
 End;
 
 (*
@@ -1082,11 +1089,11 @@ Initialization
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE15.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die15.png', tmFirstPixelPerFrame); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE16.ANI', 110, 110, 4, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die16.png', tmFirstPixel); // Fertig, getestet
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE17.ANI', 110, 110, 9, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die17.png', tmFirstPixel); // Fertig, getestet
-  // The animations 18 .. 21 are part of the extension pack which can be downloaded here: https://www.oocities.org/timessquare/tower/4056/ani.html
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'xplode18.ani', 110, 110, 9, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die18.png', tmFirstPixelPerFrame); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE19.ANI', 141, 200, 4, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die19.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE20.ANI', 34, 89, 7, taLeftJustify, tlCenter, '0, 1, 2, 3, 4, 5, 6', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die20.png', tmBlack); // Fertig, getestet
-  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE21.ANI', 79, 68, 4, taCenter, tlCenter, '8, 9, 10, 11, 12, 13, 14, 15, 16, 2, 0, 1, 3', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die21.png', tmBlack); // Fertig, getestet
+  // The animations 18 .. 21 are part of the extension pack which can be downloaded
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'xplode18.ani', 110, 110, 9, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die18.png', tmFirstPixelPerFrame, true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE19.ANI', 141, 200, 4, taCenter, tlCenter, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die19.png', tmBlack, true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE20.ANI', 34, 89, 7, taLeftJustify, tlCenter, '0, 1, 2, 3, 4, 5, 6', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die20.png', tmBlack, true); // Fertig, getestet
+  AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'XPLODE21.ANI', 79, 68, 4, taCenter, tlCenter, '8, 9, 10, 11, 12, 13, 14, 15, 16, 2, 0, 1, 3', 'data' + Pathdelim + 'atomic' + Pathdelim + 'die' + Pathdelim + 'die21.png', tmBlack, true); // Fertig, getestet
   // data/atomic/idle/*
   AddAniJob('DATA' + Pathdelim + 'ANI' + Pathdelim + 'APPLBITE.ANI', 73, 73, 11, taLeftJustify, tlTop, '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120', 'data' + Pathdelim + 'atomic' + Pathdelim + 'idle' + Pathdelim + 'applbite.png', tmFirstPixelPerFrame); // Fertig, getestet
   // Code formater crashes when lines are longer than 1000 Chars ;), therefore this one is separated into 3 lines.
