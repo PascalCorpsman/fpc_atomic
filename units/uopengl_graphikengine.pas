@@ -218,43 +218,45 @@ Implementation
 
 {$IFDEF DEBUGGOUTPUT}
 
-Function FileSizetoString(Value: Int64): String;
+Function FileSizeToString(Value: Int64): String;
 Var
-  s: Char;
+  s: char;
   r: Int64;
 Begin
   s := ' ';
   r := 0;
-  If value > 1024 Then Begin
+  If value >= 1000 Then Begin
     s := 'K';
-    r := value Mod 1024;
-    value := value Div 1024;
+    r := value Mod 1000;
+    value := value Div 1000;
   End;
-  If value > 1024 Then Begin
+  If value >= 1000 Then Begin
     s := 'M';
-    r := value Mod 1024;
-    value := value Div 1024;
+    r := value Mod 1000;
+    value := value Div 1000;
   End;
-  If value > 1024 Then Begin
+  If value >= 1000 Then Begin
     s := 'G';
-    r := value Mod 1024;
-    value := value Div 1024;
+    r := value Mod 1000;
+    value := value Div 1000;
   End;
-  If value > 1024 Then Begin
+  If value >= 1000 Then Begin
     s := 'T';
-    r := value Mod 1024;
-    value := value Div 1024;
+    r := value Mod 1000;
+    value := value Div 1000;
   End;
-  If value > 1024 Then Begin
+  If value >= 1000 Then Begin
     s := 'P';
-    r := value Mod 1024;
-    value := value Div 1024;
+    r := value Mod 1000;
+    value := value Div 1000;
   End;
-  If (r Div 100) <> 0 Then
-    result := inttostr(value) + ',' + inttostr(r Div 100) + s + 'B'
+  If (r Div 100) <> 0 Then Begin
+    value := value * 10 + round(r / 100);
+    result := format('%0.1f%sB', [value / 10, s]);
+  End
   Else
     result := inttostr(value) + s + 'B'
-End;
+End;  
 
 {$ENDIF}
 
