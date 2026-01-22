@@ -96,8 +96,12 @@ Procedure TForm1.OnDoLog(Const LogText: String);
 Var
   atext: String;
 Begin
+  // Abschneiden Zeitstempel
   atext := copy(LogText, pos('|', LogText) + 1, length(LogText));
+  // Abschneiden Loglevel
   atext := copy(atext, pos('|', atext) + 1, length(atext));
+  // Abschneiden Stack Info
+  atext := copy(atext, pos(':', atext) + 1, length(atext));
   Memo1.Lines.Append(atext);
   Application.ProcessMessages;
   If form2.Visible Then Begin
