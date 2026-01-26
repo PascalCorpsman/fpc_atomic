@@ -817,7 +817,12 @@ Begin
 {$ENDIF}
   If FileExistsUTF8(serv) Then Begin
     p := TProcessUTF8.Create(Nil);
+{$IFDEF Windows}
+    // Windows needs the new console, otherwise the server could lag..
+    p.Options := [poNewConsole];
+{$ELSE}
     p.Options := [poDetached];
+{$ENDIF}
     p.Executable := serv;
     p.Parameters.Add('-p');
     p.Parameters.Add(inttostr(settings.Port));
