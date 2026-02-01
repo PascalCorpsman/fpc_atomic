@@ -1,7 +1,7 @@
 (******************************************************************************)
-(* uvectormat.pas                                                  12.11.2014 *)
+(* uvectormath.pas                                                 12.11.2014 *)
 (*                                                                            *)
-(* Version     : 0.20                                                         *)
+(* Version     : 0.23                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -64,6 +64,9 @@
 (*                    speedup RectIntersectRect code                          *)
 (*               0.20 PointsToConvexHull for Tvertex3Array                    *)
 (*                    IsLinearDependent                                       *)
+(*               0.21 Add Generic Quicksort algorithm                         *)
+(*               0.22 Made uvectormath.inc not used by default                *)
+(*               0.23 Add PointsToVoronoiPolygons                             *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uvectormath;
@@ -71,6 +74,7 @@ Unit uvectormath;
 {$MODE objfpc}{$H+}
 {$MODESWITCH advancedrecords}
 {$MODESWITCH TypeHelpers}
+{$MODESWITCH nestedprocvars}
 
 Interface
 
@@ -80,29 +84,36 @@ Uses
   , classes // TPoint
   ;
 
+(*
+ * By default uvectormath.pas uses single as TBasetype (to be byte compatible to OpenGL).
+ *
+ * If your project needs "more" or other settings:
+ * define the "use_inc_file_to_not_use_default_settings" in your project configuration:
+ *
+ *  Project -> Project Options -> Compiler Options -> Custom Options -> Defines
+ *
+ * and then use a "uvectormath.inc" file to define your own configurations.
+ *)
+
+{$IFNDEF use_inc_file_to_not_use_default_settings}
+
 Const
-  Epsilon = 0.00390625; // = 1 / 256, Unterscheiden sich 2 Float Werte um weniger als Epsilon, dann werden sie als Gleich angesehen
+  Epsilon = 0.00390625; // = 1 / 256 = 2^(-8), Unterscheiden sich 2 Float Werte um weniger als Epsilon, dann werden sie als Gleich angesehen
 
 Type
 
-  (*
-   * If you get a compiler error with missing file
-   * just create a file namend "uvectormath.inc" in your project folder and
-   * insert the following content:
-   *
-   * ---------- Content of file ----------
-     // Mit diesem Schalter kann das Überladen der Standard Operatoren Aktiviert
-     // werden ( Achtung das kann nicht jeder FPC Compiler )
+  TBaseType = Single; // Alle Komponenten bestehen aus BaseType, zur Nutzung von OpenGL ist Single zwingend !!
 
-     {$DEFINE UseOperandOverloading}
+{$ELSE}
 
-     TBaseType = Single; // Alle Komponenten bestehen aus BaseType, zur Nutzung von OpenGL ist Single zwingend !!
-
-     ---------- End content of file ----------
-   *)
-
+(*
+ * for needed content of uvectormath.inc, see above section.
+ *)
 {$I uvectormath.inc}
 
+{$ENDIF}
+
+Type
   TVector2 = Record
     Case boolean Of
       false: (x, y: TBaseType);
@@ -171,6 +182,8 @@ Type
     Radius: TBaseType; // Sein Radius
   End;
 
+  TVoronoi = Array Of TVector2Array;
+
   TMapFunction = Function(x: Single): Single; // Funktionsprototyp für MapFunction
 
   TFace = Record
@@ -192,6 +205,8 @@ Type
     Function Cross(Other: TVector2): TVector2;
     Function Hadamard(Other: TVector2): TVector2;
     Function Dot(Other: TVector2): TBaseType;
+    Procedure Lerp(Const Other: TVector2; Amplitude: TBaseType);
+    Function ToString: String;
   End;
 
   { TVector3helper }
@@ -217,6 +232,14 @@ Type
     Function Equal(Other: TVectorN): Boolean;
     Function Hadamard(Other: TVectorN): TVectorN;
     Function Transpose(): TMatrixNxM;
+    Procedure Fill(value: TBaseType);
+  End;
+
+  { TVector2Arrayhelper }
+
+  TVector2Arrayhelper = Type Helper For TVector2Array
+
+    Procedure Push(Const Vector: TVector2);
   End;
 
   { TMatrix2x2helper }
@@ -253,8 +276,6 @@ Type
     Function Transpose(): TMatrixNxM;
     Function MapMatrix(MapFunction: TMapFunction): TMatrixNxM;
   End;
-
-{$IFDEF UseOperandOverloading}
 
   (*
     -- Aus Sicherheitsgründen werden alle = Operatoren deaktiviert, da der
@@ -326,8 +347,6 @@ Operator / (v: TVector3; s: TBaseType): TVector3;
 Operator / (s: TBaseType; v: TVector4): TVector4;
 Operator / (v: TVector4; s: TBaseType): TVector4;
 
-{$ENDIF}
-
 // Konstruktoren
 Function ZeroV2(): TVector2;
 Function ZeroV3(): TVector3;
@@ -362,6 +381,7 @@ Function VNToNxM(Const V: TvectorN): TMatrixNxM; // Konvertiert einen Vektor in 
 Function NxMToVN(Const M: TMatrixNxM): TVectorN; // Konvertiert eine Matrix in einen Vektor, Zeilenweise eingelesen
 
 // Operatoren
+Function Equal(Const a, b: TBaseType): Boolean; overload;
 Function Equal(Const a, b: TVector2): Boolean; overload;
 Function Equal(Const a, b: TVectorN): Boolean; overload;
 Function Equal(Const a, b: TMatrixNxM): Boolean; overload;
@@ -502,6 +522,7 @@ Function Clamp(Value, Lower, Upper: integer): integer; overload; // Zwingt Value
 Function Clamp(Value, Lower, Upper: Single): Single; overload;
 Function Mod2(a, b: Integer): integer; // Bildet Negative "a" auf die passenden positiven Restklassen von b ab.
 Function RandomRange(a, b: integer): integer; // Erzeugt eine Zufallszahl im Bereich [a..b) Randomize muss vorher augerufen worden sein !!
+Function RandomRange(a, b: TBaseType): TBaseType;
 
 // Konvertierungsfunktionen
 Function ConvertDimension(vmin, vmax, v: TBaseType; rmin, rmax: TBaseType): TBaseType; // Rechnet einen Wert v in der Scala Vmin-Vmax in die passende Scala rmin-Rmax um. Details siehe unten
@@ -519,6 +540,11 @@ Function PointsToConvexHull(Const Points: TVector3Array): TFaceArray; overload;
 
 // Gibt eine Dreiecksliste zu Points zurück, welcher einer Delaunay Triangulierung entspricht
 Function PointsToDelaunayTriangleList(Const Points: TVector2Array; CheckForDoublePoints: Boolean = True): TTriangleArray;
+
+// Der Code hat keine Checks, es muss sichergestellt werden dass:
+// Points keine "Dubletten" beinhaltet
+// TopLeft, BottomRight tatsächlich alle Points beinhaltet, sonst kommt Blödsinn raus
+Function PointsToVoronoiPolygons(Const Points: TVector2Array; TopLeft, BottomRight: TVector2): TVoronoi;
 
 // Berechnet aus den 3 Punkten a,b,c einen Kreis, so dass die 3 Punkte auf dessen Kreisbahn liegen, ist der Radius Negativ, dann ist der Kreis eigentlich nicht Berechenbar gewesen.
 Function PointsToCircumCircle(Const A, B, C: Tvector2): TCircle;
@@ -609,9 +635,160 @@ Function CalculatePolynom(x: TBaseType; Const a: TVectorN): TBaseType;
 // zurück transformiert, das ist bei Großen Vektoren tatsächlich schneller (siehe hier: https://www.youtube.com/watch?v=KuXjwB4LzSA )
 Function Convolve(Const a, b: tvectorN): TVectorN;
 
+Type
+  TCompareFunction = Function(a, b: Pointer): Integer;
+  TNestedCompareFunction = Function(a, b: Pointer): Integer Is nested;
+
+  (*
+   * Generischer Quicksort Algoritmus auf einem Array
+   *)
+
+Procedure GenQuickSort(FirstElement: Pointer; ElementCount: integer; ElementSize: QWord; CompareFunction: TCompareFunction); overload;
+Procedure GenQuickSort(FirstElement: Pointer; ElementCount: integer; ElementSize: QWord; CompareFunction: TNestedCompareFunction); overload;
+
 Implementation
 
-{$IFDEF UseOperandOverloading}
+Procedure GenQuickSort(FirstElement: Pointer; ElementCount: integer; ElementSize: QWord; CompareFunction: TCompareFunction);
+Var
+  PivotElement, Buffer: Array Of Byte;
+
+  Procedure Quick(li, re: Pointer);
+  Var
+    lp, rp, pp: Pointer;
+    LeftSize, RightSize: PtrInt;
+  Begin
+    While li < re Do Begin
+{$PUSH}
+{$HINTS OFF}
+      // Create a Copy of the Pivo element for comparing during sorting..
+      pp := pointer(
+        PtrUInt(li) +
+        (((PtrUInt(re) - PtrUInt(li)) Div ElementSize) Shr 1) * ElementSize
+        );
+{$POP}
+      move(pp^, PivotElement[0], ElementSize);
+      lp := li;
+      rp := re;
+      Repeat
+        While CompareFunction(lp, @PivotElement[0]) < 0 Do Begin
+          inc(lp, ElementSize);
+        End;
+        While CompareFunction(rp, @PivotElement[0]) > 0 Do Begin
+          dec(rp, ElementSize);
+        End;
+        If Lp <= Rp Then Begin
+          // Swap L and R elements using Buffer
+          move(lp^, Buffer[0], ElementSize);
+          move(rp^, lp^, ElementSize);
+          move(Buffer[0], rp^, ElementSize);
+          inc(lp, ElementSize);
+          dec(rp, ElementSize);
+        End;
+      Until lp > rp;
+      // Recursive call for the "smaller" part of the unsorted array
+{$PUSH}
+{$WARNINGS OFF}
+{$HINTS OFF}
+      LeftSize := PtrInt(rp) - PtrInt(li);
+      RightSize := PtrInt(re) - PtrInt(lp);
+{$POP}
+      If LeftSize < RightSize Then Begin
+        Quick(li, rp);
+        li := lp;
+      End
+      Else Begin
+        Quick(lp, re);
+        re := rp;
+      End;
+    End;
+  End;
+Begin
+  If ElementCount <= 1 Then exit;
+  If (ElementSize <= 0) Or (Not assigned(CompareFunction)) Then Begin
+    Raise exception.Create('GenQuickSort: Error, invalid configuration.');
+  End;
+  // Preallocate Buffers
+  buffer := Nil;
+  PivotElement := Nil;
+  setlength(buffer, ElementSize);
+  setlength(PivotElement, ElementSize);
+  // The Real Sorting
+  Quick(FirstElement, FirstElement + ElementSize * (ElementCount - 1));
+  // Teardown
+  setlength(buffer, 0);
+  setlength(PivotElement, 0);
+End;
+
+Procedure GenQuickSort(FirstElement: Pointer; ElementCount: integer; ElementSize: QWord; CompareFunction: TNestedCompareFunction);
+Var
+  PivotElement, Buffer: Array Of Byte;
+
+  Procedure Quick(li, re: Pointer);
+  Var
+    lp, rp, pp: Pointer;
+    LeftSize, RightSize: PtrInt;
+  Begin
+    While li < re Do Begin
+      // Create a Copy of the Pivo element for comparing during sorting..
+{$PUSH}
+{$HINTS OFF}
+      pp := pointer(
+        PtrUInt(li) +
+        (((PtrUInt(re) - PtrUInt(li)) Div ElementSize) Shr 1) * ElementSize
+        );
+{$POP}
+      move(pp^, PivotElement[0], ElementSize);
+      lp := li;
+      rp := re;
+      Repeat
+        While CompareFunction(lp, @PivotElement[0]) < 0 Do Begin
+          inc(lp, ElementSize);
+        End;
+        While CompareFunction(rp, @PivotElement[0]) > 0 Do Begin
+          dec(rp, ElementSize);
+        End;
+        If Lp <= Rp Then Begin
+          // Swap L and R elements using Buffer
+          move(lp^, Buffer[0], ElementSize);
+          move(rp^, lp^, ElementSize);
+          move(Buffer[0], rp^, ElementSize);
+          inc(lp, ElementSize);
+          dec(rp, ElementSize);
+        End;
+      Until lp > rp;
+      // Recursive call for the "smaller" part of the unsorted array
+{$PUSH}
+{$WARNINGS OFF}
+{$HINTS OFF}
+      LeftSize := PtrInt(rp) - PtrInt(li);
+      RightSize := PtrInt(re) - PtrInt(lp);
+{$POP}
+      If LeftSize < RightSize Then Begin
+        Quick(li, rp);
+        li := lp;
+      End
+      Else Begin
+        Quick(lp, re);
+        re := rp;
+      End;
+    End;
+  End;
+Begin
+  If ElementCount <= 1 Then exit;
+  If (ElementSize <= 0) Or (Not assigned(CompareFunction)) Then Begin
+    Raise exception.Create('GenQuickSort: Error, invalid configuration.');
+  End;
+  // Preallocate Buffers
+  buffer := Nil;
+  PivotElement := Nil;
+  setlength(buffer, ElementSize);
+  setlength(PivotElement, ElementSize);
+  // The Real Sorting
+  Quick(FirstElement, FirstElement + ElementSize * (ElementCount - 1));
+  // Teardown
+  setlength(buffer, 0);
+  setlength(PivotElement, 0);
+End;
 
 Operator := (p: TPoint): TVector2;
 Begin
@@ -820,8 +997,6 @@ Begin
   result := ScaleV4(1 / s, v);
 End;
 
-{$ENDIF}
-
 Function Sign(Value: TBaseType): Integer; // Gibt das Vorzeichen oder 0 zurück
 Begin
   If value = 0 Then Begin
@@ -888,6 +1063,19 @@ Begin
   End;
   i := b - a;
   result := random(i) + a;
+End;
+
+Function RandomRange(a, b: TBaseType): TBaseType;
+Var
+  i: TBaseType;
+Begin
+  If a > b Then Begin
+    i := a;
+    a := b;
+    b := i;
+  End;
+  i := b - a;
+  result := random() + a;
 End;
 
 (*
@@ -1194,6 +1382,11 @@ Begin
   result.x := max(a.x, b.x);
   result.y := max(a.y, b.y);
   result.z := max(a.z, b.z);
+End;
+
+Function Equal(Const a, b: TBaseType): Boolean;
+Begin
+  result := abs(a - b) < Epsilon;
 End;
 
 Function Equal(Const a, b: TVector2): Boolean;
@@ -3136,6 +3329,230 @@ Begin
   setlength(Edges[1], 0);
 End;
 
+(*
+ * The following code is more or less a FreePascal Port of:
+ * https://gist.github.com/isedgar/ac26c58e3eb2934623a8b8bc89611b64
+ *)
+
+Function PointsToVoronoiPolygons(Const Points: TVector2Array; TopLeft,
+  BottomRight: TVector2): TVoronoi;
+
+// Calculates the perpendicular line between A and B
+
+  Function TwoPointsBisector(Const A, B: TVector2): Tvector3;
+  Var
+    Mid: TVector2;
+  Begin
+    Mid.x := (A.x + B.x) / 2;
+    Mid.y := (A.y + B.y) / 2;
+
+    Result.x := B.x - A.x;
+    Result.y := B.y - A.y;
+    Result.z := -Mid.x * Result.x - Mid.y * Result.y;
+  End;
+
+  (*
+   * Calculates the point between a and b that lies on line, false if not existing
+   *)
+  Function LineAndSegmentIntersection(Const Line: Tvector3; Const A, B: TVector2;
+    Out P: TVector2): Boolean;
+  Var
+    AB: Tvector3;
+    C: Tvector3;
+
+    IsVertical, IsHorizontal: Boolean;
+    IsEndpointX, IsEndpointY: Boolean;
+    IsBetweenXAxis, IsBetweenYAxis, IsBetweenAB: Boolean;
+  Begin
+    Result := False;
+
+    AB.x := A.y - B.y;
+    AB.y := B.x - A.x;
+    AB.z := A.x * B.y - B.x * A.y;
+
+    { Parallel lines check – 1:1 }
+    If Equal(Line.x / Line.y, AB.x / AB.y) And
+      Equal(Line.z / Line.y, AB.z / AB.y) Then
+      Exit;
+
+    C := CrossV3(Line, AB);
+
+    If Equal(C.z, 0) Then Exit;
+
+    P.x := C.x / C.z;
+    P.y := C.y / C.z;
+
+    IsVertical := Equal(A.x, B.x);
+    IsHorizontal := Equal(A.y, B.y);
+
+    IsEndpointY := Equal(P.y, A.y) Or Equal(P.y, B.y);
+    IsEndpointX := Equal(P.x, A.x) Or Equal(P.x, B.x);
+
+    IsBetweenXAxis := (P.x < A.x) <> (P.x < B.x);
+    IsBetweenYAxis := (P.y < A.y) <> (P.y < B.y);
+
+    IsBetweenAB := IsBetweenXAxis And IsBetweenYAxis;
+
+    If IsVertical And (IsEndpointY Or IsBetweenYAxis) Then
+      Result := True
+    Else If IsHorizontal And (IsEndpointX Or IsBetweenXAxis) Then
+      Result := True
+    Else If IsBetweenAB Then
+      Result := True;
+  End;
+Var
+  XLeft, YBottom, XRight, YTop: Double;
+  VoronoiBox: TVector2Array;
+
+  i, j, k, n, m: Integer;
+
+  Cell, NewCell: TVector2Array;
+  CurrentSite, NextSite: TVector2;
+  Bisector: Tvector3;
+
+  v1, v2_, CurrentVertex, NextVertex: TVector2;
+  FirstIntersection, SecondIntersection: TVector2;
+  HasFirstIntersection, HasSecondIntersection: Boolean;
+
+  FirstIntersectionIndex, SecondIntersectionIndex: Integer;
+Begin
+  result := Nil;
+  n := Length(Points);
+  SetLength(result, n); // Each point generates exakt 1 polygon ;)
+
+  // The Boundingbox every cell starts with this one
+  XLeft := min(TopLeft.x, BottomRight.x);
+  YBottom := min(TopLeft.y, BottomRight.y);
+  XRight := max(TopLeft.x, BottomRight.x);
+  YTop := max(TopLeft.y, BottomRight.y);
+
+  VoronoiBox := Nil;
+  SetLength(VoronoiBox, 4);
+  VoronoiBox[0] := v2(XLeft, YTop);
+  VoronoiBox[1] := v2(XRight, YTop);
+  VoronoiBox[2] := v2(XRight, YBottom);
+  VoronoiBox[3] := v2(XLeft, YBottom);
+
+  For i := 0 To n - 1 Do Begin
+    Cell := VoronoiBox;
+
+    CurrentSite := Points[i];
+
+    For j := 0 To n - 1 Do Begin
+      If i = j Then Continue;
+
+      m := Length(Cell);
+      NewCell := Nil;
+
+      NextSite := Points[j];
+      Bisector := TwoPointsBisector(CurrentSite, NextSite);
+
+      If (Bisector.x = 0) And (Bisector.y = 0) Then Continue;
+
+      HasFirstIntersection := False;
+
+      For k := 0 To m - 1 Do Begin
+        CurrentVertex := Cell[k];
+        NextVertex := Cell[(k + 1) Mod m];
+
+        HasFirstIntersection :=
+          LineAndSegmentIntersection(
+          Bisector, CurrentVertex, NextVertex, FirstIntersection
+          );
+
+        If HasFirstIntersection Then Begin
+          If Equal(FirstIntersection, NextVertex) Then Begin
+            SetLength(NewCell, Length(NewCell) + 1);
+            NewCell[High(NewCell)] := NextVertex;
+
+            SetLength(NewCell, Length(NewCell) + 1);
+            NewCell[High(NewCell)] := Cell[(k + 2) Mod m];
+
+            FirstIntersectionIndex := (k + 2) Mod m;
+          End
+          Else Begin
+            SetLength(NewCell, Length(NewCell) + 1);
+            NewCell[High(NewCell)] := FirstIntersection;
+
+            SetLength(NewCell, Length(NewCell) + 1);
+            NewCell[High(NewCell)] := NextVertex;
+
+            FirstIntersectionIndex := (k + 1) Mod m;
+          End;
+          Break;
+        End;
+      End;
+
+      If Length(NewCell) = 0 Then
+        NewCell := Cell
+      Else Begin
+        HasSecondIntersection := False;
+
+        k := FirstIntersectionIndex;
+        While k < m Do Begin
+          CurrentVertex := Cell[k];
+          NextVertex := Cell[(k + 1) Mod m];
+
+          HasSecondIntersection :=
+            LineAndSegmentIntersection(
+            Bisector, CurrentVertex, NextVertex, SecondIntersection
+            );
+
+          If HasSecondIntersection Then Begin
+            SetLength(NewCell, Length(NewCell) + 1);
+            NewCell[High(NewCell)] := SecondIntersection;
+            SecondIntersectionIndex := k + 1;
+            Break;
+          End
+          Else Begin
+            SetLength(NewCell, Length(NewCell) + 1);
+            NewCell[High(NewCell)] := NextVertex;
+          End;
+
+          Inc(k);
+        End;
+
+        If Not PointInPolygon(CurrentSite, NewCell) Then Begin
+          If Equal(
+            SecondIntersection,
+            Cell[SecondIntersectionIndex Mod m]
+            ) Then
+            SetLength(NewCell, 0)
+          Else Begin
+            SetLength(NewCell, 1);
+            NewCell[0] := SecondIntersection;
+          End;
+
+          k := SecondIntersectionIndex;
+          While ((k Mod m) > FirstIntersectionIndex) Or
+            ((k Mod m) < FirstIntersectionIndex) Do Begin
+            v1 := Cell[k Mod m];
+            v2_ := Cell[(k + 1) Mod m];
+
+            If Not Equal(v1, v2_) Then Begin
+              SetLength(NewCell, Length(NewCell) + 1);
+              NewCell[High(NewCell)] := v1;
+            End;
+
+            Inc(k);
+          End;
+
+          If Not Equal(FirstIntersection, v1) Then Begin
+            SetLength(NewCell, Length(NewCell) + 1);
+            NewCell[High(NewCell)] := FirstIntersection;
+          End;
+        End;
+      End;
+      Cell := NewCell;
+    End;
+
+    If Length(Cell) > 0 Then
+      result[i] := Cell
+    Else
+      result[i] := Nil; // Error, could not find a cell !
+  End;
+End;
+
 // Berechnet aus den 3 Punkten a,b,c einen Kreis, so dass die 3 Punkte auf dessen Kreisbahn liegen
 // Formel entnommen aus
 // Numerical Recipes 3. Editon §21.3
@@ -3846,6 +4263,19 @@ Begin
   result := DotV2(self, Other);
 End;
 
+Procedure TVector2helper.Lerp(Const Other: TVector2; Amplitude: TBaseType);
+Var
+  d: TVector2;
+Begin
+  d := Other - Self;
+  self := self + d * Amplitude;
+End;
+
+Function TVector2helper.ToString: String;
+Begin
+  result := Print(self);
+End;
+
 { TVector3helper }
 
 Function TVector3helper.Equal(Other: TVector3): Boolean;
@@ -3907,9 +4337,26 @@ Begin
   result := HadamardVN(self, Other);
 End;
 
-Function TVectorNhelper.Transpose(): TMatrixNxM;
+Function TVectorNhelper.Transpose: TMatrixNxM;
 Begin
   result := TransposeVector(self);
+End;
+
+Procedure TVectorNhelper.Fill(value: TBaseType);
+var
+  i: Integer;
+Begin
+  For i := 0 To high(self) Do Begin
+    self[i] := value;
+  End;
+End;
+
+{ TVector2Arrayhelper }
+
+Procedure TVector2Arrayhelper.Push(Const Vector: TVector2);
+Begin
+  setlength(self, high(Self) + 2);
+  self[high(self)] := Vector;
 End;
 
 { TMatrix2x2helper }
