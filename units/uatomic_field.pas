@@ -528,9 +528,9 @@ Begin
   result := true;
   Case fField[x, y].BrickData Of
     bdBlank: Begin
+        fField[x, y].FlamePlayer := TriggerPlayerindex;
         If fField[x, y].PowerUp = puNone Then Begin
           fField[x, y].FlameColor := ColorIndex;
-          fField[x, y].FlamePlayer := TriggerPlayerindex;
           If Not (fCross In fField[x, y].Flame) Then Begin // Sonst sieht es komisch aus ..
             fField[x, y].Flame := [Flame];
           End;
