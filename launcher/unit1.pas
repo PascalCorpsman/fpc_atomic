@@ -283,6 +283,10 @@ Var
   P: TProcessUTF8;
   sl: TStringList;
 Begin
+  If Not ValidNodeName(trim(Edit1.text)) Then Begin
+    showmessage(Edit1.text + LineEnding + 'is not a valid nodename, (need to be less than 20 chars and no spezial chars!');
+    exit;
+  End;
   // Launch
   StoreSettings();
   ini.UpdateFile;
@@ -441,7 +445,7 @@ Begin
 
   ini.WriteBool(FPC_AtomicIniSection, 'PlaySounds', CheckBox4.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'Proportional', Not CheckBox5.Checked);
-  ini.WriteString(FPC_AtomicIniSection, 'NodeName', edit1.text);
+  ini.WriteString(FPC_AtomicIniSection, 'NodeName', trim(edit1.text));
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);
   ini.WriteString('Launcher', 'Router_Port', edit3.text);

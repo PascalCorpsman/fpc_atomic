@@ -1116,12 +1116,12 @@ Begin
           TInputBoxForm(InputBoxForm).label1.caption := 'Enter Nodename';
           TInputBoxForm(InputBoxForm).Edit1.text := Tgame(fOwner).Settings.NodeName;
           If InputBoxForm.ShowModal = mrOK Then Begin
-            nn := TInputBoxForm(InputBoxForm).Edit1.text;
-            If trim(nn) <> '' Then Begin
+            nn := trim(TInputBoxForm(InputBoxForm).Edit1.text);
+            If ValidNodeName(nn) Then Begin
               Tgame(fOwner).Settings.NodeName := nn;
             End
             Else Begin
-              LogShow('Empty username not allowed', llWarning);
+              LogShow('Invalid username, need to be less 20 chars and no special chars.', llWarning);
             End;
           End;
           InputBoxForm.free;
@@ -1304,6 +1304,7 @@ End;
 Procedure TMainMenu.OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
 Begin
   If key = VK_J Then Begin
+    key := 0;
     If assigned(fJoinQuestionForm) Then exit; // Der Dialog ist schon offen ;)
     // Frage IP und Port zum Game.JoinViaParams(ip, port);  ab !
     fJoinQuestionForm := TJoinQuestionForm.CreateNew(Nil, 0);
@@ -1339,6 +1340,7 @@ Begin
     key := VK_RETURN;
   End;
   If key = VK_RETURN Then Begin
+    key := 0;
     Case fCursorPos Of
       0: logshow('Not yet implemented.', llinfo); // TAtomic(fOwner).SwitchToScreen(); -- Single Player
       1: TGame(fOwner).SwitchToScreen(sHost);

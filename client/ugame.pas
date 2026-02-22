@@ -329,7 +329,6 @@ Var
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   EnterID := LogEnter('TGame.SwitchToScreen');
-  // Sobald wir versuchen uns in ein Spiel ein zu loggen muss ggf. SDL initialisiert werden
   If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
     TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(''); // Reset IP in case of "join"
     fParamJoinIP := ''; // Reset last Join IP, this is needed, if player was server before, ..
@@ -1111,6 +1110,7 @@ Begin
             EC_game_full: s := 'Game already in progress. No additional connections are allowed.';
             EC_Invalid_Versions: s := 'Server and client have different versions. Please use the same version as server!';
             EC_Too_Much_Player: s := 'Only 10 player per server allowed, sorry this server is full!';
+            EC_Invalid_Username: s := 'Username invalid, login not allowed.';
 {$IFDEF Release}
             EC_Invalid_Mode_Versions: s := 'Server is in debug mode, while client in release mode -> not compatible.';
 {$ELSE}

@@ -118,7 +118,9 @@ Const
    *                       ADD: alternative + and - keys for sound control
    *                       ADD: Player Statistiks (y)
    *                       ADD: GameController Support
-   *             0.12012 =
+   *             0.12012 = ADD: Check for Nodenames on server and client
+   *                       FIX: Windows remote join dialog did not close correctly
+   *                       FIX: powerup destroyed was wrong calculated
    *)
 
   ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -212,6 +214,7 @@ Const
   EC_Invalid_Versions = 3; // Bezogen auf Vergleich Client Version vs. Server Version
   EC_Too_Much_Player = 4; // Es dürfen Maximal 10 Spieler beitreten !
   EC_Invalid_Mode_Versions = 5; // Bezogen auf Vergleich Client Debug vs. Release
+  EC_Invalid_Username = 6; // Der User loggt sich mit einem nicht erlaubten usernamen ein
 
   (*
    * Damit der Tiefentest funktioniert müssen diverse Layer definiert werden
@@ -624,6 +627,8 @@ Procedure CalculateAtomicSpeeds(NewDefaultSpeed: Single);
 Function KeySetToString(aKeySet: TKeySet): String;
 Function StringToKeySet(aValue: String): TKeySet;
 
+Function ValidNodeName(aNodeName: String): Boolean;
+
 Implementation
 
 Uses math
@@ -688,6 +693,21 @@ Begin
       Raise exception.create('Error: StringToKeySet, missing implementation for: ' + aValue);
     End;
   End;
+End;
+
+Function ValidNodeName(aNodeName: String): Boolean;
+var
+  i: Integer;
+Begin
+  result := true;
+  If trim(aNodeName) = '' Then result := false;
+  If length(aNodeName) > 19 Then result := false;
+  For i := 1 To length(aNodeName) Do Begin
+    If (Not (aNodeName[i] In ['a'..'z', 'A'..'Z', '0'..'9', ' ', '_'])) Then Result := false;
+  End;
+  If lowercase(trim(aNodeName)) = 'off' Then result := false;
+  If lowercase(trim(aNodeName)) = 'key 0' Then result := false;
+  If lowercase(trim(aNodeName)) = 'key 1' Then result := false;
 End;
 
 {$IFNDEF Server}

@@ -147,7 +147,7 @@ Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global;
 
 { TServer }
 
-constructor TServer.Create(Port, AutoTimeOut: Integer);
+Constructor TServer.Create(Port, AutoTimeOut: Integer);
 Var
   sl: TStringList;
   i, EnterID: Integer;
@@ -207,7 +207,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-destructor TServer.Destroy;
+Destructor TServer.Destroy;
 Var
   i, EnterID: Integer;
 Begin
@@ -238,7 +238,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.OnAccept(aSocket: TLSocket);
+Procedure TServer.OnAccept(aSocket: TLSocket);
 Var
   EnterID: integer;
 Begin
@@ -248,7 +248,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.OnDisconnect(aSocket: TLSocket);
+Procedure TServer.OnDisconnect(aSocket: TLSocket);
 Var
   uid, EnterID: integer;
 Begin
@@ -264,7 +264,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.OnError(const msg: String; aSocket: TLSocket);
+Procedure TServer.OnError(Const msg: String; aSocket: TLSocket);
 Var
   EnterID: integer;
 Begin
@@ -278,7 +278,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.OnUDPError(const msg: String; aSocket: TLSocket);
+Procedure TServer.OnUDPError(Const msg: String; aSocket: TLSocket);
 Var
   EnterID: Integer;
 Begin
@@ -292,7 +292,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.OnUDPDisconnect(aSocket: TLSocket);
+Procedure TServer.OnUDPDisconnect(aSocket: TLSocket);
 Var
   EnterID: Integer;
 Begin
@@ -306,7 +306,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.OnUDPReceiveEvent(aSocket: TLSocket);
+Procedure TServer.OnUDPReceiveEvent(aSocket: TLSocket);
 Var
   UserName: String;
   Buffer: Array[0..1024 - 1] Of byte;
@@ -349,7 +349,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.OnReceivedChunk(Sender: TObject; const Chunk: TChunk);
+Procedure TServer.OnReceivedChunk(Sender: TObject; Const Chunk: TChunk);
 Var
   s: String;
   i, j, EnterID: integer;
@@ -426,7 +426,7 @@ Begin
     LogLeave(EnterID);
 End;
 
-procedure TServer.ResetFieldAvailabe;
+Procedure TServer.ResetFieldAvailabe;
 Var
   i, EnterID: integer;
 Begin
@@ -437,7 +437,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-function TServer.SendChunk(UserDefinedID: Integer; Data: TStream; UID: integer
+Function TServer.SendChunk(UserDefinedID: Integer; Data: TStream; UID: integer
   ): Boolean;
 Var
   i, EnterID: integer;
@@ -497,7 +497,7 @@ Begin
     LogLeave(EnterID);
 End;
 
-procedure TServer.SendSplashMessage(msg: String; TargetUID: integer);
+Procedure TServer.SendSplashMessage(msg: String; TargetUID: integer);
 Var
   m: TMemoryStream;
 Begin
@@ -506,7 +506,7 @@ Begin
   SendChunk(miSplashHint, m, TargetUID);
 End;
 
-procedure TServer.HandleRequestUserLogin(const Stream: TStream; UID: integer);
+Procedure TServer.HandleRequestUserLogin(Const Stream: TStream; UID: integer);
 Var
   m: TMemoryStream;
   index, i, j, cnt, EnterID: integer;
@@ -531,7 +531,13 @@ Begin
   ClientMode := 0;
   Stream.Read(ClientMode, sizeof(ClientMode));
   Username := Stream.ReadAnsiString;
-
+  If Not ValidNodeName(Username) Then Begin
+    i := EC_Invalid_Username;
+    m.Write(i, sizeof(i));
+    SendChunk(miRequestLoginResult, m, UID);
+    LogLeave(EnterID);
+    exit;
+  End;
 {$IFDEF Release}
   If ClientMode <> GameModeRelease Then
 {$ELSE}
@@ -637,7 +643,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleSwitchToPlayerSetup;
+Procedure TServer.HandleSwitchToPlayerSetup;
 Var
   EnterID: integer;
 Begin
@@ -649,7 +655,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.SendSettings;
+Procedure TServer.SendSettings;
 Var
   m: TMemoryStream;
   EnterID: integer;
@@ -677,7 +683,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleLoadSettings(const Stream: TStream);
+Procedure TServer.HandleLoadSettings(Const Stream: TStream);
 Var
   i, EnterID: Integer;
 Begin
@@ -734,7 +740,7 @@ End;
  * Alles Andere ist nicht erlaubt -> Keine Änderung
  *)
 
-procedure TServer.HandleChangePlayerKey(PlayerIndex, Direction: Integer;
+Procedure TServer.HandleChangePlayerKey(PlayerIndex, Direction: Integer;
   PlayerName: String; UID: Integer);
 Var
   EnterID: Integer;
@@ -845,7 +851,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleSwitchToMapProperties(UID: Integer);
+Procedure TServer.HandleSwitchToMapProperties(UID: Integer);
 Var
   t1, t2, i, j, aicnt, pcnt, EnterID: integer;
   a: Array Of Integer;
@@ -925,7 +931,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleStartGame;
+Procedure TServer.HandleStartGame;
 Var
   i, EnterID: Integer;
 Begin
@@ -954,7 +960,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleStartRound;
+Procedure TServer.HandleStartRound;
   Function PowersFromScheme(Const Scheme: TScheme): TAtomicPowers;
   Begin
     result.Speed := AtomicDefaultSpeed;
@@ -1101,7 +1107,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleTogglePause;
+Procedure TServer.HandleTogglePause;
 Var
   m: TMemoryStream;
   i, EnterID: Integer;
@@ -1121,7 +1127,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleShowVictory;
+Procedure TServer.HandleShowVictory;
 Begin
   // Den Victory Screen auswählen
   // Der Gewinner wurde bereits in EndGameCheck bestimmt.
@@ -1129,7 +1135,7 @@ Begin
   fKickAllPlayer := true;
 End;
 
-procedure TServer.HandlePlayerGetsPowerUp(var Player: TPlayer;
+Procedure TServer.HandlePlayerGetsPowerUp(Var Player: TPlayer;
   PlayerIndex: integer; PowerUp: TPowerUps);
 Var
   index, cnt, i, EnterID: integer;
@@ -1251,7 +1257,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandlePlaySoundEffect(PlayerIndex: integer;
+Procedure TServer.HandlePlaySoundEffect(PlayerIndex: integer;
   Effect: TSoundEffect);
 Var
   m, m2: TMemoryStream;
@@ -1331,13 +1337,13 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleStatisticCallback(StatSelector: TStatSelector;
+Procedure TServer.HandleStatisticCallback(StatSelector: TStatSelector;
   Value: uint64);
 Begin
   fStatistik.LastRun[StatSelector] := fStatistik.LastRun[StatSelector] + Value;
 End;
 
-procedure TServer.HandleSwitchToWaitForPlayersToConnect;
+Procedure TServer.HandleSwitchToWaitForPlayersToConnect;
 Var
   cnt, i, EnterID: Integer;
 Begin
@@ -1361,7 +1367,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleUpdateFieldSetup(const Stream: TStream; Uid: integer);
+Procedure TServer.HandleUpdateFieldSetup(Const Stream: TStream; Uid: integer);
 Var
   FieldName: String;
   FieldHash: UInt64;
@@ -1399,7 +1405,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HandleReceiveHeartBeat(p: integer; t: int64);
+Procedure TServer.HandleReceiveHeartBeat(p: integer; t: int64);
 Var
   i: Integer;
 Begin
@@ -1411,7 +1417,7 @@ Begin
   End;
 End;
 
-procedure TServer.HandleClientKeyEvent(const Stream: TStream);
+Procedure TServer.HandleClientKeyEvent(Const Stream: TStream);
 Var
   Player: integer;
   Double, State: Boolean;
@@ -1469,7 +1475,7 @@ Begin
   End;
 End;
 
-procedure TServer.RefreshAllPlayerStats(Uid: integer);
+Procedure TServer.RefreshAllPlayerStats(Uid: integer);
 Var
   m: TMemoryStream;
   j, i: Integer;
@@ -1493,7 +1499,7 @@ Begin
   SendChunk(miRefreshPlayerStats, m, UID);
 End;
 
-procedure TServer.PlayerLeaves(PlayerUid: integer);
+Procedure TServer.PlayerLeaves(PlayerUid: integer);
 Var
   t0, t1, i, cnt, c, EnterID: integer;
   m: TMemoryStream;
@@ -1615,7 +1621,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-function TServer.GetActivePlayerCount: Integer;
+Function TServer.GetActivePlayerCount: Integer;
 Var
   i: Integer;
 Begin
@@ -1626,7 +1632,7 @@ Begin
   End;
 End;
 
-procedure TServer.EvalFieldHashList(const List: TFieldHashNameList;
+Procedure TServer.EvalFieldHashList(Const List: TFieldHashNameList;
   SendToMaster: Boolean);
 Var
   m: TMemorystream;
@@ -1670,7 +1676,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.CheckSynchrons;
+Procedure TServer.CheckSynchrons;
 Var
   n: int64;
   i: integer;
@@ -1717,7 +1723,7 @@ Begin
   End;
 End;
 
-procedure TServer.ApplyPause(Value: Boolean);
+Procedure TServer.ApplyPause(Value: Boolean);
 Var
   t: int64;
   i: integer;
@@ -1749,7 +1755,7 @@ Begin
   foldpausevalue := value;
 End;
 
-procedure TServer.CreateNewFrame;
+Procedure TServer.CreateNewFrame;
 Var
   Alive: Array[0..1] Of Integer;
   i, j: Integer;
@@ -1914,7 +1920,7 @@ Begin
   EndGameCheck();
 End;
 
-procedure TServer.UpdateAllClients;
+Procedure TServer.UpdateAllClients;
 Var
   m: TMemoryStream;
   i, EnterID: Integer;
@@ -1961,7 +1967,7 @@ Begin
   LogLeave(EnterId);
 End;
 
-procedure TServer.SendPlayerStatistiks;
+Procedure TServer.SendPlayerStatistiks;
 Var
   m: TMemoryStream;
   i, EnterID: Integer;
@@ -1976,7 +1982,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.EndGameCheck;
+Procedure TServer.EndGameCheck;
 Var
   (*
   Merken wem wir alles schon einen "Winner" gesendet haben
@@ -2124,7 +2130,7 @@ Begin
   End;
 End;
 
-function TServer.MatchFinished: Boolean;
+Function TServer.MatchFinished: Boolean;
 Var
   i: Integer;
 Begin
@@ -2143,7 +2149,7 @@ Begin
   End;
 End;
 
-procedure TServer.LoadAi;
+Procedure TServer.LoadAi;
 Var
   EnterID: integer;
 Begin
@@ -2167,7 +2173,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.HurryHandling;
+Procedure TServer.HurryHandling;
 Begin
   If fPlayingTimedesc = -1000 Then exit; // Nicht im Infinity Mode
   If Not fActualField.BombsEnabled Then exit; // Es gibt wohl keine Spieler mehr auf der Karte -> kein Hurry mehr ;)
@@ -2182,7 +2188,7 @@ Begin
   End;
 End;
 
-procedure TServer.Execute;
+Procedure TServer.Execute;
 Var
   n: QWord;
   EnterID, EnterID2: integer;
@@ -2298,7 +2304,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.LoadStatistics;
+Procedure TServer.LoadStatistics;
 Var
   ini: TIniFile;
   EnterID: Integer;
@@ -2326,7 +2332,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.SaveStatistics;
+Procedure TServer.SaveStatistics;
 Var
   ini: TIniFile;
   EnterID: Integer;
@@ -2365,7 +2371,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.LoadPlayerStatistics;
+Procedure TServer.LoadPlayerStatistics;
 Var
   EnterID: Integer;
 Begin
@@ -2374,7 +2380,7 @@ Begin
   LogLeave(EnterID);
 End;
 
-procedure TServer.SavePlayerStatistics;
+Procedure TServer.SavePlayerStatistics;
 Var
   EnterID: Integer;
 Begin
