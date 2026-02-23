@@ -86,7 +86,7 @@ Function GetOptionalFilesToCheck(): TStringArray;
 Implementation
 
 Uses
-  FileUtil, math
+  FileUtil, math, IntfGraphics, FPImage
   , upcx
   , uwave
   , uanifile
@@ -344,6 +344,49 @@ Begin
 End;
 {$ENDIF}
 
+Procedure FixFuchsiaColorInBitmap(Var Bitmap: TBitmap);
+
+Const
+  FuchsiaTolerance = 23; // What is the best value here ?, maybe needs to be at least 15 !
+
+Var
+  j, i: Integer;
+  changed: Boolean;
+  intf: TLazIntfImage;
+  sc: TFPColor;
+  r, g, b: integer;
+Begin
+  (*
+   * Some but not all Textures do not use a "clear" clFuchsia, e.g. Field09\Brick.png
+   * for this case we fix this here.
+   * The Code searches for "near" clFuchsia colors and converts them to clear clFuchsia
+   *)
+  intf := Bitmap.CreateIntfImage;
+  changed := false;
+  For j := 0 To Bitmap.Height - 1 Do Begin
+    For i := 0 To Bitmap.Width - 1 Do Begin
+      sc := intf.Colors[i, j];
+      r := sc.Red Shr 8;
+      g := sc.Green Shr 8;
+      b := sc.Blue Shr 8;
+      // Color should be clFuchsia
+      If (r >= 255 - FuchsiaTolerance) And (g <= FuchsiaTolerance) And (b >= 255 - FuchsiaTolerance) Then Begin
+        // But Color is not clFuchsia -> so make it to clFuchsia
+        If (r <> 255) Or (g <> 0) Or (b <> 255) Then Begin
+          changed := true;
+          sc.Red := 255 Shl 8;
+          sc.Green := 0 Shl 8;
+          sc.Blue := 255 Shl 8;
+          intf.Colors[i, j] := sc;
+        End;
+      End;
+    End;
+  End;
+  If changed Then Begin
+    Bitmap.LoadFromIntfImage(intf);
+  End;
+  intf.Free;
+End;
 
 (*
  Example:
@@ -630,6 +673,7 @@ Begin
     tmFirstPixel: SwapColor(result, result.Canvas.Pixels[0, 0], clFuchsia);
     tmBlack: SwapColor(result, clblack, clFuchsia);
   End;
+  FixFuchsiaColorInBitmap(result);
 End;
 
 (*
@@ -645,6 +689,7 @@ Procedure ExtractAtomicAnis(CDFolder, AtomicFolder: String; Iterative: Boolean);
   Begin
     result := false;
     p := TPortableNetworkGraphic.Create;
+    FixFuchsiaColorInBitmap(b);
     p.assign(b);
     If Not ForceDirectories(ExtractFilePath(Filename)) Then Begin
       Log('  Error: could not create folder: ' + ExtractFilePath(Filename));
@@ -678,13 +723,6 @@ Begin
     If Not assigned(b) Then Begin
       AniWarning := true;
       Continue;
-    End;
-    (*
-     * Unfortunatunelly this special texture needs a little "Fix", which is here
-     * hardcoded ;)
-     *)
-    If pos('flame.png', lowercase(AniJobs[i].DestPng)) <> 0 Then Begin
-      SwapColor(b, $00F800F8, clFuchsia);
     End;
     If assigned(b) Then Begin
       If StoreBmp(b, AtomicFolder + AniJobs[i].DestPng) Then inc(cnt);
@@ -967,7 +1005,7 @@ Begin
     exit;
   End;
   If Not CheckFPCAtomicFolder(AtomicFolder) Then Begin
-    Log('Error: invalid fpc-atomic folder');
+    Log('Error: invalid fpc-atomic folder, missing fpc_atomic executable');
     exit;
   End;
   If Not ForceDirectories(IncludeTrailingPathDelimiter(AtomicFolder) + 'data') Then Begin
