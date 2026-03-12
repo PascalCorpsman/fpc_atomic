@@ -1918,7 +1918,7 @@ Begin
   // If we do not find a Local game after 2 tries, bring up the "Ask for IP Dialog"
   // First Try is in ms 0
   // Second Try is in ms 500
-  if fUDPPingData.StartTickValue + 550 <= GetTickCount64 then begin
+  If fUDPPingData.StartTickValue + 550 <= GetTickCount64 Then Begin
     fUDPPingData.StartTickValue := GetTickCount64 + 1000 * 60 * 60; // Only poll once, by forwarding the next poll 1h this should be the case ;)
     key := VK_J;
     fScreens[sMainScreen].OnKeyDown(Nil, key, []);

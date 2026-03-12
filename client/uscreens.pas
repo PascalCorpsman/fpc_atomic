@@ -772,7 +772,7 @@ Begin
   // Das ist ja eine Textur mit "Fenster" -> Also Alphatest mit an
   glEnable(GL_ALPHA_TEST);
   glTranslatef(0, 0, atomic_Map_Layer + 0.5);
-  RenderAlphaQuad(v2(320, 240), GameWidth, -GameHeight, 0, fBackTex);
+  RenderAlphaQuad(v2(320, 240), -GameWidth, -GameHeight, 0, fBackTex);
   gldisable(GL_ALPHA_TEST);
   glBindTexture(GL_TEXTURE_2D, 0);
   // In "no" stretch mode we can see the map otherwise, so we block this with 2 "black" patches ;)
@@ -1454,7 +1454,7 @@ Begin
   glpushmatrix();
   glTranslatef(0, 0, atomic_Map_Layer);
   glColor3f(1, 1, 1);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 0, false, fBackTex);
+  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fBackTex);
   glpopmatrix();
 End;
 

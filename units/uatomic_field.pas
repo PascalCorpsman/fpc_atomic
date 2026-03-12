@@ -233,7 +233,6 @@ Begin
 End;
 
 Procedure TAtomicRandomField.RenderPreview;
-
 Var
   j, i: Integer;
 Begin
@@ -243,7 +242,7 @@ Begin
   glColor3f(1, 1, 1);
   glpushmatrix();
   glTranslatef(0, 0, atomic_Map_Layer);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 0, false, fFieldTex);
+  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fFieldTex);
   For j := 0 To 4 Do Begin
     For i := 0 To 4 Do Begin
       If fPreviewGrid[i, j] = 0 Then Continue;
@@ -2160,7 +2159,7 @@ Begin
   glColor3f(1, 1, 1);
   glpushmatrix();
   glTranslatef(0, 0, atomic_Map_Layer);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 0, false, fFieldTex);
+  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fFieldTex);
   glTranslatef(0, 0, atomic_EPSILON);
   For j := 0 To 4 Do Begin
     For i := 0 To 4 Do Begin
@@ -2202,7 +2201,7 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     If fholes[x, y] Then Begin
       glPushMatrix;
       glTranslatef(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_EPSILON);
-      RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fHoleTex);
+      RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 180, fHoleTex);
       glPopMatrix;
     End;
   End;
@@ -2231,7 +2230,7 @@ Begin
   glColor3f(1, 1, 1);
   glpushmatrix();
   glTranslatef(0, 0, atomic_Map_Layer);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 0, false, fFieldTex);
+  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fFieldTex);
   // Alle Blöcke, Flammen Powerups etc ...
   glpushmatrix();
   glTranslatef(0, 0, atomic_EPSILON);
@@ -2277,7 +2276,7 @@ Begin
             If fField[i, j].PowerUp <> puNone Then Begin
               glPushMatrix;
               glTranslatef(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, 0);
-              RenderQuad(v2(20, 18), 40, 36, 0, PowerTexs[fField[i, j].PowerUp]);
+              RenderQuad(v2(20, 18), 40, 36, 180, PowerTexs[fField[i, j].PowerUp]);
               glPopMatrix;
             End
             Else Begin

@@ -86,68 +86,84 @@ Uses
   , fpImage
   ;
 
+Type
+  PRGBA = ^TRGBA;
+  TRGBA = Packed Record
+    B, G, R, A: Byte;
+  End;
+
+  TBufferedTextures = Record
+    OrigFilename: String;
+    CachedPNG: TPortableNetworkGraphic;
+  End;
+
+Var
+  BufferedTextures: Array Of TBufferedTextures = Nil;
+
 Function LoadColorTabledImage(PNGImage: String; PlayerColor: TRGB): TBitmap;
 Var
-  png: TPortableNetworkGraphic;
-  bi: TBitmap;
-  IntfImgi, IntfImgo: TLazIntfImage;
-  i, j, k: Integer;
-  ci, co: TFPColor;
-  m, r, g, b: Integer;
-  n: integer;
+  x, y: Integer;
+  row: PRGBA;
+  r, g, b, n, k, m, i: Integer;
+  found: Boolean;
 Begin
-  If Not FileExists(PNGImage) Then Begin
-    result := Nil;
-    exit;
+  Result := Nil;
+
+  If Not FileExists(PNGImage) Then Exit;
+
+  // 1. Prüfen, ob PNG schon im Cache ist
+  Result := TBitmap.Create;
+  Result.PixelFormat := pf32bit;
+
+  found := False;
+  For i := 0 To High(BufferedTextures) Do Begin
+    If BufferedTextures[i].OrigFilename = PNGImage Then Begin
+      Result.Assign(BufferedTextures[i].CachedPNG);
+      found := True;
+      Break;
+    End;
   End;
-  png := TPortableNetworkGraphic.Create;
-  png.LoadFromFile(PNGImage);
-  bi := TBitmap.create;
-  bi.Assign(png);
-  png.free;
-  IntfImgi := TLazIntfImage.create(0, 0);
-  IntfImgi.LoadFromBitmap(bi.Handle, Bi.MaskHandle);
-  intfimgo := TLazIntfImage.create(0, 0);
-  IntfImgo.LoadFromBitmap(bi.Handle, Bi.MaskHandle);
-  For i := 0 To bi.width - 1 Do
-    For j := 0 To bi.height - 1 Do Begin
-      ci := IntfImgi.Colors[i, j];
-      r := ci.red Shr 8;
-      g := ci.green Shr 8;
-      b := ci.blue Shr 8;
+
+  // 2. Falls nicht im Cache, laden und speichern
+  If Not found Then Begin
+    SetLength(BufferedTextures, High(BufferedTextures) + 2);
+    BufferedTextures[High(BufferedTextures)].CachedPNG := TPortableNetworkGraphic.Create;
+    BufferedTextures[High(BufferedTextures)].CachedPNG.LoadFromFile(PNGImage);
+    BufferedTextures[High(BufferedTextures)].OrigFilename := PNGImage;
+    Result.Assign(BufferedTextures[High(BufferedTextures)].CachedPNG);
+  End;
+
+  // 4. Pixel färben
+  For y := 0 To Result.Height - 1 Do Begin
+    row := Result.ScanLine[y];
+    For x := 0 To Result.Width - 1 Do Begin
+      r := row^.R;
+      g := row^.G;
+      b := row^.B;
+
       If (g > r) And (g > b) Then Begin
         n := (r + b) Div 2;
         k := (g - n);
-        r := n + (k * (PlayerColor.r)) Div 100;
-        g := n + (k * (PlayerColor.g)) Div 100;
-        b := n + (k * (PlayerColor.b)) Div 100;
-        (*
-        Tritt nur auf wenn die PlayerColor Werte > 100 haben
-        *)
-        m := max(r, max(g, b));
+
+        r := n + (k * PlayerColor.r) Div 100;
+        g := n + (k * PlayerColor.g) Div 100;
+        b := n + (k * PlayerColor.b) Div 100;
+
+        m := Max(r, Max(g, b));
         If m > 255 Then Begin
-          r := round(r * 255 / m);
-          g := round(g * 255 / m);
-          b := round(b * 255 / m);
+          r := (r * 255) Div m;
+          g := (g * 255) Div m;
+          b := (b * 255) Div m;
         End;
-        r := min(255, r);
-        g := min(255, g);
-        b := min(255, b);
-        co.red := r Shl 8;
-        co.green := g Shl 8;
-        co.blue := b Shl 8;
-        co.Alpha := 255 Shl 8;
-        IntfImgo.Colors[i, j] := co;
-      End
-      Else Begin
-        IntfImgo.Colors[i, j] := ci;
+
+        row^.R := Min(255, r);
+        row^.G := Min(255, g);
+        row^.B := Min(255, b);
       End;
+
+      Inc(row);
     End;
-  result := TBitmap.create;
-  result.LoadFromIntfImage(intfimgo);
-  IntfImgi.free;
-  IntfImgo.free;
-  bi.free;
+  End;
 End;
 
 { TAtomic }
@@ -489,6 +505,16 @@ Begin
   glPopMatrix;
   // Ende Debuggen *)
 End;
+
+
+Var
+  i: integer;
+
+Finalization
+  For i := 0 To high(BufferedTextures) Do Begin
+    BufferedTextures[i].CachedPNG.Free;
+  End;
+  setlength(BufferedTextures, 0);
 
 End.
 
