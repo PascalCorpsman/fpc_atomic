@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uGraphiks.pas                                                   ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.14                                                         *)
+(* Version     : 0.15                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -42,6 +42,8 @@
 (*                      FIX: glitch on rotating images                        *)
 (*               0.13 - RGBAToFPColor, FPColorToRGBA                          *)
 (*               0.14 - RGBAtoLuminanz                                        *)
+(*               0.15 - TRGBA is now packed and byte compatible to TBitmap    *)
+(*                      in pf32Bit mode                                       *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -82,13 +84,14 @@ Type
     );
 
   TRGB = Record
-    r, g, b: Byte;
+    B, G, R: Byte;
   End;
 
-  TRGBA = Record
-    r, g, b, a: Byte;
+  TRGBA = Packed Record
+    B, G, R, A: Byte;
   End;
 
+  PRGBA = ^TRGBA;
 
   // https://en.wikipedia.org/wiki/HSL_and_HSV#HSV_to_HSL
   THSL = Record

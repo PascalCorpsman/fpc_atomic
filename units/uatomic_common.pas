@@ -263,22 +263,22 @@ Const
    *)
 {$IFDEF Only3Player}
   PlayerColors: Array[0..2] Of TRGB = (
-    (R: 100; G: 100; B: 100), // white
-    (R: 20; G: 20; B: 20), // black
-    (R: 100; G: 0; B: 0) // red
+    (B: 100; G: 100; R: 100), // white
+    (B: 20; G: 20; R: 20), // black
+    (B: 0; G: 0; R: 100) // red
     );
 {$ELSE}
   PlayerColors: Array[0..9] Of TRGB = (
-    (R: 100; G: 100; B: 100), // white
-    (R: 20; G: 20; B: 20), // black
-    (R: 100; G: 0; B: 0), // red
-    (R: 0; G: 0; B: 100), // blue
-    (R: 0; G: 100; B: 0), // green
-    (R: 100; G: 100; B: 0), // yellow
-    (R: 0; G: 100; B: 100), // cyan
-    (R: 100; G: 0; B: 100), // magenta
-    (R: 100; G: 50; B: 0), // orange
-    (R: 50; G: 0; B: 100) // purple
+    (B: 100; G: 100; R: 100), // white
+    (B: 20; G: 20; R: 20), // black
+    (B: 0; G: 0; R: 100), // red
+    (B: 100; G: 0; R: 0), // blue
+    (B: 0; G: 100; R: 0), // green
+    (B: 0; G: 100; R: 100), // yellow
+    (B: 100; G: 100; R: 0), // cyan
+    (B: 100; G: 0; R: 100), // magenta
+    (B: 0; G: 50; R: 100), // orange
+    (B: 100; G: 0; R: 50) // purple
     );
 {$ENDIF}
 
@@ -696,7 +696,7 @@ Begin
 End;
 
 Function ValidNodeName(aNodeName: String): Boolean;
-var
+Var
   i: Integer;
 Begin
   result := true;

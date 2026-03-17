@@ -102,9 +102,11 @@ Var
 
 Function LoadColorTabledImage(PNGImage: String; PlayerColor: TRGB): TBitmap;
 Var
-  x, y: Integer;
+  total: Integer;
   row: PRGBA;
-  r, g, b, n, k, m, i: Integer;
+  r, g, b: byte;
+  n, k, m, i: Integer;
+  cr, cg, cb: Integer;
   found: Boolean;
 Begin
   Result := Nil;
@@ -133,36 +135,42 @@ Begin
     Result.Assign(BufferedTextures[High(BufferedTextures)].CachedPNG);
   End;
 
-  // 4. Pixel färben
-  For y := 0 To Result.Height - 1 Do Begin
-    row := Result.ScanLine[y];
-    For x := 0 To Result.Width - 1 Do Begin
-      r := row^.R;
-      g := row^.G;
-      b := row^.B;
+  // 4. Pixel färben (flat single-pass loop)
+  cr := PlayerColor.r;
+  cg := PlayerColor.g;
+  cb := PlayerColor.b;
+  // Speicherrichtung bestimmen: Bottom-up DIB (Windows) vs. Top-down DIB (Linux)
+  If (Result.Height > 1) And (PtrUInt(Result.ScanLine[1]) < PtrUInt(Result.ScanLine[0])) Then
+    row := Result.ScanLine[Result.Height - 1] // Bottom-up: erster Pixel im Speicher = unterste Zeile
+  Else
+    row := Result.ScanLine[0]; // Top-down: erster Pixel im Speicher = oberste Zeile
+  total := Result.Width * Result.Height;
+  While total > 0 Do Begin
+    r := row^.R;
+    g := row^.G;
+    b := row^.B;
 
-      If (g > r) And (g > b) Then Begin
-        n := (r + b) Div 2;
-        k := (g - n);
+    If (g > r) And (g > b) Then Begin
+      n := (r + b) Div 2;
+      k := (g - n);
 
-        r := n + (k * PlayerColor.r) Div 100;
-        g := n + (k * PlayerColor.g) Div 100;
-        b := n + (k * PlayerColor.b) Div 100;
+      r := n + (k * cr) Div 100;
+      g := n + (k * cg) Div 100;
+      b := n + (k * cb) Div 100;
 
-        m := Max(r, Max(g, b));
-        If m > 255 Then Begin
-          r := (r * 255) Div m;
-          g := (g * 255) Div m;
-          b := (b * 255) Div m;
-        End;
-
-        row^.R := Min(255, r);
-        row^.G := Min(255, g);
-        row^.B := Min(255, b);
+      m := Max(r, Max(g, b));
+      If m > 255 Then Begin
+        r := (r * 255) Div m;
+        g := (g * 255) Div m;
+        b := (b * 255) Div m;
       End;
 
-      Inc(row);
+      row^.R := Min(255, r);
+      row^.G := Min(255, g);
+      row^.B := Min(255, b);
     End;
+    Inc(row);
+    Dec(total);
   End;
 End;
 
