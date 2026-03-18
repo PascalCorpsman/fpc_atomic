@@ -41,6 +41,7 @@
 (*               0.11 - Fix LoadAlphaGraphikItem did not respect png          *)
 (*                          transparency                                      *)
 (*               0.12 - Start removing glpushmatrix / glpopmatrix calls       *)
+(*                      Start speedup image loading / decoding                *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uopengl_graphikengine;
@@ -160,9 +161,9 @@ Type
   End;
 
 Const
-  Fuchsia: TRGB = (r: 255; g: 0; b: 255);
-  Black: TRGB = (r: 0; g: 0; b: 0);
-  White: TRGB = (r: 255; g: 255; b: 255);
+  Fuchsia: TRGB = (b: 255; g: 0; r: 255);
+  Black: TRGB = (b: 0; g: 0; r: 0);
+  White: TRGB = (b: 255; g: 255; r: 255);
 
 Var
   OpenGL_GraphikEngine: TOpenGL_GraphikEngine;
@@ -1184,12 +1185,12 @@ End;
 Function TOpenGL_GraphikEngine.LoadAlphaColorGraphik(Const Graphik: TBitmap;
   Name: String; Color: TRGB; Stretch: TStretchmode): Integer; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
 Var
-  OpenGLData: Array Of Array[0..3] Of Byte;
   Data: String;
   b2, b: Tbitmap;
-  IntfImg1: TLazIntfImage;
-  CurColor: TFPColor;
-  ow, oh, nw, nh, c, j, i: Integer;
+  ow, oh, nw, nh, j, i: Integer;
+  pSrc: PRGBA;
+  pDst, pStart: PByte;
+  Line: Pointer;
   bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
 Begin
   Data := LowerCase(name);
@@ -1206,14 +1207,13 @@ Begin
     End;
   // Graphik mus geladen werden
   b := Tbitmap.create;
+  b.PixelFormat := pf32bit;
   b.assign(Graphik);
   // create the raw image
-  IntfImg1 := TLazIntfImage.Create(0, 0);
-  // b.PixelFormat := pf24bit;
   ow := b.width;
   oh := b.height;
-  nw := b.width;
-  nh := b.height;
+  nw := ow;
+  nh := oh;
 {$IFDEF DEBUGGOUTPUT}
   writeln('TGraphikEngine.LoadAlphaColorgraphik(' + name + ')');
   writeln('Orig size : ' + inttostr(b.width) + 'x' + inttostr(b.height));
@@ -1222,13 +1222,12 @@ Begin
     smNone: Begin
       End;
     smStretchHard, smStretch: Begin
-        nw := GetNextPowerOfTwo(b.width);
-        nh := GetNextPowerOfTwo(b.height);
-        If (nw <> b.width) Or (nh <> b.height) Then Begin
-          b2 := TBitmap.create;
-          b2.PixelFormat := pf24bit;
-          b2.width := nw;
-          b2.height := nh;
+        nw := GetNextPowerOfTwo(ow);
+        nh := GetNextPowerOfTwo(oh);
+        If (nw <> ow) Or (nh <> oh) Then Begin
+          b2 := TBitmap.Create;
+          b2.PixelFormat := pf32bit;
+          b2.SetSize(nw, nh);
           If Stretch = smStretch Then Begin
             Stretchdraw(b2.canvas, rect(0, 0, nw, nh), b, imBilinear);
           End
@@ -1240,13 +1239,12 @@ Begin
         End;
       End;
     smClamp: Begin
-        nw := GetNextPowerOfTwo(b.width);
-        nh := GetNextPowerOfTwo(b.height);
-        If (nw <> b.width) Or (nh <> b.height) Then Begin
+        nw := GetNextPowerOfTwo(ow);
+        nh := GetNextPowerOfTwo(oh);
+        If (nw <> ow) Or (nh <> oh) Then Begin
           b2 := TBitmap.create;
-          b2.PixelFormat := pf24bit;
-          b2.width := nw;
-          b2.height := nh;
+          b2.PixelFormat := pf32bit;
+          b2.SetSize(nw, nh);
           b2.canvas.Draw(0, 0, b);
           b.free;
           b := b2;
@@ -1254,7 +1252,6 @@ Begin
       End;
   End;
   // load the raw image from the bitmap handles
-  IntfImg1.LoadFromBitmap(B.Handle, B.MaskHandle);
 {$IFDEF DEBUGGOUTPUT}
   writeln('OpenGL size : ' + inttostr(b.width) + 'x' + inttostr(b.height));
   OpenGLBufCount := OpenGLBufCount + (b.width * b.height * 4);
@@ -1262,22 +1259,26 @@ Begin
 {$ENDIF}
   If IsPowerOfTwo(b.width) And IsPowerOfTwo(b.Height) Then Begin
     // Laden der Graphikdaten
-    opengldata := Nil;
-    setlength(opengldata, b.width * b.height);
-    c := 0;
-    For j := 0 To b.height - 1 Do Begin
-      For i := 0 To b.width - 1 Do Begin
-        CurColor := IntfImg1.Colors[i, j];
-        OpenGLData[c, 0] := CurColor.Red Div 256;
-        OpenGLData[c, 1] := CurColor.green Div 256;
-        OpenGLData[c, 2] := CurColor.blue Div 256;
-        If (OpenGLData[c, 0] = Color.r) And
-          (OpenGLData[c, 1] = Color.g) And
-          (OpenGLData[c, 2] = Color.b) Then
-          OpenGLData[c, 3] := 255
+    GetMem(pStart, b.Width * b.Height * 4);
+    pDst := pStart;
+    For j := 0 To b.Height - 1 Do Begin
+      Line := b.ScanLine[j];
+      pSrc := PRGBA(Line);
+      For i := 0 To b.Width - 1 Do Begin
+        pDst^ := pSrc^.R;
+        Inc(pDst);
+        pDst^ := pSrc^.G;
+        Inc(pDst);
+        pDst^ := pSrc^.B;
+        Inc(pDst);
+        If (pSrc^.R = Color.r) And
+          (pSrc^.G = Color.g) And
+          (pSrc^.B = Color.b) Then
+          pDst^ := 255
         Else
-          OpenGLData[c, 3] := 0;
-        inc(c);
+          pDst^ := 0;
+        Inc(pDst);
+        Inc(pSrc);
       End;
     End;
     // Übergeben an OpenGL
@@ -1288,10 +1289,10 @@ Begin
     glBindTexture(GL_TEXTURE_2D, result);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, gl_RGBA, b.width, b.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, @OpenGLData[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, gl_RGBA, b.width, b.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pStart);
     If Not (Bool{$IFDEF USE_GL} = 1{$ENDIF}) Then
       gldisable(GL_TEXTURE_2D);
-    IntfImg1.free;
+    FreeMem(pStart);
     // Übernehmen in die Engine
     setlength(Fimages, high(Fimages) + 2);
     Fimages[high(Fimages)].Image := Result;
