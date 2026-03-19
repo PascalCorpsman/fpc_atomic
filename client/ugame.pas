@@ -2112,7 +2112,7 @@ Var
   fTrampStatic,
     EnterID: Integer; // Wenn das Trampolin gerade nicht "an wackelt"
 {$IFDEF ShowInitTime}
-  t: UInt64;
+  t, total: UInt64;
 
   Procedure TimePoint(tp: Integer);
   Var
@@ -2127,6 +2127,7 @@ Var
 Begin
 {$IFDEF ShowInitTime}
   t := GetTickCount64;
+  total := t;
 {$ENDIF}
   EnterID := LogEnter('TGame.Initialize');
   fOwner := Owner;
@@ -2334,10 +2335,6 @@ Begin
   Loader.free;
   fInitialized := true;
   SwitchToScreen(sMainScreen);
-{$IFDEF ShowInitTime}
-  logshow('Initialisation took ' + inttostr((GetTickCount64 - t) Div 1000) + ' seconds.', llInfo);
-{$ENDIF}
-
 {$IFDEF Linux}
   If Settings.Fullscreen Then Begin
     form1.SetFullScreen(True);
@@ -2345,6 +2342,8 @@ Begin
 {$ENDIF}
 {$IFDEF ShowInitTime}
   TimePoint(100);
+  total := GetTickCount64 - total;
+  writeln(format('Total: %d', [total]));
 {$ENDIF}
   LogLeave(EnterID);
 End;

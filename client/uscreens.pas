@@ -21,7 +21,11 @@ Interface
 {$I globaldefines.inc}
 
 Uses
-  forms, Classes, SysUtils, StdCtrls, controls, uatomic_common, uopengl_animation, uatomic_field;
+  forms, Classes, SysUtils, StdCtrls, controls
+  , uopengl_graphikengine
+  , uatomic_common
+  , uopengl_animation
+  , uatomic_field;
 
 Type
 
@@ -51,7 +55,7 @@ Type
   private
     fOwner: TObject;
     fBackFile: String;
-    fBackTex: Integer; // OpenGL Pointer der fBackFile
+    fBackTex: TGraphikItem;
     fSoundFile: String;
     fSoundExitScreen: String;
     fCursorFile: String;
@@ -132,7 +136,7 @@ Type
   TPlayerSetupMenu = Class(TScreen)
   private
     fSchemeFile: String;
-    fcursorTex: integer;
+    fcursorTex: TGraphikItem;
     fCursorPos: integer; // Position des "Kopfes" in Menüpunkten
     fPlayerDetails: Array[0..length(PlayerColors) - 1] Of Record
       Team: Integer;
@@ -160,7 +164,7 @@ Type
   TFieldSetupMenu = Class(TScreen)
   private
     fCursorPos: integer;
-    fcursorTex: Integer;
+    fcursorTex: TGraphikItem;
   public
     MasterPlayerName: String;
     ActualField: TAtomicField;
@@ -208,7 +212,7 @@ Type
 
   TVictoryMenu = Class(TScreen)
   private
-    fbackGrounds: Array[TVictor] Of Integer;
+    fbackGrounds: Array[TVictor] Of TGraphikItem;
   public
     Victor: TVictor;
     Procedure OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState); override;
@@ -223,7 +227,7 @@ Type
 
   TOptionsMenu = Class(TScreen)
   private
-    fcursorTex: integer;
+    fcursorTex: TGraphikItem;
     fCursorPos: integer; // Position des "Kopfes" in Menüpunkten
     SchemQuestionForm: TForm;
     KeyboardDialog: TForm;
@@ -244,7 +248,6 @@ Implementation
 Uses LCLType, Math, Graphics, Dialogs, fileutil, StrUtils
   , dglOpenGL
   , Unit1 // WTF, why is this unit in here ?
-  , uopengl_graphikengine
   , uatomicfont
   , uvectormath
   , ugraphics
@@ -471,18 +474,18 @@ End;
 Procedure TVictoryMenu.LoadFromDisk(ResPath: String);
 Begin
   Inherited LoadFromDisk(ResPath);
-  fbackGrounds[vWhiteTeam] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'team0.png', smStretch);
-  fbackGrounds[vRedTeam] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'team1.png', smStretch);
-  fbackGrounds[vCol0] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory0.png', smStretch);
-  fbackGrounds[vCol1] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory1.png', smStretch);
-  fbackGrounds[vCol2] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory2.png', smStretch);
-  fbackGrounds[vCol3] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory3.png', smStretch);
-  fbackGrounds[vCol4] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory4.png', smStretch);
-  fbackGrounds[vCol5] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory5.png', smStretch);
-  fbackGrounds[vCol6] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory6.png', smStretch);
-  fbackGrounds[vCol7] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory7.png', smStretch);
-  fbackGrounds[vCol8] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory8.png', smStretch);
-  fbackGrounds[vCol9] := OpenGL_GraphikEngine.LoadGraphik(ResPath + 'victory9.png', smStretch);
+  fbackGrounds[vWhiteTeam] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'team0.png', smClamp);
+  fbackGrounds[vRedTeam] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'team1.png', smClamp);
+  fbackGrounds[vCol0] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory0.png', smClamp);
+  fbackGrounds[vCol1] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory1.png', smClamp);
+  fbackGrounds[vCol2] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory2.png', smClamp);
+  fbackGrounds[vCol3] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory3.png', smClamp);
+  fbackGrounds[vCol4] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory4.png', smClamp);
+  fbackGrounds[vCol5] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory5.png', smClamp);
+  fbackGrounds[vCol6] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory6.png', smClamp);
+  fbackGrounds[vCol7] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory7.png', smClamp);
+  fbackGrounds[vCol8] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory8.png', smClamp);
+  fbackGrounds[vCol9] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory9.png', smClamp);
 End;
 
 Procedure TVictoryMenu.Render;
@@ -758,8 +761,8 @@ Begin
    * Neu Laden der Hintergrundgraphik mit Transparenz
    *)
   OpenGL_GraphikEngine.RemoveGraphik(fBackTex);
-  fBackTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(ResPath + fBackFile, ColorToRGB(clfuchsia), smStretchHard);
-  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(ResPath + fCursorFile, ColorToRGB(clfuchsia), smStretch);
+  fBackTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fBackFile, ColorToRGB(clfuchsia), smClamp);
+  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fCursorFile, ColorToRGB(clfuchsia), smClamp);
 End;
 
 Procedure TFieldSetupMenu.Render;
@@ -772,7 +775,7 @@ Begin
   // Das ist ja eine Textur mit "Fenster" -> Also Alphatest mit an
   glEnable(GL_ALPHA_TEST);
   glTranslatef(0, 0, atomic_Map_Layer + 0.5);
-  RenderAlphaQuad(v2(320, 240), -GameWidth, -GameHeight, 0, fBackTex);
+  RenderAlphaQuad(0, 0, fBackTex);
   gldisable(GL_ALPHA_TEST);
   glBindTexture(GL_TEXTURE_2D, 0);
   // In "no" stretch mode we can see the map otherwise, so we block this with 2 "black" patches ;)
@@ -812,7 +815,7 @@ Begin
   If PlayerIsFirst Then Begin
     glPushMatrix();
     glTranslatef(20, 176 - 14 + 28 * fCursorPos, atomic_Map_Layer + 0.5 + atomic_EPSILON);
-    RenderAlphaQuad(point(16, 16), 32, -32, 0, fcursorTex);
+    RenderAlphaQuad(0, 0, fcursorTex);
     glPopMatrix();
   End
   Else Begin
@@ -931,7 +934,7 @@ End;
 Procedure TPlayerSetupMenu.LoadFromDisk(ResPath: String);
 Begin
   Inherited LoadFromDisk(ResPath);
-  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(ResPath + fCursorFile, ColorToRGB(clfuchsia), smStretch);
+  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fCursorFile, ColorToRGB(clfuchsia), smClamp);
 End;
 
 Procedure TPlayerSetupMenu.Render;
@@ -976,7 +979,7 @@ Begin
   AtomicFont.Textout(60, 400, 'Scheme: ' + fSchemeFile);
   glPushMatrix();
   glTranslatef(60 - 32 + 10, 37 + 14 + 28 * fCursorPos + 50, atomic_Map_Layer + atomic_EPSILON);
-  RenderAlphaQuad(point(16, 16), 32, -32, 0, fcursorTex);
+  RenderAlphaQuad(0, 0, fcursorTex);
   glPopMatrix();
 End;
 
@@ -1243,7 +1246,7 @@ End;
 Procedure TOptionsMenu.LoadFromDisk(ResPath: String);
 Begin
   Inherited LoadFromDisk(ResPath);
-  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(ResPath + fCursorFile, ColorToRGB(clfuchsia), smStretch);
+  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fCursorFile, ColorToRGB(clfuchsia), smClamp);
 End;
 
 Procedure TOptionsMenu.Render;
@@ -1290,7 +1293,7 @@ Begin
 
   glPushMatrix();
   glTranslatef(20, 25 + 28 * fCursorPos, atomic_Map_Layer + atomic_EPSILON);
-  RenderAlphaQuad(point(16, 16), 32, -32, 0, fcursorTex);
+  RenderAlphaQuad(0, 0, fcursorTex);
   glPopMatrix();
 End;
 
@@ -1438,7 +1441,7 @@ Begin
   End;
   fBackFile := '';
   fSoundFile := '';
-  fBackTex := 0;
+  fBackTex.Image := 0;
 End;
 
 Destructor TScreen.Destroy;
@@ -1454,7 +1457,7 @@ Begin
   glpushmatrix();
   glTranslatef(0, 0, atomic_Map_Layer);
   glColor3f(1, 1, 1);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fBackTex);
+  RenderQuad(0, 0, fBackTex);
   glpopmatrix();
 End;
 
@@ -1465,10 +1468,10 @@ Begin
     fSoundFile := ResPath + fSoundFile;
   End;
   If fBackFile <> '' Then Begin
-    fBackTex := OpenGL_GraphikEngine.LoadGraphik(ResPath + fBackFile, smStretch);
+    fBackTex := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + fBackFile, smClamp);
   End
   Else Begin
-    fBackTex := 0;
+    fBackTex.Image := 0;
   End;
 End;
 
