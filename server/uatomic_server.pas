@@ -1729,14 +1729,13 @@ Var
   i: integer;
 Begin
   value := value Or fSyncPause;
-  //  fmap.Pause(Value);
-  //  fSpawnModul.Pause(Value);
+  fActualField.Pause(Value);
   If Value Then Begin // Wir Starten die Pause
     If Not foldpausevalue Then Begin
       fPauseTimestamp := GetTickCount64;
     End;
   End
-  Else Begin //Wir Beenden die Pause, nun müssen alle Zeitbasen passend Verschoben werden
+  Else Begin // Wir Beenden die Pause, nun müssen alle Zeitbasen passend Verschoben werden
     If foldpausevalue Then Begin
       t := GetTickCount64() - fPauseTimestamp; // T = Zeit in ms wie lange die Pause gedauert hat
       FLastFrameTimestamp := FLastFrameTimestamp + t;

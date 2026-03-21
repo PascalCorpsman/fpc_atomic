@@ -1,5 +1,6 @@
 [General]
 Name=Haunted House
+HasSpawningBricks=1
 
 [Preview]
 Row1=..:::

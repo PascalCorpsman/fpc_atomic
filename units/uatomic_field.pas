@@ -62,14 +62,25 @@ Type
     fHurryIndex: integer; // Der Index in der HurryCoords Konstante, wenn Hurry Aktiv ist.
     fPlayerStatistics: TPlayerStatisticEngine;
     fTeamplay: Boolean;
+    fPause: Boolean;
+    fPauseTimestamp: QWord; // Zeitpunkt zu dem das Spiel in den Pause Modus versetzt wurde
 {$ENDIF}
+
+    fHasSpawningBricks: Boolean; // Wenn True, dann können auf der Karte "random" zerstörbare Bricks entstehen
+{$IFDEF Server}
+    fNextBrickSpawnTime: QWord; // Zeitpunkt an dem der nächste Brick "gespawnt" werden muss
+{$ENDIF}
+
     fHasArrows: Boolean; // Wenn True, dann hat die Karte die Lustigen Pfeilchen auf denen die Bomben hin und her geschubst werden..
     fArrowDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
-    fHasConveyors: Boolean; // Wenn True, dann hat die Karte diese Blauen Fließbänder auf denen Spieler und Bomben automatisch bewegt werden (geschwindigkeit via Settings einstellbar)
+
+    fHasConveyors: Boolean; // Wenn True, dann hat die Karte diese Blauen Fließbänder auf denen Spieler und Bomben automatisch bewegt werden (Geschwindigkeit via Settings einstellbar)
     fConveyorDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
+
     fHasHoles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
-    fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
     fHoles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
+
+    fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
 {$IFDEF Client}
     fTrampStaticSprite, fHoleTex, fFieldTex, fBrickTex, fSolidTex: integer;
     fxBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TBrickAnimation;
@@ -134,6 +145,7 @@ Type
     Procedure KillPlayer(Var Players: TPlayers; Index: integer); // Ohne Punktewertung
     Procedure RepopulatePlayersCollectedPowerUps(Const Players: TPlayers; PlayerIndex: Integer);
     Procedure TelePortPlayer(Var Player: TPlayer);
+    Procedure Pause(aValue: Boolean);
 {$ENDIF}
   End;
 
@@ -463,6 +475,7 @@ Begin
   fHasConveyors := ini.ReadBool('General', 'HasConveyors', false);
   fHasHoles := ini.ReadBool('General', 'HasHoles', false);
   fHastrampolins := ini.ReadBool('General', 'Hastrampolins', false);
+  fHasSpawningBricks := ini.ReadBool('General', 'HasSpawningBricks', false);
 
   // T
 {$IFDEF Client}
@@ -618,6 +631,8 @@ Var
   px, py, i, j, maxpow: Integer;
   b: Boolean;
 Begin
+  fPause := false;
+  fNextBrickSpawnTime := GetTickCount64() + RandomRange(FieldBrickMinSpawnTime, FieldBrickMaxSpawnTime) + AtomicBombDetonateTime;
   fBombCount := 0; // Sollte es je noch Bomben gegeben haben nu sind sie Platt ;)
   fBombsEnabled := true;
   fHurryIndex := -1;
@@ -1730,8 +1745,47 @@ Procedure TAtomicField.HandlePlayerVsMap(Var Players: TPlayers;
 Const
   TrampRange = 2;
 Var
-  nx, ny, x, y, i: integer;
+  nx, ny, x, y, xx, yy, i, j: integer;
+  b: Boolean;
 Begin
+  If fHasSpawningBricks And (Not fPause) Then Begin
+    If GetTickCount64() > fNextBrickSpawnTime Then Begin
+      // 1. Suchen eines Freien Spots
+      xx := -1; // Markieren als "Nix" gefunden
+      // 1.1 Ein Freier Block heist wirklich Komplett Frei
+      //     - Kein Solid
+      //     - Keine Flammen
+      //     - Keine Items
+      //     - Keine Spieler
+      For j := 0 To FieldWidth * FieldHeight Do Begin // Wir versuchen einen Freien Spot zu "erraten"
+        x := random(FieldWidth);
+        yy := random(FieldHeight);
+        If (fField[x, yy].BrickData = bdBlank) And
+          (fField[x, yy].Flame = []) And
+          (fField[x, yy].PowerUp = puNone) Then Begin
+          // Prüfung Kein Spieler auf dem Feld
+          b := true;
+          For i := 0 To high(Players) Do Begin
+            If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
+            If (x = trunc(Players[i].Info.Position.x)) And
+              (yy = trunc(Players[i].Info.Position.y)) Then Begin
+              b := false;
+              break;
+            End;
+          End;
+          If b Then Begin
+            xx := x;
+            break;
+          End;
+        End;
+      End;
+      // 2. Erstellen des Blocks, gemäß https://bomberman.fandom.com/wiki/Haunted_House entstehen diese "instantan" ohne Animation und ohne "items" unter sich
+      If xx <> -1 Then Begin
+        fField[xx, yy].BrickData := bdBrick;
+      End;
+      fNextBrickSpawnTime := GetTickCount64() + RandomRange(FieldBrickMinSpawnTime, FieldBrickMaxSpawnTime);
+    End;
+  End;
   For i := 0 To high(Players) Do Begin
     If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
     x := trunc(Players[i].Info.Position.x);
@@ -2109,6 +2163,24 @@ Begin
       Player.Info.Position.y := 2.5;
     End;
   End;
+End;
+
+Procedure TAtomicField.Pause(aValue: Boolean);
+Var
+  t: int64;
+Begin
+  If aValue Then Begin // Wir Starten die Pause
+    If Not fPause Then Begin
+      fPauseTimestamp := GetTickCount64;
+    End;
+  End
+  Else Begin // Wir Beenden die Pause, nun müssen alle Zeitbasen passend Verschoben werden
+    If fPause Then Begin
+      t := GetTickCount64() - fPauseTimestamp; // T = Zeit in ms wie lange die Pause gedauert hat
+      fNextBrickSpawnTime := fNextBrickSpawnTime + t;
+    End;
+  End;
+  fPause := aValue;
 End;
 
 { TAtomicRandomField }
