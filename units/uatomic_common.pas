@@ -145,7 +145,7 @@ Const
   FieldTrampCount = 8; // Anzahl an Trampolinen, welche auf einer Karte generiert werden, wenn diese das fHastrampolins flag gesetzt hat ( Laut: https://www.youtube.com/watch?v=fO9HhzhEloE bei 5:47 sind das 8 )
 
   FieldBrickMinSpawnTime = 1000; // Wenn fHasSpawningBricks gesetzt, mindest Zeit in ms bis ein neuer Brick auf einem Leeren Feld erstellt wird
-  FieldBrickMaxSpawnTime = 5000; // Wenn fHasSpawningBricks gesetzt, maximale Zeit in ms bis ein neuer Brick auf einem Leeren Feld erstellt wird
+  FieldBrickMaxSpawnTime = 4000; // Wenn fHasSpawningBricks gesetzt, maximale Zeit in ms bis ein neuer Brick auf einem Leeren Feld erstellt wird  (Laut: https://github.com/HerbFargus/Atomic-Bomberman/blob/master/data/config/valuelist.res )
 
   ServerAutoTimeout = 3000; // Zeit in ms bis der Server sich autoamtisch beendet, wenn keine Spieler verbunden sind.
   UDPPingPort = 8005; // Der Port auf welchem Client und Server Lauschen um heraus zu finden ob offene Spiele da sind.
