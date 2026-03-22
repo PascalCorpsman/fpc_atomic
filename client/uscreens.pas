@@ -249,7 +249,6 @@ Uses LCLType, Math, Graphics, Dialogs, fileutil, StrUtils
   , dglOpenGL
   , Unit1 // WTF, why is this unit in here ?
   , uatomicfont
-  , uvectormath
   , ugraphics
   , ugame
   , ukeyboarddialog
