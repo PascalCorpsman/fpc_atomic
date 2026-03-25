@@ -127,7 +127,7 @@ Begin
   glTranslatef(x, y, 0);
   If time < 0 Then Begin
     glTranslatef(0, 10, 0);
-    RenderAlphaQuad(v2(24, 17 / 2), 48, -17, 0, fInfinity);
+    RenderAlphaQuad(v2(24, 17 / 2), -48, -17, 0, fInfinity);
   End
   Else Begin
     m := time Div 60;
@@ -135,15 +135,15 @@ Begin
     // Die Minuten
     st := format('%d', [m]);
     For i := 1 To length(st) Do Begin
-      RenderAlphaQuad(v2(9, 27 / 2), 18, -27, 0, fDigits[ord(st[i]) - ord('0')]);
+      RenderAlphaQuad(v2(9, 27 / 2), -18, -27, 0, fDigits[ord(st[i]) - ord('0')]);
       glTranslatef(18, 0, 0);
     End;
-    RenderAlphaQuad(v2(9, 27 / 2), 18, -27, 0, fdouble);
+    RenderAlphaQuad(v2(9, 27 / 2), -18, -27, 0, fdouble);
     glTranslatef(18, 0, 0);
     // Die Sekunden
     st := format('%0.2d', [s]);
     For i := 1 To length(st) Do Begin
-      RenderAlphaQuad(v2(9, 27 / 2), 18, -27, 0, fDigits[ord(st[i]) - ord('0')]);
+      RenderAlphaQuad(v2(9, 27 / 2), -18, -27, 0, fDigits[ord(st[i]) - ord('0')]);
       glTranslatef(18, 0, 0);
     End;
   End;
