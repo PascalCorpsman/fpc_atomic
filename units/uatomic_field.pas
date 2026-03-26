@@ -59,7 +59,7 @@ Type
     fBombDetonateFifo: TIntFifo;
     fPowerUpClearFifo: TPointFifo;
     fPlaySoundEffect: TPlaySoundEffectCallback;
-    fHurryIndex: integer; // Der Index in der HurryCoords Konstante, wenn Hurry Aktiv ist.
+    fHurryIndex: integer; // Der Index in der HurryCoords Konstante, wenn Hurry Aktiv ist. -1 = deaktiviert
     fPlayerStatistics: TPlayerStatisticEngine;
     fTeamplay: Boolean;
     fPause: Boolean;
@@ -82,6 +82,7 @@ Type
 
     fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
 {$IFDEF Client}
+    fHurryMode: Boolean; // Wenn True, dann läuft gerade die Hurry Animation
     fTrampStaticSprite, fHoleTex, fFieldTex, fBrickTex, fSolidTex: integer;
     fxBricks: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TBrickAnimation;
     fxBrickAniTime: integer;
@@ -698,7 +699,7 @@ Begin
     End;
   End;
   // 2.5 Wenn die Karte "löcher" hat, dann müssen die immer Frei bleiben, und mindestens 1 adjazentes Feld auch !
-  If fHasHoles Then Begin
+  If fHasHoles And (fHurryIndex = -1) Then Begin
     For i := 0 To FieldWidth - 1 Do Begin
       For j := 0 To FieldHeight - 1 Do Begin
         If fHoles[i, j] Then Begin
@@ -759,11 +760,15 @@ End;
 Procedure TAtomicField.AppendGamingData(Const Stream: TStream);
 Var
   i, j: integer;
+  b: Boolean;
 Begin
   (*
    * Da auf jedem Feld immer nur 1 Ding Gerendert werden kann ist das hier recht Easy ;)
    *)
   stream.Write(fField, SizeOf(fField));
+  b := fHurryIndex <> -1;
+  stream.Write(b, SizeOf(b));
+
   // Sicherstellen, dass das ExplodingRenderFlag nur als Flanke raus geht (Also genau 1 mal gesetzt ist !)
   For i := 0 To high(fField) Do Begin
     For j := 0 To high(fField[i]) Do Begin
@@ -1132,7 +1137,7 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
         (trunc(fBombs[i].Position.y) = trunc(ay)) Then exit;
     End;
     // Es darf keine Bombe auf ein Loch gelegt werden !
-    If fHasHoles And fHoles[trunc(ax), trunc(ay)] Then exit;
+    If fHasHoles And (fHurryIndex = -1) And fHoles[trunc(ax), trunc(ay)] Then exit;
     fBombs[fBombCount].ColorIndex := player.info.ColorIndex;
     fBombs[fBombCount].Position.x := trunc(ax) + 0.5;
     fBombs[fBombCount].Position.y := trunc(ay) + 0.5;
@@ -1190,7 +1195,7 @@ Begin
           y := trunc(player.Info.Position.y);
           For i := 1 To player.Powers.AvailableBombs Do Begin
             If Not FielWalkable(x + i * dx, y + i * dy, true) {And (i <> 1)} Then exit;
-            If fHasHoles Then Begin // An Löchern ist auch schluss mit dem "Spoogen"
+            If fHasHoles And (fHurryIndex = -1) Then Begin // An Löchern ist auch schluss mit dem "Spoogen"
               If fHoles[x + i * dx, y + i * dy] Then exit;
             End;
             If fHastrampolins Then Begin // Auf Trampoline kann ebenfalls keine Bombe gelegt werden
@@ -1298,7 +1303,7 @@ Type
 
   Function BlockedByHole(x, y: integer): Boolean; // Gillt nur für Bomben, wenn diese sich bewegen, deswegen extra
   Begin
-    If fHasHoles Then Begin
+    If fHasHoles And (fHurryIndex = -1) Then Begin
       result := fHoles[x, y];
     End
     Else Begin
@@ -1796,7 +1801,7 @@ Begin
       fField[x, y].PowerUp := puNone;
     End;
     // Die Kollision gegen ein Loch
-    If fHasHoles And fHoles[x, y] Then Begin
+    If fHasHoles And (fHurryIndex = -1) And fHoles[x, y] Then Begin
       If (Not Players[i].IsInHohle) Then Begin // Flanke generieren ;)
         Players[i].IsInHohle := true;
         Players[i].Info.Animation := raTeleport;
@@ -1829,7 +1834,7 @@ Begin
           nx := -1;
         End;
         // Das gibt es eigentlich nicht, aber auf Löchern landen ist auch verboten!
-        If fHasHoles Then Begin
+        If fHasHoles And (fHurryIndex = -1) Then Begin
           If fHoles[nx, ny] Then
             nx := -1;
         End;
@@ -1974,7 +1979,7 @@ Begin
               Case fField[i, j].PowerUp Of
                 puNone: Begin
                     result.Field[i, j] := fBlank;
-                    If fHasHoles Then Begin
+                    If fHasHoles And (fHurryIndex = -1) Then Begin
                       If fHoles[i, j] Then Begin
                         result.Field[i, j] := fHole;
                       End;
@@ -2099,7 +2104,7 @@ Begin
         y := Random(FieldHeight);
         // Das Feld ist Prinzipiel mal "Frei"
         noHole := true;
-        If fHasHoles Then Begin // Auf Löchern dürfen keine PowerUps erzeugt werden
+        If fHasHoles And (fHurryIndex = -1) Then Begin // Auf Löchern dürfen keine PowerUps erzeugt werden
           If fHoles[x, y] Then noHole := false;
         End;
         If (fField[x, y].BrickData = bdBlank) And (fField[x, y].Flame = []) And (fField[x, y].PowerUp = puNone) And noHole Then Begin
@@ -2359,7 +2364,7 @@ Begin
               If fHasConveyors Then Begin
                 RenderConveyor(i, j);
               End;
-              If fHasHoles Then Begin
+              If fHasHoles And (Not fHurryMode) Then Begin
                 RenderHohle(i, j);
               End;
               If fHastrampolins Then Begin
@@ -2384,6 +2389,8 @@ Begin
    * Da auf jedem Feld immer nur 1 Ding Gerendert werden kann ist das hier recht Easy ;)
    *)
   Stream.Read(fField, sizeof(fField));
+  stream.read(fHurryMode, sizeof(fHurryMode));
+
   // GGF Starten einer Brick Explosion Animation
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
@@ -2404,6 +2411,7 @@ Procedure TAtomicField.Reset;
 Var
   i, j: Integer;
 Begin
+  fHurryMode := false;
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
       fxBricks[i, j].Active := false;

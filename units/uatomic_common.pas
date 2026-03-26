@@ -122,10 +122,11 @@ Const
    *                       FIX: Windows remote join dialog did not close correctly
    *                       FIX: powerup destroyed was wrong calculated
    *                       ADD: implement missing Brick spawning for haunted house field.
+   *             0.13001 = ADD: Disable hohles in Hurry mode, see https://bomberman.fandom.com/wiki/The_Coal_Mine
    *)
 
-  ProtocollVersion: uint32 = 12; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.12012';
+  ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  Version = '0.13001';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
