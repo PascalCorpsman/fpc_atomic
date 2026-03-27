@@ -677,7 +677,7 @@ Begin
     End;
   End;
   // 2.5 Wenn die Karte Trampoline hat, dann verteilen wir diese nun
-  If fHastrampolins Then Begin
+  If fHastrampolins And (fHurryIndex = -1) Then Begin
     For i := 0 To FieldTrampCount - 1 Do Begin
       px := -1;
       While px = -1 Do Begin
@@ -1198,7 +1198,7 @@ Begin
             If fHasHoles And (fHurryIndex = -1) Then Begin // An Löchern ist auch schluss mit dem "Spoogen"
               If fHoles[x + i * dx, y + i * dy] Then exit;
             End;
-            If fHastrampolins Then Begin // Auf Trampoline kann ebenfalls keine Bombe gelegt werden
+            If fHastrampolins And (fHurryIndex = -1) Then Begin // Auf Trampoline kann ebenfalls keine Bombe gelegt werden
               If fField[x + i * dx, y + i * dy].Tramp Then exit;
             End;
             If PlaceBombOn(x + i * dx + 0.5, y + i * dy + 0.5) Then Begin
@@ -1313,7 +1313,7 @@ Type
 
   Function BlockedByTramp(x, y: integer): Boolean; // Gillt nur für Bomben, wenn diese sich bewegen, deswegen extra
   Begin
-    If fHastrampolins Then Begin
+    If fHastrampolins And (fHurryIndex = -1) Then Begin
       result := fField[x, y].Tramp;
     End
     Else Begin
@@ -1814,7 +1814,7 @@ Begin
     Else Begin
       Players[i].IsInHohle := false;
     End;
-    If fHastrampolins And fField[x, y].Tramp Then Begin
+    If fHastrampolins And (fHurryIndex = -1) And fField[x, y].Tramp Then Begin
       fPlaySoundEffect(i, seTrampoline);
       // Triggern der Animation der Karte
       fField[x, y].TrampRunning := true;
@@ -1984,7 +1984,7 @@ Begin
                         result.Field[i, j] := fHole;
                       End;
                     End;
-                    If fHastrampolins Then Begin
+                    If fHastrampolins And (fHurryIndex = -1) Then Begin
                       If fField[i, j].Tramp Then Begin
                         result.Field[i, j] := fTramp;
                       End;
@@ -2367,7 +2367,7 @@ Begin
               If fHasHoles And (Not fHurryMode) Then Begin
                 RenderHohle(i, j);
               End;
-              If fHastrampolins Then Begin
+              If fHastrampolins And (Not fHurryMode) Then Begin
                 RenderTramp(i, j);
               End;
             End;

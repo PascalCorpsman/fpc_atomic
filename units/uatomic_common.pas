@@ -123,6 +123,7 @@ Const
    *                       FIX: powerup destroyed was wrong calculated
    *                       ADD: implement missing Brick spawning for haunted house field.
    *             0.13001 = ADD: Disable hohles in Hurry mode, see https://bomberman.fandom.com/wiki/The_Coal_Mine
+   *                       ADD: Disable trampolins in Hurry mode, see https://bomberman.fandom.com/wiki/Deep_Forest_Green
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
