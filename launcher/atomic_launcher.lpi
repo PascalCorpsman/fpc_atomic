@@ -123,9 +123,11 @@
       </Options>
     </Linking>
     <Other>
-      <CustomOptions Value="-dLauncher"/>
-      <OtherDefines Count="1">
+      <CustomOptions Value="-dLauncher
+-dSDL_RUNTIME_LOADING"/>
+      <OtherDefines Count="2">
         <Define0 Value="Launcher"/>
+        <Define1 Value="SDL_RUNTIME_LOADING"/>
       </OtherDefines>
     </Other>
   </CompilerOptions>

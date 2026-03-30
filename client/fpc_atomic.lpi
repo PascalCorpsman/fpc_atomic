@@ -210,9 +210,11 @@
       </Options>
     </Linking>
     <Other>
-      <CustomOptions Value="-dClient"/>
-      <OtherDefines Count="1">
+      <CustomOptions Value="-dClient
+-dSDL_RUNTIME_LOADING"/>
+      <OtherDefines Count="2">
         <Define0 Value="Client"/>
+        <Define1 Value="SDL_RUNTIME_LOADING"/>
       </OtherDefines>
     </Other>
   </CompilerOptions>
