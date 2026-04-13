@@ -26,6 +26,52 @@ This guide explains how to create signed, notarized, and distributable DMG files
    - Xcode Command Line Tools: `xcode-select --install`
    - `notarytool` (included with Xcode 13+)
 
+## Nastavení na novém počítači
+
+Když máš nový Mac a podpisovací věci se nepřenesly, udělej toto:
+
+### 1. Certifikát Developer ID Application
+
+- **Máš ještě starý Mac?** Na starém Macu: Keychain Access → „login“ → vyhledat „Developer ID Application“ → pravý klik na certifikát → Export. Přenes .p12 soubor na nový Mac (bezpečně), na novém ho dvakrát kliknutím otevři a zadej heslo – certifikát se nainstaluje do Keychainu.
+- **Nemáš starý Mac / certifikát nejde exportovat?** V Apple Developer účtu (developer.apple.com) → Certificates, Identifiers & Profiles → Certificates. Pokud máš starý „Developer ID Application“ certifikát, můžeš ho zrušit (Revoke) a vytvořit nový: „+“ → Developer ID Application → vygeneruješ CSR v Keychain Access (Certificate Assistant → Request a Certificate From a Certificate Authority…) → nahraješ CSR → stáhneš certifikát a dvakrát kliknutím ho nainstaluješ.
+
+**Ověření:** V Terminálu spusť:
+```bash
+security find-identity -v -p codesigning
+```
+Měl bys vidět řádek s „Developer ID Application: …“.
+
+### 2. Soubor `.env` v kořeni projektu
+
+`.env` se do gitu necommituje, takže ho na novém počítači musíš znovu vytvořit. V kořeni repozitáře (vedle `macos/`, `client/`, …) vytvoř soubor `.env` s obsahem:
+
+```bash
+# Apple ID (e-mail Apple Developer účtu)
+export APPLE_ID="tvuj@email.com"
+
+# App-Specific Password – NEPOUŽÍVEJ běžné heslo k Apple ID
+# Vytvoř na: https://appleid.apple.com → Přihlášení a zabezpečení → Hesla pro aplikace
+export NOTARY_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+# nebo stejná hodnota pod názvem:
+# export APPLE_ID_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+
+# Team ID (10 znaků) – v Apple Developer: Účet → Členství
+export APPLE_TEAM_ID="TG36KS669C"
+```
+
+**App-Specific Password:** Pokud si ho nepamatuješ, na appleid.apple.com vytvoř nový (např. pro „Xcode“ nebo „Command Line“) a ten použij v `.env`.
+
+### 3. Ověření
+
+```bash
+cd /cesta/k/fpc_atomic/macos/tools
+./sign_and_notarize.command arm64
+```
+
+Skript sám najde certifikát v Keychainu a přihlašovací údaje načte z `.env`. Pokud něco chybí, vypíše konkrétní chybu.
+
+**Shrnutí:** Na novém počítači potřebuješ (1) certifikát v Keychainu (export z jiného Macu nebo nový z developer.apple.com) a (2) soubor `.env` s Apple ID, app-specific heslem a Team ID.
+
 ## Quick Start
 
 ### Option 1: Full Automated Release (Recommended)

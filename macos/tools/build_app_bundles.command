@@ -111,6 +111,28 @@ if [[ ! -d "${LIB_DIR}" ]]; then
   exit 1
 fi
 
+# Ensure libSDL2.dylib is present (required at runtime; launcher and game crash without it)
+# For arm64 we can fetch it from official SDL2 release so no Homebrew is needed.
+SDL_LIB="${LIB_DIR}/libSDL2.dylib"
+if [[ ! -f "${SDL_LIB}" ]]; then
+  if [[ "${TARGET_ARCH}" == "arm64" ]]; then
+    echo "libSDL2.dylib not found. Running prepare_arm64_libs (downloads SDL2 from GitHub if needed)..."
+    if "${SCRIPT_DIR}/prepare_arm64_libs.command"; then
+      echo "  ✓ libSDL2.dylib ready"
+    fi
+  fi
+  if [[ ! -f "${SDL_LIB}" ]]; then
+    echo "Error: libSDL2.dylib is missing at ${SDL_LIB}." >&2
+    echo "The app will crash with 'Library not found - libSDL2' without it." >&2
+    if [[ "${TARGET_ARCH}" == "arm64" ]]; then
+      echo "Run: ./macos/tools/prepare_arm64_libs.command (downloads SDL2 automatically, no Homebrew)." >&2
+    else
+      echo "For x86_64, run: ./macos/tools/prepare_x86_64_libs.command" >&2
+    fi
+    exit 1
+  fi
+fi
+
 function sync_libs() {
   local dest_dir="$1"
   mkdir -p "${dest_dir}"

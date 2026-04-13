@@ -12,6 +12,10 @@ Tento dokument obsahuje přehled macOS build systému. Pro detailní návod na k
 ./macos/tools/build_all_x86_64.command
 ```
 
+Při prvním buildu na ARM64 skript v případě potřeby sám stáhne SDL2 z oficiálního vydání (GitHub). **Hráči nic instalovat nemusí** – v .app je vše zabalené.
+
+**Pokud launcher nebo hra spadnou s chybou „Library not found - libSDL2“:** chybí `libSDL2.dylib` v app bundle. Spusť `./macos/tools/prepare_arm64_libs.command` (stáhne SDL2 bez Homebrew) a pak znovu `./macos/tools/build_app_bundles.command arm64`.
+
 ## Požadované nástroje
 - Xcode Command Line Tools (`xcode-select --install`)
 - Free Pascal Compiler 3.2.2 (balíček pro Intel+ARM)
@@ -67,10 +71,13 @@ Viz detailní návod v [BUILD_GUIDE.md](tools/BUILD_GUIDE.md).
 
 ## Runtime knihovny
 
-### ARM64
-- `libbass.dylib` → `macos/lib/arm64/`
-- `libSDL2.dylib` → `macos/lib/arm64/` (nebo použij framework)
-- OpenSSL knihovny → automaticky z Homebrew
+Knihovny musí být v **`lib/macos/<arch>/`** (v kořenu projektu), aby je `.app` balíčky našly (např. `lib/macos/arm64/libSDL2.dylib`).
+
+### ARM64 (Apple Silicon)
+- `libbass.dylib` → `lib/macos/arm64/`
+- **`libSDL2.dylib`** → `lib/macos/arm64/` (povinné – bez něj launcher a hra spadnou s „Library not found - libSDL2“)
+- **Příprava:** Spusť `./macos/tools/prepare_arm64_libs.command` – při chybějícím SDL2 ho stáhne z oficiálního vydání (GitHub). **Homebrew ani jiná instalace pro hráče není potřeba** – do .app se zkopíruje knihovna a distribuce je soběstačná.
+- OpenSSL knihovny → automaticky z Homebrew (pouze pro build)
 
 ### x86_64
 - **Automatická příprava:** Skript `prepare_x86_64_libs.command` automaticky:
