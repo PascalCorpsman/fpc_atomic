@@ -1528,7 +1528,7 @@ Begin
       bmNone: Begin // Nix zu tun
         End;
       bmHeld: Begin
-          fBombs[i].Lifetime := fBombs[i].Lifetime - FrameRate; // Countdown einfrieren
+          fBombs[i].Lifetime := fBombs[i].Lifetime - FrameRate; // Countdown bis zur Detonation wieder Rückgängig machen (Bombe wird getragen, Timer einfrieren)
           // Position der Bombe an Spielerposition anpassen (nur wenn Spieler nicht fliegt)
           For k := 0 To high(Players) Do Begin
             If Players[k].HeldBombIndex = i Then Begin

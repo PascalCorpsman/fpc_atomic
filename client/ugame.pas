@@ -1885,8 +1885,6 @@ End;
 
 Procedure TGame.RenderHeldBombs;
 Const
-  xOff = 20;
-  yOff = 66;
   // Offset in Pixel, um die Bombe über dem Kopf des Spielers zu rendern
   HeldBombYOffset = FieldBlockHeight * 2;
 Var
@@ -1901,7 +1899,7 @@ Begin
   For i := 0 To fBombCount - 1 Do Begin
     If Not fBombs[i].IsHeld Then Continue;
     glPushMatrix;
-    glTranslatef(xOff + fBombs[i].Position.x * FieldBlockWidth, yOff + fBombs[i].Position.y * FieldBlockHeight - HeldBombYOffset, 0);
+    glTranslatef(FieldxOff + fBombs[i].Position.x * FieldBlockWidth, FieldyOff + fBombs[i].Position.y * FieldBlockHeight - HeldBombYOffset, 0);
     ani.ani := Nil;
     Case fBombs[i].Animation Of
       baNormal: ani := fAtomics[fBombs[i].ColorIndex].Bomb;
