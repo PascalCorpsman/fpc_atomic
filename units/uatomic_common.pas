@@ -124,10 +124,11 @@ Const
    *                       ADD: implement missing Brick spawning for haunted house field.
    *             0.13001 = ADD: Disable hohles in Hurry mode, see https://bomberman.fandom.com/wiki/The_Coal_Mine
    *                       ADD: Disable trampolins in Hurry mode, see https://bomberman.fandom.com/wiki/Deep_Forest_Green
+   *             0.13002 = ADD: Carry Bomb feature - player can pick up and hold a bomb (timer frozen), then drop or throw it
    *)
 
-  ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.13001';
+  ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  Version = '0.13002';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
@@ -307,13 +308,16 @@ Type
     baWobble // Prallt eine Bombe ab, ist sie ab dann im Wobble Mode -> nur bei Jelly Bombem
     );
 
-  TBombMoveDir = (bmNone, bmUp, bmDown, bmLeft, bmRight, bmFly);
+  TBombMoveDir = (bmNone, bmUp, bmDown, bmLeft, bmRight, bmFly, bmHeld);
 
   TBombInfo = Record
     ColorIndex: integer; // 0..9 Farbe in der der Client die Bombe Rendern soll
     Position: TVector2; // in Field Coordinaten, können aber auch "Verrückt" sein, wenn die Bombe wild rum fliegt..
     Animation: TBombAnimation; // Die Jeweilige Animation
     AnimationOffset: uint16; // Damit nicht alle "Gleich" aussehen
+{$IFDEF Client}
+    IsHeld: Boolean; // True, wenn die Bombe gerade von einem Spieler getragen wird
+{$ENDIF}
 {$IFDEF Server}
     FlyStart, FlyTarget: TVector2;
     FlyTime: integer; // Zeit In ms Seit derer die Bombe Fliegt
@@ -547,6 +551,7 @@ Type
     Action: TAtomicAction;
     Powers: TAtomicPowers;
     PowerUpCounter: Array[TPowerUps] Of Integer; // Zähler, welche Powerups der Spieler wie oft aufgenommen hat, wenn er stirbt werden diese wieder "Verteilt"
+    HeldBombIndex: Integer; // Index in fBombs[] des gerade getragenen Bombs, -1 = kein Bomb
 {$ENDIF}
   End;
 

@@ -47,9 +47,11 @@ The key binding can be changed in the options dialog
 
 ### First action
 - place bomb
+- Drop carried bomb at current position, resuming its timer (when carrying a bomb with the blue glove powerup)
   
 ### First action (double pressed)
-- Grab and throw bomb (if powerup was collected)
+- Carry bomb: pick up a bomb at the same tile and hold it (timer frozen) — blue glove powerup required. While moving the bomb follows the player.
+- Throw carried bomb in the current walking direction (when already carrying a bomb)
 - Spooge all available bombs (if powerup was collected)
   
 ### Second action

@@ -1058,6 +1058,7 @@ Begin
     fPLayer[i].Disease := [];
     fPLayer[i].DiseaseCounter := 0;
     fPLayer[i].IdleTimer := 0;
+    fPLayer[i].HeldBombIndex := -1;
     fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);

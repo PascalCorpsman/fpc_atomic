@@ -146,6 +146,7 @@ Type
     Jelly: cBool; // If true, bomb will bounce back on walls.
     DudBomb: cBool; // If true, the dud bomb animation is showing (means the bomb will not explode for an unknown amount of time).
     LifeTime: cint; // Time in ms since when the bomb is layed down  ! Attention ! if this bomb is dud or ManualTriggered, this time can be "resetted" to 0 when Dud is finished, or Manual Trigger is timed out
+    Held: cBool; // If true, the bomb is currently being carried by a player (timer is frozen until dropped or thrown).
   End;
 
   TAiInfo = Record

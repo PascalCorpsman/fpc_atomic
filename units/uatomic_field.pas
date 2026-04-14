@@ -602,7 +602,8 @@ Begin
   For i := 0 To fBombCount - 1 Do Begin
     If (x = trunc(fBombs[i].Position.x)) And
       (y = trunc(fBombs[i].Position.y)) And
-      (fBombs[i].MoveDir <> bmFly) Then Begin
+      (fBombs[i].MoveDir <> bmFly) And
+      (fBombs[i].MoveDir <> bmHeld) Then Begin
       result := false;
       exit;
     End;
@@ -785,6 +786,8 @@ Begin
     stream.Write(fBombs[i].Position, SizeOf(fBombs[i].Position));
     stream.Write(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Write(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
+    b := fBombs[i].MoveDir = bmHeld;
+    stream.Write(b, SizeOf(b));
   End;
 {$ENDIF}
 End;
@@ -799,7 +802,8 @@ Function TAtomicField.HandleMovePlayer(Var Players: TPlayers; PlayerIndex: integ
     For i := 0 To fBombCount - 1 Do Begin
       If (trunc(fBombs[i].Position.x) = x) And
         (trunc(fBombs[i].Position.y) = y) And
-        (fBombs[i].MoveDir <> bmFly) Then Begin // Fliegende Bomben haben keine Kollisionen !
+        (fBombs[i].MoveDir <> bmFly) And
+        (fBombs[i].MoveDir <> bmHeld) Then Begin // Fliegende und getragene Bomben haben keine Kollisionen !
         result := i;
         exit;
       End;
@@ -1176,6 +1180,39 @@ Var
   handled: Boolean;
 Begin
   If Player.Flying Then exit; // Im Flug darf der Spieler natürlich nichts machen ;)
+  // Wenn der Spieler eine Bombe trägt, hat er andere Aktionen zur Verfügung
+  If Player.HeldBombIndex >= 0 Then Begin
+    If Player.Action = aaFirst Then Begin
+      // Bombe fallen lassen (Timer läuft weiter)
+      fBombs[Player.HeldBombIndex].MoveDir := bmNone;
+      fBombs[Player.HeldBombIndex].Position.x := trunc(Player.Info.Position.x) + 0.5;
+      fBombs[Player.HeldBombIndex].Position.y := trunc(Player.Info.Position.y) + 0.5;
+      fPlaySoundEffect(PlayerIndex, seBombDrop);
+      Player.HeldBombIndex := -1;
+    End
+    Else If Player.Action = aaFirstDouble Then Begin
+      // Bombe werfen
+      bx := trunc(fBombs[Player.HeldBombIndex].Position.x);
+      by := trunc(fBombs[Player.HeldBombIndex].Position.y);
+      dx := 0;
+      dy := 0;
+      Case (trunc(Player.Info.Direction) Div 90) Of
+        0: dx := 1;
+        1: dy := -1;
+        2: dx := -1;
+        3: dy := 1;
+      End;
+      fBombs[Player.HeldBombIndex].FlyStart := v2(bx + 0.5, by + 0.5);
+      fBombs[Player.HeldBombIndex].FlyTarget := v2(bx + 0.5 + 3 * dx, by + 0.5 + 3 * dy);
+      fBombs[Player.HeldBombIndex].MoveDir := bmFly;
+      fBombs[Player.HeldBombIndex].FlyTime := 0;
+      fBombs[Player.HeldBombIndex].FlyFinTime := AtomicBombBigFlyTime;
+      fPlaySoundEffect(PlayerIndex, seBombGrab);
+      fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssThrownBombs);
+      Player.HeldBombIndex := -1;
+    End;
+    exit;
+  End;
   Case player.Action Of
     aaFirstDouble: Begin
         (* Jeder Doppelt action geht eine Einfach Aktion vorraus ! *)
@@ -1210,29 +1247,19 @@ Begin
           End;
         End;
         If Player.Powers.CanGrabBombs Then Begin
-          // Gibt es eine Bombe zum Graben ?
+          // Gibt es eine Bombe zum Greifen?
           x := trunc(player.Info.Position.x);
           y := trunc(player.Info.Position.y);
-          For i := 0 To high(fBombs) Do Begin
+          For i := 0 To fBombCount - 1 Do Begin
             If fBombs[i].MoveDir = bmFly Then Continue; // Fliegende Bomben dürfen nicht gegriffen werden.
+            If fBombs[i].MoveDir = bmHeld Then Continue; // Bereits getragene Bomben können nicht noch einmal gegriffen werden.
             bx := trunc(fBombs[i].Position.x);
             by := trunc(fBombs[i].Position.y);
             If (x = bx) And (y = by) Then Begin
-              dx := 0;
-              dy := 0;
-              Case (trunc(player.info.Direction) Div 90) Of
-                0: dx := 1;
-                1: dy := -1;
-                2: dx := -1;
-                3: dy := 1;
-              End;
-              fBombs[i].FlyStart := v2(bx + 0.5, by + 0.5);
-              fBombs[i].FlyTarget := v2(bx + 0.5 + 3 * dx, by + 0.5 + 3 * dy);
-              fBombs[i].MoveDir := bmFly;
-              fBombs[i].FlyTime := 0;
-              fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
+              // Bombe aufheben: Timer einfrieren, Spieler trägt die Bombe
+              fBombs[i].MoveDir := bmHeld;
+              Player.HeldBombIndex := i;
               fPlaySoundEffect(PlayerIndex, seBombGrab);
-              fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssThrownBombs);
               Player.Info.Animation := raPup;
               Player.Info.Counter := 0;
               break;
@@ -1263,6 +1290,7 @@ Begin
           End;
           For i := 0 To high(fBombs) Do Begin
             If fBombs[i].MoveDir = bmFly Then Continue; // Fliegende Bomben dürfen nicht gepuncht werden.
+            If fBombs[i].MoveDir = bmHeld Then Continue; // Getragene Bomben dürfen nicht gepuncht werden.
             bx := trunc(fBombs[i].Position.x);
             by := trunc(fBombs[i].Position.y);
             If (x + dx = bx) And (y + dy = by) Then Begin
@@ -1286,7 +1314,7 @@ Begin
            * Zünden der eigenen Time Triggered Bomben, das geht irgendwie immer ...
            *)
           For i := 0 To fBombCount - 1 Do Begin
-            If (fBombs[i].PlayerIndex = PlayerIndex) And (fBombs[i].Animation = baTimeTriggered) And (fBombs[i].MoveDir <> bmFly) Then Begin
+            If (fBombs[i].PlayerIndex = PlayerIndex) And (fBombs[i].Animation = baTimeTriggered) And (fBombs[i].MoveDir <> bmFly) And (fBombs[i].MoveDir <> bmHeld) Then Begin
               fBombs[i].Animation := baNormal;
               fBombs[i].Lifetime := AtomicBombDetonateTime;
               fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssTriggeredBombs);
@@ -1369,6 +1397,7 @@ Var
   BombExplodeSound: Array[0..Length(PlayerColors) - 1] Of Boolean;
   dx, dy, s: Single;
   mdir: TBombMoveDir;
+  k: Integer;
 Begin
   If Not fBombsEnabled Then exit; // Bomben dürfen nicht mehr gezündet werden !
   fBombDetonateFifo.Clear;
@@ -1498,6 +1527,19 @@ Begin
         End;
       bmNone: Begin // Nix zu tun
         End;
+      bmHeld: Begin
+          fBombs[i].Lifetime := fBombs[i].Lifetime - FrameRate; // Countdown einfrieren
+          // Position der Bombe an Spielerposition anpassen (nur wenn Spieler nicht fliegt)
+          For k := 0 To high(Players) Do Begin
+            If Players[k].HeldBombIndex = i Then Begin
+              If Not Players[k].Flying Then Begin
+                fBombs[i].Position.x := trunc(Players[k].Info.Position.x) + 0.5;
+                fBombs[i].Position.y := trunc(Players[k].Info.Position.y) + 0.5;
+              End;
+              break;
+            End;
+          End;
+        End;
       bmRight: Begin
           fBombs[i].Position.x := fBombs[i].Position.x + rSpeed;
           commapartx := (fBombs[i].Position.x - trunc(fBombs[i].Position.x));
@@ -1623,7 +1665,7 @@ Begin
     // (dass kann nur bei sich bewegenden Bomben passieren, da die Liegenden in Detonate schon berücksichtigt werden.)
     x := trunc(fBombs[i].Position.x);
     y := trunc(fBombs[i].Position.y);
-    If (y > 0) And (fBombs[i].MoveDir <> bmFly) Then Begin // Eine Fliegende Bombe kann Negative Koordinaten kriegen
+    If (y > 0) And (fBombs[i].MoveDir <> bmFly) And (fBombs[i].MoveDir <> bmHeld) Then Begin // Eine Fliegende oder getragene Bombe kann ungültige Koordinaten haben
       If (fField[x, y].Flame <> []) Then Begin
         fBombs[i].Position.x := x + 0.5;
         fBombs[i].Position.y := y + 0.5;
@@ -1716,6 +1758,15 @@ Begin
   For i := fBombCount - 1 Downto 0 Do Begin
     If fBombs[i].Detonated Then Begin
       BombExplodeSound[fBombs[i].PlayerIndex] := true;
+      // HeldBombIndex aller Spieler aktualisieren, da sich die Array-Indices verschieben
+      For k := 0 To high(Players) Do Begin
+        If Players[k].HeldBombIndex = i Then Begin
+          Players[k].HeldBombIndex := -1; // Getragene Bombe explodiert
+        End
+        Else If Players[k].HeldBombIndex > i Then Begin
+          Players[k].HeldBombIndex := Players[k].HeldBombIndex - 1; // Index anpassen
+        End;
+      End;
       For j := i To fBombCount - 2 Do Begin
         fBombs[j] := fBombs[j + 1];
       End;
@@ -2046,6 +2097,7 @@ Begin
     result.Bombs[i].Jelly := fBombs[i].Jelly;
     result.Bombs[i].DudBomb := fBombs[i].Animation = baDud;
     result.Bombs[i].Lifetime := fBombs[i].Lifetime;
+    result.Bombs[i].Held := fBombs[i].MoveDir = bmHeld;
   End;
 End;
 
@@ -2070,6 +2122,11 @@ End;
 
 Procedure TAtomicField.KillPlayer(Var Players: TPlayers; Index: integer);
 Begin
+  // Wenn der Spieler gerade eine Bombe trägt, diese fallen lassen (Timer läuft weiter)
+  If Players[Index].HeldBombIndex >= 0 Then Begin
+    fBombs[Players[Index].HeldBombIndex].MoveDir := bmNone;
+    Players[Index].HeldBombIndex := -1;
+  End;
   Players[Index].MoveState := msStill; // Zum Sterben halten wir an ;)
   Players[Index].Info.Animation := raDie;
   Players[Index].Info.Value := Random(65536); // Eine Zufällige Todesanimation wählen
