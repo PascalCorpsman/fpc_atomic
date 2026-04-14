@@ -133,6 +133,7 @@ Type
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
+    Procedure RenderHeldBombs();
 
     Procedure Connection_Connect(aSocket: TLSocket);
     Procedure Connection_Disconnect(aSocket: TLSocket);
@@ -1482,6 +1483,7 @@ Begin
     stream.Read(fBombs[i].Position, SizeOf(fBombs[i].Position));
     stream.Read(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Read(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
+    stream.Read(fBombs[i].IsHeld, SizeOf(fBombs[i].IsHeld));
   End;
 End;
 
@@ -1859,6 +1861,7 @@ Begin
   glEnable(GL_ALPHA_TEST);
   glTranslatef(0, 0, atomic_Bomb_Layer);
   For i := 0 To fBombCount - 1 Do Begin
+    If fBombs[i].IsHeld Then Continue; // Getragene Bomben werden über dem Spieler gerendert
     glPushMatrix;
     glTranslatef(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth, FieldyOff + fBombs[i].Position.y * FieldBlockHeight, 0);
     ani.ani := Nil;
@@ -1870,6 +1873,42 @@ Begin
     End;
     If Not assigned(ani.ani) Then Begin
       LogShow('Error: TGame.RenderBombs: no Animation found.', llFatal);
+    End;
+    ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
+    glTranslatef(ani.OffsetX, ani.OffsetY, 0);
+    ani.ani.Render(0);
+    glPopMatrix;
+  End;
+  gldisable(GL_ALPHA_TEST);
+  glPopMatrix;
+End;
+
+Procedure TGame.RenderHeldBombs;
+Const
+  // Offset in Pixel, um die Bombe über dem Kopf des Spielers zu rendern
+  HeldBombYOffset = FieldBlockHeight * 2;
+Var
+  i: Integer;
+  ani: TAnimation;
+Begin
+  glPushMatrix;
+  glColor4f(1, 1, 1, 1);
+  glAlphaFunc(GL_LESS, 0.5);
+  glEnable(GL_ALPHA_TEST);
+  glTranslatef(0, 0, atomic_Layer + atomic_EPSILON);
+  For i := 0 To fBombCount - 1 Do Begin
+    If Not fBombs[i].IsHeld Then Continue;
+    glPushMatrix;
+    glTranslatef(FieldxOff + fBombs[i].Position.x * FieldBlockWidth, FieldyOff + fBombs[i].Position.y * FieldBlockHeight - HeldBombYOffset, 0);
+    ani.ani := Nil;
+    Case fBombs[i].Animation Of
+      baNormal: ani := fAtomics[fBombs[i].ColorIndex].Bomb;
+      baTimeTriggered: ani := fAtomics[fBombs[i].ColorIndex].Bomb_trigger;
+      baDud: ani := fAtomics[fBombs[i].ColorIndex].Bomb_dud;
+      baWobble: ani := fAtomics[fBombs[i].ColorIndex].Bomb_Wobble;
+    End;
+    If Not assigned(ani.ani) Then Begin
+      LogShow('Error: TGame.RenderHeldBombs: no Animation found.', llFatal);
     End;
     ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
     glTranslatef(ani.OffsetX, ani.OffsetY, 0);
@@ -2415,6 +2454,8 @@ Begin
             fPlayer[i].edge := false;
           End;
         End;
+        // Getragene Bomben über dem Spieler rendern
+        RenderHeldBombs;
         If fPause Then Begin
           glPushMatrix();
           glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);

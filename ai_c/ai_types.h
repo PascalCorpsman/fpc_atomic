@@ -130,6 +130,7 @@ typedef struct {
     bool Jelly;         // If true, bomb will bounce back on walls.
     bool DudBomb;       // If true, the dud bomb animation is showing (means the bomb will not explode for an unknown amount of time).
     int LifeTime;       // Time in ms since when the bomb is laid down! Attention! if this bomb is dud or ManualTriggered, this time can be "resetted" to 0 when Dud is finished, or Manual Trigger is timed out.
+    bool Held;          // If true, the bomb is currently being carried by a player (timer is frozen until dropped or thrown).
 } TAiBombInfo_t;
 
 typedef struct {
