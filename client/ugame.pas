@@ -23,7 +23,7 @@ Interface
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
   uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field,
-  uatomic, uopengl_graphikengine, usounds;
+  uatomic, uopengl_graphikengine, usounds, uloaderdialog;
 
 Type
   TUDPPingData = Record
@@ -63,10 +63,34 @@ Type
     Scale: Single;
   End;
 
+  TSerialInit = Record
+    //   -1 = never executed -> Create Loader Screen
+    //    0 = reconnect all callbacks an start creating the screens
+    //    1 = finish creating the screens, load screen Data
+    //    2 = Load Powerups and Bricks animations
+    //    3 = Load Atomic Fields
+    //    5 = Load Atomics
+    //    6 = Free Loader and switch to MainScreen
+    // 1000 = Finished
+    aStep: integer;
+    // Es folgt die Liste aller Local Notwendigen Variablen, welche eigentlich in TGame.Initialize
+    // stehen sollten, aber über mehrere Aufrufe gerettet werden müssen.
+    Loader: TLoaderDialog;
+    sl: TStringList;
+    j: integer;
+    p: String;
+{$IFDEF ShowInitTime}
+    t, total: UInt64;
+{$ENDIF}
+    TrampStatic: Integer; // Wenn das Trampolin gerade nicht "an wackelt"
+    hohletex: TGraphikItem;
+  End;
+
   { TGame }
 
   TGame = Class
   private
+    fSerialInit: TSerialInit;
     fTramp, fConveyors, fArrows: TOpenGL_Animation; // Wird den Karten zur Verfügung gestellt
     fHurry: THurry;
     fSoundManager: TSoundManager;
@@ -188,7 +212,7 @@ Type
     OnNeedHideCursor: TNotifyEvent;
     OnNeedShowCursor: TNotifyEvent;
 
-    Constructor Create();
+    Constructor Create(Const Owner: TOpenGLControl);
     Destructor Destroy; override;
 
     Procedure RegisterTCPConnection(Const Connection: TLTCPComponent);
@@ -196,7 +220,7 @@ Type
 
     Procedure SwitchToScreen(TargetScreen: TScreenEnum);
 
-    Procedure Initialize(Const Owner: TOpenGLControl); // Lädt alles was es so zu laden gibt (OpenGL-Technisch), wird einmalig in OnMakeCurrent Aufgerufen
+    Function Initialize: Boolean; // Lädt alles was es so zu laden gibt (OpenGL-Technisch), wird einmalig in OnMakeCurrent Aufgerufen
     Procedure Disconnect();
     Procedure Render();
 
@@ -231,7 +255,6 @@ Uses dglopengl
   , math
   , uip
   , uOpenGL_ASCII_Font
-  , uloaderdialog
   , uvectormath
   , LCLType
   , process
@@ -242,6 +265,7 @@ Uses dglopengl
   , ugraphics
   , uatomic_global
   , usdl_input
+  , uopengl_shaderprimitives
   ;
 
 (*
@@ -296,6 +320,7 @@ Var
   s: Single;
 Begin
   If GetTickCount64 - fLastChangeTick > AtomicShowSoundInfoTime Then exit;
+{$IFDEF LEGACYMODE}
   glPushMatrix();
   glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -319,6 +344,35 @@ Begin
   OpenGL_ASCII_Font.Textout(320 - 32, 400, 'Musik ' + BoolToStr(fMusik, 'on', 'off'));
   glEnable(GL_DEPTH_TEST);
   glPopMatrix();
+{$ELSE}
+  UseColorShader;
+  //glPushMatrix();
+  //glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_DEPTH_TEST);
+  // Anzeige "Volume"
+  glshaderBegin(GL_TRIANGLE_FAN);
+  SetShaderColor(0, 0, 0);
+  glShaderVertex(x, y, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderVertex(x, y + h, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderVertex(x + w, y + h, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderVertex(x + w, y, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderEnd;
+  glshaderBegin(GL_TRIANGLE_FAN);
+  s := 1 - fVolume / 10000;
+  SetShaderColor(0, 1, 1);
+  glShaderVertex(x, y + s * h, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderVertex(x, y + h, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderVertex(x + w, y + h, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderVertex(x + w, y + s * h, atomic_dialog_Layer + atomic_EPSILON);
+  glShaderEnd;
+  UseTextureShader;
+  // Anzeige Musik
+  OpenGL_ASCII_Font.Color := clWhite;
+  OpenGL_ASCII_Font.Textout(320 - 32, 400, atomic_dialog_Layer + atomic_EPSILON, 'Musik ' + BoolToStr(fMusik, 'on', 'off'));
+  glEnable(GL_DEPTH_TEST);
+  //glPopMatrix();
+{$ENDIF}
 End;
 
 { TGame }
@@ -1808,8 +1862,10 @@ Var
   x, y, i: Integer;
   s: String;
 Begin
+{$IFDEF LEGACYMODE}
   glPushMatrix;
   glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
+{$ENDIF}
   (*
    * Die Spieler Info's
    *)
@@ -1826,8 +1882,13 @@ Begin
       x := (i Div 2) * 100 + 10;
       y := (i Mod 2) * 16 + 10;
       glBindTexture(GL_TEXTURE_2D, 0);
+{$IFDEF LEGACYMODE}
       AtomicFont.Textout(x, y, s);
+{$ELSE}
+      AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, s);
+{$ENDIF}
       If Not fPlayer[i].Info.Alive Then Begin
+{$IFDEF LEGACYMODE}
         glColor4f(1, 1, 1, 1);
         glPushMatrix;
         glTranslatef(x - 4, y - 4, atomic_EPSILON);
@@ -1836,6 +1897,9 @@ Begin
         RenderAlphaQuad(0, 0, fPlayerdeadTex);
         gldisable(GL_ALPHA_TEST);
         glPopMatrix;
+{$ELSE}
+        RenderAlphaQuad(x - 4, y - 4, atomic_dialog_Layer + atomic_EPSILON + atomic_EPSILON, fPlayerdeadTex);
+{$ENDIF}
       End;
     End;
   End;
@@ -1843,9 +1907,13 @@ Begin
   (*
    * Die Verbleibende Spielzeit
    *)
+{$IFDEF LEGACYMODE}
   glColor3f(1, 1, 1);
   AtomicBigFont.Textout(500, 10, fPlayingTime_s);
   glPopMatrix;
+{$ELSE}
+  AtomicBigFont.Textout(500, 10, atomic_dialog_Layer + atomic_EPSILON, fPlayingTime_s);
+{$ENDIF}
 End;
 
 Procedure TGame.RenderBombs;
@@ -1853,6 +1921,7 @@ Var
   i: Integer;
   ani: TAnimation;
 Begin
+{$IFDEF LEGACYMODE}
   glPushMatrix;
   glColor4f(1, 1, 1, 1);
   glAlphaFunc(GL_LESS, 0.5);
@@ -1878,6 +1947,23 @@ Begin
   End;
   gldisable(GL_ALPHA_TEST);
   glPopMatrix;
+{$ELSE}
+  glAlphaFunc(GL_LESS, 0.5);
+  For i := 0 To fBombCount - 1 Do Begin
+    ani.ani := Nil;
+    Case fBombs[i].Animation Of
+      baNormal: ani := fAtomics[fBombs[i].ColorIndex].Bomb;
+      baTimeTriggered: ani := fAtomics[fBombs[i].ColorIndex].Bomb_trigger;
+      baDud: ani := fAtomics[fBombs[i].ColorIndex].Bomb_dud;
+      baWobble: ani := fAtomics[fBombs[i].ColorIndex].Bomb_Wobble;
+    End;
+    If Not assigned(ani.ani) Then Begin
+      LogShow('Error: TGame.RenderBombs: no Animation found.', llFatal);
+    End;
+    ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
+    ani.ani.Render(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth + ani.OffsetX, FieldyOff + fBombs[i].Position.y * FieldBlockHeight + ani.OffsetY, atomic_Bomb_Layer, 0);
+  End;
+{$ENDIF}
 End;
 
 Procedure TGame.PingForOpenGames;
@@ -2015,11 +2101,13 @@ Begin
   logleave(EnterID);
 End;
 
-Constructor TGame.Create;
+Constructor TGame.Create(Const Owner: TOpenGLControl);
 Var
   k: TKeySet;
 Begin
   Inherited Create;
+  fOwner := Owner;
+  fSerialInit.aStep := -1;
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
   fParamJoinIP := '';
@@ -2100,251 +2188,380 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TGame.Initialize(Const Owner: TOpenGLControl);
+Function TGame.Initialize: Boolean;
 Var
-  Loader: TLoaderDialog;
-  p: String;
   i: TScreenEnum;
-  sl: TStringList;
-  j: integer;
   field: TAtomicRandomField;
-  hohletex: TGraphikItem;
-  fTrampStatic,
-    EnterID: Integer; // Wenn das Trampolin gerade nicht "an wackelt"
+  EnterID: Integer;
 {$IFDEF ShowInitTime}
-  t, total: UInt64;
 
   Procedure TimePoint(tp: Integer);
   Var
     d, n: UInt64;
   Begin
     n := GetTickCount64;
-    d := n - t;
-    t := n;
+    d := n - fSerialInit.t;
+    fSerialInit.t := n;
     writeln(format('%d: %d', [tp, d]));
   End;
 {$ENDIF}
 Begin
-{$IFDEF ShowInitTime}
-  t := GetTickCount64;
-  total := t;
-{$ENDIF}
+  result := false;
   EnterID := LogEnter('TGame.Initialize');
-  fOwner := Owner;
-  Loader := TLoaderDialog.create(Owner);
-  (*
-   * Lade Prozente
-   * 0..10 : Screens
-   * 11..50: Fields
-   * 51..100: Atomic's
-   *)
-  Loader.Percent := 0;
-  Loader.Render(); // So schnell wie Möglich dem User mal Anzeigen, dass wir dran sind
+  Case fSerialInit.aStep Of
+    -1: Begin
 {$IFDEF ShowInitTime}
-  TimePoint(1);
+        fSerialInit.t := GetTickCount64;
+        fSerialInit.total := fSerialInit.t;
 {$ENDIF}
-  fSoundInfo.Musik := Settings.PlaySounds;
-  fSoundInfo.Volume := Settings.VolumeValue;
-  If Not fSoundManager.SetVolumeValue(Settings.VolumeValue) Then Begin
-    log('Could not adjust sound volume.', llError);
-    logleave(EnterID);
-    exit;
-  End;
-  FOnMouseMoveCapture := Owner.OnMousemove;
-  Owner.OnMousemove := @FOnMouseMove;
-  FOnMouseDownCapture := Owner.OnMouseDown;
-  Owner.OnMouseDown := @FOnMouseDown;
-  FOnMouseupCapture := Owner.OnMouseup;
-  Owner.OnMouseup := @FOnMouseup;
-  FOnDblClickCapture := Owner.OnDblClick;
-  Owner.OnDblClick := @FOnDblClick;
-  FOnKeyDownCapture := Owner.OnKeyDown;
-  Owner.OnKeyDown := @FOnKeyDown;
-  FOnKeyUpCapture := Owner.OnKeyUp;
-  Owner.OnKeyUp := @FOnKeyUp;
-  fOnResizeCapture := Owner.OnResize;
-  Owner.OnResize := @FOnResize;
-
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-  AtomicBigFont.CreateFont(p + 'data' + PathDelim + 'res' + PathDelim);
-
-  // Laden aller Screens
-  fScreens[sMainScreen] := TMainMenu.Create(self);
-  fScreens[sHost] := Nil;
-  fScreens[sJoinNetwork] := TJoinMenu.Create(self);
-  fScreens[sPlayerSetupRequest] := Nil;
-  fScreens[sPlayerSetup] := TPlayerSetupMenu.Create(self);
-  fScreens[sEditFieldSetupRequest] := Nil;
-  Loader.Percent := 5;
-  Loader.Render();
-  fScreens[sEditFieldSetup] := TFieldSetupMenu.Create(self);
-  fScreens[sDrawGame] := TDrawGameMenu.create(self);
-  fScreens[sVictory] := TVictoryMenu.create(self);
-  fScreens[sMatchStatistik] := TMatchStatistikMenu.create(self);
-  fScreens[sOptions] := TOptionsMenu.Create(self);
-  fScreens[sExitBomberman] := Nil;
-
-  For i In TScreenEnum Do Begin
-    If Not assigned(fScreens[i]) Then Continue;
-    fScreens[i].LoadFromDisk(p + 'data' + PathDelim + 'res' + PathDelim);
-  End;
-  Loader.Percent := 10;
-  Loader.Render();
+        fSerialInit.Loader := TLoaderDialog.create(fOwner);
+        (*
+         * Lade Prozente
+         * 0..10 : Screens
+         * 11..50: Fields
+         * 51..100: Atomic's
+         *)
+        fSerialInit.Loader.Percent := 0;
+        fSerialInit.Loader.Render(); // So schnell wie Möglich dem User mal Anzeigen, dass wir dran sind
+        fSerialInit.aStep := 0;
+      End;
+    0: Begin
 {$IFDEF ShowInitTime}
-  TimePoint(2);
+        TimePoint(1);
+{$ENDIF}
+        fSoundInfo.Musik := Settings.PlaySounds;
+        fSoundInfo.Volume := Settings.VolumeValue;
+        If Not fSoundManager.SetVolumeValue(Settings.VolumeValue) Then Begin
+          log('Could not adjust sound volume.', llError);
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        FOnMouseMoveCapture := fOwner.OnMousemove;
+        fOwner.OnMousemove := @FOnMouseMove;
+        FOnMouseDownCapture := fOwner.OnMouseDown;
+        fOwner.OnMouseDown := @FOnMouseDown;
+        FOnMouseupCapture := fOwner.OnMouseup;
+        fOwner.OnMouseup := @FOnMouseup;
+        FOnDblClickCapture := fOwner.OnDblClick;
+        fOwner.OnDblClick := @FOnDblClick;
+        FOnKeyDownCapture := fOwner.OnKeyDown;
+        fOwner.OnKeyDown := @FOnKeyDown;
+        FOnKeyUpCapture := fOwner.OnKeyUp;
+        fOwner.OnKeyUp := @FOnKeyUp;
+        fOnResizeCapture := fOwner.OnResize;
+        fOwner.OnResize := @FOnResize;
+
+        fSerialInit.p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+        AtomicBigFont.CreateFont(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim);
+
+        // Laden aller Screens
+        fScreens[sMainScreen] := TMainMenu.Create(self);
+        fScreens[sHost] := Nil;
+        fScreens[sJoinNetwork] := TJoinMenu.Create(self);
+        fScreens[sPlayerSetupRequest] := Nil;
+        fScreens[sPlayerSetup] := TPlayerSetupMenu.Create(self);
+        fScreens[sEditFieldSetupRequest] := Nil;
+        fSerialInit.Loader.Percent := 5;
+        fSerialInit.Loader.Render();
+        fSerialInit.aStep := 1;
+      End;
+    1: Begin
+        fScreens[sEditFieldSetup] := TFieldSetupMenu.Create(self);
+        fScreens[sDrawGame] := TDrawGameMenu.create(self);
+        fScreens[sVictory] := TVictoryMenu.create(self);
+        fScreens[sMatchStatistik] := TMatchStatistikMenu.create(self);
+        fScreens[sOptions] := TOptionsMenu.Create(self);
+        fScreens[sExitBomberman] := Nil;
+        For i In TScreenEnum Do Begin
+          If Not assigned(fScreens[i]) Then Continue;
+          fScreens[i].LoadFromDisk(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim);
+        End;
+        fSerialInit.Loader.Percent := 10;
+        fSerialInit.Loader.Render();
+        fSerialInit.aStep := 2;
+      End;
+    2: Begin
+{$IFDEF ShowInitTime}
+        TimePoint(2);
+{$ENDIF}
+        fPowerUpsTex[puNone].Image := 0; // Das Gibts ja net -> Weg
+        fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smClamp);
+        If fPowerUpsTex[puExtraBomb].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puLongerFlameLength] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powflame.png', smClamp);
+        If fPowerUpsTex[puLongerFlameLength].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puDisease] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powdisea.png', smClamp);
+        If fPowerUpsTex[puDisease].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puCanCick] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powkick.png', smClamp);
+        If fPowerUpsTex[puCanCick].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powskate.png', smClamp);
+        If fPowerUpsTex[puExtraSpeed].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', smClamp);
+        If fPowerUpsTex[puCanPunch].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', smClamp);
+        If fPowerUpsTex[puCanGrab].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', smClamp);
+        If fPowerUpsTex[puCanSpooger].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powgold.png', smClamp);
+        If fPowerUpsTex[puGoldFlame].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png', smClamp);
+        If fPowerUpsTex[puTrigger].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', smClamp);
+        If fPowerUpsTex[puCanJelly].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powebola.png', smClamp);
+        If fPowerUpsTex[puSuperBadDisease].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powslow.png', smClamp);
+        If fPowerUpsTex[puSlow].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powrand.png', smClamp);
+        If fPowerUpsTex[purandom].Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        // Load PlayerDead Tex correct.
+        fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+        fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png');
+        If fPlayerdeadTex.Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+        If fhurry.Texture.Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fhurry.Texture := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png');
+        fSerialInit.hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+        If fSerialInit.hohletex.Image = 0 Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fSerialInit.hohletex := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png');
+{$IFDEF ShowInitTime}
+        TimePoint(3);
+{$ENDIF}
+        // Laden der Felder
+        fArrows := TOpenGL_Animation.Create;
+        If Not fArrows.LoadFromFile(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'arrows.ani', true) Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fConveyors := TOpenGL_Animation.Create;
+        If Not fConveyors.LoadFromFile(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+        fTramp := TOpenGL_Animation.Create;
+        If Not fTramp.LoadFromFile(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', true) Then Begin
+          fSerialInit.aStep := 1000;
+          result := true;
+          logleave(EnterID);
+          exit;
+        End;
+{$IFDEF ShowInitTime}
+        TimePoint(4);
 {$ENDIF}
 
-  fPowerUpsTex[puNone] := 0; // Das Gibts ja net -> Weg
-  fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smStretchHard);
-  If fPowerUpsTex[puExtraBomb] = 0 Then exit;
-  fPowerUpsTex[puLongerFlameLength] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powflame.png', smStretchHard);
-  If fPowerUpsTex[puLongerFlameLength] = 0 Then exit;
-  fPowerUpsTex[puDisease] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powdisea.png', smStretchHard);
-  If fPowerUpsTex[puDisease] = 0 Then exit;
-  fPowerUpsTex[puCanCick] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powkick.png', smStretchHard);
-  If fPowerUpsTex[puCanCick] = 0 Then exit;
-  fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powskate.png', smStretchHard);
-  If fPowerUpsTex[puExtraSpeed] = 0 Then exit;
-  fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', smStretchHard);
-  If fPowerUpsTex[puCanPunch] = 0 Then exit;
-  fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', smStretchHard);
-  If fPowerUpsTex[puCanGrab] = 0 Then exit;
-  fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', smStretchHard);
-  If fPowerUpsTex[puCanSpooger] = 0 Then exit;
-  fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powgold.png', smStretchHard);
-  If fPowerUpsTex[puGoldFlame] = 0 Then exit;
-  fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png', smStretchHard);
-  If fPowerUpsTex[puTrigger] = 0 Then exit;
-  fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', smStretchHard);
-  If fPowerUpsTex[puCanJelly] = 0 Then exit;
-  fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powebola.png', smStretchHard);
-  If fPowerUpsTex[puSuperBadDisease] = 0 Then exit;
-  fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powslow.png', smStretchHard);
-  If fPowerUpsTex[puSlow] = 0 Then exit;
-  fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'powrand.png', smStretchHard);
-  If fPowerUpsTex[purandom] = 0 Then exit;
-  // Load PlayerDead Tex correct.
-  fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
-  fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png');
-  If fPlayerdeadTex.Image = 0 Then exit;
-  fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
-  If fhurry.Texture.Image = 0 Then exit;
-  fhurry.Texture := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png');
-  hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smStretchHard);
-  If hohletex.Image = 0 Then exit;
-  hohletex := OpenGL_GraphikEngine.FindItem(p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png');
+        (*
+         * Da es Sich bewegende Trampoline gibt, und "Statische" müssen wir ein extra Sprite mit einem "Statischen" anlegen,
+         * das nachher gerendert werden kann, via fTramp.GetFirstBitmap() geht es nicht, da da sonst Rundungsfehler entstehen die man sieht :/
+         *)
+        fSerialInit.TrampStatic := OpenGL_SpriteEngine.AddSprite(
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Image,
+          'TrampStaticSprite',
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].AlphaImage,
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Rect,
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Width,
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Height,
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FramesPerRow,
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FramesPerCol,
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FrameStart,
+          1,
+          OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].dtTime,
+          Nil,
+          Nil
+          );
 {$IFDEF ShowInitTime}
-  TimePoint(3);
+        TimePoint(5);
 {$ENDIF}
-
-  // Laden der Felder
-  fArrows := TOpenGL_Animation.Create;
-  If Not fArrows.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'arrows.ani', true) Then Begin
-    Exit;
-  End;
-  fConveyors := TOpenGL_Animation.Create;
-  If Not fConveyors.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
-    Exit;
-  End;
-  fTramp := TOpenGL_Animation.Create;
-  If Not fTramp.LoadFromFile(p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', true) Then Begin
-    Exit;
-  End;
-{$IFDEF ShowInitTime}
-  TimePoint(4);
-{$ENDIF}
-
-  (*
-   * Da es Sich bewegende Trampoline gibt, und "Statische" müssen wir ein extra Sprite mit einem "Statischen" anlegen,
-   * das nachher gerendert werden kann, via fTramp.GetFirstBitmap() geht es nicht, da da sonst Rundungsfehler entstehen die man sieht :/
-   *)
-  fTrampStatic := OpenGL_SpriteEngine.AddSprite(
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Image,
-    'TrampStaticSprite',
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].AlphaImage,
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Rect,
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Width,
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].Height,
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FramesPerRow,
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FramesPerCol,
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].FrameStart,
-    1,
-    OpenGL_SpriteEngine.Sprite[fTramp.Sprite[0].SpriteIndex].dtTime,
-    Nil,
-    Nil
-    );
-{$IFDEF ShowInitTime}
-  TimePoint(5);
-{$ENDIF}
-  sl := FindAllDirectories(p + 'data' + PathDelim + 'maps', false);
-  sl.Sorted := true;
-  sl.Sort;
+        fSerialInit.sl := FindAllDirectories(fSerialInit.p + 'data' + PathDelim + 'maps', false);
+        fSerialInit.sl.Sorted := true;
+        fSerialInit.sl.Sort;
 {$IFDEF Only1Map}
-  While sl.Count > 1 Do Begin
-    sl.Delete(sl.Count - 1);
-  End;
+        While fSerialInit.sl.Count > 1 Do Begin
+          fSerialInit.sl.Delete(fSerialInit.sl.Count - 1);
+        End;
 {$ENDIF}
-  setlength(fFields, sl.Count);
-  If sl.count = 0 Then Begin
-    LogShow('Error, no fields to load found', llFatal);
-    LogLeave(EnterID);
-    exit;
-  End;
+        setlength(fFields, fSerialInit.sl.Count);
+        If fSerialInit.sl.count = 0 Then Begin
+          LogShow('Error, no fields to load found', llFatal);
+          fSerialInit.aStep := 1000;
+          result := true;
+          LogLeave(EnterID);
+          exit;
+        End;
 {$IFDEF ShowInitTime}
-  TimePoint(6);
+        TimePoint(6);
 {$ENDIF}
-  For j := 0 To sl.count - 1 Do Begin
-    fFields[j] := TAtomicField.Create();
-    If Not fFields[j].loadFromDirectory(sl[j], fArrows, fConveyors, fTramp, hohletex.Image, fTrampStatic) Then Begin
-      LogShow('Error, unable to load field:' + sl[j], llFatal);
-      LogLeave(EnterID);
-      exit;
-    End;
-    Loader.Percent := 10 + round(40 * j / sl.count);
-    Loader.Render();
+        fSerialInit.j := 0;
+        fSerialInit.aStep := 3;
+      End;
+    3: Begin
+        If fSerialInit.j < fSerialInit.sl.Count Then Begin
+          fFields[fSerialInit.j] := TAtomicField.Create();
+          If Not fFields[fSerialInit.j].loadFromDirectory(fSerialInit.sl[fSerialInit.j], fArrows, fConveyors, fTramp, fSerialInit.hohletex, fSerialInit.TrampStatic) Then Begin
+            LogShow('Error, unable to load field:' + fSerialInit.sl[fSerialInit.j], llFatal);
+            fSerialInit.aStep := 1000;
+            result := true;
+            LogLeave(EnterID);
+            exit;
+          End;
+          fSerialInit.Loader.Percent := 10 + round(40 * fSerialInit.j / fSerialInit.sl.count);
+          fSerialInit.Loader.Render();
 {$IFDEF ShowInitTime}
-    TimePoint(7 + j);
+          TimePoint(7 + fSerialInit.j);
 {$ENDIF}
-  End;
-  sl.free;
-  // Anfügen der Random Karte
-  field := TAtomicRandomField.Create(); // Die initialisiert sich bereits richtig ;)
-  field.CreatePreview(FFields);
+          inc(fSerialInit.j);
+        End
+        Else Begin
+          fSerialInit.aStep := 4;
+          fSerialInit.sl.free;
+          fSerialInit.sl := Nil;
+        End;
+      End;
+    4: Begin
+        // Anfügen der Random Karte
+        field := TAtomicRandomField.Create(); // Die initialisiert sich bereits richtig ;)
+        field.CreatePreview(FFields);
 
-  setlength(fFields, length(fFields) + 1); // Die Random Karte MUSS immer die Letzte sein (siehe auch TGame.HandleUpdateAvailableFieldList)
-  fFields[high(fFields)] := field;
+        setlength(fFields, length(fFields) + 1); // Die Random Karte MUSS immer die Letzte sein (siehe auch TGame.HandleUpdateAvailableFieldList)
+        fFields[high(fFields)] := field;
 {$IFDEF ShowInitTime}
-  TimePoint(20);
+        TimePoint(20);
 {$ENDIF}
-  // Laden aller Atomic's in ihren Farben --> Das ist was Ladetechnisch richtig weh tut, alles andere ist eigentlich "erträglich"
-  For j := 0 To high(fAtomics) Do Begin
-    Loader.Percent := 50 + round(50 * j / length(fAtomics));
-    Loader.Render();
-    fAtomics[j] := TAtomic.Create;
-    If Not fAtomics[j].InitAsColor(p + 'data' + PathDelim + 'atomic' + PathDelim, PlayerColors[j]) Then Begin
-      LogShow('Error, unable to load atomic.', llFatal);
-      LogLeave(EnterID);
-      exit;
-    End;
+        fSerialInit.j := 0;
+        fSerialInit.aStep := 5;
+      End;
+    5: Begin
+        // Laden aller Atomic's in ihren Farben --> Das ist was Ladetechnisch richtig weh tut, alles andere ist eigentlich "erträglich"
+        If fSerialInit.j <= high(fAtomics) Then Begin
+          fSerialInit.Loader.Percent := 50 + round(50 * fSerialInit.j / length(fAtomics));
+          fSerialInit.Loader.Render();
+          fAtomics[fSerialInit.j] := TAtomic.Create;
+          If Not fAtomics[fSerialInit.j].InitAsColor(fSerialInit.p + 'data' + PathDelim + 'atomic' + PathDelim, PlayerColors[fSerialInit.j]) Then Begin
+            LogShow('Error, unable to load atomic.', llFatal);
+            fSerialInit.aStep := 1000;
+            result := true;
+            LogLeave(EnterID);
+            exit;
+          End;
 {$IFDEF ShowInitTime}
-    TimePoint(21 + j);
+          TimePoint(21 + fSerialInit.j);
 {$ENDIF}
-  End;
-  Loader.Percent := 100;
-  Loader.Render(); // Als letztes kriegt der User zu sehen, dass wir fertig sind :-)
-  Loader.free;
-  fInitialized := true;
-  SwitchToScreen(sMainScreen);
+          inc(fSerialInit.j);
+        End
+        Else Begin
+          fSerialInit.Loader.Percent := 100;
+          fSerialInit.Loader.Render(); // Als letztes kriegt der User zu sehen, dass wir fertig sind :-)
+          fSerialInit.aStep := 6;
+        End;
+      End;
+    6: Begin
+        fSerialInit.Loader.free;
+        fSerialInit.Loader := Nil;
+        fInitialized := true;
+        SwitchToScreen(sMainScreen);
 {$IFDEF Linux}
-  If Settings.Fullscreen Then Begin
-    form1.SetFullScreen(True);
-  End;
+        If Settings.Fullscreen Then Begin
+          form1.SetFullScreen(True);
+        End;
 {$ENDIF}
 {$IFDEF ShowInitTime}
-  TimePoint(100);
-  total := GetTickCount64 - total;
-  writeln(format('Total: %d', [total]));
+        TimePoint(100);
+        fSerialInit.total := GetTickCount64 - fSerialInit.total;
+        writeln(format('Total: %d', [fSerialInit.total]));
 {$ENDIF}
+        fSerialInit.aStep := 1000;
+        result := true;
+      End;
+  End;
   LogLeave(EnterID);
 End;
 
@@ -2387,14 +2604,27 @@ Procedure TGame.Render;
 Var
   i: Integer;
   n: QWORD;
+  m: TMatrix4x4;
 Begin
   Go2d(fViewPortInfo.ScreenWidth, fViewPortInfo.ScreenHeight);
+{$IFDEF LEGACYMODE}
   glTranslatef(fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
   glScalef(fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
+{$ELSE}
+  m := IdentityMatrix4x4;
+  m := TranslateMatrix4x4(m, fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
+  m := ScaleMatrix4x4(m, fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
+  SetShaderTransform(m);
+{$ENDIF}
+
   If Not fInitialized Then Begin
     glBindTexture(GL_TEXTURE_2D, 0);
     OpenGL_ASCII_Font.Color := clred;
+{$IFDEF LEGACYMODE}
     OpenGL_ASCII_Font.Textout(20, 50,
+{$ELSE}
+    OpenGL_ASCII_Font.Textout(fViewPortInfo.TopLeft.X + 20, fViewPortInfo.TopLeft.y + 50,
+{$ENDIF}
       'Not initialized!' + LineEnding +
       'Error during loading, please restart application.' + LineEnding + LineEnding +
       'If the problem persists try a re run of the cd_data_extractor'
@@ -2409,26 +2639,35 @@ Begin
     gs_Gaming: Begin
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
+{$IFDEF LEGACYMODE}
         For i := 0 To high(fPlayer) Do Begin
+{$ELSE}
+        For i := high(fPlayer) Downto 0 Do Begin
+{$ENDIF}
           If fPlayer[i].Info.Alive Then Begin
             RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
             fPlayer[i].edge := false;
           End;
         End;
         If fPause Then Begin
-          glPushMatrix();
-          glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
           glBindTexture(GL_TEXTURE_2D, 0);
           AtomicFont.Color := clYellow;
           AtomicFont.BackColor := clBlack;
+{$IFDEF LEGACYMODE}
+          glPushMatrix();
+          glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
           AtomicFont.Textout(320 - 2 * 14, GameHeight Div 2, 'Pause');
           glPopMatrix();
+{$ELSE}
+          AtomicFont.Textout(320 - 2 * 14, GameHeight Div 2, atomic_dialog_Layer + atomic_EPSILON, 'Pause');
+{$ENDIF}
         End;
         RenderFieldHeader();
         // TODO: Auslagern in eine eigene Procedur
         If fHurry.Enabled Then Begin // Wenn An, dann 5 mal Flashen und wieder aus ;)
           n := (GetTickCount64 - fHurry.TimeStamp) Div 500;
           If n Mod 2 = 0 Then Begin
+{$IFDEF LEGACYMODE}
             glPushMatrix();
             glDisable(GL_DEPTH_TEST);
             glColor4f(1, 1, 1, 1);
@@ -2438,12 +2677,20 @@ Begin
             gldisable(GL_ALPHA_TEST);
             glEnable(GL_DEPTH_TEST);
             glPopMatrix();
+{$ELSE}
+            glAlphaFunc(GL_LESS, 0.5);
+            RenderAlphaQuad((GameHeight - fHurry.Texture.OrigHeight) / 2, (GameWidth - fHurry.Texture.OrigWidth) / 2, 0, fHurry.Texture);
+            glEnable(GL_DEPTH_TEST);
+{$ENDIF}
           End;
           If n > 5 Then fHurry.Enabled := false;
         End;
       End;
   End;
   fSoundInfo.Render;
+{$IFNDEF LEGACYMODE}
+  ResetShaderTransform;
+{$ENDIF}
   Exit2d();
 End;
 

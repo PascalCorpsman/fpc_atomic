@@ -87,10 +87,6 @@ Uses
   ;
 
 Type
-  PRGBA = ^TRGBA;
-  TRGBA = Packed Record
-    B, G, R, A: Byte;
-  End;
 
   TBufferedTextures = Record
     OrigFilename: String;
@@ -444,15 +440,17 @@ Var
   aDirection: Single;
 Begin
   aDirection := Info.Direction;
+  glAlphaFunc(GL_LESS, 0.5);
+{$IFDEF LEGACYMODE}
   glColor4f(1, 1, 1, 1);
   glPushMatrix;
-  glAlphaFunc(GL_LESS, 0.5);
   glEnable(GL_ALPHA_TEST);
   // Anfahren der Spielerposition
   glTranslatef(info.Position.x * FieldBlockWidth + xOff, (info.Position.y + 0.25) * FieldBlockHeight + yOff, atomic_Layer);
-
   glPushMatrix;
-
+{$ELSE}
+  glDisable(GL_DEPTH_TEST); // Das ist nicht ideal scheint aber zu funktionieren ..
+{$ENDIF}
   // Die Notwendige Animation
   If Info.Dying Then Begin
     // Das hier Triggert hoffentlich nur bei der ersten Steigenden Flanke
@@ -466,7 +464,11 @@ Begin
   End
   Else Begin
     // Der Schatten
+{$IFDEF LEGACYMODE}
     RenderAlphaQuad(-fShadowTex.OrigHeight / 2, -fShadowTex.OrigWidth / 2, fShadowTex);
+{$ELSE}
+    RenderAlphaQuad(info.Position.x * FieldBlockWidth + xOff - fShadowTex.OrigWidth / 2, (info.Position.y + 0.25) * FieldBlockHeight + yOff - fShadowTex.OrigHeight / 2, atomic_Layer, fShadowTex);
+{$ENDIF}
     // anhand der Info die Passende Animation wählen !
     Case Info.Animation Of
       raStandStill: fAnimation := fAnimations[aaStandStill];
@@ -489,13 +491,20 @@ Begin
     If Edge And (info.Animation <> raWalk) Then Begin
       fAnimation.Ani.ResetAnimation();
     End;
+{$IFDEF LEGACYMODE}
     glTranslatef(-fAnimation.OffsetX, -fAnimation.OffsetY, atomic_EPSILON);
     fAnimation.ani.Render(aDirection);
+{$ELSE}
+    fAnimation.ani.Render(info.Position.x * FieldBlockWidth + xOff - fAnimation.OffsetX, (info.Position.y + 0.25) * FieldBlockHeight + yOff - fAnimation.OffsetY, atomic_Layer + atomic_EPSILON, aDirection);
+{$ENDIF}
   End;
+{$IFDEF LEGACYMODE}
   glPopMatrix;
-
+  glPopMatrix;
   gldisable(GL_ALPHA_TEST);
-  glPopMatrix;
+{$ELSE}
+  glEnable(GL_DEPTH_TEST);
+{$ENDIF}
 
   (*
    * Zum Debuggen ein Punkt exakt da wo finfo.Position ist !

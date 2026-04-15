@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uOpenGL_ASCII_Font.pas                                          ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.07                                                         *)
+(* Version     : 0.08                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -32,6 +32,7 @@
 (*               0.05 - CurrentColor nicht nach Außen ändern                  *)
 (*               0.06 - Umstellen auf Abgeleitet von TOpenGL_Font             *)
 (*               0.07 - TOpenGL_ASCII_BIG_Font = font mit Hintergrund         *)
+(*               0.08 - Render via Shader as default                          *)
 (*                                                                            *)
 (******************************************************************************)
 (*                                                                            *)
@@ -53,6 +54,12 @@ Unit uOpenGL_ASCII_Font;
 
 Interface
 
+(*
+Aktiviert die Nutzung von OpenGL im Legacy Mode, default ist Shader mode, der
+auch mit OpenGL 3.3 funktioniert, aber nicht alle Funktionen von OpenGL 3.3 nutzt.
+*)
+{.$DEFINE LEGACYMODE}
+
 Uses
   IntfGraphics, fpImage, Graphics, LCLType, LResources, classes,
   dglopengl, // http://wiki.delphigl.com/index.php/dglOpenGL.pas
@@ -67,11 +74,18 @@ Type
 
   TOpenGL_ASCII_Font = Class(TOpenGL_Font)
   private
-    FBaseList: gluint; // Basispointer, für die OpenGL List
     FCharcount: integer; // Anzahl der Zeichen, sollte immer 256 sein !!
     fCharheight: integer; // "Echte" Größe eines Buchstabens in Pixeln
     fCharwidth: integer; // "Echte" Größe eines Buchstabens in Pixeln
+{$IFDEF LEGACYMODE}
+    FBaseList: gluint; // Basispointer, für die OpenGL List
     Procedure RenderChar(Number: integer); // Zeichnet ein Zeichen
+{$ELSE}
+    FVBO: GLuint; // Vertex Buffer Object
+    // Pro-Zeichen Dreiecks-Vertices in lokalen Zeichenkoordinaten (x,y Paare, 6 Vertices pro weißem Pixel = 2 Dreiecke)
+    FCharData: Array[0..255] Of Array Of Single;
+    FCharDataLen: Array[0..255] Of integer; // Anzahl der Floats in FCharData[i]
+{$ENDIF}
   public
     (*
      * Die Init und Free Routinen brauchen nicht direkt aufgerufen zu werden. Hier
@@ -89,10 +103,14 @@ Type
     (*
      * Zeichen Routinen
      *)
-    Procedure Textout(x, y: Integer; Text: String); override; // Zeichnet einen Text, unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
+    Procedure Textout(x, y: Integer; Text: String); overload; override; // Zeichnet einen Text (Depth = 0.0), unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
+    Procedure Textout(x, y: Integer; Depth: Single; Text: String); overload; virtual; // Wie Textout, jedoch kann hier die Tiefe (NDC z) angegeben werden
+{$IFDEF LEGACYMODE}
     Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); virtual; // Rendert einen Schriftzug (zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
     Procedure ThreeDTextout(Position, Up, Right: TVector3; Height: TBaseType; Text: String); virtual; // Rendert eine  Schriftzug Zentriert auf Position und entsprechend Up und Right, da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
-    Procedure RenderTextToRect(rect: TRect; Text: String); virtual; // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
+{$ENDIF}
+    Procedure RenderTextToRect(rect: TRect; Text: String); overload; virtual; // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
+    Procedure RenderTextToRect(rect: TRect; Depth: Single; Text: String); overload; virtual; // Wie RenderTextToRect, jedoch kann hier die Tiefe (NDC z) angegeben werden
   End;
 
   { TOpenGL_ASCII_BIG_Font }
@@ -131,10 +149,14 @@ Type
     (*
      * Zeichen Routinen
      *)
-    Procedure Textout(x, y: Integer; Text: String); override; // Zeichnet einen Text, unter Berücksichtigung von CRT's (Vorher muss Go2d aufgerufen werden!)
+    Procedure Textout(x, y: Integer; Text: String); overload; override;
+    Procedure Textout(x, y: Integer; Depth: Single; Text: String); overload; override;
+{$IFDEF LEGACYMODE}
     Procedure BillboardTextout(Position: TVector3; Height: TBaseType; Text: String); override; // Rendert einen Schriftzug (zentriert auf Position als Billboard ), da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
     Procedure ThreeDTextout(Position, Up, Right: TVector3; Height: TBaseType; Text: String); override; // Rendert eine  Schriftzug Zentriert auf Position und entsprechend Up und Right, da hier 3D-Koordinaten gelten, muss dem Text eine Höhe im 3D Skaling gegeben werden.
-    Procedure RenderTextToRect(rect: TRect; Text: String); override; // Rendert einen Text So in Rect, dass er Maximal "gestretched" rein pass (ohne Umbrüche, oder so, nur durch Skallierungen)
+{$ENDIF}
+    Procedure RenderTextToRect(rect: TRect; Text: String); overload; override;
+    Procedure RenderTextToRect(rect: TRect; Depth: Single; Text: String); overload; override;
   End;
 
 Var
@@ -149,32 +171,13 @@ Var
 Procedure Create_ASCII_Font();
 Procedure Create_ASCII_BigFont();
 
-// Switcher zwischen 2D und 3D-Modus, wenn gemeinsam genutzt mit dem Widgetset, ist die Go2D des Widgetset zu nehmen !
-Procedure Go2d(Width_2D, Height_2d: Integer);
-Procedure Exit2d();
-
 Implementation
 
-Uses sysutils;
-
-Procedure Go2d(Width_2D, Height_2d: Integer);
-Begin
-  glMatrixMode(GL_PROJECTION);
-  glPushMatrix(); // Store The Projection Matrix
-  glLoadIdentity(); // Reset The Projection Matrix
-  glOrtho(0, Width_2D, Height_2d, 0, -1, 1); // Set Up An Ortho Screen
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix(); // Store old Modelview Matrix
-  glLoadIdentity(); // Reset The Modelview Matrix
-End;
-
-Procedure Exit2d();
-Begin
-  glMatrixMode(GL_PROJECTION);
-  glPopMatrix(); // Restore old Projection Matrix
-  glMatrixMode(GL_MODELVIEW);
-  glPopMatrix(); // Restore old Projection Matrix
-End;
+Uses sysutils
+{$IFNDEF LEGACYMODE}
+  , uopengl_graphikengine
+{$ENDIF}
+  ;
 
 Procedure Create_ASCII_Font();
 Var
@@ -223,16 +226,20 @@ Var
   k: GLuint;
   TempIntfImg: TLazIntfImage;
   acol: TColor;
+{$IFNDEF LEGACYMODE}
+  n: integer;
+{$ENDIF}
 Begin
   Inherited create;
   fsize := CharHeight;
   fCharheight := CharHeight;
   fCharwidth := charwidth;
   FCharcount := Charcount;
-  FBaseList := glGenLists(Charcount);
   TempIntfImg := TLazIntfImage.Create(0, 0);
   TempIntfImg.LoadFromBitmap(Bitmap.Handle, Bitmap.MaskHandle);
   cxc := Bitmap.width Div Charwidth;
+{$IFDEF LEGACYMODE}
+  FBaseList := glGenLists(Charcount);
   For k := 0 To FCharcount - 1 Do Begin
     glNewList(FBaseList + k, GL_COMPILE); // Start Building A List
     //    glbegin(GL_POINTS);  <-- Alte Variante mittels glPoints
@@ -259,15 +266,68 @@ Begin
     gltranslated(CharWidth, 0, 0);
     glEndList(); // Done Building The Display List
   End;
+{$ELSE}
+  // Shader-Mode: Dreiecks-Geometrie pro Zeichen aufbauen
+  For k := 0 To FCharcount - 1 Do Begin
+    FCharDataLen[k] := 0;
+    SetLength(FCharData[k], 0);
+{$WARNINGS off}
+    ax := (k Mod cxc) * CharWidth;
+    ay := (k Div cxc) * Charheight;
+{$WARNINGS on}
+    For i := 0 To charwidth - 1 Do
+      For j := 0 To charheight - 1 Do Begin
+        If (ax + i < TempIntfImg.Width) And (ay + j < TempIntfImg.Height) Then Begin
+          acol := FPColorToColor(TempIntfImg.Colors[ax + i, ay + j]);
+          If acol = clwhite Then Begin
+            // 2 Dreiecke (6 Vertices) pro weißem Pixel
+            n := FCharDataLen[k];
+            SetLength(FCharData[k], n + 12); // 6 * 2 Floats
+            // Dreieck 1: (i,j), (i+1,j), (i+1,j+1)
+            FCharData[k][n + 0] := i;
+            FCharData[k][n + 1] := j;
+            FCharData[k][n + 2] := i + 1;
+            FCharData[k][n + 3] := j;
+            FCharData[k][n + 4] := i + 1;
+            FCharData[k][n + 5] := j + 1;
+            // Dreieck 2: (i,j), (i+1,j+1), (i,j+1)
+            FCharData[k][n + 6] := i;
+            FCharData[k][n + 7] := j;
+            FCharData[k][n + 8] := i + 1;
+            FCharData[k][n + 9] := j + 1;
+            FCharData[k][n + 10] := i;
+            FCharData[k][n + 11] := j + 1;
+            Inc(FCharDataLen[k], 12);
+          End;
+        End;
+      End;
+  End;
+  glGenBuffers(1, @FVBO);
+{$ENDIF}
   TempIntfImg.free;
 End;
 
 Destructor TOpenGL_ASCII_Font.Destroy;
+{$IFNDEF LEGACYMODE}
+Var
+  k: integer;
+{$ENDIF}
 Begin
+{$IFDEF LEGACYMODE}
   glDeleteLists(FBaseList, FCharcount); // Delete All Display Lists
+{$ELSE}
+  If FVBO <> 0 Then glDeleteBuffers(1, @FVBO);
+  For k := 0 To 255 Do
+    SetLength(FCharData[k], 0);
+{$ENDIF}
 End;
 
 Procedure TOpenGL_ASCII_Font.Textout(x, y: Integer; Text: String);
+Begin
+  Textout(x, y, 0.0, text);
+End;
+
+Procedure TOpenGL_ASCII_Font.Textout(x, y: Integer; Depth: Single; Text: String);
 (*
  * Wenn die Schriftfarbe nicht so aussieht wie gewünscht, dann wurde vergessen ein
  *
@@ -278,9 +338,9 @@ Procedure TOpenGL_ASCII_Font.Textout(x, y: Integer; Text: String);
  * Sieht man gar nichts, dann wurde evtl. vergessen ein go2d auf zu rufen.
  *
  *)
+{$IFDEF LEGACYMODE}
 Var
-  k: integer;
-  c: integer;
+  k, c: integer;
   sc: Single;
   light: Boolean;
   //  f: GLfloat;  <-- Alte Variante mittels glPoints
@@ -326,7 +386,74 @@ Begin
   If light Then Begin
     glenable(GL_LIGHTING);
   End;
+{$ELSE}
+Var
+  res: Tpoint;
+  k, c, vi, fi, nFloats: integer;
+  allVerts: Array Of Single;
+  sc, penX, penY, startX: Single;
+  LocRes, CurrentProgram: GLint;
+Begin
+  text := ConvertEncoding(text, EncodingUTF8, 'iso88591');
+  sc := fsize / fCharheight;
+  penX := x;
+  penY := y;
+  startX := x;
+  nFloats := 0;
+  allVerts := Nil;
+  SetLength(allVerts, 0);
+  // Alle Zeichen des Textes in einen Vertex-Buffer aufbauen (Bildschirm-Koordinaten)
+  For k := 1 To length(text) Do Begin
+    c := ord(text[k]);
+{$IFDEF Windows}
+    If c = 13 Then Begin
+{$ELSE}
+    If c = 10 Then Begin
+{$ENDIF}
+      penX := startX;
+      penY := penY + fsize;
+    End
+    Else If (c <> 10) And (c <> 13) Then Begin
+      If (c >= 0) And (c <= 255) And (FCharDataLen[c] > 0) Then Begin
+        vi := nFloats;
+        // FCharDataLen[c] enthält Anzahl Floats für 2D (x,y), wir brauchen 3D (x,y,z)
+        Inc(nFloats, (FCharDataLen[c] Div 2) * 3); // Aus 2D-Vertices (x,y) werden 3D-Vertices (x,y,z)
+        SetLength(allVerts, nFloats);
+        fi := 0;
+        While fi < FCharDataLen[c] Do Begin
+          allVerts[vi] := penX + FCharData[c][fi] * sc; // x
+          allVerts[vi + 1] := penY + FCharData[c][fi + 1] * sc; // y
+          allVerts[vi + 2] := Depth; // z (Tiefe)
+          Inc(vi, 3);
+          Inc(fi, 2);
+        End;
+      End;
+      penX := penX + fCharwidth * sc;
+    End;
+  End;
+  If nFloats = 0 Then Exit;
+  // Use Color Shader from uOpenGL_GraphikEngine.pas, in order to take care of the ShaderMatrix
+  UseColorShader;
+  SetShaderColor(fColor.x, fColor.y, fColor.z, 1.0);
+  glGetIntegerv(GL_CURRENT_PROGRAM, @CurrentProgram);
+  LocRes := glGetUniformLocation(CurrentProgram, 'uResolution');
+  If LocRes >= 0 Then Begin
+    res := Get2DResolution;
+    glUniform2f(LocRes, res.x, res.y);
+  End;
+  // VBO und VAO konfigurieren für vec3 (x,y,z)
+  glBindBuffer(GL_ARRAY_BUFFER, FVBO);
+  glBufferData(GL_ARRAY_BUFFER, nFloats * SizeOf(GLfloat), @allVerts[0], GL_DYNAMIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, Nil); // 3 Komponenten für vec3
+  // Zeichnen
+  glDrawArrays(GL_TRIANGLES, 0, nFloats Div 3);
+  glBindVertexArray(0);
+  UseTextureShader; // Default is textureShader, so switch Back to this
+{$ENDIF}
 End;
+
+{$IFDEF LEGACYMODE}
 
 Procedure TOpenGL_ASCII_Font.BillboardTextout(Position: TVector3;
   Height: TBaseType; Text: String);
@@ -397,8 +524,14 @@ Begin
     glenable(GL_LIGHTING);
   End;
 End;
+{$ENDIF} // LEGACYMODE
 
 Procedure TOpenGL_ASCII_Font.RenderTextToRect(rect: TRect; Text: String);
+Begin
+  RenderTextToRect(rect, 0.0, text);
+End;
+
+Procedure TOpenGL_ASCII_Font.RenderTextToRect(rect: TRect; Depth: Single; Text: String);
 Var
   s: Single;
   w, h, th, tw: Single;
@@ -420,11 +553,16 @@ Begin
   th := TextHeight(Text);
   tw := TextWidth(Text);
   // 4. Zentriert Darstellen
+{$IFDEF LEGACYMODE}
   glPushMatrix;
   glTranslatef(rect.Left, rect.Top, 0);
-  Textout(round((w - tw) / 2), round((h - th) / 2), text);
+  Textout(round((w - tw) / 2), round((h - th) / 2), depth, text);
   Size := s;
   glPopMatrix;
+{$ELSE}
+  Textout(round(rect.Left + (w - tw) / 2), round(rect.Top + (h - th) / 2), depth, text);
+  Size := s;
+{$ENDIF}
 End;
 
 Function TOpenGL_ASCII_Font.TextWidth(Text: String): single;
@@ -475,11 +613,14 @@ Begin
   result := (Height / h) * w;
 End;
 
+{$IFDEF LEGACYMODE}
+
 Procedure TOpenGL_ASCII_Font.RenderChar(Number: integer);
 Begin
   glListBase(FBaseList);
   glCallLists(1, GL_UNSIGNED_BYTE, @Number);
 End;
+{$ENDIF} // LEGACYMODE
 
 { TOpenGL_ASCII_BIG_Font }
 
@@ -581,12 +722,26 @@ End;
 
 Procedure TOpenGL_ASCII_BIG_Font.Textout(x, y: Integer; Text: String);
 Begin
-  glPushMatrix;
-  font2.Textout(x, y, text);
-  glTranslatef(0, 0, Epsilon);
-  font1.Textout(x, y, text);
-  glPopMatrix;
+  Textout(x, y, 0.0, text);
 End;
+
+Procedure TOpenGL_ASCII_BIG_Font.Textout(x, y: Integer; Depth: Single; Text: String);
+Begin
+{$IFDEF LEGACYMODE}
+  glPushMatrix;
+  font2.Textout(x, y, depth, text);
+  glTranslatef(0, 0, Epsilon);
+  font1.Textout(x, y, depth, text);
+  glPopMatrix;
+{$ELSE}
+  glDepthMask(GL_FALSE);
+  font2.Textout(x, y, depth, text);
+  glDepthMask(GL_TRUE);
+  font1.Textout(x, y, depth - 0.001, text);
+{$ENDIF}
+End;
+
+{$IFDEF LEGACYMODE}
 
 Procedure TOpenGL_ASCII_BIG_Font.BillboardTextout(Position: TVector3;
   Height: TBaseType; Text: String);
@@ -599,14 +754,27 @@ Procedure TOpenGL_ASCII_BIG_Font.ThreeDTextout(Position, Up, Right: TVector3;
 Begin
   Raise Exception.Create('TOpenGL_ASCII_BIG_Font.ThreeDTextout: not implemented.');
 End;
+{$ENDIF} // LEGACYMODE
 
 Procedure TOpenGL_ASCII_BIG_Font.RenderTextToRect(rect: TRect; Text: String);
 Begin
+  RenderTextToRect(rect, 0.0, text);
+End;
+
+Procedure TOpenGL_ASCII_BIG_Font.RenderTextToRect(rect: TRect; Depth: Single; Text: String);
+Begin
+{$IFDEF LEGACYMODE}
   glPushMatrix;
-  font2.RenderTextToRect(rect, text);
+  font2.RenderTextToRect(rect, depth, text);
   glTranslatef(0, 0, Epsilon);
-  font1.RenderTextToRect(rect, text);
+  font1.RenderTextToRect(rect, depth, text);
   glPopMatrix;
+{$ELSE}
+  glDepthMask(GL_FALSE);
+  font2.RenderTextToRect(rect, depth, text);
+  glDepthMask(GL_TRUE);
+  font1.RenderTextToRect(rect, depth - 0.001, text);
+{$ENDIF}
 End;
 
 Initialization

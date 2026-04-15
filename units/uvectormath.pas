@@ -471,6 +471,9 @@ Function TransposeMatrix(Const M: TMatrix3x3): TMatrix3x3; overload;
 Function TransposeMatrix(Const M: TMatrix4x4): TMatrix4x4; overload;
 Function TransposeMatrix(Const M: TMatrixNxM): TMatrixNxM; overload;
 
+Function TranslateMatrix4x4(Const m: TMatrix4x4; tx, ty, tz: TBaseType): TMatrix4x4;
+Function ScaleMatrix4x4(Const m: TMatrix4x4; sx, sy, sz: TBaseType): TMatrix4x4;
+
 (******************************************************************************)
 (* Ab hier kommen Funktionen die über die Einfachen Vektoroperatoren hinaus   *)
 (* gehen.                                                                     *)
@@ -1715,6 +1718,34 @@ Begin
   result[1, 3] := 0;
   result[2, 3] := 0;
   result[3, 3] := 1;
+End;
+
+Function TranslateMatrix4x4(Const m: TMatrix4x4; tx, ty, tz: TBaseType): TMatrix4x4;
+Var
+  r: Integer;
+Begin
+  // result = m * T  (T = Translation matrix, post-multiply wie glTranslatef)
+  // Spalten 0..2 bleiben, Spalte 3 wird: m_col0*tx + m_col1*ty + m_col2*tz + m_col3
+  For r := 0 To 3 Do Begin
+    result[r, 0] := m[r, 0];
+    result[r, 1] := m[r, 1];
+    result[r, 2] := m[r, 2];
+    result[r, 3] := m[r, 0] * tx + m[r, 1] * ty + m[r, 2] * tz + m[r, 3];
+  End;
+End;
+
+Function ScaleMatrix4x4(Const m: TMatrix4x4; sx, sy, sz: TBaseType): TMatrix4x4;
+Var
+  r: Integer;
+Begin
+  // result = m * S  (S = Scale matrix, post-multiply wie glScalef)
+  // Jede Spalte j wird mit dem zugehörigen Skalierungsfaktor multipliziert
+  For r := 0 To 3 Do Begin
+    result[r, 0] := m[r, 0] * sx;
+    result[r, 1] := m[r, 1] * sy;
+    result[r, 2] := m[r, 2] * sz;
+    result[r, 3] := m[r, 3];
+  End;
 End;
 
 Function CeilV2(Const v: Tvector2): TVector2;

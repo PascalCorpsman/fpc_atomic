@@ -129,7 +129,12 @@ Type
          gldisable(GL_ALPHA_TEST);
 
      *)
+{$IFDEF LEGACYMODE}
     Procedure Render(Angle: Single);
+{$ELSE}
+    Procedure Render(x, y, z: Single; Angle: Single);
+    Procedure Render(x, y, z, RenderWidth, RenderHeight: Single; Angle: Single);
+{$ENDIF}
 
     Procedure ResetAnimation(); // Setzt LastRenderTime = Gettickcount und AktualFrame = 0 => Restart der Animation
 
@@ -268,7 +273,13 @@ Begin
   fSprites[index] := AValue;
 End;
 
+{$IFDEF LEGACYMODE}
+
 Procedure TOpenGL_Animation.Render(Angle: Single);
+{$ELSE}
+
+Procedure TOpenGL_Animation.Render(x, y, z: Single; Angle: Single);
+{$ENDIF}
 Var
   i: integer;
 Begin
@@ -279,11 +290,34 @@ Begin
     angle := Angle + 360;
   For i := 0 To high(fSprites) Do Begin
     If (Angle >= fSprites[i].StartAngle) And (Angle <= fSprites[i].EndAngle) Then Begin
+{$IFDEF LEGACYMODE}
       OpenGL_SpriteEngine.RenderSprite(fSprites[i].SpriteIndex, AnimationOffset);
+{$ELSE}
+      OpenGL_SpriteEngine.RenderSprite(x, y, z, fSprites[i].SpriteIndex, AnimationOffset);
+{$ENDIF}
       break;
     End;
   End;
 End;
+
+{$IFNDEF LEGACYMODE}
+Procedure TOpenGL_Animation.Render(x, y, z, RenderWidth, RenderHeight: Single; Angle: Single);
+Var
+  i: integer;
+Begin
+  angle := round(Angle + AngleOffset);
+  While Angle >= 360 Do
+    angle := Angle - 360;
+  While Angle < 0 Do
+    angle := Angle + 360;
+  For i := 0 To high(fSprites) Do Begin
+    If (Angle >= fSprites[i].StartAngle) And (Angle <= fSprites[i].EndAngle) Then Begin
+      OpenGL_SpriteEngine.RenderSprite(x, y, z, RenderWidth, RenderHeight, fSprites[i].SpriteIndex, AnimationOffset);
+      break;
+    End;
+  End;
+End;
+{$ENDIF}
 
 Procedure TOpenGL_Animation.ResetAnimation();
 Var
@@ -579,7 +613,7 @@ Begin
   // 1. die Textur Laden
   imgName := fName + 'Sprite' + fSprites[Index].Name;
   If fSprites[Index].Derived Then Begin
-    img := OpenGL_SpriteEngine.Sprite[fSprites[d_Index].SpriteIndex].Image;
+    img := OpenGL_SpriteEngine.Sprite[fSprites[d_Index].SpriteIndex].Image.Image;
   End
   Else Begin
     If Not assigned(fSprites[Index].Bitmap) Then Begin
@@ -622,7 +656,7 @@ Begin
           sp := OpenGL_SpriteEngine.Sprite[fSprites[i].SpriteIndex];
           OpenGL_SpriteEngine.RemoveSprite(fSprites[i].SpriteIndex);
           fSprites[i].SpriteIndex :=
-            OpenGL_SpriteEngine.AddSprite(img, sp.Name, fSprites[i].AlphaImage,
+            OpenGL_SpriteEngine.AddSprite(OpenGL_GraphikEngine.GetInfo(img), sp.Name, fSprites[i].AlphaImage,
             sp.Rect,
             fSprites[i].Width,
             fSprites[i].Height,
@@ -666,7 +700,7 @@ Begin
     r.Right := r.Right / (fSprites[d_index].Bitmap.Width / fSprites[index].Rect.Right);
 
     fSprites[Index].SpriteIndex :=
-      OpenGL_SpriteEngine.AddSprite(img, fName + imgName, fSprites[index].AlphaImage,
+      OpenGL_SpriteEngine.AddSprite(gi, fName + imgName, fSprites[index].AlphaImage,
       r,
       fSprites[index].Width,
       fSprites[index].Height,
@@ -688,7 +722,7 @@ End;
 Procedure TOpenGL_Animation.RemoveOpenGLData(Index: Integer;
   RemoveOpenGLImage: Boolean);
 Var
-  img: integer;
+  img: TGraphikItem;
 Begin
   If fSprites[Index].SpriteIndex <> -1 Then Begin
     img := OpenGL_SpriteEngine.Sprite[fSprites[Index].SpriteIndex].Image;

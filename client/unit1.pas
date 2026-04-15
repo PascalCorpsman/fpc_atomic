@@ -101,6 +101,7 @@ Type
     Procedure Timer1Timer(Sender: TObject);
   private
     { private declarations }
+    GameInitialized: Boolean;
     fUserMessages: Array Of TUserMessages;
     // Ehemals Globale Variablen
     Initialized: Boolean; // Wenn True dann ist OpenGL initialisiert
@@ -119,8 +120,6 @@ Type
   public
     { public declarations }
     Procedure Load_Atomic_Settings;
-    Procedure OnConnectToServer(Sender: TObject);
-    Procedure OnDisconnectFromServer(Sender: TObject);
     Procedure AddUserMessage(Msg: String; WarnLevel: TLogLevel);
     Procedure SetFullScreen(Value: Boolean);
   End;
@@ -145,6 +144,10 @@ Uses lazfileutils, LazUTF8, LCLType
   , uscreens
 {$ENDIF}
   , usdl_input
+{$IFNDEF LEGACYMODE}
+  , uopengl_legacychecker
+  , uopengl_shaderprimitives
+{$ENDIF}
   ;
 
 Var
@@ -160,6 +163,17 @@ End;
 Var
   allowcnt: Integer = 0;
 
+{$IFNDEF LEGACYMODE}
+
+Procedure OnOpenGLLegacyCall(Severity: GLuint; aMessage: String);
+Begin
+  showmessage(
+    format('Error, unallowed OpenGL legacy call: %d = %s', [Severity, aMessage])
+    );
+  halt;
+End;
+{$ENDIF}
+
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
   If allowcnt > 2 Then Begin
@@ -171,19 +185,38 @@ Begin
     // Init dglOpenGL.pas , Teil 2
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
+{$IFNDEF LEGACYMODE}
+    RegisterLegacyCheckerCallback(@OnOpenGLLegacyCall);
+{$ENDIF}
   End;
   If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
-    OpenGL_GraphikEngine.clear;
-    Create_ASCII_Font;
-    AtomicFont.CreateFont;
+{$IFDEF LEGACYMODE}
     glenable(GL_TEXTURE_2D); // Texturen
+{$ENDIF}
     glEnable(GL_DEPTH_TEST); // Tiefentest
     glDepthFunc(gl_less);
     glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
-
+    OpenGL_GraphikEngine.clear;
+{$IFNDEF LEGACYMODE}
+    If Not Assigned(glCreateShader) Then Begin
+      // On Windows it seems that you need to "reload" the core functions for proper function
+      ReadExtensions;
+      ReadImplementationProperties;
+      RegisterLegacyCheckerCallback(@OnOpenGLLegacyCall);
+      // if still not available, then halt
+      If Not Assigned(glCreateShader) Then Begin
+        showmessage('glCreateShader not available, use legacy mode..');
+        halt;
+      End;
+    End;
+    ReActivateKHRDebug; // Reenable KHRDebug
+    OpenGL_GraphikEngine_InitializeShaderSystem;
+    OpenGL_ShaderPrimitives_InitializeShaderSystem;
+{$ENDIF}
+    Create_ASCII_Font;
+    AtomicFont.CreateFont;
     // Der Anwendung erlauben zu Rendern.
     Initialized := True;
-    Game.initialize(OpenGLControl1);
     OpenGLControl1.OnResize(OpenGLControl1);
     Timer1.Enabled := true;
   End;
@@ -202,25 +235,40 @@ Begin
    *)
   If Not Timer1.Enabled Then exit;
   If Not Initialized Then Exit;
+  If Not GameInitialized Then Begin
+    If OpenGLControl1.MakeCurrent() Then Begin
+      Game.Resize();
+      GameInitialized := Game.initialize;
+      If Not GameInitialized Then exit;
+    End;
+  End;
   // Render Szene
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
+{$IFDEF LEGACYMODE}
   glLoadIdentity();
   glcolor4f(1, 1, 1, 1);
+{$ENDIF}
   glBindTexture(GL_TEXTURE_2D, 0);
   Game.Render();
   If Game.Settings.ShowFPS Then Begin
     Go2d(OpenGLControl1.Width, OpenGLControl1.Height);
     glBindTexture(GL_TEXTURE_2D, 0);
     OpenGL_ASCII_Font.Color := clwhite;
+{$IFDEF LEGACYMODE}
     glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
+{$ENDIF}
     s := 'FPS : ' + inttostr(LastFPS_Counter);
 {$IFDEF DebuggMode}
     If game.fPlayer[1].UID = -1 Then Begin // Wenn der Spieler 1 eine AI ist ..
       s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
     End;
 {$ENDIF}
+{$IFDEF LEGACYMODE}
     OpenGL_ASCII_Font.Textout(5, 5, s);
+{$ELSE}
+    OpenGL_ASCII_Font.Textout(5, 5, atomic_dialog_Layer + atomic_EPSILON, s);
+{$ENDIF}
     Exit2d();
   End;
   OpenGLControl1.SwapBuffers;
@@ -229,11 +277,17 @@ End;
 Procedure TForm1.OpenGLControl1Resize(Sender: TObject);
 Begin
   If Initialized Then Begin
+{$IFDEF LEGACYMODE}
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glViewport(0, 0, OpenGLControl1.Width, OpenGLControl1.Height);
     gluPerspective(45.0, OpenGLControl1.Width / OpenGLControl1.Height, 0.1, 100.0);
     glMatrixMode(GL_MODELVIEW);
+{$ELSE}
+    If OpenGLControl1.MakeCurrent Then
+      glViewport(0, 0, OpenGLControl1.Width, OpenGLControl1.Height);
+    OpenGLControl1.Invalidate;
+{$ENDIF}
   End;
 End;
 
@@ -242,6 +296,7 @@ Var
   EnterID, i: integer;
 Begin
   InitLogger();
+  GameInitialized := false;
   LogShowHandler := @ShowUserMessage;
 
   Randomize;
@@ -317,9 +372,12 @@ Begin
   Ist Interval auf 16 hängt das gesamte system, bei 17 nicht.
   Generell sollte die Interval Zahl also dynamisch zum Rechenaufwand, mindestens aber immer 17 sein.
   *)
+{$IFNDEF LEGACYMODE}
+  OpenGLControl1.AutoResizeViewport := True; // This is crucial for GTK3, don't know why, but without it the demo does not work
+{$ENDIF}
   Timer1.Interval := 17;
   OpenGLControl1.Align := alClient;
-  Game := TGame.Create();
+  Game := TGame.Create(OpenGLControl1);
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
   Load_Atomic_Settings;
@@ -335,6 +393,12 @@ Var
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TForm1.FormDestroy');
+{$IFNDEF LEGACYMODE}
+  If OpenGLControl1.MakeCurrent Then Begin
+    OpenGL_GraphikEngine_FinalizeShaderSystem;
+    OpenGL_ShaderPrimitives_FinalizeShaderSystem;
+  End;
+{$ENDIF}
   If assigned(Game) Then
     Game.free;
   Game := Nil;
@@ -731,25 +795,6 @@ Procedure TForm1.ShowCursor(Sender: TObject);
 Begin
   Cursor := crDefault;
   OpenGLControl1.Cursor := crDefault;
-End;
-
-Procedure TForm1.OnConnectToServer(Sender: TObject);
-Var
-  EnterID: Integer;
-Begin
-  EnterID := LogEnter('TForm1.OnConnectToServer');
-
-  LogLeave(EnterID);
-End;
-
-Procedure TForm1.OnDisconnectFromServer(Sender: TObject);
-Var
-  EnterID: Integer;
-Begin
-  EnterID := LogEnter('TForm1.OnDisconnectFromServer');
-  // TODO: Rauswurf in Toplevel Ebene
-
-  LogLeave(EnterID);
 End;
 
 Procedure TForm1.AddUserMessage(Msg: String; WarnLevel: TLogLevel);

@@ -19,7 +19,7 @@ Unit uatomicfont;
 Interface
 
 Uses
-  Classes, SysUtils, Graphics, uOpenGL_ASCII_Font, LResources;
+  Classes, SysUtils, Graphics, uOpenGL_ASCII_Font, LResources, uopengl_graphikengine;
 
 Type
   (*
@@ -48,23 +48,30 @@ Type
 
     Procedure CreateFont(); // Muss im Make Current Aufgerufen werden !
 
+{$IFDEF LEGACYMODE}
     Procedure Textout(x, y: integer; Text: String);
+{$ELSE}
+    Procedure Textout(x, y: integer; Z: Single; Text: String);
+{$ENDIF}
   End;
 
   { TAtomicBigFont }
 
   TAtomicBigFont = Class
   private
-    fDigits: Array[0..9] Of INteger;
-    fdouble: Integer;
-    fInfinity: Integer;
+    fDigits: Array[0..9] Of TGraphikItem;
+    fdouble: TGraphikItem;
+    fInfinity: TGraphikItem;
   public
     Constructor Create(); virtual;
     Destructor Destroy(); override;
 
     Procedure CreateFont(Dir: String); // Muss im Make Current Aufgerufen werden !
-
+{$IFDEF LEGACYMODE}
     Procedure Textout(x, y: integer; Time: integer);
+{$ELSE}
+    Procedure Textout(x, y: integer; Z: Single; Time: integer);
+{$ENDIF}
   End;
 
 Var
@@ -73,7 +80,7 @@ Var
 
 Implementation
 
-Uses dglOpenGL, uopengl_graphikengine, uvectormath;
+Uses dglOpenGL, uvectormath;
 
 { TAtomicBigFont }
 
@@ -93,7 +100,7 @@ Var
   b1, b2: TBitmap;
   i: Integer;
 Begin
-  fInfinity := OpenGL_GraphikEngine.LoadAlphaColorGraphik(dir + 'infinity.png', Fuchsia, smStretchHard);
+  fInfinity := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(dir + 'infinity.png', Fuchsia, smClamp);
   p := TPortableNetworkGraphic.Create;
   p.LoadFromFile(dir + 'bigfont.png');
   b1 := TBitmap.Create;
@@ -105,10 +112,10 @@ Begin
   For i := 0 To 10 Do Begin
     b2.Canvas.Draw(-(i Mod 4) * 18, -(i Div 4) * 27, b1);
     If i = 10 Then Begin
-      fdouble := OpenGL_GraphikEngine.LoadAlphaColorGraphik(b2, 'Bigfont_Letter' + inttostr(i), Fuchsia, smStretchHard);
+      fdouble := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(b2, 'Bigfont_Letter' + inttostr(i), Fuchsia, smClamp);
     End
     Else Begin
-      fDigits[i] := OpenGL_GraphikEngine.LoadAlphaColorGraphik(b2, 'Bigfont_Letter' + inttostr(i), Fuchsia, smStretchHard);
+      fDigits[i] := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(b2, 'Bigfont_Letter' + inttostr(i), Fuchsia, smClamp);
     End;
   End;
   b2.free;
@@ -116,18 +123,26 @@ Begin
   p.free;
 End;
 
+{$IFDEF LEGACYMODE}
+
 Procedure TAtomicBigFont.Textout(x, y: integer; Time: integer);
+{$ELSE}
+
+
+Procedure TAtomicBigFont.Textout(x, y: integer; Z: Single; Time: integer);
+{$ENDIF}
 Var
-  m, s, i: integer;
+  m, s, i, j: integer;
   st: String;
 Begin
+{$IFDEF LEGACYMODE}
   glPushMatrix;
   glAlphaFunc(GL_LESS, 0.5);
   glEnable(GL_ALPHA_TEST);
   glTranslatef(x, y, 0);
   If time < 0 Then Begin
     glTranslatef(0, 10, 0);
-    RenderAlphaQuad(v2(24, 17 / 2), -48, -17, 0, fInfinity);
+    RenderAlphaQuad(0, 0, fInfinity);
   End
   Else Begin
     m := time Div 60;
@@ -135,20 +150,42 @@ Begin
     // Die Minuten
     st := format('%d', [m]);
     For i := 1 To length(st) Do Begin
-      RenderAlphaQuad(v2(9, 27 / 2), -18, -27, 0, fDigits[ord(st[i]) - ord('0')]);
+      RenderAlphaQuad(0, 0, fDigits[ord(st[i]) - ord('0')]);
       glTranslatef(18, 0, 0);
     End;
-    RenderAlphaQuad(v2(9, 27 / 2), -18, -27, 0, fdouble);
+    RenderAlphaQuad(0, 0, fdouble);
     glTranslatef(18, 0, 0);
     // Die Sekunden
     st := format('%0.2d', [s]);
     For i := 1 To length(st) Do Begin
-      RenderAlphaQuad(v2(9, 27 / 2), -18, -27, 0, fDigits[ord(st[i]) - ord('0')]);
+      RenderAlphaQuad(0, 0, fDigits[ord(st[i]) - ord('0')]);
       glTranslatef(18, 0, 0);
     End;
   End;
   gldisable(GL_ALPHA_TEST);
   glPopMatrix;
+{$ELSE}
+  glAlphaFunc(GL_LESS, 0.5);
+  If time < 0 Then Begin
+    RenderAlphaQuad(x, y + 10, 0, fInfinity);
+  End
+  Else Begin
+    m := time Div 60;
+    s := time Mod 60;
+    // Die Minuten
+    st := format('%d', [m]);
+    For i := 1 To length(st) Do Begin
+      RenderAlphaQuad(x + (i - 1) * 18 + 8, y, z, fDigits[ord(st[i]) - ord('0')]);
+    End;
+    j := length(st);
+    RenderAlphaQuad(x + (j) * 18 + 8, y, 0, fdouble);
+    // Die Sekunden
+    st := format('%0.2d', [s]);
+    For i := 1 To length(st) Do Begin
+      RenderAlphaQuad(x + (i + j) * 18 + 8, y, z, fDigits[ord(st[i]) - ord('0')]);
+    End;
+  End;
+{$ENDIF}
 End;
 
 { TAtomicFont }
@@ -212,6 +249,8 @@ Begin
   result := Font2.Color;
 End;
 
+{$IFDEF LEGACYMODE}
+
 Procedure TAtomicFont.Textout(x, y: integer; Text: String);
 Begin
   glPushMatrix;
@@ -219,6 +258,13 @@ Begin
   glTranslatef(0, 0, 0.025);
   font1.Textout(x, y, text);
   glPopMatrix;
+{$ELSE}
+
+Procedure TAtomicFont.Textout(x, y: integer; Z: Single; Text: String);
+Begin
+  font2.Textout(x, y, z, text);
+  font1.Textout(x, y, z + 0.025, text);
+{$ENDIF}
 End;
 
 Initialization

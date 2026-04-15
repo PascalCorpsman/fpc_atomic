@@ -64,6 +64,7 @@ Uses
   ;
 
 Const
+  // ggf ist das bei GTK3 genau umgekehrt ?
   AlphaOpaque = 0;
   AlphaTranslucent = 255;
 
@@ -88,7 +89,11 @@ Type
   End;
 
   TRGBA = Packed Record
-    B, G, R, A: Byte;
+{$IFDEF LCLGTK3}
+    R, G, B, A: Byte; // WTF, Warum macht GTK3 das so :(
+{$ELSE}
+    B, G, R, A: Byte; // Windows / GTK2 liefert BGRA
+{$ENDIF}
   End;
 
   PRGBA = ^TRGBA;

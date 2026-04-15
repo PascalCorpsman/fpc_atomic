@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 336
+  Left = 509
   Height = 479
-  Top = 115
+  Top = 155
   Width = 692
   ActiveControl = OpenGLControl1
   Caption = 'Form1'

@@ -21,7 +21,11 @@ Interface
 {$I ../client/globaldefines.inc}
 
 Uses
-  Classes, SysUtils, Graphics, ugraphics, uvectormath;
+  Classes, SysUtils, Graphics, ugraphics, uvectormath
+{$IFDEF Client}
+  , uopengl_graphikengine
+{$ENDIF}
+  ;
 
 Const
   (*
@@ -124,10 +128,11 @@ Const
    *                       ADD: implement missing Brick spawning for haunted house field.
    *             0.13001 = ADD: Disable hohles in Hurry mode, see https://bomberman.fandom.com/wiki/The_Coal_Mine
    *                       ADD: Disable trampolins in Hurry mode, see https://bomberman.fandom.com/wiki/Deep_Forest_Green
+   *             0.13002 = ADD: Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.13001';
+  Version = '0.13002';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
@@ -399,8 +404,9 @@ Type
     // Zufall, ...
     , purandom
     );
-
-  TPowerTexArray = Array[TPowerUps] Of Integer;
+{$IFDEF Client}
+  TPowerTexArray = Array[TPowerUps] Of TGraphikItem;
+{$ENDIF}
 
   TPowerUp = Record
     BornWith: Integer; // <0 Ignoriert, >=1 "erlaubt" oder der Wert bei der Geburt

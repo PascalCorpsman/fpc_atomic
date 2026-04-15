@@ -475,7 +475,7 @@ Begin
   If Not result Then Begin
     For i := low(fPLayer) To high(fPLayer) Do Begin
       If fPLayer[i].UID = UID Then Begin
-        log('Could not send to player : ' + fPLayer[i].UserName, llCritical);
+        log('Could not send "' + MessageIdentifierToString(UserDefinedID) + '" to player : ' + fPLayer[i].UserName, llCritical);
         If dolog Then
           LogLeave(EnterID);
         exit;
@@ -490,7 +490,7 @@ Begin
       End;
     End
     Else Begin
-      log('Could not send to player : ' + inttostr(uid), llCritical);
+      log('Could not send "' + MessageIdentifierToString(UserDefinedID) + '" to player : ' + inttostr(uid), llCritical);
     End;
   End;
   If dolog Then
