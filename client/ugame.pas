@@ -1898,7 +1898,9 @@ Begin
         gldisable(GL_ALPHA_TEST);
         glPopMatrix;
 {$ELSE}
+        SetShaderAlphaThreshold(0.5);
         RenderAlphaQuad(x - 4, y - 4, atomic_dialog_Layer + atomic_EPSILON + atomic_EPSILON, fPlayerdeadTex);
+        SetShaderAlphaThreshold(0);
 {$ENDIF}
       End;
     End;
@@ -1948,6 +1950,7 @@ Begin
   gldisable(GL_ALPHA_TEST);
   glPopMatrix;
 {$ELSE}
+  SetShaderAlphaThreshold(0.5);
   glAlphaFunc(GL_LESS, 0.5);
   For i := 0 To fBombCount - 1 Do Begin
     ani.ani := Nil;
@@ -1963,6 +1966,7 @@ Begin
     ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
     ani.ani.Render(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth + ani.OffsetX, FieldyOff + fBombs[i].Position.y * FieldBlockHeight + ani.OffsetY, atomic_Bomb_Layer, 0);
   End;
+  SetShaderAlphaThreshold(0);
 {$ENDIF}
 End;
 
@@ -2639,11 +2643,7 @@ Begin
     gs_Gaming: Begin
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
-{$IFDEF LEGACYMODE}
         For i := 0 To high(fPlayer) Do Begin
-{$ELSE}
-        For i := high(fPlayer) Downto 0 Do Begin
-{$ENDIF}
           If fPlayer[i].Info.Alive Then Begin
             RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
             fPlayer[i].edge := false;
@@ -2679,8 +2679,9 @@ Begin
             glPopMatrix();
 {$ELSE}
             glAlphaFunc(GL_LESS, 0.5);
+            SetShaderAlphaThreshold(0.5);
             RenderAlphaQuad((GameHeight - fHurry.Texture.OrigHeight) / 2, (GameWidth - fHurry.Texture.OrigWidth) / 2, 0, fHurry.Texture);
-            glEnable(GL_DEPTH_TEST);
+            SetShaderAlphaThreshold(0);
 {$ENDIF}
           End;
           If n > 5 Then fHurry.Enabled := false;

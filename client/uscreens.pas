@@ -821,15 +821,10 @@ Begin
   glColor3f(1, 1, 1);
   glpopmatrix();
 {$ELSE}
-  // glEnable(GL_ALPHA_TEST); geht nicht mehr und das Rendern der Textur "sperrt"
-  // den Tiefenpuffer an der entsprechenden Stelle
-  // -> Lösung ist den Hintergrund zuerst zu rendern und dann "durchscheinen"
-  //    zu lassen, da der Alphatest zum Glück noch geht ;)
-  If assigned(ActualField) Then Begin
-    ActualField.RenderPreview(379, 33);
-  End;
   glAlphaFunc(GL_LESS, 0.5);
+  SetShaderAlphaThreshold(0.5);
   RenderAlphaQuad(0, 0, atomic_Map_Layer + 0.5, fBackTex);
+  SetShaderAlphaThreshold(0);
   UseColorShader;
   SetShaderColor(0, 0, 0);
   glshaderBegin(GL_TRIANGLE_FAN);
@@ -915,9 +910,11 @@ Begin
    *)
   glpushmatrix();
   glTranslatef(379, 33, 0); // Das Offset zum Vorschaufenster ;)
+{$ENDIF}
   If assigned(ActualField) Then Begin
     ActualField.RenderPreview(379, 33);
   End;
+{$IFDEF LEGACYMODE}
   glpopmatrix();
 {$ENDIF}
 End;

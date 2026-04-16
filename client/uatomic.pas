@@ -449,7 +449,7 @@ Begin
   glTranslatef(info.Position.x * FieldBlockWidth + xOff, (info.Position.y + 0.25) * FieldBlockHeight + yOff, atomic_Layer);
   glPushMatrix;
 {$ELSE}
-  glDisable(GL_DEPTH_TEST); // Das ist nicht ideal scheint aber zu funktionieren ..
+  SetShaderAlphaThreshold(0.5);
 {$ENDIF}
   // Die Notwendige Animation
   If Info.Dying Then Begin
@@ -503,7 +503,7 @@ Begin
   glPopMatrix;
   gldisable(GL_ALPHA_TEST);
 {$ELSE}
-  glEnable(GL_DEPTH_TEST);
+  SetShaderAlphaThreshold(0);
 {$ENDIF}
 
   (*

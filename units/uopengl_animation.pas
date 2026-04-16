@@ -128,6 +128,13 @@ Type
          Render(Winkel);
          gldisable(GL_ALPHA_TEST);
 
+    Oder im Shader Modus:
+
+         glAlphaFunc(GL_LESS, 0.5);
+         SetShaderAlphaThreshold(0.5);
+         Render(Winkel);
+         SetShaderAlphaThreshold(0);
+
      *)
 {$IFDEF LEGACYMODE}
     Procedure Render(Angle: Single);
@@ -189,8 +196,8 @@ Begin
     And (a.FramesPerRow = b.FramesPerRow)
     And (a.FramesPerCol = b.FramesPerCol)
     // TODO: Warum ist .name hier ausgeschlossen ? (Siehe Bugfix in "SetAniSprite")
-    // And (a.Fname = b.Fname) -- Dynamisch erstellte Daten werden nicht verglichen
-    // And (a.SpriteIndex = b.SpriteIndex) -- Dynamisch erstellte Daten werden nicht verglichen
+  // And (a.Fname = b.Fname) -- Dynamisch erstellte Daten werden nicht verglichen
+  // And (a.SpriteIndex = b.SpriteIndex) -- Dynamisch erstellte Daten werden nicht verglichen
   ;
 End;
 
@@ -301,6 +308,7 @@ Begin
 End;
 
 {$IFNDEF LEGACYMODE}
+
 Procedure TOpenGL_Animation.Render(x, y, z, RenderWidth, RenderHeight: Single; Angle: Single);
 Var
   i: integer;

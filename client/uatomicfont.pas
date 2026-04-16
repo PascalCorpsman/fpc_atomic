@@ -166,6 +166,7 @@ Begin
   glPopMatrix;
 {$ELSE}
   glAlphaFunc(GL_LESS, 0.5);
+  SetShaderAlphaThreshold(0.5);
   If time < 0 Then Begin
     RenderAlphaQuad(x, y + 10, 0, fInfinity);
   End
@@ -185,6 +186,7 @@ Begin
       RenderAlphaQuad(x + (i + j) * 18 + 8, y, z, fDigits[ord(st[i]) - ord('0')]);
     End;
   End;
+  SetShaderAlphaThreshold(0);
 {$ENDIF}
 End;
 
