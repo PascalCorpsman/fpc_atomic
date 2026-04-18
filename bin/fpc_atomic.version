@@ -1,85 +1,85 @@
 {
   "fpc_atomic":
   {
-    "Version":0.12011,
+    "Version":0.13002,
     "LauncherVersion":10,
-    "VersionText":"FIX: crash server start on Nobara Linux\nADD: Gamecontroller support\nADD: more player Statistics to server log\nADD: alternative + and - keys for volume change\nFIX: gui glitches during field selection in no stretch mode",
+    "VersionText":"* Check for Nodenames on server and client\n* Windows remote join dialog did not close correctly\n* powerup destroyed was wrong calculated\n* implement missing Brick spawning for haunted house field.\n* Disable hohles in Hurry mode, see https:\/\/bomberman.fandom.com\/wiki\/The_Coal_Mine\n* Disable trampolins in Hurry mode, see https:\/\/bomberman.fandom.com\/wiki\/Deep_Forest_Green\n* Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)",
     "Download_core":
     [
       {
         "file":
         {
-          "HASH":"7e640f6de6d68dff76ceefb7d9d88c87",
-          "SIZE":"3089920",
-          "HASH2":"9b364fbb3fcdb0f0b7c01ed5928744a1",
-          "SIZE2":"7059880",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/Animation_Editor.exe",
+          "HASH":"57f53cbccf465f0888d68d88a048b7ea",
+          "SIZE":"3110400",
+          "HASH2":"2643c4965909171b2896b34bc2576f42",
+          "SIZE2":"7095264",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"ad7729d0da104472b00dacdc98eaa08b",
-          "SIZE":"1378816",
-          "HASH2":"46e6e07fd7112e330a905e5c3e12386a",
-          "SIZE2":"2868368",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/atomic_server.exe",
+          "HASH":"5baedb3f84bbc1be53d76096ab06016c",
+          "SIZE":"1382400",
+          "HASH2":"9062938c86fd4c20a291196313914aa7",
+          "SIZE2":"2868896",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"4ed0c44078480e1832911cfcdfaa6eed",
-          "SIZE":"5995520",
-          "HASH2":"67829e43f72d57a6c5ab74f045b2b963",
-          "SIZE2":"7459016",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/atomic_launcher.exe",
+          "HASH":"01320c479767c35689c0fefdd7579ebc",
+          "SIZE":"5997056",
+          "HASH2":"fe202748de24aa919c1e3c52dd051310",
+          "SIZE2":"7477616",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"48d82ef1879771b1f4798032d62016f7",
+          "HASH":"ac74797df9b3021adafbee8b5f284b1b",
           "SIZE":"2673664",
-          "HASH2":"696de069047e64cfedbb3ace30c3e70c",
-          "SIZE2":"6218968",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/updater.exe",
+          "HASH2":"a073a070009e225ac16cc3098c1af637",
+          "SIZE2":"6220736",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/updater.exe",
           "Filename":"updater.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"4e0b043634dab6d1e8bb0f0e966cc1a9",
-          "SIZE":"4429824",
-          "HASH2":"aeb7d3a05848ff379cf252e0fcb6ca09",
-          "SIZE2":"8870920",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/fpc_atomic.exe",
+          "HASH":"773c7d3b447d37bc575267b08f21e5aa",
+          "SIZE":"4454912",
+          "HASH2":"696b587b09421f92e721fd9156e41423",
+          "SIZE2":"8898928",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"6f70d6c0e63243c4b935de62aff8db85",
-          "SIZE":"2960896",
-          "HASH2":"ea71a4c905a646c6cba783940ab29977",
-          "SIZE2":"6993528",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/cd_data_extractor.exe",
+          "HASH":"eb638a891d5dc6ca8407c76d3721ae2e",
+          "SIZE":"2961920",
+          "HASH2":"f9b4aad3d9b2076ecf80d5632770eb57",
+          "SIZE2":"7012336",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"049c53244bd6dd4f05126e562941539b",
+          "HASH":"ca7a5dc19b59699dc2bf21d6a9581fc2",
           "SIZE":"299520",
           "HASH2":"a68a36302fee06693558654aec47cb38",
           "SIZE2":"2240904",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/ai.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/ai.dll",
           "Filename":"ai.dll"
         }
       },
@@ -90,7 +90,7 @@
           "SIZE":"1471488",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE2":"-1",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/SDL2.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/SDL2.dll",
           "Filename":"SDL2.dll"
         }
       },
@@ -101,7 +101,7 @@
           "SIZE":"166872",
           "HASH2":"255fb8ab523b179320f08f44db36a9fa",
           "SIZE2":"248952",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/bass.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/bass.dll",
           "Filename":"bass.dll"
         }
       },
@@ -110,7 +110,7 @@
         {
           "HASH":"777d7d007fc6c89df46e72b7f7ddf73e",
           "SIZE":"380",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.12011\/Linux_sound_install_script.sh",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
       },
@@ -153,8 +153,8 @@
       {
         "file":
         {
-          "HASH":"e664ccb13d7afcf544f22d7d59be8b86",
-          "SIZE":"104",
+          "HASH":"49f290be9dcce0dfa3bfae5da8a6a49b",
+          "SIZE":"125",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field07\/info.txt",
           "Filename":"data\/maps\/Field07\/info.txt"
         }
