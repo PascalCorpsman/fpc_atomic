@@ -218,13 +218,20 @@ Procedure RenderQuad(TopLeft, BottomRight: TVector2; Angle: Integer; RotatebyOri
 Procedure RenderTiledQuad(Left, Top: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
 {$ELSE}
 // Shader mode rendering helper
+// Normal functions
 Procedure RenderQuad(Left, Top, Depth: Single; Image: TGraphikItem); overload;
 Procedure RenderQuad(Middle: TVector3; Angle: Single; Image: TGraphikItem); overload;
 Procedure RenderAlphaQuad(Left, Top, Depth: Single; Image: TGraphikItem);
 
 Procedure RenderTiledQuad(Left, Top, Depth: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
-Procedure RenderTiledQuad(Left, Top, Depth, TileRenderWidth, TileRenderHeight: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
 Procedure RenderAlphaTiledQuad(Left, Top, Depth: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
+
+// Functions that make custom "scalings" possible
+Procedure RenderQuad(Left, Top, Depth: Single; TileRenderWidth, TileRenderHeight: Single; Image: TGraphikItem); overload;
+Procedure RenderAlphaQuad(Left, Top, Depth: Single; TileRenderWidth, TileRenderHeight: Single; Image: TGraphikItem);
+
+Procedure RenderTiledQuad(Left, Top, Depth, TileRenderWidth, TileRenderHeight: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
+Procedure RenderAlphaTiledQuad(Left, Top, Depth, TileRenderWidth, TileRenderHeight: Single; Index, TilesPerRow, TilesPerCol: integer; Const Image: TGraphikItem);
 {$ENDIF}
 (*
  * 2D rendering mode setup
@@ -1071,11 +1078,28 @@ Begin
   ShaderProgram := 0;
 End;
 
+Procedure RenderAlphaTiledQuad(Left, Top, Depth, TileRenderWidth,
+  TileRenderHeight: Single; Index, TilesPerRow, TilesPerCol: integer;
+  Const Image: TGraphikItem);
+Var
+  b: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
+Begin
+  B := glIsEnabled(gl_Blend);
+  If Not (b{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    glenable(gl_Blend);
+  glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+  RenderTiledQuad(Left, Top, Depth, TileRenderWidth, TileRenderHeight, Index, TilesPerRow, TilesPerCol, Image);
+  If Not (b{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    gldisable(gl_blend);
+
+End;
 {$ENDIF}
 
 Procedure Go2d(Width, Height: Integer);
+{$IFNDEF LEGACYMODE}
 Var
   LocRes: GLint;
+{$ENDIF}
 Begin
 {$IFDEF LEGACYMODE}
   glMatrixMode(GL_PROJECTION);
@@ -1456,6 +1480,91 @@ Begin
     glenable(gl_Blend);
   glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
   RenderQuad(Left, Top, Depth, Image);
+  If Not (b{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    gldisable(gl_blend);
+End;
+
+Procedure RenderQuad(Left, Top, Depth: Single; TileRenderWidth,
+  TileRenderHeight: Single; Image: TGraphikItem);
+Var
+  tw, th: Single;
+  vertices: Array[0..15] Of GLfloat; // 4 vertices * (2 pos + 2 texcoord)
+  LocDepth: GLint;
+  CurrentProgram: GLint;
+Begin
+
+  Case Image.Stretched Of
+    smClamp: Begin
+        tw := Image.OrigWidth / Image.StretchedWidth;
+        th := Image.OrigHeight / Image.StretchedHeight;
+      End;
+    smNone, smStretch, smStretchHard: Begin
+        tw := 1;
+        th := 1;
+      End;
+  End;
+
+  // Vertex 0: bottom-left
+  vertices[0] := left;
+  vertices[1] := top + TileRenderHeight;
+  vertices[2] := 0;
+  vertices[3] := th;
+
+  // Vertex 1: bottom-right
+  vertices[4] := left + TileRenderWidth;
+  vertices[5] := top + TileRenderHeight;
+  vertices[6] := tw;
+  vertices[7] := th;
+
+  // Vertex 2: top-right
+  vertices[8] := left + TileRenderWidth;
+  vertices[9] := top;
+  vertices[10] := tw;
+  vertices[11] := 0;
+
+  // Vertex 3: top-left
+  vertices[12] := left;
+  vertices[13] := top;
+  vertices[14] := 0;
+  vertices[15] := 0;
+
+  glBindTexture(GL_TEXTURE_2D, image.Image);
+  glBindVertexArray(ShaderVAO);
+  glBindBuffer(GL_ARRAY_BUFFER, ShaderVBO);
+  glBufferData(GL_ARRAY_BUFFER, SizeOf(vertices), @vertices[0], GL_DYNAMIC_DRAW);
+
+  // Set depth uniform
+  glGetIntegerv(GL_CURRENT_PROGRAM, @CurrentProgram);
+  LocDepth := glGetUniformLocation(CurrentProgram, 'uDepth');
+  If LocDepth >= 0 Then
+    glUniform1f(LocDepth, Depth);
+
+  // Position attribute (location = 0)
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * SizeOf(GLfloat), Nil);
+
+  // TexCoord attribute (location = 1)
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * SizeOf(GLfloat), Pointer(2 * SizeOf(GLfloat)));
+
+  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+  glDisableVertexAttribArray(0);
+  glDisableVertexAttribArray(1);
+  glBindVertexArray(0);
+
+End;
+
+Procedure RenderAlphaQuad(Left, Top, Depth: Single; TileRenderWidth,
+  TileRenderHeight: Single; Image: TGraphikItem);
+Var
+  b: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
+Begin
+  B := glIsEnabled(gl_Blend);
+  If Not (b{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    glenable(gl_Blend);
+  glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+  RenderQuad(Left, Top, Depth, TileRenderWidth, TileRenderHeight, Image);
   If Not (b{$IFDEF USE_GL} = 1{$ENDIF}) Then
     gldisable(gl_blend);
 End;
