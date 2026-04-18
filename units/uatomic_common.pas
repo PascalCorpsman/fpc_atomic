@@ -128,11 +128,12 @@ Const
    *                       ADD: implement missing Brick spawning for haunted house field.
    *             0.13001 = ADD: Disable hohles in Hurry mode, see https://bomberman.fandom.com/wiki/The_Coal_Mine
    *                       ADD: Disable trampolins in Hurry mode, see https://bomberman.fandom.com/wiki/Deep_Forest_Green
-   *             0.13002 = ADD: Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)
+   * -releaseG - 0.13002 = ADD: Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)
+   *             0.13003 = 
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.13002';
+  Version = '0.13003';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
