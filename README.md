@@ -67,6 +67,9 @@ A: This error occurs because the game cannot detect a "bash" shell on your Linux
 Q: I got "Error: could not find: DATA/ANI/xplode18.ani" warning during CD-Data Extraction<br>
 A: This means, that you did not add the additional .ani file from step1, see [issue14](https://github.com/PascalCorpsman/fpc_atomic/issues/14) for more details or ignore and enjoy the game with a little less dead animations.
 
+Q: I get a error message like this during startup: ![](documentation/OpenGL_Error.png)<br>
+A: This usually means that you are running your machine with multiple graphiccards and selected the wrong one to play the game. Since FPC_Atomic ver. 0.13002 the game uses shader to render, this means that you need to switch your graphics card to "3D-mode".
+
 ## License
 See the license.md file located at [license.md](license.md) for details about the license.
 
