@@ -129,7 +129,7 @@ Const
    *             0.13001 = ADD: Disable hohles in Hurry mode, see https://bomberman.fandom.com/wiki/The_Coal_Mine
    *                       ADD: Disable trampolins in Hurry mode, see https://bomberman.fandom.com/wiki/Deep_Forest_Green
    * -releaseG - 0.13002 = ADD: Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)
-   *             0.13003 = 
+   *             0.13003 = ADD: More relialible kill app on OpenGL error
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
