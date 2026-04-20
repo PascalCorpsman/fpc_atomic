@@ -1271,17 +1271,22 @@ Begin
           SchemQuestionForm.free;
           SchemQuestionForm := Nil;
         End;
-      5: Begin // Play Time
+      5: Begin
+          // Play Time ist in 30s schritten von 90s bis 10 min, Play Time = 0 -> Unendlich und rollierend als Menü
+          // Das Original lässt bis 60s zu, das erzeugt aber einen "Bug", wenn ein Spieler exakt Links oben spawnt wird er
+          // instant gekillt, so hat er 30s zur Flucht ;)
           If key In [VK_LEFT, VK_SUBTRACT] Then Begin
-            Tgame(fOwner).Settings.PlayTime := max(0, Tgame(fOwner).Settings.PlayTime - 15);
-            If Tgame(fOwner).Settings.PlayTime < 80 Then Tgame(fOwner).Settings.PlayTime := 0;
+            Tgame(fOwner).Settings.PlayTime := Tgame(fOwner).Settings.PlayTime - 30;
+            If Tgame(fOwner).Settings.PlayTime < 0 Then Tgame(fOwner).Settings.PlayTime := 600;
+            If Tgame(fOwner).Settings.PlayTime < 90 Then Tgame(fOwner).Settings.PlayTime := 0;
           End
           Else Begin
             If Tgame(fOwner).Settings.PlayTime = 0 Then Begin
               Tgame(fOwner).Settings.PlayTime := 90;
             End
             Else Begin
-              Tgame(fOwner).Settings.PlayTime := Tgame(fOwner).Settings.PlayTime + 15;
+              Tgame(fOwner).Settings.PlayTime := Tgame(fOwner).Settings.PlayTime + 30;
+              If Tgame(fOwner).Settings.PlayTime > 600 Then Tgame(fOwner).Settings.PlayTime := 0;
             End;
           End;
         End;

@@ -238,7 +238,12 @@ Begin
     End;
     sl.Add(s);
   End;
-  sl.SaveToFile(aFilename);
+  If ForceDirectories(ExtractFileDir(aFilename)) Then Begin
+    sl.SaveToFile(aFilename);
+  End
+  Else Begin
+    log('Unable to create: ' + aFilename, llCritical);
+  End;
   sl.free;
 End;
 

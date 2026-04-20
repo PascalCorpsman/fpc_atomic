@@ -130,6 +130,10 @@ Const
    *                       ADD: Disable trampolins in Hurry mode, see https://bomberman.fandom.com/wiki/Deep_Forest_Green
    * -releaseG - 0.13002 = ADD: Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)
    *             0.13003 = ADD: More relialible kill app on OpenGL error
+   *                       ADD: made time edit menu rolling from 90s to 600s + infinity
+   *                       ADD: Save statistics after each round
+   *                       ADD: give extra trigger bomb if availibility already exists and a new bomb is taken
+   *                       ADD: Spawn bricks on haunted hall only if there is no player close
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -518,7 +522,7 @@ Type
     CanPunchBombs: Boolean;
     CanGrabBombs: Boolean;
     CanSpooger: Boolean;
-    TriggerBomb: Integer; //
+    TriggerBomb: Integer; // Anzahl wie viele Bomben der Spieler noch im Trigger Mode legen darf.
     JellyBombs: Boolean;
   End;
 

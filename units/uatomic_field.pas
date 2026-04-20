@@ -1762,19 +1762,23 @@ Procedure TAtomicField.HandlePlayerVsMap(Var Players: TPlayers;
 //        das die Atomics in einem "Range" von +-2 wieder Runter kommen
 Const
   TrampRange = 2;
+
+  // Der Radius Rund um den zu erstellenden Stein in dem sich kein Spieler befinden darf
+  // Damit der Stein erstellt werden kann.
+  SpawnEmptyRange = 2;
 Var
   nx, ny, x, y, xx, yy, i, j: integer;
   b: Boolean;
 Begin
   If fHasSpawningBricks And (Not fPause) Then Begin
-    If GetTickCount64() > fNextBrickSpawnTime Then Begin
+    If GetTickCount64() > fNextBrickSpawnTime Then Begin // https://bomberman.fandom.com/wiki/Haunted_House
       // 1. Suchen eines Freien Spots
       xx := -1; // Markieren als "Nix" gefunden
       // 1.1 Ein Freier Block heist wirklich Komplett Frei
       //     - Kein Solid
       //     - Keine Flammen
       //     - Keine Items
-      //     - Keine Spieler
+      //     - Keine Spieler im Range von SpawnEmptyRange
       For j := 0 To FieldWidth * FieldHeight Do Begin // Wir versuchen einen Freien Spot zu "erraten"
         x := random(FieldWidth);
         yy := random(FieldHeight);
@@ -1785,8 +1789,8 @@ Begin
           b := true;
           For i := 0 To high(Players) Do Begin
             If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
-            If (x = trunc(Players[i].Info.Position.x)) And
-              (yy = trunc(Players[i].Info.Position.y)) Then Begin
+            If (abs(x - trunc(Players[i].Info.Position.x)) <= SpawnEmptyRange) And
+              (abs(yy - trunc(Players[i].Info.Position.y)) <= SpawnEmptyRange) Then Begin
               b := false;
               break;
             End;

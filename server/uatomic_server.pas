@@ -1132,6 +1132,9 @@ Begin
   // Den Victory Screen auswählen
   // Der Gewinner wurde bereits in EndGameCheck bestimmt.
   SendChunk(miShowVictory, Nil, 0);
+  // Abspeichern der Spielerstatistiken nach jedem Spiel !
+  SavePlayerStatistics();
+  SaveStatistics();
   fKickAllPlayer := true;
 End;
 
@@ -1159,6 +1162,11 @@ Begin
         Player.Powers.AvailableBombs := Player.Powers.AvailableBombs + 1;
         Player.Powers.OverAllBombs := Player.Powers.OverAllBombs + 1;
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        // Hat der Spieler in der Vergangenheit bereits den Bombem Trigger
+        // aufgenommen, dann bekommt er durch die neue Bombe auch eine Triggerbombe spendiert.
+        If Player.PowerUpCounter[puTrigger] <> 0 Then Begin
+          Player.Powers.TriggerBomb := Player.Powers.TriggerBomb + 1;
+        End;
       End;
     puLongerFlameLength: Begin
         Player.Powers.FlameLen := min(99, Player.Powers.FlameLen + 1);
@@ -2335,9 +2343,16 @@ Procedure TServer.SaveStatistics;
 Var
   ini: TIniFile;
   EnterID: Integer;
+  s: String;
 Begin
   EnterID := LogEnter('TServer.SaveStatistiks');
-  ini := TIniFile.Create(GetAtomicStatsFile());
+  s := GetAtomicStatsFile();
+  If Not ForceDirectories(ExtractFileDir(s)) Then Begin
+    log('Unable to create: ' + s, llCritical);
+    LogLeave(EnterID);
+    exit;
+  End;
+  ini := TIniFile.Create(s);
   Try
     ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[ssMatchesStarted] + fStatistik.LastRun[ssMatchesStarted]);
     ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[ssGamesStarted] + fStatistik.LastRun[ssGamesStarted]);
