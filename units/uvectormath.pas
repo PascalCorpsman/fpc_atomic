@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uvectormath.pas                                                 12.11.2014 *)
 (*                                                                            *)
-(* Version     : 0.23                                                         *)
+(* Version     : 0.24                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -67,6 +67,7 @@
 (*               0.21 Add Generic Quicksort algorithm                         *)
 (*               0.22 Made uvectormath.inc not used by default                *)
 (*               0.23 Add PointsToVoronoiPolygons                             *)
+(*               0.24 ADD helpers for 2D / 3D calculations                    *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uvectormath;
@@ -294,6 +295,7 @@ Type
 Operator := (p: TPoint): TVector2;
 Operator := (p: TVector2): TPoint;
 Operator := (v: TVector4): TVector3;
+Operator := (M: TMatrix2x2): TMatrix3x3;
 Operator := (M: TMatrix3x3): TMatrixNxM;
 
 Operator - (v: TVector3): TVector3;
@@ -364,7 +366,8 @@ Function IdentityMatrix4x4: TMatrix4x4;
 Procedure RandomizeNxM(Var M: TMatrixNxM);
 
 Function V2(Const X, Y: TBaseType): TVector2;
-Function V3(Const X, Y, Z: TBaseType): TVector3;
+Function V3(Const X, Y, Z: TBaseType): TVector3; overload;
+Function V3(Const V: TVector2; Z: TBaseType): TVector3; overload;
 Function V4(Const X, Y, Z, W: TBaseType): TVector4; Overload;
 Function V4(Const V: Tvector3; Const W: TBaseType): TVector4; Overload;
 Function VN(Const Values: Array Of TBaseType): TVectorN;
@@ -471,6 +474,7 @@ Function TransposeMatrix(Const M: TMatrix3x3): TMatrix3x3; overload;
 Function TransposeMatrix(Const M: TMatrix4x4): TMatrix4x4; overload;
 Function TransposeMatrix(Const M: TMatrixNxM): TMatrixNxM; overload;
 
+Function TranslateMatrix3x3(Const m: TMatrix3x3; tx, ty: TBaseType): TMatrix3x3;
 Function TranslateMatrix4x4(Const m: TMatrix4x4; tx, ty, tz: TBaseType): TMatrix4x4;
 Function ScaleMatrix4x4(Const m: TMatrix4x4; sx, sy, sz: TBaseType): TMatrix4x4;
 
@@ -810,6 +814,16 @@ Begin
   result.x := v.x;
   result.y := v.y;
   result.z := v.z;
+End;
+
+Operator := (M: TMatrix2x2): TMatrix3x3;
+Var
+  i, j: integer;
+Begin
+  result := Zero3x3();
+  For i := 0 To 1 Do
+    For j := 0 To 1 Do
+      result[i, j] := m[i, j];
 End;
 
 Operator := (M: TMatrix3x3): TMatrixNxM;
@@ -1192,6 +1206,13 @@ Function V3(Const X, Y, Z: TBaseType): TVector3;
 Begin
   result.x := x;
   result.y := y;
+  result.z := z;
+End;
+
+Function V3(Const V: TVector2; Z: TBaseType): TVector3;
+Begin
+  result.x := v.x;
+  result.y := v.y;
   result.z := z;
 End;
 
@@ -1718,6 +1739,19 @@ Begin
   result[1, 3] := 0;
   result[2, 3] := 0;
   result[3, 3] := 1;
+End;
+
+Function TranslateMatrix3x3(Const m: TMatrix3x3; tx, ty: TBaseType): TMatrix3x3;
+Var
+  r: Integer;
+Begin
+  // result = m * T  (T = 2D-Translation in homogener 3x3-Matrix, post-multiply)
+  // Spalten 0..1 bleiben, Spalte 2 wird: m_col0*tx + m_col1*ty + m_col2
+  For r := 0 To 2 Do Begin
+    result[r, 0] := m[r, 0];
+    result[r, 1] := m[r, 1];
+    result[r, 2] := m[r, 0] * tx + m[r, 1] * ty + m[r, 2];
+  End;
 End;
 
 Function TranslateMatrix4x4(Const m: TMatrix4x4; tx, ty, tz: TBaseType): TMatrix4x4;
@@ -4374,7 +4408,7 @@ Begin
 End;
 
 Procedure TVectorNhelper.Fill(value: TBaseType);
-var
+Var
   i: Integer;
 Begin
   For i := 0 To high(self) Do Begin

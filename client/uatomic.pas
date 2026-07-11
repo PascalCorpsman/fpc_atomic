@@ -99,9 +99,10 @@ Var
 Function LoadColorTabledImage(PNGImage: String; PlayerColor: TRGB): TBitmap;
 Var
   total: Integer;
-  row: PRGBA;
+  IntfImg: TLazIntfImage;
+  CurColor: TFPColor;
   r, g, b: byte;
-  n, k, m, i: Integer;
+  n, k, m, i, x, y: Integer;
   cr, cg, cb: Integer;
   found: Boolean;
 Begin
@@ -135,38 +136,42 @@ Begin
   cr := PlayerColor.r;
   cg := PlayerColor.g;
   cb := PlayerColor.b;
-  // Speicherrichtung bestimmen: Bottom-up DIB (Windows) vs. Top-down DIB (Linux)
-  If (Result.Height > 1) And (PtrUInt(Result.ScanLine[1]) < PtrUInt(Result.ScanLine[0])) Then
-    row := Result.ScanLine[Result.Height - 1] // Bottom-up: erster Pixel im Speicher = unterste Zeile
-  Else
-    row := Result.ScanLine[0]; // Top-down: erster Pixel im Speicher = oberste Zeile
-  total := Result.Width * Result.Height;
-  While total > 0 Do Begin
-    r := row^.R;
-    g := row^.G;
-    b := row^.B;
+  IntfImg := TLazIntfImage.Create(0, 0);
+  Try
+    IntfImg.LoadFromBitmap(Result.Handle, Result.MaskHandle);
+    For y := 0 To Result.Height - 1 Do Begin
+      For x := 0 To Result.Width - 1 Do Begin
+        CurColor := IntfImg.Colors[x, y];
+        r := CurColor.Red Shr 8;
+        g := CurColor.Green Shr 8;
+        b := CurColor.Blue Shr 8;
 
-    If (g > r) And (g > b) Then Begin
-      n := (r + b) Div 2;
-      k := (g - n);
+        If (g > r) And (g > b) Then Begin
+          n := (r + b) Div 2;
+          k := (g - n);
 
-      r := n + (k * cr) Div 100;
-      g := n + (k * cg) Div 100;
-      b := n + (k * cb) Div 100;
+          r := n + (k * cr) Div 100;
+          g := n + (k * cg) Div 100;
+          b := n + (k * cb) Div 100;
 
-      m := Max(r, Max(g, b));
-      If m > 255 Then Begin
-        r := (r * 255) Div m;
-        g := (g * 255) Div m;
-        b := (b * 255) Div m;
+          m := Max(r, Max(g, b));
+          If m > 255 Then Begin
+            r := (r * 255) Div m;
+            g := (g * 255) Div m;
+            b := (b * 255) Div m;
+          End;
+
+          CurColor.Red := Min(255, r) Shl 8;
+          CurColor.Green := Min(255, g) Shl 8;
+          CurColor.Blue := Min(255, b) Shl 8;
+          CurColor.Alpha := 65535;
+          IntfImg.Colors[x, y] := CurColor;
+        End;
       End;
-
-      row^.R := Min(255, r);
-      row^.G := Min(255, g);
-      row^.B := Min(255, b);
     End;
-    Inc(row);
-    Dec(total);
+    Result.LoadFromIntfImage(IntfImg);
+  Finally
+    IntfImg.Free;
   End;
 End;
 
@@ -440,8 +445,8 @@ Var
   aDirection: Single;
 Begin
   aDirection := Info.Direction;
-  glAlphaFunc(GL_LESS, 0.5);
 {$IFDEF LEGACYMODE}
+  glAlphaFunc(GL_LESS, 0.5);
   glColor4f(1, 1, 1, 1);
   glPushMatrix;
   glEnable(GL_ALPHA_TEST);

@@ -1951,7 +1951,6 @@ Begin
   glPopMatrix;
 {$ELSE}
   SetShaderAlphaThreshold(0.5);
-  glAlphaFunc(GL_LESS, 0.5);
   For i := 0 To fBombCount - 1 Do Begin
     ani.ani := Nil;
     Case fBombs[i].Animation Of
@@ -2678,7 +2677,6 @@ Begin
             glEnable(GL_DEPTH_TEST);
             glPopMatrix();
 {$ELSE}
-            glAlphaFunc(GL_LESS, 0.5);
             SetShaderAlphaThreshold(0.5);
             RenderAlphaQuad((GameHeight - fHurry.Texture.OrigHeight) / 2, (GameWidth - fHurry.Texture.OrigWidth) / 2, 0, fHurry.Texture);
             SetShaderAlphaThreshold(0);

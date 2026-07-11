@@ -195,7 +195,7 @@ Begin
     // Wir Rendern immer 1 LinienSegment
     pStart := aData;
     If aShaderMode = GL_LINES Then Begin
-      For i := 0 To aLen Div 2 Do Begin
+      For i := 0 To aLen Div 2 - 1 Do Begin
         RenderLineSegment(pStart^, (pStart + 1)^);
         inc(pStart);
         inc(pStart);

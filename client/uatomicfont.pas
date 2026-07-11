@@ -165,7 +165,6 @@ Begin
   gldisable(GL_ALPHA_TEST);
   glPopMatrix;
 {$ELSE}
-  glAlphaFunc(GL_LESS, 0.5);
   SetShaderAlphaThreshold(0.5);
   If time < 0 Then Begin
     RenderAlphaQuad(x, y + 10, 0, fInfinity);

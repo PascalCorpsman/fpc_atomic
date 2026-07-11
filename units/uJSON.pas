@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uJSON.pas                                                       ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.15                                                         *)
+(* Version     : 0.16                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -45,6 +45,8 @@
 (*                      Parent Property                                       *)
 (*                      Validy Checks on TJSONArray.addobj                    *)
 (*                      FIX: linebreak on TJSONNodeObj.ToString               *)
+(*               0.16 = Multi Dimensional JSON Array's                        *)
+(*                      Compact feature for ToString                          *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uJSON;
@@ -152,7 +154,7 @@ Type
     Constructor Create; virtual;
     Destructor Destroy; override;
 
-    Function ToString(FrontSpace: String = ''): String; virtual; reintroduce; // Abstract;
+    Function ToString(FrontSpace: String = ''; Compact: Boolean = false): String; virtual; reintroduce; // Abstract;
     Function FindPath(APath: String): TJSONObj; virtual; // Abstract;
 
     Function Clone: TJSONObj; virtual; // Abstract; // Das Object "Clont" sich selbst und wird als neue Instanz zurück gegeben
@@ -173,7 +175,7 @@ Type
     Constructor Create; override;
     Constructor Create(aComment: String); virtual;
 
-    Function ToString(FrontSpace: String = ''): String; override;
+    Function ToString(FrontSpace: String = ''; Compact: Boolean = false): String; override;
     Function FindPath(APath: String): TJSONObj; override;
 
     Function Clone: TJSONObj; override;
@@ -197,7 +199,7 @@ Type
     Function RemoveObj(JSONObj: TJSONObj): Boolean;
     Procedure Clear; override;
 
-    Function ToString(FrontSpace: String = ''): String; override;
+    Function ToString(FrontSpace: String = ''; Compact: Boolean = false): String; override;
 
     Function Clone: TJSONObj; override;
   End;
@@ -218,7 +220,7 @@ Type
     Function RemoveObj(JSONObj: TJSONObj): Boolean;
     Procedure Clear; override;
 
-    Function ToString(FrontSpace: String = ''): String; override;
+    Function ToString(FrontSpace: String = ''; Compact: Boolean = false): String; override;
 
     Function Clone: TJSONObj; override;
   End;
@@ -236,7 +238,7 @@ Type
 
     Constructor Create(aName: String; aValue: TJSONObj); reintroduce;
 
-    Function ToString(FrontSpace: String = ''): String; override;
+    Function ToString(FrontSpace: String = ''; Compact: Boolean = false): String; override;
 
     Function FindPath(APath: String): TJSONObj; override;
 
@@ -255,7 +257,7 @@ Type
 
     Constructor Create(aName, aValue: String; ValueisString: Boolean); reintroduce;
 
-    Function ToString(FrontSpace: String = ''): String; override;
+    Function ToString(FrontSpace: String = ''; Compact: Boolean = false): String; override;
 
     Function Clone: TJSONObj; override;
   End;
@@ -271,7 +273,7 @@ Type
 
     Constructor Create(aValue: String); reintroduce;
 
-    Function ToString(FrontSpace: String = ''): String; override;
+    Function ToString(FrontSpace: String = ''; Compact: Boolean = false): String; override;
 
     Function Clone: TJSONObj; override;
   End;
@@ -360,12 +362,17 @@ Begin
   Comment := aComment;
 End;
 
-Function TJSONComment.ToString(FrontSpace: String): String;
+Function TJSONComment.ToString(FrontSpace: String; Compact: Boolean): String;
 Var
   s: String;
 Begin
   s := StringToJsonString(Comment);
-  result := FrontSpace + '/*' + copy(s, 2, length(s) - 2) + '*/';
+  If compact Then Begin
+    result := '/*' + copy(s, 2, length(s) - 2) + '*/';
+  End
+  Else Begin
+    result := FrontSpace + '/*' + copy(s, 2, length(s) - 2) + '*/';
+  End;
 End;
 
 Function TJSONComment.FindPath(APath: String): TJSONObj;
@@ -401,13 +408,23 @@ Begin
   End;
 End;
 
-Function TJSONTerminal.ToString(FrontSpace: String): String;
+Function TJSONTerminal.ToString(FrontSpace: String; Compact: Boolean): String;
 Begin
-  If fIsString Then Begin
-    result := FrontSpace + StringToJsonString(fName);
+  If Compact Then Begin
+    If fIsString Then Begin
+      result := StringToJsonString(fName);
+    End
+    Else Begin
+      result := fName;
+    End;
   End
   Else Begin
-    result := FrontSpace + fName;
+    If fIsString Then Begin
+      result := FrontSpace + StringToJsonString(fName);
+    End
+    Else Begin
+      result := FrontSpace + fName;
+    End;
   End;
 End;
 
@@ -444,7 +461,7 @@ Begin
   Clear;
 End;
 
-Function TJSONObj.ToString(FrontSpace: String): String;
+Function TJSONObj.ToString(FrontSpace: String; Compact: Boolean): String;
 Begin
   result := '';
   Raise Exception.Create('ToString not implemented in ' + ClassName);
@@ -525,24 +542,40 @@ Begin
   result := length(fobjs);
 End;
 
-Function TJSONArray.ToString(FrontSpace: String): String;
+Function TJSONArray.ToString(FrontSpace: String; Compact: Boolean): String;
 Var
   res: String;
   i: integer;
 Begin
-  res := LineEnding + FrontSpace + '[' + LineEnding;
-  For i := 0 To High(fobjs) Do Begin
-    If (i > 0) Then Begin
-      If (fobjs[i - 1] Is TJSONComment) Then Begin
-        res := res + LineEnding;
-      End
-      Else Begin
-        res := res + ',' + LineEnding;
+  If Compact Then Begin
+    res := '[';
+    For i := 0 To High(fobjs) Do Begin
+      If (i > 0) Then Begin
+        If (fobjs[i - 1] Is TJSONComment) Then Begin
+        End
+        Else Begin
+          res := res + ',';
+        End;
       End;
+      res := res + fobjs[i].ToString(FrontSpace + SpaceIdent, Compact);
     End;
-    res := res + fobjs[i].ToString(FrontSpace + SpaceIdent);
+    result := res + ']';
+  End
+  Else Begin
+    res := LineEnding + FrontSpace + '[' + LineEnding;
+    For i := 0 To High(fobjs) Do Begin
+      If (i > 0) Then Begin
+        If (fobjs[i - 1] Is TJSONComment) Then Begin
+          res := res + LineEnding;
+        End
+        Else Begin
+          res := res + ',' + LineEnding;
+        End;
+      End;
+      res := res + fobjs[i].ToString(FrontSpace + SpaceIdent, Compact);
+    End;
+    result := res + LineEnding + FrontSpace + ']';
   End;
-  result := res + LineEnding + FrontSpace + ']';
 End;
 
 Function TJSONArray.Clone: TJSONObj;
@@ -560,7 +593,8 @@ End;
 Procedure TJSONArray.AddObj(JSONObj: TJSONObj);
 Begin
   If (JSONObj Is TJSONTerminal) Or
-    (JSONObj Is TJSONNode) Then Begin
+    (JSONObj Is TJSONNode) Or
+    (JSONObj Is TJSONArray) Then Begin
     setlength(fobjs, High(fobjs) + 2);
     fobjs[High(fobjs)] := JSONObj;
     JSONObj.fParent := self;
@@ -611,24 +645,41 @@ Begin
   result := length(fobjs);
 End;
 
-Function TJSONNode.ToString(FrontSpace: String): String;
+Function TJSONNode.ToString(FrontSpace: String; Compact: Boolean): String;
 Var
   res: String;
   i: integer;
 Begin
-  res := FrontSpace + '{' + LineEnding;
-  For i := 0 To High(fobjs) Do Begin
-    If (i > 0) Then Begin
-      If (fobjs[i - 1] Is TJSONComment) Then Begin
-        res := res + LineEnding;
-      End
-      Else Begin
-        res := res + ',' + LineEnding;
+  If Compact Then Begin
+
+    res := '{';
+    For i := 0 To High(fobjs) Do Begin
+      If (i > 0) Then Begin
+        If (fobjs[i - 1] Is TJSONComment) Then Begin
+        End
+        Else Begin
+          res := res + ',';
+        End;
       End;
+      res := res + fobjs[i].ToString(FrontSpace + SpaceIdent, Compact);
     End;
-    res := res + fobjs[i].ToString(FrontSpace + SpaceIdent);
+    result := res + '}';
+  End
+  Else Begin
+    res := FrontSpace + '{' + LineEnding;
+    For i := 0 To High(fobjs) Do Begin
+      If (i > 0) Then Begin
+        If (fobjs[i - 1] Is TJSONComment) Then Begin
+          res := res + LineEnding;
+        End
+        Else Begin
+          res := res + ',' + LineEnding;
+        End;
+      End;
+      res := res + fobjs[i].ToString(FrontSpace + SpaceIdent, Compact);
+    End;
+    result := res + LineEnding + FrontSpace + '}';
   End;
-  result := res + LineEnding + FrontSpace + '}';
 End;
 
 Function TJSONNode.Clone: TJSONObj;
@@ -960,13 +1011,23 @@ Begin
   fvalueIsString := ValueisString;
 End;
 
-Function TJSONValue.ToString(FrontSpace: String): String;
+Function TJSONValue.ToString(FrontSpace: String; Compact: Boolean): String;
 Begin
-  If fvalueIsString Then Begin
-    result := FrontSpace + StringToJsonString(fName) + ':' + StringToJsonString(fvalue);
+  If compact Then Begin
+    If fvalueIsString Then Begin
+      result := StringToJsonString(fName) + ':' + StringToJsonString(fvalue);
+    End
+    Else Begin
+      result := StringToJsonString(fName) + ':' + fvalue;
+    End;
   End
   Else Begin
-    result := FrontSpace + StringToJsonString(fName) + ':' + fvalue;
+    If fvalueIsString Then Begin
+      result := FrontSpace + StringToJsonString(fName) + ':' + StringToJsonString(fvalue);
+    End
+    Else Begin
+      result := FrontSpace + StringToJsonString(fName) + ':' + fvalue;
+    End;
   End;
 End;
 
@@ -985,17 +1046,27 @@ Begin
   fvalue.fParent := self;
 End;
 
-Function TJSONNodeObj.ToString(FrontSpace: String): String;
+Function TJSONNodeObj.ToString(FrontSpace: String; Compact: Boolean): String;
 Var
   maybeLE: String;
 Begin
-  If assigned(fvalue) Then Begin
-    maybeLE := '';
-    If fvalue Is TJSONNode Then maybeLE := LineEnding;
-    result := FrontSpace + StringToJsonString(fName) + ':' + maybeLE + fvalue.ToString(FrontSpace);
+  If Compact Then Begin
+    If assigned(fvalue) Then Begin
+      result := StringToJsonString(fName) + ':' + fvalue.ToString(FrontSpace, Compact);
+    End
+    Else Begin
+      result := StringToJsonString(fName) + ':""';
+    End;
   End
   Else Begin
-    result := FrontSpace + StringToJsonString(fName) + ':""';
+    If assigned(fvalue) Then Begin
+      maybeLE := '';
+      If fvalue Is TJSONNode Then maybeLE := LineEnding;
+      result := FrontSpace + StringToJsonString(fName) + ':' + maybeLE + fvalue.ToString(FrontSpace, Compact);
+    End
+    Else Begin
+      result := FrontSpace + StringToJsonString(fName) + ':""';
+    End;
   End;
 End;
 

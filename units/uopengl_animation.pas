@@ -130,7 +130,6 @@ Type
 
     Oder im Shader Modus:
 
-         glAlphaFunc(GL_LESS, 0.5);
          SetShaderAlphaThreshold(0.5);
          Render(Winkel);
          SetShaderAlphaThreshold(0);

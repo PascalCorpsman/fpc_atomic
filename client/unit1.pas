@@ -117,6 +117,7 @@ Type
     Function GetWorkDir(Out Directory: String): Boolean;
     Procedure HideCursor(Sender: TObject);
     Procedure ShowCursor(Sender: TObject);
+    Procedure SetupFrame;
   public
     { public declarations }
     Procedure Load_Atomic_Settings;
@@ -196,9 +197,7 @@ Begin
 {$IFDEF LEGACYMODE}
     glenable(GL_TEXTURE_2D); // Texturen
 {$ENDIF}
-    glEnable(GL_DEPTH_TEST); // Tiefentest
-    glDepthFunc(gl_less);
-    glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
+    SetupFrame;
     OpenGL_GraphikEngine.clear;
 {$IFNDEF LEGACYMODE}
     If Not Assigned(glCreateShader) Then Begin
@@ -238,6 +237,7 @@ Begin
    *)
   If Not Timer1.Enabled Then exit;
   If Not Initialized Then Exit;
+  SetupFrame; // Unter GTK3 muss das bei jedem Frame gemacht werden !
   If Not GameInitialized Then Begin
     If OpenGLControl1.MakeCurrent() Then Begin
       Game.Resize();
@@ -798,6 +798,14 @@ Procedure TForm1.ShowCursor(Sender: TObject);
 Begin
   Cursor := crDefault;
   OpenGLControl1.Cursor := crDefault;
+End;
+
+Procedure TForm1.SetupFrame;
+Begin
+  glEnable(GL_DEPTH_TEST); // Tiefentest
+  glDepthFunc(gl_less);
+  glBlendFunc(gl_one, GL_ONE_MINUS_SRC_ALPHA); // Sorgt dafür, dass Voll Transparente Pixel nicht in den Tiefenpuffer Schreiben.
+
 End;
 
 Procedure TForm1.AddUserMessage(Msg: String; WarnLevel: TLogLevel);

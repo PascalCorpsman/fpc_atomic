@@ -821,7 +821,6 @@ Begin
   glColor3f(1, 1, 1);
   glpopmatrix();
 {$ELSE}
-  glAlphaFunc(GL_LESS, 0.5);
   SetShaderAlphaThreshold(0.5);
   RenderAlphaQuad(0, 0, atomic_Map_Layer + 0.5, fBackTex);
   SetShaderAlphaThreshold(0);
