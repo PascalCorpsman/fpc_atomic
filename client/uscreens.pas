@@ -548,39 +548,17 @@ Procedure TMatchStatistikMenu.Render;
 
 Var
   s, un: String;
-  i: Integer;
-{$IFNDEF LEGACYMODE}
-  c: Integer;
-{$ENDIF}
+  i, c: Integer;
 Begin
   Inherited Render;
-{$IFDEF LEGACYMODE}
-  glpushmatrix();
-  glTranslatef(0, 0, atomic_Map_Layer + 0.5);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glColor4f(1, 1, 1, 1);
-{$ENDIF}
   AtomicFont.BackColor := clBlack;
   AtomicFont.Color := $00A8ADAB;
-{$IFDEF LEGACYMODE}
-  AtomicFont.Textout(150, 100, '(Match winner must score ' + inttostr(TGame(fOwner).Settings.LastWinsToWinMatch) + ' victories)');
-{$ELSE}
   AtomicFont.Textout(150, 100, atomic_Map_Layer + 0.5, '(Match winner must score ' + inttostr(TGame(fOwner).Settings.LastWinsToWinMatch) + ' victories)');
-{$ENDIF}
   s := 'Game Winner was ' + VictorToString(Victor) + ' !';
   AtomicFont.BackColor := clBlack;
   AtomicFont.Color := clwhite;
-{$IFDEF LEGACYMODE}
-  AtomicFont.Textout(150, 150, s);
-{$ELSE}
   AtomicFont.Textout(150, 150, atomic_Map_Layer + 0.5, s);
-{$ENDIF}
-{$IFDEF LEGACYMODE}
-  glPushMatrix;
-  glTranslatef(130, 200, 0);
-{$ELSE}
   c := 0;
-{$ENDIF}
   For i := 0 To high(fPlayers) Do Begin
     If fPlayers[i].UID <> NoPlayer Then Begin
       If i = 1 Then Begin
@@ -594,20 +572,11 @@ Begin
       If un = '' Then un := 'Ai';
       un := PadRight(un, 20);
       s := format('%s: score: %d (kills: %d)', [un, fPlayers[i].Score, fPlayers[i].Kills]);
-{$IFDEF LEGACYMODE}
-      AtomicFont.Textout(0, 0, s);
-      glTranslatef(0, 20, 0);
-{$ELSE}
       AtomicFont.Textout(130, 200 + c * 20, atomic_Map_Layer + 0.5, s);
       inc(c);
-{$ENDIF}
     End;
   End;
   AtomicFont.BackColor := clBlack; // Reset nach außen
-{$IFDEF LEGACYMODE}
-  glPopMatrix;
-  glPopMatrix;
-{$ENDIF}
 End;
 
 { TDrawGameMenu }
@@ -792,35 +761,6 @@ End;
 
 Procedure TFieldSetupMenu.Render;
 Begin
-{$IFDEF LEGACYMODE}
-  // Das Vorschaubild
-  glColor4f(1, 1, 1, 1);
-  // Der Eigentliche Hintergrund
-  glpushmatrix();
-  glAlphaFunc(GL_LESS, 0.5);
-  // Das ist ja eine Textur mit "Fenster" -> Also Alphatest mit an
-  glEnable(GL_ALPHA_TEST);
-  glTranslatef(0, 0, atomic_Map_Layer + 0.5);
-  RenderAlphaQuad(0, 0, fBackTex);
-  gldisable(GL_ALPHA_TEST);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  // In "no" stretch mode we can see the map otherwise, so we block this with 2 "black" patches ;)
-  glColor3f(0, 0, 0);
-  glBegin(GL_QUADS);
-  // 1 Patch right of the screen
-  glVertex2f(640, 0);
-  glVertex2f(640 * 2, 0);
-  glVertex2f(640 * 2, 480);
-  glVertex2f(640, 480);
-  // 1 Patch below of the Screen
-  glVertex2f(0, 480);
-  glVertex2f(640, 480);
-  glVertex2f(640, 480 * 2);
-  glVertex2f(0, 480 * 2);
-  glEnd;
-  glColor3f(1, 1, 1);
-  glpopmatrix();
-{$ELSE}
   SetShaderAlphaThreshold(0.5);
   RenderAlphaQuad(0, 0, atomic_Map_Layer + 0.5, fBackTex);
   SetShaderAlphaThreshold(0);
@@ -841,81 +781,39 @@ Begin
   glShaderVertex(0, 480 * 2, atomic_Map_Layer + 0.5);
   glShaderEnd();
   UseTextureShader;
-{$ENDIF}
   If assigned(ActualField) Then Begin
     AtomicFont.Color := clwhite;
     AtomicFont.BackColor := clBlack;
     If ActualField.Name = '' Then Begin
-{$IFDEF LEGACYMODE}
-      AtomicFont.Textout(55, 176, 'Random Each Game');
-{$ELSE}
       AtomicFont.Textout(55, 176, 0, 'Random Each Game');
-{$ENDIF}
     End
     Else Begin
-{$IFDEF LEGACYMODE}
-      AtomicFont.Textout(55, 176, ActualField.Name);
-{$ELSE}
       AtomicFont.Textout(55, 176, 0, ActualField.Name);
-{$ENDIF}
     End;
   End
   Else Begin
     AtomicFont.Color := clRed;
     AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-    AtomicFont.Textout(55, 176, 'No Field informations...');
-{$ELSE}
     AtomicFont.Textout(55, 176, 0, 'No Field informations...');
-{$ENDIF}
   End;
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-  AtomicFont.Textout(55, 176 + 28, inttostr(LastWinsToWinMatch) + ' Wins to win match');
-{$ELSE}
   AtomicFont.Textout(55, 176 + 28, 0, inttostr(LastWinsToWinMatch) + ' Wins to win match');
-{$ENDIF}
   If PlayerIsFirst Then Begin
-{$IFDEF LEGACYMODE}
-    glPushMatrix();
-    glTranslatef(20, 176 - 14 + 28 * fCursorPos, atomic_Map_Layer + 0.5 + atomic_EPSILON);
-    RenderAlphaQuad(0, 0, fcursorTex);
-    glPopMatrix();
-{$ELSE}
     RenderAlphaQuad(20, 176 - 14 + 28 * fCursorPos, atomic_Map_Layer + 0.5 + atomic_EPSILON, fcursorTex);
-{$ENDIF}
   End
   Else Begin
     AtomicFont.Color := clYellow;
     AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-    AtomicFont.Textout(45, 176 - 28 - 28, 'Wait until ' + MasterPlayerName + LineEnding + 'finished setup.');
-{$ELSE}
     AtomicFont.Textout(45, 176 - 28 - 28, 0, 'Wait until ' + MasterPlayerName + LineEnding + 'finished setup.');
-{$ENDIF}
   End;
   glBindTexture(GL_TEXTURE_2D, 0);
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-  AtomicFont.Textout(60, 400, 'Scheme: ' + SchemeFile);
-{$ELSE}
   AtomicFont.Textout(60, 400, 0, 'Scheme: ' + SchemeFile);
-{$ENDIF}
-{$IFDEF LEGACYMODE}
-  (*
-   * Das Eigentliche Kartenvorschau Fenster
-   *)
-  glpushmatrix();
-  glTranslatef(379, 33, 0); // Das Offset zum Vorschaufenster ;)
-{$ENDIF}
   If assigned(ActualField) Then Begin
     ActualField.RenderPreview(379, 33);
   End;
-{$IFDEF LEGACYMODE}
-  glpopmatrix();
-{$ENDIF}
 End;
 
 Procedure TFieldSetupMenu.Reset;
@@ -1026,11 +924,7 @@ Begin
   glBindTexture(GL_TEXTURE_2D, 0);
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-  AtomicFont.Textout(60, 37 + 40, 'Available players:');
-{$ELSE}
   AtomicFont.Textout(60, 37 + 40, 0, 'Available players:');
-{$ENDIF}
   For i := 0 To high(fPlayerDetails) Do Begin
     If i = 1 Then Begin
       AtomicFont.BackColor := clWhite;
@@ -1040,11 +934,7 @@ Begin
     End;
     AtomicFont.Color := AtomicPlayerColorToColor(PlayerColors[i]);
     s := format('Player %0.2d: ', [i + 1]);
-{$IFDEF LEGACYMODE}
-    AtomicFont.Textout(60 + 20, 37 + (i + 1) * 28 + 50, s);
-{$ELSE}
     AtomicFont.Textout(60 + 20, 37 + (i + 1) * 28 + 50, 0, s);
-{$ENDIF}
     If TeamPlay Then Begin
       (*
        * Im Teamplay Färben wir den Detail Text in der teamfarbe ein
@@ -1059,28 +949,13 @@ Begin
       End;
     End;
     s := format('              %s', [fPlayerDetails[i].PlayerData]);
-{$IFDEF LEGACYMODE}
-    AtomicFont.Textout(60 + 20, 37 + (i + 1) * 28 + 50, s);
-{$ELSE}
     AtomicFont.Textout(60 + 20, 37 + (i + 1) * 28 + 50, 0, s);
-{$ENDIF}
   End;
   // Reset am ende
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-  AtomicFont.Textout(60, 400, 'Scheme: ' + fSchemeFile);
-{$ELSE}
   AtomicFont.Textout(60, 400, 0, 'Scheme: ' + fSchemeFile);
-{$ENDIF}
-{$IFDEF LEGACYMODE}
-  glPushMatrix();
-  glTranslatef(60 - 32 + 10, 37 + 14 + 28 * fCursorPos + 50, atomic_Map_Layer + atomic_EPSILON);
-  RenderAlphaQuad(0, 0, fcursorTex);
-  glPopMatrix();
-{$ELSE}
   RenderAlphaQuad(60 - 32 + 10, 37 + 14 + 28 * fCursorPos + 50, atomic_Map_Layer + atomic_EPSILON, fcursorTex);
-{$ENDIF}
 End;
 
 Procedure TPlayerSetupMenu.Reset;
@@ -1140,39 +1015,22 @@ Begin
   glBindTexture(GL_TEXTURE_2D, 0);
   AtomicFont.color := $00EAE556;
   AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-  glColor3f(1, 1, 1);
-  AtomicFont.Textout(100, 50, 'Our Nodename is: ''' + Tgame(fOwner).Settings.NodeName + '''');
-{$ELSE}
   AtomicFont.Textout(100, 50, 0, 'Our Nodename is: ''' + Tgame(fOwner).Settings.NodeName + '''');
-{$ENDIF}
   // Display server IP address if available (when hosting)
   If fServerIP <> '' Then Begin
     serverInfo := 'Server IP: ' + fServerIP + ':' + Tgame(fOwner).Settings.Router_Port;
     AtomicFont.color := clLime; // Green color for server IP
-{$IFDEF LEGACYMODE}
-    AtomicFont.Textout(100, 75, serverInfo);
-{$ELSE}
     AtomicFont.Textout(100, 75, 0, serverInfo);
-{$ENDIF}
   End;
   If Connected Then Begin
     // Der Server hat unseren Login Versuch Grundsätzlich aktzeptiert
     // Wir zeigen nun die Infos der Spieler an, bis der 1. Spieler in den Nächsten Screen umschaltet
     AtomicFont.color := clWhite;
-{$IFDEF LEGACYMODE}
-    AtomicFont.Textout(120, 100, fPlayerInfoString);
-{$ELSE}
     AtomicFont.Textout(120, 100, 0, fPlayerInfoString);
-{$ENDIF}
   End
   Else Begin
     AtomicFont.color := clYellow;
-{$IFDEF LEGACYMODE}
-    AtomicFont.Textout(120, 100, 'Waiting for server to host a game..');
-{$ELSE}
     AtomicFont.Textout(120, 100, 0, 'Waiting for server to host a game..');
-{$ENDIF}
   End;
 End;
 
@@ -1392,7 +1250,7 @@ Begin
   glBindTexture(GL_TEXTURE_2D, 0);
   AtomicFont.BackColor := clblack;
   AtomicFont.Color := clwhite;
-  AtomicFont.Textout(60, 37{$IFNDEF LEGACYMODE}, atomic_Map_Layer + atomic_EPSILON{$ENDIF},
+  AtomicFont.Textout(60, 37, atomic_Map_Layer + atomic_EPSILON,
     'Team Play: ' + BoolToStr(TGame(fOwner).Settings.TeamPlay, 'Yes', 'No') + LineEnding + LineEnding +
     'Random Start: ' + BoolToStr(TGame(fOwner).Settings.RandomStart, 'Yes', 'No') + LineEnding + LineEnding +
     'Node Name: ''' + TGame(fOwner).Settings.NodeName + '''' + LineEnding + LineEnding +
@@ -1407,14 +1265,7 @@ Begin
     'Fullscreen: ' + BoolToStr(TGame(fOwner).Settings.Fullscreen, 'Yes', 'No') + LineEnding + LineEnding +
     'Keep aspect ratio: ' + BoolToStr(TGame(fOwner).Settings.Proportional, 'Yes', 'No')
     );
-{$IFDEF LEGACYMODE}
-  glPushMatrix();
-  glTranslatef(20, 25 + 28 * fCursorPos, atomic_Map_Layer + atomic_EPSILON);
-  RenderAlphaQuad(0, 0, fcursorTex);
-  glPopMatrix();
-{$ELSE}
   RenderAlphaQuad(20, 25 + 28 * fCursorPos, atomic_Map_Layer + atomic_EPSILON, fcursorTex);
-{$ENDIF}
 End;
 
 Procedure TOptionsMenu.Reset;
@@ -1521,14 +1372,7 @@ End;
 Procedure TMainMenu.Render;
 Begin
   Inherited Render;
-{$IFDEF LEGACYMODE}
-  glPushMatrix();
-  glTranslatef(310, 100 + fCursorPos * 37, atomic_Map_Layer + atomic_EPSILON);
-  fCursor.Render(0);
-  glPopMatrix();
-{$ELSE}
   fCursor.Render(310, 100 + fCursorPos * 37, atomic_Map_Layer + atomic_EPSILON, 0);
-{$ENDIF}
 End;
 
 Procedure TMainMenu.Reset;
@@ -1578,15 +1422,7 @@ Begin
   (*
    * Die Hintergrund Graphik kann auf jeden Fall gerendert werden..
    *)
-{$IFDEF LEGACYMODE}
-  glpushmatrix();
-  glTranslatef(0, 0, atomic_Map_Layer);
-  glColor3f(1, 1, 1);
-  RenderQuad(0, 0, fBackTex);
-  glpopmatrix();
-{$ELSE}
   RenderQuad(0, 0, atomic_Map_Layer, fBackTex);
-{$ENDIF}
 End;
 
 Procedure TScreen.LoadFromDisk(ResPath: String);

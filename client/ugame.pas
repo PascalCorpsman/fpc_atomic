@@ -320,31 +320,6 @@ Var
   s: Single;
 Begin
   If GetTickCount64 - fLastChangeTick > AtomicShowSoundInfoTime Then exit;
-{$IFDEF LEGACYMODE}
-  glPushMatrix();
-  glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glDisable(GL_DEPTH_TEST);
-  // Anzeige "Volume"
-  glBegin(GL_QUADS);
-  glColor3f(0, 0, 0);
-  glVertex2f(x, y);
-  glVertex2f(x, y + h);
-  glVertex2f(x + w, y + h);
-  glVertex2f(x + w, y);
-  s := 1 - fVolume / 10000;
-  glColor3f(0, 1, 1);
-  glVertex2f(x, y + s * h);
-  glVertex2f(x, y + h);
-  glVertex2f(x + w, y + h);
-  glVertex2f(x + w, y + s * h);
-  glend;
-  // Anzeige Musik
-  OpenGL_ASCII_Font.Color := clWhite;
-  OpenGL_ASCII_Font.Textout(320 - 32, 400, 'Musik ' + BoolToStr(fMusik, 'on', 'off'));
-  glEnable(GL_DEPTH_TEST);
-  glPopMatrix();
-{$ELSE}
   UseColorShader;
   //glPushMatrix();
   //glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
@@ -372,7 +347,6 @@ Begin
   OpenGL_ASCII_Font.Textout(320 - 32, 400, atomic_dialog_Layer + atomic_EPSILON, 'Musik ' + BoolToStr(fMusik, 'on', 'off'));
   glEnable(GL_DEPTH_TEST);
   //glPopMatrix();
-{$ENDIF}
 End;
 
 { TGame }
@@ -1862,10 +1836,6 @@ Var
   x, y, i: Integer;
   s: String;
 Begin
-{$IFDEF LEGACYMODE}
-  glPushMatrix;
-  glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
-{$ENDIF}
   (*
    * Die Spieler Info's
    *)
@@ -1882,26 +1852,11 @@ Begin
       x := (i Div 2) * 100 + 10;
       y := (i Mod 2) * 16 + 10;
       glBindTexture(GL_TEXTURE_2D, 0);
-{$IFDEF LEGACYMODE}
-      AtomicFont.Textout(x, y, s);
-{$ELSE}
       AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, s);
-{$ENDIF}
       If Not fPlayer[i].Info.Alive Then Begin
-{$IFDEF LEGACYMODE}
-        glColor4f(1, 1, 1, 1);
-        glPushMatrix;
-        glTranslatef(x - 4, y - 4, atomic_EPSILON);
-        glAlphaFunc(GL_LESS, 0.5);
-        glEnable(GL_ALPHA_TEST);
-        RenderAlphaQuad(0, 0, fPlayerdeadTex);
-        gldisable(GL_ALPHA_TEST);
-        glPopMatrix;
-{$ELSE}
         SetShaderAlphaThreshold(0.5);
         RenderAlphaQuad(x - 4, y - 4, atomic_dialog_Layer + atomic_EPSILON + atomic_EPSILON, fPlayerdeadTex);
         SetShaderAlphaThreshold(0);
-{$ENDIF}
       End;
     End;
   End;
@@ -1909,13 +1864,7 @@ Begin
   (*
    * Die Verbleibende Spielzeit
    *)
-{$IFDEF LEGACYMODE}
-  glColor3f(1, 1, 1);
-  AtomicBigFont.Textout(500, 10, fPlayingTime_s);
-  glPopMatrix;
-{$ELSE}
   AtomicBigFont.Textout(500, 10, atomic_dialog_Layer + atomic_EPSILON, fPlayingTime_s);
-{$ENDIF}
 End;
 
 Procedure TGame.RenderBombs;
@@ -1923,33 +1872,6 @@ Var
   i: Integer;
   ani: TAnimation;
 Begin
-{$IFDEF LEGACYMODE}
-  glPushMatrix;
-  glColor4f(1, 1, 1, 1);
-  glAlphaFunc(GL_LESS, 0.5);
-  glEnable(GL_ALPHA_TEST);
-  glTranslatef(0, 0, atomic_Bomb_Layer);
-  For i := 0 To fBombCount - 1 Do Begin
-    glPushMatrix;
-    glTranslatef(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth, FieldyOff + fBombs[i].Position.y * FieldBlockHeight, 0);
-    ani.ani := Nil;
-    Case fBombs[i].Animation Of
-      baNormal: ani := fAtomics[fBombs[i].ColorIndex].Bomb;
-      baTimeTriggered: ani := fAtomics[fBombs[i].ColorIndex].Bomb_trigger;
-      baDud: ani := fAtomics[fBombs[i].ColorIndex].Bomb_dud;
-      baWobble: ani := fAtomics[fBombs[i].ColorIndex].Bomb_Wobble;
-    End;
-    If Not assigned(ani.ani) Then Begin
-      LogShow('Error: TGame.RenderBombs: no Animation found.', llFatal);
-    End;
-    ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
-    glTranslatef(ani.OffsetX, ani.OffsetY, 0);
-    ani.ani.Render(0);
-    glPopMatrix;
-  End;
-  gldisable(GL_ALPHA_TEST);
-  glPopMatrix;
-{$ELSE}
   SetShaderAlphaThreshold(0.5);
   For i := 0 To fBombCount - 1 Do Begin
     ani.ani := Nil;
@@ -1966,7 +1888,6 @@ Begin
     ani.ani.Render(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth + ani.OffsetX, FieldyOff + fBombs[i].Position.y * FieldBlockHeight + ani.OffsetY, atomic_Bomb_Layer, 0);
   End;
   SetShaderAlphaThreshold(0);
-{$ENDIF}
 End;
 
 Procedure TGame.PingForOpenGames;
@@ -2610,24 +2531,15 @@ Var
   m: TMatrix4x4;
 Begin
   Go2d(fViewPortInfo.ScreenWidth, fViewPortInfo.ScreenHeight);
-{$IFDEF LEGACYMODE}
-  glTranslatef(fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
-  glScalef(fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
-{$ELSE}
   m := IdentityMatrix4x4;
   m := TranslateMatrix4x4(m, fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
   m := ScaleMatrix4x4(m, fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
   SetShaderTransform(m);
-{$ENDIF}
 
   If Not fInitialized Then Begin
     glBindTexture(GL_TEXTURE_2D, 0);
     OpenGL_ASCII_Font.Color := clred;
-{$IFDEF LEGACYMODE}
-    OpenGL_ASCII_Font.Textout(20, 50,
-{$ELSE}
     OpenGL_ASCII_Font.Textout(fViewPortInfo.TopLeft.X + 20, fViewPortInfo.TopLeft.y + 50,
-{$ENDIF}
       'Not initialized!' + LineEnding +
       'Error during loading, please restart application.' + LineEnding + LineEnding +
       'If the problem persists try a re run of the cd_data_extractor'
@@ -2652,44 +2564,23 @@ Begin
           glBindTexture(GL_TEXTURE_2D, 0);
           AtomicFont.Color := clYellow;
           AtomicFont.BackColor := clBlack;
-{$IFDEF LEGACYMODE}
-          glPushMatrix();
-          glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
-          AtomicFont.Textout(320 - 2 * 14, GameHeight Div 2, 'Pause');
-          glPopMatrix();
-{$ELSE}
           AtomicFont.Textout(320 - 2 * 14, GameHeight Div 2, atomic_dialog_Layer + atomic_EPSILON, 'Pause');
-{$ENDIF}
         End;
         RenderFieldHeader();
         // TODO: Auslagern in eine eigene Procedur
         If fHurry.Enabled Then Begin // Wenn An, dann 5 mal Flashen und wieder aus ;)
           n := (GetTickCount64 - fHurry.TimeStamp) Div 500;
           If n Mod 2 = 0 Then Begin
-{$IFDEF LEGACYMODE}
-            glPushMatrix();
-            glDisable(GL_DEPTH_TEST);
-            glColor4f(1, 1, 1, 1);
-            glAlphaFunc(GL_LESS, 0.5);
-            glEnable(GL_ALPHA_TEST);
-            RenderAlphaQuad((GameHeight - fHurry.Texture.OrigHeight) Div 2, (GameWidth - fHurry.Texture.OrigWidth) Div 2, fHurry.Texture);
-            gldisable(GL_ALPHA_TEST);
-            glEnable(GL_DEPTH_TEST);
-            glPopMatrix();
-{$ELSE}
             SetShaderAlphaThreshold(0.5);
             RenderAlphaQuad((GameHeight - fHurry.Texture.OrigHeight) / 2, (GameWidth - fHurry.Texture.OrigWidth) / 2, 0, fHurry.Texture);
             SetShaderAlphaThreshold(0);
-{$ENDIF}
           End;
           If n > 5 Then fHurry.Enabled := false;
         End;
       End;
   End;
   fSoundInfo.Render;
-{$IFNDEF LEGACYMODE}
   ResetShaderTransform;
-{$ENDIF}
   Exit2d();
 End;
 

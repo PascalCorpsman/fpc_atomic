@@ -3,9 +3,6 @@
   <ProjectOptions>
     <Version Value="13"/>
     <General>
-      <Flags>
-        <CompatibilityMode Value="True"/>
-      </Flags>
       <SessionStorage Value="InProjectDir"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
@@ -14,8 +11,8 @@
       <Language Value=""/>
       <CharSet Value=""/>
     </VersionInfo>
-    <BuildModes Count="1">
-      <Item1 Name="default" Default="True"/>
+    <BuildModes>
+      <Item Name="default" Default="True"/>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -25,167 +22,167 @@
         <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
       </local>
       <FormatVersion Value="2"/>
-      <Modes Count="1">
-        <Mode0 Name="default">
+      <Modes>
+        <Mode Name="default">
           <local>
             <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
           </local>
-        </Mode0>
+        </Mode>
       </Modes>
     </RunParams>
-    <RequiredPackages Count="4">
-      <Item1>
+    <RequiredPackages>
+      <Item>
         <PackageName Value="lnetvisual"/>
-      </Item1>
-      <Item2>
+      </Item>
+      <Item>
         <PackageName Value="ImagesForLazarus"/>
-      </Item2>
-      <Item3>
+      </Item>
+      <Item>
         <PackageName Value="LazOpenGLContext"/>
-      </Item3>
-      <Item4>
+      </Item>
+      <Item>
         <PackageName Value="LCL"/>
-      </Item4>
+      </Item>
     </RequiredPackages>
-    <Units Count="32">
-      <Unit0>
+    <Units>
+      <Unit>
         <Filename Value="fpc_atomic.lpr"/>
         <IsPartOfProject Value="True"/>
-      </Unit0>
-      <Unit1>
+      </Unit>
+      <Unit>
         <Filename Value="unit1.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
-      </Unit1>
-      <Unit2>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/OpenGL/uopengl_graphikengine.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit2>
-      <Unit3>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/Graphik/ugraphics.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit3>
-      <Unit4>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/DatenSteuerung/uvectormath.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit4>
-      <Unit5>
+      </Unit>
+      <Unit>
         <Filename Value="uloaderdialog.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit5>
-      <Unit6>
+      </Unit>
+      <Unit>
         <Filename Value="../units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit6>
-      <Unit7>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/OpenGL/uopengl_ascii_font.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uOpenGL_ASCII_Font"/>
-      </Unit7>
-      <Unit8>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/DatenSteuerung/ulogger.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit8>
-      <Unit9>
+      </Unit>
+      <Unit>
         <Filename Value="ulogger.inc"/>
         <IsPartOfProject Value="True"/>
-      </Unit9>
-      <Unit10>
+      </Unit>
+      <Unit>
         <Filename Value="unit18.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Form18"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit18"/>
-      </Unit10>
-      <Unit11>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/OpenGL/uopengl_animation.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit11>
-      <Unit12>
+      </Unit>
+      <Unit>
         <Filename Value="uscreens.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit12>
-      <Unit13>
+      </Unit>
+      <Unit>
         <Filename Value="../units/uatomic_messages.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit13>
-      <Unit14>
+      </Unit>
+      <Unit>
         <Filename Value="uatomicfont.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit14>
-      <Unit15>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/OpenGL/uopengl_ascii_font.ressource"/>
         <IsPartOfProject Value="True"/>
-      </Unit15>
-      <Unit16>
+      </Unit>
+      <Unit>
         <Filename Value="uatomicfont.ressource"/>
         <IsPartOfProject Value="True"/>
-      </Unit16>
-      <Unit17>
+      </Unit>
+      <Unit>
         <Filename Value="../units/uatomic_field.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit17>
-      <Unit18>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/TCP_IP/uchunkmanager.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uChunkmanager"/>
-      </Unit18>
-      <Unit19>
+      </Unit>
+      <Unit>
         <Filename Value="uchunkmanager.inc"/>
         <IsPartOfProject Value="True"/>
-      </Unit19>
-      <Unit20>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/TCP_IP/uip.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit20>
-      <Unit21>
+      </Unit>
+      <Unit>
         <Filename Value="ugame.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit21>
-      <Unit22>
+      </Unit>
+      <Unit>
         <Filename Value="uatomic.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit22>
-      <Unit23>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/OpenGL/uopengl_spriteengine.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit23>
-      <Unit24>
+      </Unit>
+      <Unit>
         <Filename Value="globaldefines.inc"/>
         <IsPartOfProject Value="True"/>
-      </Unit24>
-      <Unit25>
+      </Unit>
+      <Unit>
         <Filename Value="usounds.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit25>
-      <Unit26>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/DatenSteuerung/udomxml.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uDOMXML"/>
-      </Unit26>
-      <Unit27>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/DatenSteuerung/ufifo.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit27>
-      <Unit28>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/OpenGL/uopengl_font_common.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit28>
-      <Unit29>
+      </Unit>
+      <Unit>
         <Filename Value="../units/ukeyboarddialog.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit29>
-      <Unit30>
+      </Unit>
+      <Unit>
         <Filename Value="../units/ukeygrabber.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit30>
-      <Unit31>
+      </Unit>
+      <Unit>
         <Filename Value="usdl_input.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit31>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -214,16 +211,16 @@
     </Other>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="3">
-      <Item1>
+    <Exceptions>
+      <Item>
         <Name Value="EAbort"/>
-      </Item1>
-      <Item2>
+      </Item>
+      <Item>
         <Name Value="ECodetoolError"/>
-      </Item2>
-      <Item3>
+      </Item>
+      <Item>
         <Name Value="EFOpenError"/>
-      </Item3>
+      </Item>
     </Exceptions>
   </Debugging>
 </CONFIG>

@@ -145,10 +145,8 @@ Uses lazfileutils, LazUTF8, LCLType
   , uscreens
 {$ENDIF}
   , usdl_input
-{$IFNDEF LEGACYMODE}
   , uopengl_legacychecker
   , uopengl_shaderprimitives
-{$ENDIF}
   ;
 
 Var
@@ -164,8 +162,6 @@ End;
 Var
   allowcnt: Integer = 0;
 
-{$IFNDEF LEGACYMODE}
-
 Procedure OnOpenGLLegacyCall(Severity: GLuint; aMessage: String);
 Begin
   // Die Message Box ist ja "async" -> Alles Platt machen
@@ -176,7 +172,6 @@ Begin
     );
   halt;
 End;
-{$ENDIF}
 
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);
 Begin
@@ -189,17 +184,11 @@ Begin
     // Init dglOpenGL.pas , Teil 2
     ReadExtensions; // Anstatt der Extentions kann auch nur der Core geladen werden. ReadOpenGLCore;
     ReadImplementationProperties;
-{$IFNDEF LEGACYMODE}
     RegisterLegacyCheckerCallback(@OnOpenGLLegacyCall);
-{$ENDIF}
   End;
   If allowcnt = 2 Then Begin // Dieses If Sorgt mit dem obigen dafür, dass der Code nur 1 mal ausgeführt wird.
-{$IFDEF LEGACYMODE}
-    glenable(GL_TEXTURE_2D); // Texturen
-{$ENDIF}
     SetupFrame;
     OpenGL_GraphikEngine.clear;
-{$IFNDEF LEGACYMODE}
     If Not Assigned(glCreateShader) Then Begin
       // On Windows it seems that you need to "reload" the core functions for proper function
       ReadExtensions;
@@ -214,7 +203,6 @@ Begin
     ReActivateKHRDebug; // Reenable KHRDebug
     OpenGL_GraphikEngine_InitializeShaderSystem;
     OpenGL_ShaderPrimitives_InitializeShaderSystem;
-{$ENDIF}
     Create_ASCII_Font;
     AtomicFont.CreateFont;
     // Der Anwendung erlauben zu Rendern.
@@ -248,30 +236,19 @@ Begin
   // Render Szene
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
-{$IFDEF LEGACYMODE}
-  glLoadIdentity();
-  glcolor4f(1, 1, 1, 1);
-{$ENDIF}
   glBindTexture(GL_TEXTURE_2D, 0);
   Game.Render();
   If Game.Settings.ShowFPS Then Begin
     Go2d(OpenGLControl1.Width, OpenGLControl1.Height);
     glBindTexture(GL_TEXTURE_2D, 0);
     OpenGL_ASCII_Font.Color := clwhite;
-{$IFDEF LEGACYMODE}
-    glTranslatef(0, 0, atomic_dialog_Layer + atomic_EPSILON);
-{$ENDIF}
     s := 'FPS : ' + inttostr(LastFPS_Counter);
 {$IFDEF DebuggMode}
     If game.fPlayer[1].UID = -1 Then Begin // Wenn der Spieler 1 eine AI ist ..
       s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
     End;
 {$ENDIF}
-{$IFDEF LEGACYMODE}
-    OpenGL_ASCII_Font.Textout(5, 5, s);
-{$ELSE}
     OpenGL_ASCII_Font.Textout(5, 5, atomic_dialog_Layer + atomic_EPSILON, s);
-{$ENDIF}
     Exit2d();
   End;
   OpenGLControl1.SwapBuffers;
@@ -280,17 +257,9 @@ End;
 Procedure TForm1.OpenGLControl1Resize(Sender: TObject);
 Begin
   If Initialized Then Begin
-{$IFDEF LEGACYMODE}
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glViewport(0, 0, OpenGLControl1.Width, OpenGLControl1.Height);
-    gluPerspective(45.0, OpenGLControl1.Width / OpenGLControl1.Height, 0.1, 100.0);
-    glMatrixMode(GL_MODELVIEW);
-{$ELSE}
     If OpenGLControl1.MakeCurrent Then
       glViewport(0, 0, OpenGLControl1.Width, OpenGLControl1.Height);
     OpenGLControl1.Invalidate;
-{$ENDIF}
   End;
 End;
 
@@ -375,9 +344,7 @@ Begin
   Ist Interval auf 16 hängt das gesamte system, bei 17 nicht.
   Generell sollte die Interval Zahl also dynamisch zum Rechenaufwand, mindestens aber immer 17 sein.
   *)
-{$IFNDEF LEGACYMODE}
   OpenGLControl1.AutoResizeViewport := True; // This is crucial for GTK3, don't know why, but without it the demo does not work
-{$ENDIF}
   Timer1.Interval := 17;
   OpenGLControl1.Align := alClient;
   Game := TGame.Create(OpenGLControl1);
@@ -396,12 +363,10 @@ Var
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TForm1.FormDestroy');
-{$IFNDEF LEGACYMODE}
   If OpenGLControl1.MakeCurrent Then Begin
     OpenGL_GraphikEngine_FinalizeShaderSystem;
     OpenGL_ShaderPrimitives_FinalizeShaderSystem;
   End;
-{$ENDIF}
   If assigned(Game) Then
     Game.free;
   Game := Nil;

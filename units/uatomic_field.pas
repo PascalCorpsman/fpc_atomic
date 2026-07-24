@@ -255,30 +255,13 @@ Begin
   (*
    * Die Hintergrund Graphik kann auf jeden Fall gerendert werden..
    *)
-{$IFDEF LEGACYMODE}
-  glColor3f(1, 1, 1);
-  glpushmatrix();
-  glTranslatef(0, 0, atomic_Map_Layer);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fFieldTex);
-{$ELSE}
   RenderQuad(x, y, atomic_Map_Layer, opengl_graphikengine.GetInfo(fFieldTex));
-{$ENDIF}
   For j := 0 To 4 Do Begin
     For i := 0 To 4 Do Begin
       If fPreviewGrid[i, j] = 0 Then Continue;
-{$IFDEF LEGACYMODE}
-      glPushMatrix;
-      glTranslatef(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, atomic_EPSILON);
-      RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fPreviewGrid[i, j]);
-      glPopMatrix;
-{$ELSE}
       RenderAlphaQuad(x + Fieldxoff + i * FieldBlockWidth, y + FieldyOff + j * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, opengl_graphikengine.GetInfo(fPreviewGrid[i, j]));
-{$ENDIF}
     End;
   End;
-{$IFDEF LEGACYMODE}
-  glpopmatrix();
-{$ENDIF}
 End;
 {$ENDIF}
 
@@ -2221,53 +2204,23 @@ End;
 Procedure TAtomicField.RenderBlock(x, y: integer; Brick: TBrickData);
 Begin
   If Brick = bdBlank Then exit;
-{$IFDEF LEGACYMODE}
-  glPushMatrix;
-  glTranslatef(Fieldxoff + x * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, 0);
-{$ENDIF}
   If Brick = bdSolid Then Begin
-{$IFDEF LEGACYMODE}
-    RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fSolidTex);
-{$ELSE}
     RenderAlphaQuad(Fieldxoff + x * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + Epsilon, OpenGL_GraphikEngine.GetInfo(fSolidTex));
-{$ENDIF}
   End
   Else Begin
-{$IFDEF LEGACYMODE}
-    RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fBrickTex);
-{$ELSE}
     RenderAlphaQuad(Fieldxoff + x * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + Epsilon, OpenGL_GraphikEngine.GetInfo(fBrickTex));
-{$ENDIF}
   End;
-{$IFDEF LEGACYMODE}
-  glPopMatrix;
-{$ENDIF}
 End;
 
 Procedure TAtomicField.RenderBlock2(xx, yy, x, y: integer; Brick: TBrickData);
 Begin
   If Brick = bdBlank Then exit;
-{$IFDEF LEGACYMODE}
-  glPushMatrix;
-  glTranslatef(Fieldxoff + x * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, 0);
-{$ENDIF}
   If Brick = bdSolid Then Begin
-{$IFDEF LEGACYMODE}
-    RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fSolidTex);
-{$ELSE}
     RenderAlphaQuad(xx + Fieldxoff + x * FieldBlockWidth, yy + FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, OpenGL_GraphikEngine.GetInfo(fSolidTex));
-{$ENDIF}
   End
   Else Begin
-{$IFDEF LEGACYMODE}
-    RenderAlphaQuad(v2(FieldBlockWidth / 2, FieldBlockHeight / 2), FieldBlockWidth, -FieldBlockHeight, 0, fBrickTex);
-{$ELSE}
     RenderAlphaQuad(xx + Fieldxoff + x * FieldBlockWidth, yy + FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, OpenGL_GraphikEngine.GetInfo(fBrickTex));
-{$ENDIF}
   End;
-{$IFDEF LEGACYMODE}
-  glPopMatrix;
-{$ENDIF}
 End;
 
 Function TAtomicField.OnxBrickOverflow(Sender: TObject): Boolean;
@@ -2288,15 +2241,7 @@ Begin
   (*
    * Die Hintergrund Graphik kann auf jeden Fall gerendert werden..
    *)
-{$IFDEF LEGACYMODE}
-  glColor3f(1, 1, 1);
-  glpushmatrix();
-  glTranslatef(0, 0, atomic_Map_Layer);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fFieldTex);
-  glTranslatef(0, 0, atomic_EPSILON);
-{$ELSE}
   RenderQuad(x, y, atomic_Map_Layer, OpenGL_GraphikEngine.GetInfo(fFieldTex));
-{$ENDIF}
   For j := 0 To 4 Do Begin
     For i := 0 To 4 Do Begin
       Case fPreviewLines[j][i + 1] Of
@@ -2306,9 +2251,6 @@ Begin
       End;
     End;
   End;
-{$IFDEF LEGACYMODE}
-  glpopmatrix();
-{$ENDIF}
 End;
 
 Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
@@ -2316,60 +2258,27 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
   Procedure RenderArrow(x, y: integer);
   Begin
     If fArrowDirs[x, y] <> -1 Then Begin
-{$IFDEF LEGACYMODE}
-      glPushMatrix;
-      glTranslatef(Fieldxoff + x * FieldBlockWidth + 10, FieldyOff + y * FieldBlockHeight + 15, atomic_EPSILON);
-      fArrows.Render(fArrowDirs[x, y]);
-      glPopMatrix;
-{$ELSE}
       fArrows.Render(Fieldxoff + x * FieldBlockWidth + 10, FieldyOff + y * FieldBlockHeight + 15, atomic_Map_Layer + atomic_EPSILON, fArrowDirs[x, y]);
-{$ENDIF}
     End;
   End;
 
   Procedure RenderConveyor(x, y: integer);
   Begin
     If fConveyorDirs[x, y] <> -1 Then Begin
-{$IFDEF LEGACYMODE}
-      glPushMatrix;
-      glTranslatef(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_EPSILON);
-      fConveyors.Render(fConveyorDirs[x, y]);
-      glPopMatrix;
-{$ELSE}
       fConveyors.Render(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_Map_Layer + atomic_EPSILON, fConveyorDirs[x, y]);
-{$ENDIF}
     End;
   End;
 
   Procedure RenderHohle(x, y: integer);
   Begin
     If fholes[x, y] Then Begin
-{$IFDEF LEGACYMODE}
-      glPushMatrix;
-      glTranslatef(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_EPSILON);
-      RenderAlphaQuad(0, 0, fHoleTex);
-      glPopMatrix;
-{$ELSE}
       RenderAlphaQuad(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_Map_Layer + atomic_EPSILON, fHoleTex);
-{$ENDIF}
     End;
   End;
 
   Procedure RenderTramp(x, y: integer);
   Begin
     If fField[x, y].Tramp Then Begin
-{$IFDEF LEGACYMODE}
-      glPushMatrix;
-      glTranslatef(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_EPSILON);
-      If fField[x, y].TrampRunning Then Begin
-        fTramp.AnimationOffset := fField[x, y].TrampOffset;
-        fTramp.Render(fConveyorDirs[x, y]);
-      End
-      Else Begin
-        OpenGL_SpriteEngine.RenderSprite(fTrampStaticSprite);
-      End;
-      glPopMatrix;
-{$ELSE}
       If fField[x, y].TrampRunning Then Begin
         fTramp.AnimationOffset := fField[x, y].TrampOffset;
         fTramp.Render(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_Map_Layer + atomic_EPSILON, fConveyorDirs[x, y]);
@@ -2377,7 +2286,6 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
       Else Begin
         OpenGL_SpriteEngine.RenderSprite(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_Map_Layer + atomic_EPSILON, fTrampStaticSprite);
       End;
-{$ENDIF}
     End;
   End;
 
@@ -2386,29 +2294,12 @@ Var
   FlameAni: TOpenGL_Animation;
   FlameAngle: integer;
 Begin
-{$IFDEF LEGACYMODE}
-  glColor3f(1, 1, 1);
-  glpushmatrix();
-  glTranslatef(0, 0, atomic_Map_Layer);
-  RenderQuad(v2(0, 0), v2(GameWidth, GameHeight), 180, false, fFieldTex);
-  // Alle Blöcke, Flammen Powerups etc ...
-  glpushmatrix();
-  glTranslatef(0, 0, atomic_EPSILON);
-{$ELSE}
   RenderQuad(0, 0, atomic_Map_Layer, OpenGL_GraphikEngine.GetInfo(fFieldTex));
-{$ENDIF}
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
       // Rendern der Brickdaten
       If fxBricks[i, j].Active Then Begin // Soll gerade die "Explode" Animation laufen ??
-{$IFDEF LEGACYMODE}
-        glPushMatrix;
-        glTranslatef(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, 0);
-        fxBricks[i, j].Ani.Render(0);
-        glPopMatrix;
-{$ELSE}
         fxBricks[i, j].Ani.Render(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, 0);
-{$ENDIF}
       End
       Else Begin
         If fField[i, j].BrickData <> bdBlank Then Begin
@@ -2433,26 +2324,12 @@ Begin
             If fup In fField[i, j].Flame Then FlameAngle := 90;
             If fleft In fField[i, j].Flame Then FlameAngle := 180;
             If fdown In fField[i, j].Flame Then FlameAngle := 270;
-{$IFDEF LEGACYMODE}
-            glPushMatrix;
-            glTranslatef(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, 0);
-            FlameAni.Render(FlameAngle);
-            glPopMatrix;
-{$ELSE}
             FlameAni.Render(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, FlameAngle);
-{$ENDIF}
           End
           Else Begin
             // Render der Powerups
             If fField[i, j].PowerUp <> puNone Then Begin
-{$IFDEF LEGACYMODE}
-              glPushMatrix;
-              glTranslatef(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, 0);
-              RenderQuad(0, 0, PowerTexs[fField[i, j].PowerUp]);
-              glPopMatrix;
-{$ELSE}
               RenderQuad(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, PowerTexs[fField[i, j].PowerUp]);
-{$ENDIF}
             End
             Else Begin
               // Es ist einfach nichts auf der Kachel, ggf ist dann ja ein Pfeil oder ein Laufband zu sehen ..
@@ -2474,10 +2351,6 @@ Begin
       End;
     End;
   End;
-{$IFDEF LEGACYMODE}
-  glpopmatrix();
-  glpopmatrix();
-{$ENDIF}
 End;
 
 Procedure TAtomicField.ReadGameingData(Const Stream: TStream);

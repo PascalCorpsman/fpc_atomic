@@ -48,11 +48,7 @@ Type
 
     Procedure CreateFont(); // Muss im Make Current Aufgerufen werden !
 
-{$IFDEF LEGACYMODE}
-    Procedure Textout(x, y: integer; Text: String);
-{$ELSE}
     Procedure Textout(x, y: integer; Z: Single; Text: String);
-{$ENDIF}
   End;
 
   { TAtomicBigFont }
@@ -67,11 +63,7 @@ Type
     Destructor Destroy(); override;
 
     Procedure CreateFont(Dir: String); // Muss im Make Current Aufgerufen werden !
-{$IFDEF LEGACYMODE}
-    Procedure Textout(x, y: integer; Time: integer);
-{$ELSE}
     Procedure Textout(x, y: integer; Z: Single; Time: integer);
-{$ENDIF}
   End;
 
 Var
@@ -123,48 +115,11 @@ Begin
   p.free;
 End;
 
-{$IFDEF LEGACYMODE}
-
-Procedure TAtomicBigFont.Textout(x, y: integer; Time: integer);
-{$ELSE}
-
-
 Procedure TAtomicBigFont.Textout(x, y: integer; Z: Single; Time: integer);
-{$ENDIF}
 Var
   m, s, i, j: integer;
   st: String;
 Begin
-{$IFDEF LEGACYMODE}
-  glPushMatrix;
-  glAlphaFunc(GL_LESS, 0.5);
-  glEnable(GL_ALPHA_TEST);
-  glTranslatef(x, y, 0);
-  If time < 0 Then Begin
-    glTranslatef(0, 10, 0);
-    RenderAlphaQuad(0, 0, fInfinity);
-  End
-  Else Begin
-    m := time Div 60;
-    s := time Mod 60;
-    // Die Minuten
-    st := format('%d', [m]);
-    For i := 1 To length(st) Do Begin
-      RenderAlphaQuad(0, 0, fDigits[ord(st[i]) - ord('0')]);
-      glTranslatef(18, 0, 0);
-    End;
-    RenderAlphaQuad(0, 0, fdouble);
-    glTranslatef(18, 0, 0);
-    // Die Sekunden
-    st := format('%0.2d', [s]);
-    For i := 1 To length(st) Do Begin
-      RenderAlphaQuad(0, 0, fDigits[ord(st[i]) - ord('0')]);
-      glTranslatef(18, 0, 0);
-    End;
-  End;
-  gldisable(GL_ALPHA_TEST);
-  glPopMatrix;
-{$ELSE}
   SetShaderAlphaThreshold(0.5);
   If time < 0 Then Begin
     RenderAlphaQuad(x, y + 10, 0, fInfinity);
@@ -186,7 +141,6 @@ Begin
     End;
   End;
   SetShaderAlphaThreshold(0);
-{$ENDIF}
 End;
 
 { TAtomicFont }
@@ -250,22 +204,10 @@ Begin
   result := Font2.Color;
 End;
 
-{$IFDEF LEGACYMODE}
-
-Procedure TAtomicFont.Textout(x, y: integer; Text: String);
-Begin
-  glPushMatrix;
-  font2.Textout(x, y, text);
-  glTranslatef(0, 0, 0.025);
-  font1.Textout(x, y, text);
-  glPopMatrix;
-{$ELSE}
-
 Procedure TAtomicFont.Textout(x, y: integer; Z: Single; Text: String);
 Begin
   font2.Textout(x, y, z, text);
   font1.Textout(x, y, z + 0.025, text);
-{$ENDIF}
 End;
 
 Initialization

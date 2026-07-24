@@ -134,6 +134,7 @@ Const
    *                       ADD: Save statistics after each round
    *                       ADD: give extra trigger bomb if availibility already exists and a new bomb is taken
    *                       ADD: Spawn bricks on haunted hall only if there is no player close
+   *                       ADD: GTK3 now default on Linux
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
