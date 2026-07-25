@@ -2117,6 +2117,7 @@ Var
   i: TScreenEnum;
   field: TAtomicRandomField;
   EnterID: Integer;
+  ScreenCount, ScreenDone: Integer;
 {$IFDEF ShowInitTime}
 
   Procedure TimePoint(tp: Integer);
@@ -2153,6 +2154,8 @@ Begin
 {$IFDEF ShowInitTime}
         TimePoint(1);
 {$ENDIF}
+        fSerialInit.Loader.Percent := 1;
+        fSerialInit.Loader.Render();
         fSoundInfo.Musik := Settings.PlaySounds;
         fSoundInfo.Volume := Settings.VolumeValue;
         If Not fSoundManager.SetVolumeValue(Settings.VolumeValue) Then Begin
@@ -2179,6 +2182,8 @@ Begin
 
         fSerialInit.p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
         AtomicBigFont.CreateFont(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim);
+        fSerialInit.Loader.Percent := 3;
+        fSerialInit.Loader.Render();
 
         // Laden aller Screens
         fScreens[sMainScreen] := TMainMenu.Create(self);
@@ -2192,15 +2197,26 @@ Begin
         fSerialInit.aStep := 1;
       End;
     1: Begin
+        ScreenDone := 0;
+        fSerialInit.Loader.Percent := 5;
+        fSerialInit.Loader.Render();
         fScreens[sEditFieldSetup] := TFieldSetupMenu.Create(self);
         fScreens[sDrawGame] := TDrawGameMenu.create(self);
         fScreens[sVictory] := TVictoryMenu.create(self);
         fScreens[sMatchStatistik] := TMatchStatistikMenu.create(self);
         fScreens[sOptions] := TOptionsMenu.Create(self);
         fScreens[sExitBomberman] := Nil;
+        ScreenCount := 0;
+        For i In TScreenEnum Do Begin
+          If assigned(fScreens[i]) Then inc(ScreenCount);
+        End;
+        If ScreenCount = 0 Then ScreenCount := 1;
         For i In TScreenEnum Do Begin
           If Not assigned(fScreens[i]) Then Continue;
           fScreens[i].LoadFromDisk(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim);
+          inc(ScreenDone);
+          fSerialInit.Loader.Percent := 5 + round(5 * ScreenDone / ScreenCount);
+          fSerialInit.Loader.Render();
         End;
         fSerialInit.Loader.Percent := 10;
         fSerialInit.Loader.Render();
@@ -2210,6 +2226,8 @@ Begin
 {$IFDEF ShowInitTime}
         TimePoint(2);
 {$ENDIF}
+        fSerialInit.Loader.Percent := 10;
+        fSerialInit.Loader.Render();
         fPowerUpsTex[puNone].Image := 0; // Das Gibts ja net -> Weg
         fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smClamp);
         If fPowerUpsTex[puExtraBomb].Image = 0 Then Begin
@@ -2309,6 +2327,8 @@ Begin
           logleave(EnterID);
           exit;
         End;
+        fSerialInit.Loader.Percent := 10;
+        fSerialInit.Loader.Render();
         // Load PlayerDead Tex correct.
         fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
         fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png');
@@ -2334,6 +2354,8 @@ Begin
           exit;
         End;
         fSerialInit.hohletex := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png');
+        fSerialInit.Loader.Percent := 10;
+        fSerialInit.Loader.Render();
 {$IFDEF ShowInitTime}
         TimePoint(3);
 {$ENDIF}
@@ -2359,6 +2381,8 @@ Begin
           logleave(EnterID);
           exit;
         End;
+        fSerialInit.Loader.Percent := 10;
+        fSerialInit.Loader.Render();
 {$IFDEF ShowInitTime}
         TimePoint(4);
 {$ENDIF}
@@ -2385,6 +2409,8 @@ Begin
 {$IFDEF ShowInitTime}
         TimePoint(5);
 {$ENDIF}
+        fSerialInit.Loader.Percent := 10;
+        fSerialInit.Loader.Render();
         fSerialInit.sl := FindAllDirectories(fSerialInit.p + 'data' + PathDelim + 'maps', false);
         fSerialInit.sl.Sorted := true;
         fSerialInit.sl.Sort;
@@ -2404,11 +2430,17 @@ Begin
 {$IFDEF ShowInitTime}
         TimePoint(6);
 {$ENDIF}
+        fSerialInit.Loader.Percent := 10;
+        fSerialInit.Loader.Render();
         fSerialInit.j := 0;
         fSerialInit.aStep := 3;
       End;
     3: Begin
         If fSerialInit.j < fSerialInit.sl.Count Then Begin
+          // Unter GTK3 vor teuren Schritten einmal explizit presenten,
+          // sonst kann ein schwarzes Zwischenbild sichtbar werden.
+          fSerialInit.Loader.Percent := 10 + round(40 * fSerialInit.j / fSerialInit.sl.count);
+          fSerialInit.Loader.Render();
           fFields[fSerialInit.j] := TAtomicField.Create();
           If Not fFields[fSerialInit.j].loadFromDirectory(fSerialInit.sl[fSerialInit.j], fArrows, fConveyors, fTramp, fSerialInit.hohletex, fSerialInit.TrampStatic) Then Begin
             LogShow('Error, unable to load field:' + fSerialInit.sl[fSerialInit.j], llFatal);
@@ -2417,7 +2449,7 @@ Begin
             LogLeave(EnterID);
             exit;
           End;
-          fSerialInit.Loader.Percent := 10 + round(40 * fSerialInit.j / fSerialInit.sl.count);
+          fSerialInit.Loader.Percent := 10 + round(40 * (fSerialInit.j + 1) / fSerialInit.sl.count);
           fSerialInit.Loader.Render();
 {$IFDEF ShowInitTime}
           TimePoint(7 + fSerialInit.j);
@@ -2425,6 +2457,8 @@ Begin
           inc(fSerialInit.j);
         End
         Else Begin
+          fSerialInit.Loader.Percent := 50;
+          fSerialInit.Loader.Render();
           fSerialInit.aStep := 4;
           fSerialInit.sl.free;
           fSerialInit.sl := Nil;
@@ -2432,6 +2466,8 @@ Begin
       End;
     4: Begin
         // Anfügen der Random Karte
+        fSerialInit.Loader.Percent := 50;
+        fSerialInit.Loader.Render();
         field := TAtomicRandomField.Create(); // Die initialisiert sich bereits richtig ;)
         field.CreatePreview(FFields);
 
