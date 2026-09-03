@@ -70,6 +70,9 @@ A: This means, that you did not add the additional .ani file from step1, see [is
 Q: I get a error message like this during startup: ![](documentation/OpenGL_Error.png)<br>
 A: This usually means that you are running your machine with multiple graphiccards and selected the wrong one to play the game. Since FPC_Atomic ver. 0.13002 the game uses shader to render, this means that you need to switch your graphics card to "3D-mode".
 
+Q: FPC_Atomic does not start on Kubuntu 24.04: "Unable to init the device, Error code :3"<br>
+A: This means the bass driver ist not installed correctly, see [issue16](https://github.com/PascalCorpsman/fpc_atomic/issues/16) for resolution
+
 ## License
 See the license.md file located at [license.md](license.md) for details about the license.
 
