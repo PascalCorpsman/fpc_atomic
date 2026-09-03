@@ -135,6 +135,7 @@ Const
    *                       ADD: give extra trigger bomb if availibility already exists and a new bomb is taken
    *                       ADD: Spawn bricks on haunted hall only if there is no player close
    *                       ADD: GTK3 now default on Linux
+   *                       ADD: Improved SDL2 errormessage
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -648,11 +649,19 @@ Function StringToKeySet(aValue: String): TKeySet;
 
 Function ValidNodeName(aNodeName: String): Boolean;
 
+{$IFNDEF Server} // Das nutzt der Launcher und der Client
+(*
+ * If Dynamic loading of sdl2.dll failed, this routing try's to get at least the fileversion
+ *)
+Function GetSDL2VersionByManualDynamicLoading(LibFilename: String): String;
+{$ENDIF}
+
 Implementation
 
 Uses math
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
   , LCLType
+  , SDL2, dynlibs
 {$ENDIF}
   ;
 
@@ -730,6 +739,26 @@ Begin
 End;
 
 {$IFNDEF Server}
+
+Function GetSDL2VersionByManualDynamicLoading(LibFilename: String): String;
+Var
+  LibHandle: TLibHandle;
+  GetVersion: TSDL_GetVersion_proc;
+  ver: TSDL_Version;
+Begin
+  result := 'Not installed / found.';
+  If LibFilename = '' Then
+    LibFilename := SDL_LibName;
+  LibHandle := LoadLibrary(LibFilename);
+  If LibHandle <> 0 Then Begin
+    GetVersion := TSDL_GetVersion_proc(GetProcAddress(LibHandle, 'SDL_GetVersion'));
+    If assigned(GetVersion) Then Begin
+      GetVersion(@ver);
+      result := format('%d.%d.%d', [ver.major, ver.minor, ver.patch]);
+    End;
+    UnloadLibrary(LibHandle);
+  End;
+End;
 
 Function AtomicDefaultKeys(Index: TKeySet): TKeys;
 Begin

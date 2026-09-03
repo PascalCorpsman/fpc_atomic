@@ -140,16 +140,18 @@ Var
   w: TSDLWizzard;
   SDL_DeviceInfo: TDeviceInfo;
 Begin
-  If Not SDL_LoadLib('') Then Begin
+  If SDL_LoadLib('') Then Begin
     showmessage('Error, could not load sdl2 lib.' + LineEnding +
+      'FPC_Atomic needs to have at least SDL2 version: 2.14' + LineEnding + LineEnding +
       'Please'
 {$IFDEF Windows}
       + ' download sdl2.dll and store it into fpc_atomic root folder'
 {$ELSE}
-      + ' run' + LineEnding + LineEnding + 'sudo aptitude install libsdl2-dev'
+      + ' run:' + LineEnding + '  sudo aptitude install libsdl2-dev'
 {$ENDIF}
       + LineEnding + LineEnding +
-      'and retry.'
+      'and retry.' + LineEnding + LineEnding +
+      'Actual installed version is: ' + GetSDL2VersionByManualDynamicLoading('')
       );
     exit;
   End;
