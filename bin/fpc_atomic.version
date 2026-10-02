@@ -1,250 +1,58 @@
 {
   "fpc_atomic":
   {
-    "Version":0.13002,
+    "Version":0.13003,
     "LauncherVersion":10,
-    "VersionText":"* Check for Nodenames on server and client\n* Windows remote join dialog did not close correctly\n* powerup destroyed was wrong calculated\n* implement missing Brick spawning for haunted house field.\n* Disable hohles in Hurry mode, see https:\/\/bomberman.fandom.com\/wiki\/The_Coal_Mine\n* Disable trampolins in Hurry mode, see https:\/\/bomberman.fandom.com\/wiki\/Deep_Forest_Green\n* Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)",
+    "VersionText":"* More relialible kill app on OpenGL error\n* made time edit menu rolling from 90s to 600s + infinity\n* Save statistics after each round\n* give extra trigger bomb if availibility already exists and a new bomb is taken\n* Spawn bricks on haunted hall only if there is no player close\n* GTK3 now default on Linux\n* Improved SDL2 errormessage",
     "Download_core":
     [
       {
         "file":
         {
-          "HASH":"57f53cbccf465f0888d68d88a048b7ea",
-          "SIZE":"3110400",
-          "HASH2":"2643c4965909171b2896b34bc2576f42",
-          "SIZE2":"7095264",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/Animation_Editor.exe",
-          "Filename":"Animation_Editor.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"5baedb3f84bbc1be53d76096ab06016c",
-          "SIZE":"1382400",
-          "HASH2":"9062938c86fd4c20a291196313914aa7",
-          "SIZE2":"2868896",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/atomic_server.exe",
-          "Filename":"atomic_server.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"01320c479767c35689c0fefdd7579ebc",
-          "SIZE":"5997056",
-          "HASH2":"fe202748de24aa919c1e3c52dd051310",
-          "SIZE2":"7477616",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/atomic_launcher.exe",
-          "Filename":"atomic_launcher.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"ac74797df9b3021adafbee8b5f284b1b",
-          "SIZE":"2673664",
-          "HASH2":"a073a070009e225ac16cc3098c1af637",
-          "SIZE2":"6220736",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/updater.exe",
-          "Filename":"updater.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"773c7d3b447d37bc575267b08f21e5aa",
-          "SIZE":"4454912",
-          "HASH2":"696b587b09421f92e721fd9156e41423",
-          "SIZE2":"8898928",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/fpc_atomic.exe",
-          "Filename":"fpc_atomic.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"eb638a891d5dc6ca8407c76d3721ae2e",
-          "SIZE":"2961920",
-          "HASH2":"f9b4aad3d9b2076ecf80d5632770eb57",
-          "SIZE2":"7012336",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/cd_data_extractor.exe",
-          "Filename":"cd_data_extractor.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"ca7a5dc19b59699dc2bf21d6a9581fc2",
-          "SIZE":"299520",
-          "HASH2":"a68a36302fee06693558654aec47cb38",
-          "SIZE2":"2240904",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/ai.dll",
+          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE":"-1",
+          "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE2":"-1",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/ai.dll",
           "Filename":"ai.dll"
         }
       },
       {
         "file":
         {
-          "HASH":"7a11cbcf3d011d61dfc45eeea0197839",
-          "SIZE":"1471488",
+          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE":"-1",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE2":"-1",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/SDL2.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/SDL2.dll",
           "Filename":"SDL2.dll"
         }
       },
       {
         "file":
         {
-          "HASH":"5ac7b15bd0bef7ea9b3f8e9000a7f562",
-          "SIZE":"166872",
-          "HASH2":"255fb8ab523b179320f08f44db36a9fa",
-          "SIZE2":"248952",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/bass.dll",
+          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE":"-1",
+          "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE2":"-1",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/bass.dll",
           "Filename":"bass.dll"
         }
       },
       {
         "file":
         {
-          "HASH":"777d7d007fc6c89df46e72b7f7ddf73e",
-          "SIZE":"380",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13002\/Linux_sound_install_script.sh",
+          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE":"-1",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
       },
       {
         "file":
         {
-          "HASH":"2d89d10c9b78631c67ab66a1cfc807f6",
-          "SIZE":"116",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field04\/info.txt",
-          "Filename":"data\/maps\/Field04\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"9c8267917f12f4e86cb1b6ff40e9d4a5",
-          "SIZE":"110",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field01\/info.txt",
-          "Filename":"data\/maps\/Field01\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"9edd19d37b302654e7aebeb916260853",
-          "SIZE":"106",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field08\/info.txt",
-          "Filename":"data\/maps\/Field08\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"7fabb51a400fba0ca62c9c3ab828f67c",
-          "SIZE":"97",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field06\/info.txt",
-          "Filename":"data\/maps\/Field06\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"49f290be9dcce0dfa3bfae5da8a6a49b",
-          "SIZE":"125",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field07\/info.txt",
-          "Filename":"data\/maps\/Field07\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"000610f9d7c518a9eff1df5a32fb561b",
-          "SIZE":"117",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field03\/info.txt",
-          "Filename":"data\/maps\/Field03\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"25fa993928716a72315538d194b738b1",
-          "SIZE":"100",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field05\/info.txt",
-          "Filename":"data\/maps\/Field05\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"ab334f9615579e92e012216c81880feb",
-          "SIZE":"125",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field09\/info.txt",
-          "Filename":"data\/maps\/Field09\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"91620a26b8251361fda17e0e146e16db",
-          "SIZE":"106",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field02\/info.txt",
-          "Filename":"data\/maps\/Field02\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"4e88f27789ad96a399263d912e6b6fbb",
-          "SIZE":"102",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field00\/info.txt",
-          "Filename":"data\/maps\/Field00\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"30beaed6330cf2511fc59535984a3ee5",
-          "SIZE":"123",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/maps\/Field10\/info.txt",
-          "Filename":"data\/maps\/Field10\/info.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"a602435c1fe8d9147f6b1bb8aecbf7b8",
-          "SIZE":"421",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/locked_in\/files.txt",
-          "Filename":"data\/atomic\/locked_in\/files.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"35d6d34f29dbf59835026353479f61f4",
-          "SIZE":"280",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/idle\/files.txt",
-          "Filename":"data\/atomic\/idle\/files.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"05164d58c766227168be13b886241c80",
-          "SIZE":"1034",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/die\/files.txt",
-          "Filename":"data\/atomic\/die\/files.txt"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"986bf8e7861c6151f74485f2bc5bac25",
-          "SIZE":"127",
+          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE":"-1",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/data\/atomic\/shadow.png",
           "Filename":"data\/atomic\/shadow.png"
         }
@@ -252,8 +60,8 @@
       {
         "file":
         {
-          "HASH":"d58cdf31766861efd00e29996e56a486",
-          "SIZE":"503",
+          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE":"-1",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/license.md",
           "Filename":"license.md"
         }
@@ -261,8 +69,8 @@
       {
         "file":
         {
-          "HASH":"51e165dd7c91897345745128d51ecc3a",
-          "SIZE":"6739",
+          "HASH":"d41d8cd98f00b204e9800998ecf8427e",
+          "SIZE":"-1",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/MANUAL.md",
           "Filename":"MANUAL.md"
         }
