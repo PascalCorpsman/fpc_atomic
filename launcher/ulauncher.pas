@@ -42,7 +42,7 @@ Const
    * -Released- 0.08 = FIX: add missing SDL_PumpEvents call
    *                   ADD: Parameter "-cti", "-ip", "-port"
    * -Released- 0.09 = - No changes
-   *            0.10 = ADD: switch to ulogger.pas in uatomic_global.pas
+   * -Released- 0.10 = ADD: switch to ulogger.pas in uatomic_global.pas
    * Known Bugs :
    *)
   {

@@ -129,17 +129,18 @@ Const
    *             0.13001 = ADD: Disable hohles in Hurry mode, see https://bomberman.fandom.com/wiki/The_Coal_Mine
    *                       ADD: Disable trampolins in Hurry mode, see https://bomberman.fandom.com/wiki/Deep_Forest_Green
    * -releaseG - 0.13002 = ADD: Switch to OpenGL Core Profile rendering (use shader instead of legacy calls)
-   *             0.13003 = ADD: More relialible kill app on OpenGL error
+   * -releaseG - 0.13003 = ADD: More relialible kill app on OpenGL error
    *                       ADD: made time edit menu rolling from 90s to 600s + infinity
    *                       ADD: Save statistics after each round
    *                       ADD: give extra trigger bomb if availibility already exists and a new bomb is taken
    *                       ADD: Spawn bricks on haunted hall only if there is no player close
    *                       ADD: GTK3 now default on Linux
    *                       ADD: Improved SDL2 errormessage
+   *             0.13004 =
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.13003';
+  Version = '0.13004';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
