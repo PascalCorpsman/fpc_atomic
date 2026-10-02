@@ -164,13 +164,17 @@ Var
 
 Procedure OnOpenGLLegacyCall(Severity: GLuint; aMessage: String);
 Begin
-  // Die Message Box ist ja "async" -> Alles Platt machen
-  form1.Timer1.Enabled := false;
-  form1.Initialized := false;
-  showmessage(
-    format('Error, unallowed OpenGL legacy call: %d = %s', [Severity, aMessage])
-    );
-  halt;
+  If pos('warning', lowercase(aMessage)) <> 0 Then Begin
+    log(format('OpenGL legacy call: %d = %s', [Severity, aMessage]), llWarning);
+  End
+  Else Begin
+    form1.Timer1.Enabled := false;
+    form1.Initialized := false;
+    showmessage(
+      format('Error, unallowed OpenGL legacy call: %d = %s', [Severity, aMessage])
+      );
+    halt;
+  End;
 End;
 
 Procedure TForm1.OpenGLControl1MakeCurrent(Sender: TObject; Var Allow: boolean);

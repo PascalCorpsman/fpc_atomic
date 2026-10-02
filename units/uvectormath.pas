@@ -340,6 +340,7 @@ Operator * (m: TMatrixNxM; v: TVectorN): TVectorN;
 
 Operator * (M1, M2: TMatrix2x2): TMatrix2x2;
 Operator * (M1, M2: TMatrix3x3): TMatrix3x3;
+Operator * (M1, M2: TMatrix4x4): TMatrix4x4;
 Operator * (M1, M2: TMatrixNxM): TMatrixNxM;
 
 Operator / (s: TBaseType; v: TVector2): TVector2;
@@ -975,6 +976,11 @@ Begin
 End;
 
 Operator * (M1, M2: TMatrix3x3): TMatrix3x3;
+Begin
+  result := MulMatrix(m1, m2);
+End;
+
+Operator * (M1, M2: TMatrix4x4): TMatrix4x4;
 Begin
   result := MulMatrix(m1, m2);
 End;
