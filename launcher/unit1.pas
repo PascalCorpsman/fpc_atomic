@@ -32,6 +32,7 @@ Type
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
+    Button6: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -51,6 +52,7 @@ Type
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
+    Procedure Button6Click(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
   private
@@ -76,7 +78,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3, LCLType
+Uses UTF8Process, process, Unit2, Unit3, LCLType, lclintf
   , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global
 {$IFDEF Windows}
   , LResources
@@ -268,6 +270,16 @@ Begin
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
   End;
   dialog.free;
+End;
+
+Procedure TForm1.Button6Click(Sender: TObject);
+Var
+  s: String;
+Begin
+  // Open Config folder
+  s := GetAtomicConfigFile();
+  s := ExtractFileDir(s);
+  OpenURL(s);
 End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);

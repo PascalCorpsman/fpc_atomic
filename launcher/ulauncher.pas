@@ -43,6 +43,7 @@ Const
    *                   ADD: Parameter "-cti", "-ip", "-port"
    * -Released- 0.09 = - No changes
    * -Released- 0.10 = ADD: switch to ulogger.pas in uatomic_global.pas
+   *            0.11 = ADD: Button zum öffnen des config Verzeichnisses
    * Known Bugs :
    *)
   {
@@ -50,7 +51,7 @@ Const
    Die versionsnummer des Launchers, darf nicht wie üblich eins weiter stehen, da beim automatischen FPC_Atomic Release
    immer die fpc_Atomic Version führend ist -> Die Versionsnummer immer erst hoch ziehen, wenn tatsächlich etwas geändert wurde !
   }
-  LauncherVersion: integer = 10;
+  LauncherVersion: integer = 11;
 
 Type
   TFileKind = (fkFile, fkZip, fkExecutable, fkLib, fkScript);

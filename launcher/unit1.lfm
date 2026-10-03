@@ -1,19 +1,19 @@
 object Form1: TForm1
   Left = 347
-  Height = 461
+  Height = 492
   Top = 107
-  Width = 467
+  Width = 464
   Caption = 'Form1'
-  ClientHeight = 461
-  ClientWidth = 467
+  ClientHeight = 492
+  ClientWidth = 464
   Position = poScreenCenter
-  LCLVersion = '4.99.0.0'
+  LCLVersion = '5.99.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   object Image1: TImage
     Left = 8
     Height = 288
-    Top = 40
+    Top = 64
     Width = 192
     Center = True
     Stretch = True
@@ -30,55 +30,55 @@ object Form1: TForm1
   object GroupBox1: TGroupBox
     Left = 208
     Height = 160
-    Top = 72
+    Top = 73
     Width = 248
     Caption = ' Quicksetup '
-    ClientHeight = 143
+    ClientHeight = 142
     ClientWidth = 246
     TabOrder = 1
     object CheckBox1: TCheckBox
       Left = 8
-      Height = 22
-      Top = 8
-      Width = 82
+      Height = 21
+      Top = 6
+      Width = 86
       Caption = 'Show FPS'
       TabOrder = 0
     end
     object CheckBox2: TCheckBox
       Left = 8
-      Height = 22
-      Top = 32
-      Width = 84
+      Height = 21
+      Top = 30
+      Width = 88
       Caption = 'Fullscreen'
       TabOrder = 1
     end
     object Label1: TLabel
       Left = 8
       Height = 16
-      Top = 90
-      Width = 69
+      Top = 87
+      Width = 66
       Caption = 'NodeName'
     end
     object Edit1: TEdit
       Left = 136
-      Height = 26
-      Top = 80
+      Height = 30
+      Top = 78
       Width = 104
       TabOrder = 2
       Text = 'Edit1'
     end
     object CheckBox4: TCheckBox
       Left = 8
-      Height = 22
-      Top = 56
-      Width = 96
+      Height = 21
+      Top = 54
+      Width = 100
       Caption = 'Play sounds'
       TabOrder = 3
     end
     object Button5: TButton
       Left = 8
       Height = 25
-      Top = 112
+      Top = 109
       Width = 232
       Caption = 'Key assignment'
       TabOrder = 4
@@ -86,9 +86,9 @@ object Form1: TForm1
     end
     object CheckBox5: TCheckBox
       Left = 136
-      Height = 22
-      Top = 32
-      Width = 67
+      Height = 21
+      Top = 30
+      Width = 71
       Caption = 'Stretch'
       TabOrder = 5
     end
@@ -105,7 +105,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 8
     Height = 25
-    Top = 424
+    Top = 456
     Width = 448
     Caption = 'Close'
     TabOrder = 3
@@ -117,29 +117,29 @@ object Form1: TForm1
     Top = 240
     Width = 248
     Caption = ' WAN '
-    ClientHeight = 95
+    ClientHeight = 94
     ClientWidth = 246
     TabOrder = 4
     object CheckBox3: TCheckBox
       Left = 8
-      Height = 22
-      Top = 8
-      Width = 176
+      Height = 21
+      Top = 2
+      Width = 180
       Caption = 'connect through internet'
       TabOrder = 0
     end
     object Edit2: TEdit
       Left = 136
-      Height = 26
-      Top = 32
+      Height = 30
+      Top = 26
       Width = 104
       TabOrder = 1
       Text = 'Edit2'
     end
     object Edit3: TEdit
       Left = 136
-      Height = 26
-      Top = 64
+      Height = 30
+      Top = 58
       Width = 104
       TabOrder = 2
       Text = 'Edit3'
@@ -147,15 +147,15 @@ object Form1: TForm1
     object Label2: TLabel
       Left = 8
       Height = 16
-      Top = 42
-      Width = 58
+      Top = 36
+      Width = 57
       Caption = 'Router IP:'
     end
     object Label3: TLabel
       Left = 8
       Height = 16
-      Top = 74
-      Width = 70
+      Top = 68
+      Width = 69
       Caption = 'Router Port'
     end
   end
@@ -167,5 +167,14 @@ object Form1: TForm1
     Caption = 'Run cd data extractor'
     TabOrder = 5
     OnClick = Button4Click
+  end
+  object Button6: TButton
+    Left = 208
+    Height = 25
+    Top = 416
+    Width = 248
+    Caption = 'Open config folder'
+    TabOrder = 6
+    OnClick = Button6Click
   end
 end
