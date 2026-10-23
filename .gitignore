@@ -36,3 +36,24 @@ release/
 server/stats.txt
 stats.txt
 
+
+# Game data (copyrighted, comes from the original CD / extractor). Files already tracked stay tracked.
+data/
+data_*/
+
+# Build output in repo root
+/fpc_atomic
+/atomic_server
+/atomic_launcher
+link*.res
+
+# External dependency (own git clone), not part of this repo
+client/sdl2/SDL2-for-Pascal/
+
+# Local checkout of the own server repo
+/fpcatomic/
+
+# Logs / local config
+*.log
+fpc_atomic.ini
+atomic_server.ini
