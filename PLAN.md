@@ -94,6 +94,7 @@ Jede Phase wird einzeln gebaut (`make server client`) und von Hand getestet.
 - `TModSettings` + Ini-Lader mit Defaults, Splash-Message beim Login.
 - `HurryActive` im Feld, Hilfsfunktion `ModsActive`.
 - Die zwei bestehenden Fehler (Punkt 5) separat fixen.
+- `[Debug]`-Abschnitt der ini (Cheat-Modus Teil A, siehe 5a): `RoundTimeSec`, `StartInvulnMs`, `StartItems`.
 - **Noch kein Protokoll-Bump**, solange nichts Neues gesendet wird.
 
 ### Phase 1 – Unverwundbarkeit (gemeinsamer Kern)
@@ -118,6 +119,7 @@ Jede Phase wird einzeln gebaut (`make server client`) und von Hand getestet.
 - `HandlePlayerVsMap`: Bei Treffer und `HitPoints > 1`: `HitPoints--`, `InvulnTimer := InvulnTimeMs`, Sound, **kein** `KillPlayer`, **keine** Kill-Statistik. Beim letzten Punkt: normales Sterben mit Kill-Wertung.
 - Selbsttreffer kostet ebenfalls einen Punkt.
 - Protokoll-Bump 13 → 14 und Feld `HitPoints` in `TAtomicInfo`; Client zeigt die Trefferpunkte im Spielerstatus (neben `S:`/`K:`).
+- Cheat-Modus Teil B (siehe 5a): `miDebugCommand`, Cheat-Tasten F4–F11, Anzeige „CHEATS AKTIV“, F4-Hilfe und Zustandszeile. Die Cheats für später folgende Mods (Stun, Geister, positive Krankheit) sind zunächst Stubs und werden in den jeweiligen Phasen angebunden.
 
 ### Phase 5 – Geister
 - `CreateNewFrame`, Stelle `Alive := false`: Bei Mod an und `Not HurryActive` → `Info.Ghost := true`, Position auf nächstem Randfeld, `GhostBombActive := false`.
@@ -134,10 +136,51 @@ Jede Phase wird einzeln gebaut (`make server client`) und von Hand getestet.
 - `MANUAL.md` und Changelog-Kopf in `uatomic_common.pas` ergänzen; Version und `ProtocollVersion` (14) erhöhen (Datei markiert die zwei Stellen mit ACHTUNG).
 - Client-Splash zeigt aktive Mods.
 
+## 5a. Cheat-Modus (Test-Hilfe)
+
+Zweck: Mods sofort prüfen, ohne 80 s auf Hurry zu warten oder Situationen zu provozieren. Standardmäßig komplett aus.
+
+### Teil A – Debug-Schalter in der Server-ini (Phase 0)
+
+```ini
+[Debug]
+Cheats=0              ; Master-Schalter, Default aus
+RoundTimeSec=0        ; >0 überschreibt die Rundenzeit (Hurry schon nach ~10 s testbar)
+StartInvulnMs=0       ; Spieler starten bereits unverwundbar
+StartItems=           ; z.B. "kick,punch,grab,bomb*3" für Wurf-/Stun-Tests
+```
+
+### Teil B – Cheat-Tasten im Spiel (Phase 4, zusammen mit Protokoll 14)
+
+- Neue Nachricht `miDebugCommand` (Client → Server). Der Server führt sie nur aus, wenn `Cheats=1` **und** der Absender der Master ist; sonst Verwerfen + Log-Eintrag. Jeder ausgeführte Cheat wird geloggt.
+- Der Server meldet `Cheats=1` beim Login (Splash-Message). Nur dann reagieren die Tasten im Client.
+- Tasten (nur im laufenden Spiel):
+
+| Taste | Wirkung |
+|---|---|
+| F5 | Positive Krankheit auf mich (Unverwundbarkeit 5–20 s) |
+| F6 | Mich selbst treffen (Trefferpunkt abziehen bzw. sterben) |
+| F7 | Mich zum Geist machen / zurück ins Spiel holen |
+| F8 | Hurry sofort starten |
+| F9 | Stun auf mich |
+| F10 | Alle Items (Grab, Kick, Punch, Bomben) |
+| F11 | Trefferpunkte auf Max setzen |
+| F4 | Cheat-Hilfe ein-/ausblenden |
+
+- Cheats prüfen bewusst **nicht** auf `HurryActive` o. Ä., damit Randfälle gezielt erzeugt werden können.
+
+### Anzeige im Spiel (Text)
+
+- **Dauerhaft, solange `Cheats=1`:** kleiner Hinweis oben im Spielfeld, z. B. `CHEATS AKTIV  –  F4: Hilfe`, damit nie unbemerkt mit Cheats gespielt wird (auch für Mitspieler sichtbar, da der Server den Status an alle meldet).
+- **Mit F4 eine Hilfe-Liste** (Overlay mit den Tasten oben, gerendert mit dem vorhandenen `AtomicFont` wie die `S:/K:`-Anzeige).
+- **Zustandsanzeige je Spieler** (nur bei Cheats): neben `S:`/`K:` eine Zeile mit `HP:n`, `INV` (Restzeit), `STUN`, `GHOST` – so sieht man sofort, ob der Mod wie erwartet gewirkt hat. Dafür sendet der Server bei aktivem Cheat-Modus die Restzeiten in `TAtomicInfo` (über die bereits vorhandenen Info-Felder/Flags; Restzeit als zusätzliches `uint16`).
+- **Rückmeldung pro Befehl:** Der Server antwortet mit einer kurzen Text-Nachricht (`SendSplashMessage`), z. B. `Cheat: Hurry gestartet`.
+
 ## 6. Reihenfolge und Abhängigkeiten
 
 0 → 1 → 2 → 3 → 4 → 5 → 6. Phase 1 ist Voraussetzung für 2, 3, 4 (Unverwundbarkeit), Phase 4 für 5 (Trefferpunkte beim Revive), Phase 2 für 5 (Geisterwurf stunnt).
-Protokoll-Bump 14 erfolgt in Phase 4 und umfasst alle neuen Info-Felder in einem Schritt, damit nur einmal inkompatibel wird.
+Protokoll-Bump 14 erfolgt in Phase 4 und umfasst alle neuen Info-Felder sowie `miDebugCommand` in einem Schritt, damit nur einmal inkompatibel wird.
+Der Cheat-Modus (5a) verkürzt die Tests aller Phasen; Teil A steht ab Phase 0 bereit, Teil B ab Phase 4. Aufwand Cheat-Modus: Teil A ca. 10–15 Min, Teil B ca. 30–45 Min.
 
 ## 7. Test (kein Test-Suite vorhanden)
 
