@@ -2652,13 +2652,10 @@ Begin
 {$ENDIF}
       exit;
     End;
-  // Schneller Weg ohne TBitmap (PNG, smNone, smClamp)
-  // smStretchHard nicht: der TBitmap Weg liefert da unter Windows andere Pixel (schwarze Punkte durch Stretchdraw auf pf32bit),
-  // das Ergebnis soll sich durch die Optimierung aber nicht ändern.
-  pData := Nil;
-  If Stretch <> smStretchHard Then Begin
-    pData := LoadPNGAsRGBA(Filename, Stretch, ow, oh, nw, nh);
-  End;
+  // Schneller Weg ohne TBitmap (PNG, smNone, smClamp, smStretchHard)
+  // Bei smStretchHard liefert der TBitmap Weg unter Windows einzelne schwarze Pixel (Stretchdraw auf pf32bit),
+  // dieser Weg dagegen das unverfälschte Bild.
+  pData := LoadPNGAsRGBA(Filename, Stretch, ow, oh, nw, nh);
   If assigned(pData) Then Begin
     Try
       p := pData;
