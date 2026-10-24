@@ -2135,7 +2135,7 @@ Begin
             For j := 0 To fBombCount - 1 Do Begin
               If fBombs[j].MoveDir = bmFly Then Continue;
               If (x = trunc(fBombs[j].Position.x)) And
-                (x = trunc(fBombs[j].Position.x)) Then Begin
+                (y = trunc(fBombs[j].Position.y)) Then Begin
                 b := false;
                 break;
               End;
