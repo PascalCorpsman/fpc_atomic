@@ -83,68 +83,80 @@ Uses
   math
   , dglOpenGL
   , IntfGraphics
-  , fpImage
+  , GraphType
   ;
 
 Type
 
   TBufferedTextures = Record
     OrigFilename: String;
-    CachedPNG: TPortableNetworkGraphic;
+    Image: TLazIntfImage; // Das PNG, einmalig dekodiert als R8G8B8A8
   End;
 
 Var
   BufferedTextures: Array Of TBufferedTextures = Nil;
 
-Function LoadColorTabledImage(PNGImage: String; PlayerColor: TRGB): TBitmap;
+(*
+ * Liefert das PNG als R8G8B8A8 Rohdaten, jede Datei wird nur 1 mal dekodiert.
+ *)
+Function GetRawImage(PNGImage: String): TLazIntfImage;
 Var
-  total: Integer;
-  IntfImg: TLazIntfImage;
-  CurColor: TFPColor;
-  r, g, b: byte;
-  n, k, m, i, x, y: Integer;
-  cr, cg, cb: Integer;
-  found: Boolean;
+  Desc: TRawImageDescription;
+  Reader: TLazReaderPNG;
+  i: Integer;
 Begin
-  Result := Nil;
-
-  If Not FileExists(PNGImage) Then Exit;
-
-  // 1. Prüfen, ob PNG schon im Cache ist
-  Result := TBitmap.Create;
-  Result.PixelFormat := pf32bit;
-
-  found := False;
   For i := 0 To High(BufferedTextures) Do Begin
     If BufferedTextures[i].OrigFilename = PNGImage Then Begin
-      Result.Assign(BufferedTextures[i].CachedPNG);
-      found := True;
-      Break;
+      result := BufferedTextures[i].Image;
+      exit;
     End;
   End;
-
-  // 2. Falls nicht im Cache, laden und speichern
-  If Not found Then Begin
-    SetLength(BufferedTextures, High(BufferedTextures) + 2);
-    BufferedTextures[High(BufferedTextures)].CachedPNG := TPortableNetworkGraphic.Create;
-    BufferedTextures[High(BufferedTextures)].CachedPNG.LoadFromFile(PNGImage);
-    BufferedTextures[High(BufferedTextures)].OrigFilename := PNGImage;
-    Result.Assign(BufferedTextures[High(BufferedTextures)].CachedPNG);
+  result := TLazIntfImage.Create(0, 0);
+  Desc.Init_BPP32_R8G8B8A8_BIO_TTB(0, 0);
+  result.DataDescription := Desc;
+  Reader := TLazReaderPNG.Create;
+  Try
+    result.LoadFromFile(PNGImage, Reader);
+  Finally
+    Reader.Free;
   End;
+  SetLength(BufferedTextures, High(BufferedTextures) + 2);
+  BufferedTextures[High(BufferedTextures)].OrigFilename := PNGImage;
+  BufferedTextures[High(BufferedTextures)].Image := result;
+End;
 
-  // 4. Pixel färben (flat single-pass loop)
+(*
+ * Färbt PNGImage in PlayerColor ein und lädt es unter Name als Textur in die Graphikengine.
+ * Die Textur hat die Originalgröße (kein Auffüllen auf 2^n, spart ca. 40% Speicher), Fuchsia wird
+ * nach dem Einfärben transparent (Alpha = 255).
+ *)
+Function LoadColorTabledTexture(PNGImage: String; PlayerColor: TRGB; Name: String): TGraphikItem;
+Var
+  Img: TLazIntfImage;
+  pSrc, pDst, pStart: PByte;
+  r, g, b, n, k, m, x, y, w, h: Integer;
+  cr, cg, cb: Integer;
+Begin
+  result := Default(TGraphikItem);
+  If Not FileExists(PNGImage) Then Exit;
+  // Jede Kombination aus Datei und Farbe wird nur 1 mal eingefärbt (z.B. flame.png wird 3 mal angefragt)
+  If OpenGL_GraphikEngine.FindItem(Name, result) Then Exit;
+
+  Img := GetRawImage(PNGImage);
+  w := Img.Width;
+  h := Img.Height;
   cr := PlayerColor.r;
   cg := PlayerColor.g;
   cb := PlayerColor.b;
-  IntfImg := TLazIntfImage.Create(0, 0);
+  GetMem(pStart, w * h * 4);
   Try
-    IntfImg.LoadFromBitmap(Result.Handle, Result.MaskHandle);
-    For y := 0 To Result.Height - 1 Do Begin
-      For x := 0 To Result.Width - 1 Do Begin
-        CurColor := IntfImg.Colors[x, y];
-        r := CurColor.Red Shr 8;
-        g := CurColor.Green Shr 8;
-        b := CurColor.Blue Shr 8;
+    For y := 0 To h - 1 Do Begin
+      pSrc := Img.GetDataLineStart(y);
+      pDst := pStart + y * w * 4;
+      For x := 0 To w - 1 Do Begin
+        r := pSrc[0];
+        g := pSrc[1];
+        b := pSrc[2];
 
         If (g > r) And (g > b) Then Begin
           n := (r + b) Div 2;
@@ -160,18 +172,23 @@ Begin
             g := (g * 255) Div m;
             b := (b * 255) Div m;
           End;
-
-          CurColor.Red := Min(255, r) Shl 8;
-          CurColor.Green := Min(255, g) Shl 8;
-          CurColor.Blue := Min(255, b) Shl 8;
-          CurColor.Alpha := 65535;
-          IntfImg.Colors[x, y] := CurColor;
         End;
+
+        pDst[0] := r;
+        pDst[1] := g;
+        pDst[2] := b;
+        // Achtung, Alpha ist invertiert: 255 = transparent
+        If (r = 255) And (g = 0) And (b = 255) Then
+          pDst[3] := 255
+        Else
+          pDst[3] := 0;
+        inc(pSrc, 4);
+        inc(pDst, 4);
       End;
     End;
-    Result.LoadFromIntfImage(IntfImg);
+    result := OpenGL_GraphikEngine.LoadRGBAGraphikItem(pStart, w, h, w, h, Name, true);
   Finally
-    IntfImg.Free;
+    FreeMem(pStart);
   End;
 End;
 
@@ -239,16 +256,11 @@ Begin
   End;
 End;
 
-(*
- * Zumindest auf dem Windows Rechner ist das Langsammer als es durch den RAM zu schleifen ...
- *)
-{.$DEFINE useCaching}
-
 Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
 
   Function CreateAnimation(Filename: String; AngleOffset: Single; TimePerFrame, w, h, fpr, fpc, c: integer; Const RangeData: Array Of Integer): TOpenGL_Animation;
   Var
-    B: TBitmap;
+    gi: TGraphikItem;
     s: TAniSprite;
     i: Integer;
     fn: String;
@@ -257,44 +269,23 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
     If Not FileExists(Filename) Then exit;
     fn := ExtractFileName(Filename) + ColorToString(RGBToColor(aTargetColor));
     (*
-     * Alle Farbtabellen laden wir gepuffert, das ist beim 1. mal zwar langsamer, aber ab dann deutlisch schneller ;)
+     * Die Textur wird direkt aus den Rohdaten erzeugt, die Sprites haben kein Bitmap
+     * (spart den RAM und die Umwege über TBitmap). Der Name entspricht dem, den
+     * TOpenGL_Animation.CreateOpenGLData selbst vergeben würde.
      *)
-{$IFDEF useCaching}
-    fn := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + fn;
-    If FileExists(fn) Then Begin
-      b := TBitmap.Create;
-      b.LoadFromFile(fn);
-    End
-    Else Begin
-{$ENDIF}
-      b := LoadColorTabledImage(Filename, aTargetColor);
-{$IFDEF useCaching}
-      If assigned(b) Then Begin
-        If Not ForceDirectories(GetAppConfigDir(false)) Then exit;
-        b.SaveToFile(fn);
-      End
-      Else Begin
-        exit;
-      End;
-    End;
-{$ENDIF}
+    gi := LoadColorTabledTexture(Filename, aTargetColor, '-Sprite' + fn + 'Image');
+    If gi.Image = 0 Then exit;
     result := TOpenGL_Animation.Create;
     result.AngleOffset := AngleOffset;
     For i := 0 To high(RangeData) Do Begin
       If i <> 0 Then result.AddRange(true); // Die Animation wird bereits mit einem Range erzeugt, also darf der 1. nicht generiert werden ;)
       s := Result.Sprite[i];
-      If i = 0 Then Begin
-        s.Bitmap := b;
-        s.Derived := false;
-      End
-      Else Begin
-        s.Bitmap := Nil;
-        s.Derived := true;
-      End;
+      s.Bitmap := Nil;
+      s.Derived := i <> 0;
       s.AlphaImage := true;
       s.AlphaMask := Nil;
       s.TimePerFrame := TimePerFrame;
-      s.rect := rect(0, 0, b.Width, b.Height);
+      s.rect := rect(0, 0, gi.OrigWidth, gi.OrigHeight);
       s.Name := fn;
       s.Width := w;
       s.Height := h;
@@ -305,10 +296,10 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
       Result.Sprite[i] := s;
     End;
     // Die OpenGL Daten dürfen erst erstellt werden, wenn alle Daten gültig drin sind
-    For i := 0 To high(RangeData) Do Begin
+    Result.CreateOpenGLData(0, gi);
+    For i := 1 To high(RangeData) Do Begin
       Result.CreateOpenGLData(i);
     End;
-    //b.free; -- Wird vom Sprite gemacht !
   End;
 
   Function LoadDir(Dir: String; Var Animations: TAnimations): Boolean;
@@ -509,7 +500,7 @@ Var
 
 Finalization
   For i := 0 To high(BufferedTextures) Do Begin
-    BufferedTextures[i].CachedPNG.Free;
+    BufferedTextures[i].Image.Free;
   End;
   setlength(BufferedTextures, 0);
 

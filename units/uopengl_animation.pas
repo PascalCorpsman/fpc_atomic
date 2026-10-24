@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uopengl_animation.pas                                           15.09.2021 *)
 (*                                                                            *)
-(* Version     : 0.13                                                         *)
+(* Version     : 0.14                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -38,6 +38,8 @@
 (*               0.11 - RemoveUnusedSubImagex                                 *)
 (*               0.12 - FIX: GetFirstBitmap was not correct scaled            *)
 (*               0.13 - Speedup loading by using TMemorystream ?              *)
+(*               0.14 - CreateOpenGLData mit bereits geladener Textur         *)
+(*                      CloneFromShared                                       *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -104,6 +106,7 @@ Type
     Function LoadFromStream(Const Stream: TStream): Boolean;
 
     Function OnSpriteOverflow(Sender: TObject; MetaData: Pointer): Boolean;
+    Function DoCreateOpenGLData(Index: Integer; PreloadedImage: integer): Boolean; // PreloadedImage = 0 -> Textur aus Bitmap erzeugen
   public
     Tag: PtrInt; // Kann der Owner nutzen wie er mag, ist default 0
     AngleOffset: Single; // Ein "Konstantes" Winkel Offset, welches immer drauf gerechnet wird !
@@ -156,13 +159,23 @@ Type
      *)
     Function LoadFromFile(Const Filename: String; InitOpenGLData: Boolean = True): Boolean;
     Procedure CloneFrom(Const Animation: TOpenGL_Animation);
+    (*
+     * Wie CloneFrom, kopiert aber keine Bitmaps, sondern nutzt die bereits geladenen Texturen von Animation mit (deutlich schneller).
+     * Achtung: ohne Bitmap gehen GetFirstBitmap, GetBitmapOf, SaveToFile und CloneFrom auf dem Klon nicht.
+     *)
+    Procedure CloneFromShared(Const Animation: TOpenGL_Animation);
 
     (*
      * Alles zum Verwalten, sollte außer in Editoren nicht verwendet werden !
      *)
     Procedure AddRange(Equalize: Boolean = true);
     Procedure DeleteSprite(Index: integer; Equalize: Boolean = true);
-    Function CreateOpenGLData(Index: Integer): Boolean; // Erzeugt die OpenGL Sachen für den Jeweiligen Index
+    Function CreateOpenGLData(Index: Integer): Boolean; overload; // Erzeugt die OpenGL Sachen für den Jeweiligen Index
+    (*
+     * Wie oben, nutzt für einen nicht abgeleiteten Index aber die bereits geladene Textur Image, Sprite[Index].Bitmap darf dann Nil sein.
+     * Achtung: ohne Bitmap gehen GetFirstBitmap, GetBitmapOf, SaveToFile und CloneFrom nicht.
+     *)
+    Function CreateOpenGLData(Index: Integer; Const Image: TGraphikItem): Boolean; overload;
     Procedure RemoveOpenGLData(Index: Integer; RemoveOpenGLImage: Boolean = false); // Das RemoveOpenGLImage darf nur im Animation Editor gesetzt werden, sonst kümmert sich da die OpenGL-GraphikEngine selbst darum.
 
     Function GetBitmapOf(Index: integer): TBitmap;
@@ -601,9 +614,25 @@ Begin
 End;
 
 Function TOpenGL_Animation.CreateOpenGLData(Index: Integer): Boolean;
+Begin
+  result := DoCreateOpenGLData(Index, 0);
+End;
+
+Function TOpenGL_Animation.CreateOpenGLData(Index: Integer;
+  Const Image: TGraphikItem): Boolean;
+Begin
+  If Image.Image = 0 Then Begin
+    LastError := 'No Image defined';
+    exit(false);
+  End;
+  result := DoCreateOpenGLData(Index, Image.Image);
+End;
+
+Function TOpenGL_Animation.DoCreateOpenGLData(Index: Integer;
+  PreloadedImage: integer): Boolean;
 Var
   d_index: integer;
-  img, i: integer;
+  img, i, bw, bh: integer;
   imgName: String;
   r: TFRect;
   gi: TGraphikItem;
@@ -623,27 +652,32 @@ Begin
     img := OpenGL_SpriteEngine.Sprite[fSprites[d_Index].SpriteIndex].Image.Image;
   End
   Else Begin
-    If Not assigned(fSprites[Index].Bitmap) Then Begin
-      LastError := 'No Bitmap defined';
-      exit;
-    End;
-    If fSprites[Index].AlphaImage Then Begin
-      If assigned(Sprite[index].AlphaMask) Then Begin
-        If (fSprites[index].Bitmap.Width <> fSprites[index].AlphaMask.Width) Or
-          (fSprites[index].Bitmap.Height <> fSprites[index].AlphaMask.Height) Then Begin
-          LastError := 'Error, image and alphamask differ in dimension.';
-          exit;
+    If PreloadedImage <> 0 Then Begin
+      img := PreloadedImage;
+    End
+    Else Begin
+      If Not assigned(fSprites[Index].Bitmap) Then Begin
+        LastError := 'No Bitmap defined';
+        exit;
+      End;
+      If fSprites[Index].AlphaImage Then Begin
+        If assigned(Sprite[index].AlphaMask) Then Begin
+          If (fSprites[index].Bitmap.Width <> fSprites[index].AlphaMask.Width) Or
+            (fSprites[index].Bitmap.Height <> fSprites[index].AlphaMask.Height) Then Begin
+            LastError := 'Error, image and alphamask differ in dimension.';
+            exit;
+          End
+          Else Begin
+            img := OpenGL_GraphikEngine.LoadAlphaGraphik(fSprites[index].Bitmap, fSprites[index].AlphaMask, imgName + 'Image', smClamp);
+          End;
         End
         Else Begin
-          img := OpenGL_GraphikEngine.LoadAlphaGraphik(fSprites[index].Bitmap, fSprites[index].AlphaMask, imgName + 'Image', smClamp);
+          img := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSprites[index].Bitmap, imgName + 'Image', ugraphics.ColorToRGB(clFuchsia), smClamp);
         End;
       End
       Else Begin
-        img := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSprites[index].Bitmap, imgName + 'Image', ugraphics.ColorToRGB(clFuchsia), smClamp);
+        img := OpenGL_GraphikEngine.LoadGraphik(fSprites[index].Bitmap, imgName + 'Image', smClamp);
       End;
-    End
-    Else Begin
-      img := OpenGL_GraphikEngine.LoadGraphik(fSprites[index].Bitmap, imgName + 'Image', smClamp);
     End;
     // Sollten Nach dieser Textur "Abgeleitete" Kommen müssen diese nun alle auch angepasst werden
     For i := Index + 1 To high(fSprites) Do Begin
@@ -690,21 +724,31 @@ Begin
     r.Right := gi.OrigWidth / gi.StretchedWidth;
     r.Bottom := gi.OrigHeight / gi.StretchedHeight;
 
+    // Größe des Quellbildes, ohne Bitmap (bereits geladene Textur) ist das die Originalgröße der Textur
+    If assigned(fSprites[d_index].Bitmap) Then Begin
+      bw := fSprites[d_index].Bitmap.Width;
+      bh := fSprites[d_index].Bitmap.Height;
+    End
+    Else Begin
+      bw := gi.OrigWidth;
+      bh := gi.OrigHeight;
+    End;
+
     // Umrechnen der Texturkoordinaten gemäß den User Eingaben
     If fSprites[index].Rect.Left = 0 Then Begin
       r.Left := 0;
     End
     Else Begin
-      r.Left := r.Right / (fSprites[d_index].Bitmap.Width / fSprites[index].Rect.Left);
+      r.Left := r.Right / (bw / fSprites[index].Rect.Left);
     End;
     If fSprites[index].Rect.Top = 0 Then Begin
       r.Top := 0;
     End
     Else Begin
-      r.Top := r.Bottom / (fSprites[d_index].Bitmap.Height / fSprites[index].Rect.Top);
+      r.Top := r.Bottom / (bh / fSprites[index].Rect.Top);
     End;
-    r.Bottom := r.Bottom / (fSprites[d_index].Bitmap.Height / fSprites[index].Rect.Bottom);
-    r.Right := r.Right / (fSprites[d_index].Bitmap.Width / fSprites[index].Rect.Right);
+    r.Bottom := r.Bottom / (bh / fSprites[index].Rect.Bottom);
+    r.Right := r.Right / (bw / fSprites[index].Rect.Right);
 
     fSprites[Index].SpriteIndex :=
       OpenGL_SpriteEngine.AddSprite(gi, fName + imgName, fSprites[index].AlphaImage,
@@ -927,6 +971,38 @@ Begin
   fname := Animation.fName;
   For i := 0 To high(fSprites) Do Begin
     CreateOpenGLData(i);
+  End;
+End;
+
+Procedure TOpenGL_Animation.CloneFromShared(Const Animation: TOpenGL_Animation);
+Var
+  i: Integer;
+Begin
+  // Hat die Quelle noch keine OpenGL Daten, gibt es nichts zu teilen
+  For i := 0 To high(Animation.fSprites) Do Begin
+    If Animation.fSprites[i].SpriteIndex = -1 Then Begin
+      CloneFrom(Animation);
+      exit;
+    End;
+  End;
+  Clear;
+  AngleOffset := Animation.AngleOffset;
+  setlength(fSprites, length(Animation.fSprites));
+  For i := 0 To high(fSprites) Do Begin
+    fSprites[i] := Animation.fSprites[i];
+    fSprites[i].Bitmap := Nil;
+    fSprites[i].AlphaMask := Nil;
+    fSprites[i].SpriteIndex := -1;
+  End;
+  Tag := 0;
+  fname := Animation.fName;
+  For i := 0 To high(fSprites) Do Begin
+    If fSprites[i].Derived Then Begin
+      CreateOpenGLData(i);
+    End
+    Else Begin
+      CreateOpenGLData(i, OpenGL_SpriteEngine.Sprite[Animation.fSprites[i].SpriteIndex].Image);
+    End;
   End;
 End;
 

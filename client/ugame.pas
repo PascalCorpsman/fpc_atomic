@@ -1907,7 +1907,7 @@ Begin
        * Sollte warum auch immer der UDP Down sein, versuchen wir ihn neu zu starten ..
        *)
       If Not fUDPPingData.Connection.Connected Then Begin
-        If Not fUDPPingData.Connection.Connect('', UDPPingPort) Then Begin
+        If Not fUDPPingData.Connection.Connect(LADDR_ANY, UDPPingPort) Then Begin
           LogShow('Error, could not start UDP Server.', llError);
           SwitchToScreen(sMainScreen);
           LogLeave(EnterID);
@@ -2105,7 +2105,7 @@ Begin
     If fUDPPingData.Connection.Connected Then fUDPPingData.Connection.Disconnect();
     fUDPPingData.Connection.OnReceive := @OnUDPConnection_Receive;
     fUDPPingData.Connection.OnError := @OnUDPConnection_Error;
-    If Not fUDPPingData.Connection.Connect('', UDPPingPort) Then Begin
+    If Not fUDPPingData.Connection.Connect(LADDR_ANY, UDPPingPort) Then Begin
       LogShow('Error, could not start UDP Server.', llError);
     End;
   End;
