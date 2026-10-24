@@ -62,7 +62,7 @@ Const
   miPlaySoundEffekt = 233;
   miUpdateMasterID = 234; // Der Master Spieler hat sich geändert (nur Relevant, wenn während eines Matches der Master Raus fliegt)
   miShowHurry = 235;
-  miCheatsActive = 236; // Der Server teilt beim Login mit, ob Cheats erlaubt sind
+  miModInfo = 236; // Der Server teilt beim Login die Mod Einstellungen mit, die der Client braucht (Cheats erlaubt, Geister Flackern)
 
 Function MessageIdentifierToString(value: integer): String;
 Inline;
@@ -103,7 +103,7 @@ Begin
     miPlaySoundEffekt: result := 'PlaySoundEffekt';
     miUpdateMasterID: result := 'UpdateMasterID';
     miShowHurry: result := 'ShowHurry';
-    miCheatsActive: result := 'CheatsActive';
+    miModInfo: result := 'ModInfo';
   End;
 End;
 

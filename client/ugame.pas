@@ -115,7 +115,8 @@ Type
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
     fFields: Array Of TAtomicField;
     fScheme: TScheme;
-    fCheatsActive: Boolean; // True, wenn der Server Cheats erlaubt (miCheatsActive), nur dann reagieren die F-Tasten
+    fCheatsActive: Boolean; // True, wenn der Server Cheats erlaubt (miModInfo), nur dann reagieren die F-Tasten
+    fGhostFlickerMs: Integer; // Zeit in ms eines Flacker Taktes der Geister (miModInfo), 0 = kein Flackern
     fShowCheatHelp: Boolean; // True, die Cheat Hilfe (F3) wird angezeigt
     fCheatMessage: String; // Rückmeldung zum zuletzt gesendeten Cheat
     fCheatMessageTimeStamp: QWord; // Zeitpunkt, an dem fCheatMessage gesetzt wurde
@@ -160,6 +161,7 @@ Type
     Procedure OnQuitGameSoundFinished(Sender: TObject);
 
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
+    Procedure RenderGhost(Const Info: TAtomicInfo);
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
 
@@ -1006,7 +1008,8 @@ Begin
   fWaitingForLocalServer := false;
 
   fChunkManager.SetNoDelay(true);
-  fCheatsActive := false; // Wird vom Server ggf. mittels miCheatsActive aktiviert
+  fCheatsActive := false; // Wird vom Server ggf. mittels miModInfo aktiviert
+  fGhostFlickerMs := 0;
   fShowCheatHelp := false;
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
@@ -1199,9 +1202,11 @@ Begin
     miShowHurry: Begin
         HandleHurryUp();
       End;
-    miCheatsActive: Begin
+    miModInfo: Begin
         fCheatsActive := false;
         Chunk.Data.Read(fCheatsActive, sizeof(fCheatsActive));
+        fGhostFlickerMs := 0;
+        Chunk.Data.Read(fGhostFlickerMs, sizeof(fGhostFlickerMs));
       End;
     miStartGame: Begin
         HandleStartGame();
@@ -1543,8 +1548,9 @@ Begin
     End;
     (*
      * Wenn die Alte Animation eine einmal ablaufen Animation ist.
+     * Ein Geist (Mod) beginnt ohne die Todesanimation, sonst würde diese hier nochmal abgespielt.
      *)
-    If OldAnim In OneTimeAnimations Then Begin
+    If (OldAnim In OneTimeAnimations) And (Not fPlayer[i].Info.Ghost) Then Begin
       If fPlayer[i].Info.Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
         fPlayer[i].Info.Animation := OldAnim;
         fPlayer[i].Info.Value := OldValue;
@@ -1881,6 +1887,34 @@ Begin
   fAtomics[info.ColorIndex].Render(Info, Edge);
 End;
 
+Procedure TGame.RenderGhost(Const Info: TAtomicInfo);
+Var
+  px, py, ox, oy: Single;
+  ViewPort, m: TMatrix4x4;
+Begin
+  // Die selbe Transformation wie in TGame.Render
+  ViewPort := IdentityMatrix4x4;
+  ViewPort := TranslateMatrix4x4(ViewPort, fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
+  ViewPort := ScaleMatrix4x4(ViewPort, fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
+  (*
+   * Der Geist steht auf dem Rahmen eine Kachel außerhalb des Feldes, so viel Platz ist aber nicht
+   * (links / rechts 20 Pixel, unten 18 Pixel), deshalb wird er um GhostScale verkleinert und
+   * stufenlos näher an das Feld heran geschoben (ox, oy), damit er nicht aus dem Bild ragt.
+   *)
+  px := Info.Position.x * FieldBlockWidth + FieldxOff; // Der Punkt um den TAtomic.Render die Figur zeichnet
+  py := (Info.Position.y + 0.25) * FieldBlockHeight + FieldyOff;
+  ox := 0.25 * FieldBlockWidth * min(1, max(0, 0.5 - Info.Position.x))
+    - 0.25 * FieldBlockWidth * min(1, max(0, Info.Position.x - (FieldWidth - 0.5)));
+  oy := 0.1 * FieldBlockHeight * min(1, max(0, 0.5 - Info.Position.y))
+    - 0.5 * FieldBlockHeight * min(1, max(0, Info.Position.y - (FieldHeight - 0.5)));
+  m := TranslateMatrix4x4(ViewPort, px + ox, py + oy, 0);
+  m := ScaleMatrix4x4(m, GhostScale, GhostScale, 1);
+  m := TranslateMatrix4x4(m, -px, -py, 0);
+  SetShaderTransform(m);
+  fAtomics[info.ColorIndex].Render(Info, false);
+  SetShaderTransform(ViewPort);
+End;
+
 Procedure TGame.RenderFieldHeader;
 Var
   x, y, i: Integer;
@@ -1903,7 +1937,7 @@ Begin
       y := (i Mod 2) * 16 + 10;
       glBindTexture(GL_TEXTURE_2D, 0);
       AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, s);
-      If Not fPlayer[i].Info.Alive Then Begin
+      If (Not fPlayer[i].Info.Alive) And (Not fPlayer[i].Info.Ghost) Then Begin // Ein Geist ist noch nicht ganz raus
         SetShaderAlphaThreshold(0.5);
         RenderAlphaQuad(x - 4, y - 4, atomic_dialog_Layer + atomic_EPSILON + atomic_EPSILON, fPlayerdeadTex);
         SetShaderAlphaThreshold(0);
@@ -2695,6 +2729,13 @@ Begin
         For i := 0 To high(fPlayer) Do Begin
           If fPlayer[i].Info.Alive Then Begin
             RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
+            fPlayer[i].edge := false;
+          End;
+          // Geister (Mod) werden klein auf dem Rahmen und flackernd gerendert (nicht in der Pause)
+          If fPlayer[i].Info.Ghost Then Begin
+            If fPause Or (fGhostFlickerMs = 0) Or ((GetTickCount64 Div fGhostFlickerMs) Mod 4 <> 3) Then Begin
+              RenderGhost(fPlayer[i].Info);
+            End;
             fPlayer[i].edge := false;
           End;
         End;

@@ -144,6 +144,7 @@ Const
    *                       ADD: optional positive disease, makes the player invulnerable for some time (not during hurry)
    *                       ADD: optional hit points per player name (handicap) -> need change in ProtocollVersion
    *                       ADD: cheat keys F3..F11 (without F10) for testing the mods (only master, only if enabled in atomic_server.ini)
+   *                       ADD: optional ghosts, dead players walk around the border and can throw bombs to get back into the game
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -236,6 +237,15 @@ Const
    *)
   AtomicStunColorChangeTime = 50; // Zeit in ms, nach derer ein gestunnter Atomic zwischen seiner Farbe und schwarz (bzw. rot) wechselt
   AtomicInvulnColorChangeTime = 150; // Zeit in ms, nach derer ein unverwundbarer Atomic zwischen seiner Farbe und weiß (bzw. rot) wechselt
+
+  (*
+   * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
+   * im Uhrzeigersinn beginnend links oben. Jede Rahmenposition wirft damit eindeutig in genau eine Zeile oder Spalte.
+   *)
+  GhostRingLength = 2 * FieldWidth + 2 * FieldHeight; // Anzahl der Positionen auf dem Rahmen (52)
+  GhostSpeed = 5; // Geschwindigkeit eines Geistes in Randfeldern pro Sekunde
+  GhostThrowDistance = 3; // So viele Felder senkrecht vom Rand ins Feld wirft ein Geist seine Bombe
+  GhostScale = 0.5; // Geister werden im Client verkleinert auf dem Rahmen außerhalb des Spielfeldes gerendert
 
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..
@@ -357,6 +367,7 @@ Type
     MoveDir: TBombMoveDir;
     DudTime: integer; // Zähler für die Jeweilige Bombe wie lange sie "Dud" ist
     StunOnLand: Boolean; // True, wenn die Bombe geworfen (nicht gepuncht) wurde, landet sie auf einem Spieler, wird dieser gestunnt (nur wenn Mod aktiv)
+    GhostBomb: Boolean; // True, die Bombe wurde von einem Geist geworfen (der Geist bekommt keine Bombe zurück, darf aber nach der Explosion wieder werfen)
 {$ENDIF}
   End;
 
@@ -520,6 +531,7 @@ Type
     HitPoints: uint8; // Mod Trefferpunkte: Anzeige im Client wie viele Treffer der Spieler noch aushält, 0 = nicht anzeigen (Mod aus oder ShowHitPoints = 0)
     CheatInvulnTime: uint16; // Nur bei aktiven Cheats: Restzeit der Unverwundbarkeit in ms (für die Zustandsanzeige), sonst 0
     CheatStunTime: uint16; // Nur bei aktiven Cheats: Restzeit des Stun in ms (für die Zustandsanzeige), sonst 0
+    Ghost: Boolean; // Mod Geister: True, der Spieler ist tot (Alive = false) und läuft als Geist am Rand entlang
   End;
 
   (*
@@ -528,7 +540,7 @@ Type
   TCheatCommand = (
     ccPositiveDisease // F5, Positive Krankheit -> Unverwundbar
     , ccHitMe // F6, Treffer wie durch eine Flamme (Trefferpunkt weg bzw. sterben)
-    , ccGhost // F7, Geist (kommt mit dem Geister Mod)
+    , ccGhost // F7, zum Geist machen bzw. als Geist zurück ins Spiel
     , ccHurry // F8, Hurry sofort starten
     , ccStun // F9, Stun
     , ccAllItems // F4, Kick, Punch, Grab, Bomben, Flammen
@@ -598,6 +610,10 @@ Type
     InvulnTimer: Integer; // Zeit in ms, wie lange der Spieler noch unverwundbar ist (0 = verwundbar), endet spätestens mit Beginn des Hurry
     MaxHitPoints: Integer; // Mod Trefferpunkte: Trefferpunkte zu Rundenbeginn (aus [Handicap] bzw. DefaultHitPoints)
     HitPoints: Integer; // Mod Trefferpunkte: Anzahl Treffer die der Spieler noch aushält (Info.HitPoints ist nur die Anzeige davon)
+    GhostRingPos: Single; // Mod Geister: Position auf dem Rahmen [0..GhostRingLength[, der ganzzahlige Anteil ist die Rahmenposition, siehe GhostRingToField
+    GhostDir: Integer; // Mod Geister: Letzte Laufrichtung auf dem Ring (-1, 0, 1), damit läuft der Geist bis zum nächsten Randfeld weiter
+    GhostBombActive: Boolean; // Mod Geister: True, so lange die geworfene Geisterbombe noch nicht explodiert ist
+    StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
   End;
 
@@ -613,6 +629,10 @@ Type
     PositiveDiseaseChance: Integer; // in %, Anteil der Krankheits Items die positiv wirken
     PositiveMinMs: Integer; // Minimale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
     PositiveMaxMs: Integer; // Maximale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
+    Ghosts: Boolean; // True, Tote laufen bis zum Hurry als Geist am Rand und können mit einem Treffer eines Gegners zurück ins Spiel
+    GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
+    GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
+    GhostFlickerMs: Integer; // Zeit in ms, Geister sind im Client 3 Takte sichtbar und 1 Takt unsichtbar, 0 = kein Flackern
     HitPoints: Boolean; // True, Spieler halten mehrere Treffer aus (pro Spielername in [Handicap], nicht im Hurry)
     InvulnTimeMs: Integer; // Zeit in ms, so lange ist der Spieler nach einem nicht tödlichen Treffer unverwundbar (>= FlameTime)
     DefaultHitPoints: Integer; // Trefferpunkte, wenn der Spieler nicht in [Handicap] steht
@@ -625,6 +645,7 @@ Type
     StartItems: String; // z.B. "kick,punch,grab,bomb*3" diese Items bekommt jeder Spieler zu Rundenbeginn
     RoundTimeSec: Integer; // > 0 überschreibt die Rundenzeit in s (Hurry beginnt bei 80s Restzeit, 90 = Hurry nach 10s)
     StartInvulnMs: Integer; // Zeit in ms, so lange sind alle Spieler zu Rundenbeginn unverwundbar
+    GhostsKeepRound: Boolean; // True, Geister zählen für das Rundenende als lebendig (damit kann man Geister auch zu zweit testen)
   End;
 {$ENDIF}
 
@@ -698,6 +719,12 @@ Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speic
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
 Function CheatCommandToString(Value: TCheatCommand): String;
+
+{$IFDEF Server}
+Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
+Function FieldToGhostRing(Const Position: TVector2): integer; // Liefert den Index der Rahmenposition, welche am nächsten an Position liegt
+Function GhostRingToPosition(RingPos: Single): TVector2; // Position in Feld Koordinaten, zwischen zwei Randfeldern wird interpoliert
+{$ENDIF}
 
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
@@ -963,13 +990,65 @@ Begin
   result.PowerUps[purandom] := empty;
 End;
 
+{$IFDEF Server}
+
+Function GhostRingToField(Index: integer): TPoint;
+Begin
+  index := index Mod GhostRingLength;
+  If index < 0 Then index := index + GhostRingLength;
+  If index < FieldWidth Then Begin // Oben von links nach rechts
+    result := point(index, -1);
+  End
+  Else If index < FieldWidth + FieldHeight Then Begin // Rechts von oben nach unten
+    result := point(FieldWidth, index - FieldWidth);
+  End
+  Else If index < 2 * FieldWidth + FieldHeight Then Begin // Unten von rechts nach links
+    result := point(FieldWidth - 1 - (index - FieldWidth - FieldHeight), FieldHeight);
+  End
+  Else Begin // Links von unten nach oben
+    result := point(-1, FieldHeight - 1 - (index - 2 * FieldWidth - FieldHeight));
+  End;
+End;
+
+Function GhostRingToPosition(RingPos: Single): TVector2;
+Var
+  k: integer;
+  f: Single;
+  a, b: TPoint;
+Begin
+  k := trunc(RingPos);
+  f := RingPos - k;
+  a := GhostRingToField(k);
+  b := GhostRingToField(k + 1);
+  result := v2(a.x + 0.5 + (b.x - a.x) * f, a.y + 0.5 + (b.y - a.y) * f);
+End;
+
+Function FieldToGhostRing(Const Position: TVector2): integer;
+Var
+  i: integer;
+  p: TPoint;
+  d, best: Single;
+Begin
+  result := 0;
+  best := 1000;
+  For i := 0 To GhostRingLength - 1 Do Begin
+    p := GhostRingToField(i);
+    d := sqr(p.x + 0.5 - Position.x) + sqr(p.y + 0.5 - Position.y);
+    If d < best Then Begin
+      best := d;
+      result := i;
+    End;
+  End;
+End;
+{$ENDIF}
+
 Function CheatCommandToString(Value: TCheatCommand): String;
 Begin
   result := '';
   Case Value Of
     ccPositiveDisease: result := 'positive disease';
     ccHitMe: result := 'hit me';
-    ccGhost: result := 'ghost (not yet)';
+    ccGhost: result := 'ghost on / off';
     ccHurry: result := 'start hurry';
     ccStun: result := 'stun me';
     ccAllItems: result := 'all items';

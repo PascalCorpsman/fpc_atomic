@@ -42,6 +42,7 @@ Type
   TPlaySoundEffectCallback = Procedure(PlayerIndex: integer; Effect: TSoundEffect) Of Object;
   TBombLandedCallback = Procedure(x, y: integer) Of Object; // Wird aufgerufen, wenn eine geworfene Bombe (StunOnLand) auf der Kachel x, y liegen bleibt
   TPlayerHitCallback = Function(PlayerIndex: integer): Boolean Of Object; // Wird bei einem Treffer durch eine Flamme aufgerufen, True = der Spieler überlebt den Treffer
+  TGhostReviveCallback = Procedure(GhostIndex: integer) Of Object; // Wird aufgerufen, wenn die Flamme eines Geistes einen Gegner getroffen hat -> der Geist darf zurück ins Spiel
 {$ENDIF}
 
 {$IFDEF Client}
@@ -116,8 +117,11 @@ Type
     StatisticCallback: TStatisticCallback;
     BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
     PlayerHitCallback: TPlayerHitCallback; // Optional, wird vom Server gesetzt (Trefferpunkte Mod)
+    GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
     Property BombsEnabled: Boolean read fBombsEnabled;
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
+    Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
+    Function FindFreeField(x, y: integer): TPoint; // Liefert das zu x, y nächste Feld ohne Stein, Bombe, Flamme und Loch
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
     Property Sound: String read fSoundFile;
@@ -380,6 +384,7 @@ Begin
   StatisticCallback := sStatisticCallback;
   BombLandedCallback := Nil;
   PlayerHitCallback := Nil;
+  GhostReviveCallback := Nil;
   fPlaySoundEffect := PlaySoundEffectCallback;
   fBombCount := 0;
   fBombDetonateFifo := TIntFifo.create(128);
@@ -1165,6 +1170,7 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     fBombs[fBombCount].Jelly := false; // Das wird vom "Kickenden" Spieler übernommen
     fBombs[fBombCount].MoveDir := bmNone;
     fBombs[fBombCount].StunOnLand := false;
+    fBombs[fBombCount].GhostBomb := false;
     fBombs[fBombCount].Speed := player.Powers.Speed;
     inc(fBombCount);
     player.Powers.AvailableBombs := player.Powers.AvailableBombs - 1;
@@ -1665,8 +1671,14 @@ Begin
     fBombs[index].Detonated := true;
     (*
      * Die Bombe wurde gezündet, der Spieler darf wieder eine Neue Legen
+     * (eine Geisterbombe zählt nicht zu den Bomben des Spielers, der Geist darf danach wieder werfen)
      *)
-    Players[fBombs[index].PlayerIndex].Powers.AvailableBombs := Players[fBombs[index].PlayerIndex].Powers.AvailableBombs + 1;
+    If fBombs[index].GhostBomb Then Begin
+      Players[fBombs[index].PlayerIndex].GhostBombActive := false;
+    End
+    Else Begin
+      Players[fBombs[index].PlayerIndex].Powers.AvailableBombs := Players[fBombs[index].PlayerIndex].Powers.AvailableBombs + 1;
+    End;
     x := trunc(fBombs[index].Position.x);
     y := trunc(fBombs[index].Position.y);
     If fField[x, y].BrickData = bdSolid Then continue; // Die Bombe Explodiert auf einem Festen Brick -> dann richtet sie keinen Schaden an
@@ -1766,7 +1778,7 @@ Const
   SpawnEmptyRange = 2;
 Var
   nx, ny, x, y, xx, yy, i, j: integer;
-  b: Boolean;
+  b, GhostFlame: Boolean;
 Begin
   If fHasSpawningBricks And (Not fPause) Then Begin
     If GetTickCount64() > fNextBrickSpawnTime Then Begin // https://bomberman.fandom.com/wiki/Haunted_House
@@ -1864,6 +1876,14 @@ Begin
       // TODO: Während eines Teleport vorgangs ist der Spieler unsterblich -> Klären ob das wirklich gewollt ist..
       // Ein unverwundbarer Spieler ignoriert die Flammen (der Hurry Tod passiert in HandleMovePlayer und ist davon nicht betroffen)
       If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) And (Players[i].InvulnTimer <= 0) Then Begin
+        (*
+         * Geister Mod: Trifft die Flamme eines Geistes einen Gegner, darf der Geist zurück ins Spiel.
+         * Der Geist bekommt für diesen Treffer keinen Kill.
+         *)
+        GhostFlame := Players[fField[x, y].FlamePlayer].Info.Ghost;
+        If GhostFlame And (fField[x, y].FlamePlayer <> i) And ((Not fTeamPlay) Or (Players[fField[x, y].FlamePlayer].Team <> Players[i].Team)) Then Begin
+          If assigned(GhostReviveCallback) Then GhostReviveCallback(fField[x, y].FlamePlayer);
+        End;
         // Überlebt der Spieler den Treffer (Trefferpunkte Mod), gibt es weder Kill noch Tod
         If assigned(PlayerHitCallback) Then Begin
           If PlayerHitCallback(i) Then Continue;
@@ -1872,6 +1892,9 @@ Begin
           // Selfkill
           Players[fField[x, y].FlamePlayer].Kills := Players[fField[x, y].FlamePlayer].Kills - 1;
           fPlayerStatistics.UpdatePlayerID(i, pssFriendlyFireKills);
+        End
+        Else If GhostFlame Then Begin
+          // Getötet durch eine Geisterbombe -> kein Kill für den Geist
         End
         Else Begin
           // Echter Kill ;)
@@ -1950,6 +1973,10 @@ Begin
     result.PlayerInfos[i].Team := Players[i].Team;
     result.PlayerInfos[i].Position.x := Players[i].Info.Position.x;
     result.PlayerInfos[i].Position.y := Players[i].Info.Position.y;
+    If Players[i].Info.Ghost Then Begin // Geister stehen außerhalb des Feldes, das soll die Ai nicht durcheinander bringen
+      result.PlayerInfos[i].Position.x := min(FieldWidth - 0.5, max(0.5, Players[i].Info.Position.x));
+      result.PlayerInfos[i].Position.y := min(FieldHeight - 0.5, max(0.5, Players[i].Info.Position.y));
+    End;
     result.PlayerInfos[i].Alive := Players[i].Info.Alive And (Not Players[i].Info.Dying);
     result.PlayerInfos[i].Flying := Players[i].Flying;
     result.PlayerInfos[i].FlameLength := Players[i].Powers.FlameLen;
@@ -2091,6 +2118,69 @@ End;
 Function TAtomicField.HurryActive: Boolean;
 Begin
   result := fHurryIndex <> -1;
+End;
+
+Function TAtomicField.AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer;
+  Start, Target: TPoint): Boolean;
+Begin
+  result := false;
+  If fBombCount > high(fBombs) Then exit;
+  fBombs[fBombCount].ColorIndex := ColorIndex;
+  fBombs[fBombCount].Position := v2(Start.x + 0.5, Start.y + 0.5);
+  fBombs[fBombCount].Animation := baNormal;
+  fBombs[fBombCount].AnimationOffset := random(65536);
+  fBombs[fBombCount].PlayerIndex := PlayerIndex;
+  fBombs[fBombCount].TriggerPlayerindex := -1; // Force a exception, should be set during triggering !
+  fBombs[fBombCount].Lifetime := 0;
+  fBombs[fBombCount].FireLen := FlameLen;
+  fBombs[fBombCount].Jelly := false;
+  fBombs[fBombCount].Speed := AtomicDefaultSpeed;
+  fBombs[fBombCount].DudTime := 0;
+  fBombs[fBombCount].Detonated := false;
+  // Die Bombe wird wie beim Grab geworfen und kann deshalb auch stunnen
+  fBombs[fBombCount].FlyStart := fBombs[fBombCount].Position;
+  fBombs[fBombCount].FlyTarget := v2(Target.x + 0.5, Target.y + 0.5);
+  fBombs[fBombCount].MoveDir := bmFly;
+  fBombs[fBombCount].FlyTime := 0;
+  fBombs[fBombCount].FlyFinTime := AtomicBombBigFlyTime;
+  fBombs[fBombCount].StunOnLand := true;
+  fBombs[fBombCount].GhostBomb := true;
+  inc(fBombCount);
+  fPlaySoundEffect(PlayerIndex, seBombGrab);
+  result := true;
+End;
+
+Function TAtomicField.FindFreeField(x, y: integer): TPoint;
+Var
+  r, i, j, k: integer;
+  b: Boolean;
+Begin
+  (*
+   * Ringförmig um x, y suchen, das erste freie Feld gewinnt
+   *)
+  result := point(x, y);
+  For r := 0 To max(FieldWidth, FieldHeight) Do Begin
+    For i := x - r To x + r Do Begin
+      For j := y - r To y + r Do Begin
+        If (abs(i - x) <> r) And (abs(j - y) <> r) Then Continue; // Nur der Rand des Quadrates, das Innere wurde schon geprüft
+        If (i < 0) Or (i >= FieldWidth) Or (j < 0) Or (j >= FieldHeight) Then Continue;
+        If fField[i, j].BrickData <> bdBlank Then Continue;
+        If fField[i, j].Flame <> [] Then Continue;
+        If fHasHoles And (fHurryIndex = -1) And fHoles[i, j] Then Continue;
+        b := true;
+        For k := 0 To fBombCount - 1 Do Begin
+          If (trunc(fBombs[k].Position.x) = i) And (trunc(fBombs[k].Position.y) = j) Then Begin
+            b := false;
+            break;
+          End;
+        End;
+        If b Then Begin
+          result := point(i, j);
+          exit;
+        End;
+      End;
+    End;
+  End;
 End;
 
 Procedure TAtomicField.KillPlayer(Var Players: TPlayers; Index: integer);
