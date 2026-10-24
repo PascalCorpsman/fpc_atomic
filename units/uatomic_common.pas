@@ -139,6 +139,7 @@ Const
    *             0.13004 = ADD: speedup startup
    *                       FIX: connect on some linux devices stalled
    *                       FIX: trampolin placing was wrong
+   *                       ADD: optional mods via atomic_server.ini (default off), first mod: thrown bombs landing on a player stun him
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -223,6 +224,8 @@ Const
    *)
   AtomicDiseaseColorChangePeriodTime = 1500; //
   AtomicDiseaseColorChangePeriodRelaxTime = 500; // Zeit in derer der Atomic trotz Krankheit nicht Blinkt bezogen auf AtomicDiseaseColorChangePeriodTime
+
+  AtomicStunColorChangeTime = 50; // Zeit in ms, nach derer ein gestunnter Atomic zwischen seiner Farbe und schwarz / weiß wechselt
 
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..
@@ -342,6 +345,7 @@ Type
     Jelly: Boolean;
     MoveDir: TBombMoveDir;
     DudTime: integer; // Zähler für die Jeweilige Bombe wie lange sie "Dud" ist
+    StunOnLand: Boolean; // True, wenn die Bombe geworfen (nicht gepuncht) wurde, landet sie auf einem Spieler, wird dieser gestunnt (nur wenn Mod aktiv)
 {$ENDIF}
   End;
 
@@ -563,8 +567,25 @@ Type
     Action: TAtomicAction;
     Powers: TAtomicPowers;
     PowerUpCounter: Array[TPowerUps] Of Integer; // Zähler, welche Powerups der Spieler wie oft aufgenommen hat, wenn er stirbt werden diese wieder "Verteilt"
+    StunTimer: Integer; // Zeit in ms, wie lange der Spieler noch gestunnt ist (0 = nicht gestunnt), so lange kann er sich weder bewegen noch Aktionen ausführen
 {$ENDIF}
   End;
+
+{$IFDEF Server}
+  (*
+   * Optionale Spiel Mods, werden aus atomic_server.ini geladen, alle Mods sind per Default aus.
+   *)
+  TModSettings = Record
+    StunOnBombLanding: Boolean; // True, Landet eine geworfene Bombe auf einem Spieler, wird dieser gestunnt
+    StunMinMs: Integer; // Minimale Stun Zeit in ms
+    StunMaxMs: Integer; // Maximale Stun Zeit in ms
+    (*
+     * [Debug] Abschnitt, nur zum Testen der Mods
+     *)
+    Cheats: Boolean; // Master Schalter, nur wenn True werden die folgenden Debug Werte ausgewertet
+    StartItems: String; // z.B. "kick,punch,grab,bomb*3" diese Items bekommt jeder Spieler zu Rundenbeginn
+  End;
+{$ENDIF}
 
   TPlayerGetsPowerUpEvent = Procedure(Var Player: TPlayer; PlayerIndex: integer; PowerUp: TPowerUps) Of Object;
 

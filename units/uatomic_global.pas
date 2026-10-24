@@ -35,6 +35,7 @@ Function GetAtomicConfigFile(): String;
 {$IFDEF Server}
 Function GetAtomicStatsFile(): String;
 Function GetAtomicPlayerStatsFile(): String;
+Function GetAtomicServerIniFile(): String;
 {$ENDIF}
 
 (*
@@ -114,6 +115,13 @@ Function GetAtomicPlayerStatsFile(): String;
 Begin
   Setup;
   result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'Playerstats.csv';
+  TearDown;
+End;
+
+Function GetAtomicServerIniFile(): String;
+Begin
+  Setup;
+  result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'atomic_server.ini';
   TearDown;
 End;
 

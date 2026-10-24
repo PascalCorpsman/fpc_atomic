@@ -67,6 +67,7 @@ Type
     fLastClientUpdateTimestamp: int64; // Zeitpunkt an dem zuletzt alle Clients Aktualisiert wurden
 
     fSettings: TAtomicSettings;
+    fModSettings: TModSettings; // Die Optionalen Mods aus atomic_server.ini
     fFields: Array Of TAtomicField;
     fConnectedClientCount: integer; // Anzahl der Tatsächlich verbundenen Clients, wird bestimmt bei HandleSwitchToPlayerSetup und ist immer <= GetActivePlayerCount()
     fActualField: TAtomicField; // Das Feld, welches für dieses Match Aktiv ist, Wird mittels miUpdateFieldSetup gesetzt
@@ -108,6 +109,7 @@ Type
       PowerUp: TPowerUps);
     Procedure HandlePlaySoundEffect(PlayerIndex: integer; Effect: TSoundEffect);
     Procedure HandleStatisticCallback(StatSelector: TStatSelector; Value: uint64 = 1);
+    Procedure HandleBombLanded(x, y: integer);
 
     Procedure HandleLoadSettings(Const Stream: TStream);
     Procedure HandleChangePlayerKey(PlayerIndex, Direction: Integer; PlayerName: String; UID: Integer);
@@ -131,6 +133,9 @@ Type
 
     Procedure LoadAi();
     Procedure HurryHandling;
+    Procedure LoadModSettings();
+    Function ActiveModsText(): String; // Leer, wenn kein Mod aktiv ist
+    Procedure ApplyStartItems(Var Powers: TAtomicPowers);
   public
     Constructor Create(Port, AutoTimeOut: Integer);
     Destructor Destroy(); override;
@@ -177,6 +182,7 @@ Begin
   fTCPPort := Port;
 
   fPlayerStatistics := TPlayerStatisticEngine.create; // Muss vor den Feldern gemacht werden weils ja rein gereicht wird ;)
+  LoadModSettings();
 
   // Laden aller Felder
   sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
@@ -185,6 +191,7 @@ Begin
   setlength(fFields, sl.Count);
   For i := 0 To sl.Count - 1 Do Begin
     fFields[i] := TAtomicField.Create(@HandlePlaySoundEffect, @HandleStatisticCallback, fPlayerStatistics);
+    fFields[i].BombLandedCallback := @HandleBombLanded;
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
@@ -510,7 +517,7 @@ Procedure TServer.HandleRequestUserLogin(Const Stream: TStream; UID: integer);
 Var
   m: TMemoryStream;
   index, i, j, cnt, EnterID: integer;
-  Username: String;
+  Username, ModsText: String;
   ClientVersion: uint32;
   fieldlist: TFieldHashNameList;
   ClientMode: Byte;
@@ -635,6 +642,11 @@ Begin
   i := fSettings.MasterUid;
   m.Write(i, sizeof(i));
   SendChunk(miRequestLoginResult, m, UID);
+  // Den neuen Spieler darauf hinweisen, dass Mods aktiv sind
+  ModsText := ActiveModsText();
+  If ModsText <> '' Then Begin
+    SendSplashMessage(ModsText, UID);
+  End;
   // Allen Mitteilen das wir nen neuen Spieler haben
   RefreshAllPlayerStats(0); // Allen Anwesenden Mitteilen Welche Spieler es so gibt
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
@@ -1057,10 +1069,12 @@ Begin
     fPLayer[i].IsInHohle := false;
     fPLayer[i].Disease := [];
     fPLayer[i].DiseaseCounter := 0;
+    fPLayer[i].StunTimer := 0;
     fPLayer[i].IdleTimer := 0;
     fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
+    If fModSettings.Cheats Then ApplyStartItems(fPLayer[i].Powers);
     For pu In TPowerUps Do Begin
       fPLayer[i].PowerUpCounter[pu] := 0;
     End;
@@ -1349,6 +1363,23 @@ Procedure TServer.HandleStatisticCallback(StatSelector: TStatSelector;
   Value: uint64);
 Begin
   fStatistik.LastRun[StatSelector] := fStatistik.LastRun[StatSelector] + Value;
+End;
+
+Procedure TServer.HandleBombLanded(x, y: integer);
+Var
+  i: integer;
+Begin
+  If Not fModSettings.StunOnBombLanding Then exit;
+  (*
+   * Jeder Spieler auf der Kachel wird gestunnt, egal ob Gegner, Team Kollege oder der Werfer selbst.
+   * Bei mehrfachem Treffen gilt die längere Zeit, es wird nicht addiert.
+   *)
+  For i := 0 To high(fPLayer) Do Begin
+    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) And (Not fPLayer[i].Flying) And
+      (trunc(fPLayer[i].Info.Position.x) = x) And (trunc(fPLayer[i].Info.Position.y) = y) Then Begin
+      fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
+    End;
+  End;
 End;
 
 Procedure TServer.HandleSwitchToWaitForPlayersToConnect;
@@ -1769,6 +1800,8 @@ Var
   aiInfo: TaiInfo;
   AiCommand: TAiCommand;
   OldCounter: UInt16;
+  Stunned: Boolean;
+  StunMoveState: TMoveState;
 Begin
   HandleStatisticCallback(ssFramesRendered);
   If fPlayingTimedesc <> -1000 Then Begin
@@ -1822,9 +1855,22 @@ Begin
           End;
         End;
       End;
+      (*
+       * Ein gestunnter Spieler steht still, sein MoveState wird aber gemerkt,
+       * damit er nach dem Stun ohne erneuten Tastendruck weiter laufen kann.
+       *)
+      Stunned := fPLayer[i].StunTimer > 0;
+      If Stunned Then Begin
+        fPLayer[i].StunTimer := max(0, fPLayer[i].StunTimer - FrameRate);
+        StunMoveState := fPLayer[i].MoveState;
+        fPLayer[i].MoveState := msStill;
+      End;
       If fActualField.HandleMovePlayer(fPLayer, i, fSettings.ConveyorSpeed) Then Begin
         // im Hurry mode kann der Spieler sterben, wenn ein Solid Brick an seiner Koordinate "entsteht"
         fActualField.KillPlayer(fPLayer, i);
+      End;
+      If Stunned Then Begin
+        fPLayer[i].MoveState := StunMoveState;
       End;
 
       (*
@@ -1867,6 +1913,7 @@ Begin
     If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) Then Begin
       If dEbola In fPLayer[i].Disease Then fPLayer[i].Action := aaFirst; // Wenn der Spieler "Ebola" hat, legt er wann immer möglich eine Bombe
       // TODO: Feature oder Bug, wenn der Spieler Ebola hat und dNoBombs wird er hier verschont ...
+      If fPLayer[i].StunTimer > 0 Then fPLayer[i].Action := aaNone; // Gestunnt -> keine Aktionen, auch kein Ebola
       If (fPLayer[i].Action <> aaNone) And (Not (dNoBombs In fPLayer[i].Disease)) Then Begin
         fActualField.HandleActionPlayer(fPLayer[i], i);
         fPLayer[i].Action := aaNone;
@@ -1952,9 +1999,23 @@ Begin
       If fPLayer[i].UID > 0 Then HandlePlaySoundEffect(i, seZen); // Nur "echte" spieler kriegen den Ton
     End;
     (*
+     * Ein gestunnter Spieler blinkt schnell zwischen seiner Farbe und weiß (bzw. rot, wenn er selbst weiß ist)
+     * das hat Vorrang vor dem Blinken der Krankheit.
+     *)
+    If (fPLayer[i].StunTimer > 0) And ((fPLayer[i].StunTimer Div AtomicStunColorChangeTime) Mod 2 = 0) Then Begin
+      DiseasedInfo := fPLayer[i].Info;
+      If DiseasedInfo.ColorIndex = WhiteColorIndex Then Begin
+        DiseasedInfo.ColorIndex := RedColorIndex;
+      End
+      Else Begin
+        DiseasedInfo.ColorIndex := WhiteColorIndex;
+      End;
+      m.Write(DiseasedInfo, sizeof(DiseasedInfo));
+    End
+    (*
      * Wenn der Spieler eine Krankheit hat, dann wechselt seine Farbe alle AtomicDiseaseColorChangeTime
      *)
-    If (fPLayer[i].Disease <> []) And ((fPLayer[i].DiseaseCounter Mod AtomicDiseaseColorChangePeriodTime) < AtomicDiseaseColorChangePeriodTime - AtomicDiseaseColorChangePeriodRelaxTime) Then Begin
+    Else If (fPLayer[i].Disease <> []) And ((fPLayer[i].DiseaseCounter Mod AtomicDiseaseColorChangePeriodTime) < AtomicDiseaseColorChangePeriodTime - AtomicDiseaseColorChangePeriodRelaxTime) Then Begin
       DiseasedInfo := fPLayer[i].Info;
       DiseasedInfo.ColorIndex := (fPLayer[i].DiseaseCounter Div AtomicDiseaseColorChangeTime) Mod length(PlayerColors);
       m.Write(DiseasedInfo, sizeof(DiseasedInfo));
@@ -2337,6 +2398,121 @@ Begin
   FillChar(fStatistik.LastRun, sizeof(fStatistik.LastRun), 0);
   ini.free;
   LogLeave(EnterID);
+End;
+
+Procedure TServer.LoadModSettings;
+Var
+  ini: TIniFile;
+  EnterID: Integer;
+  s: String;
+Begin
+  EnterID := LogEnter('TServer.LoadModSettings');
+  // Die Defaults, alle Mods sind aus
+  fModSettings.StunOnBombLanding := false;
+  fModSettings.StunMinMs := 100;
+  fModSettings.StunMaxMs := 500;
+  fModSettings.Cheats := false;
+  fModSettings.StartItems := '';
+  s := GetAtomicServerIniFile();
+  If Not ForceDirectories(ExtractFileDir(s)) Then Begin
+    log('Unable to create: ' + s, llCritical);
+    LogLeave(EnterID);
+    exit;
+  End;
+  ini := TIniFile.Create(s);
+  Try
+    fModSettings.StunOnBombLanding := ini.ReadBool('Mods', 'StunOnBombLanding', fModSettings.StunOnBombLanding);
+    fModSettings.StunMinMs := ini.ReadInteger('Mods', 'StunMinMs', fModSettings.StunMinMs);
+    fModSettings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', fModSettings.StunMaxMs);
+    fModSettings.Cheats := ini.ReadBool('Debug', 'Cheats', fModSettings.Cheats);
+    fModSettings.StartItems := ini.ReadString('Debug', 'StartItems', fModSettings.StartItems);
+    (*
+     * Ungültige Werte auf gültige Grenzen ziehen
+     *)
+    If fModSettings.StunMinMs < 0 Then Begin
+      log('atomic_server.ini: StunMinMs < 0, using 0', llWarning);
+      fModSettings.StunMinMs := 0;
+    End;
+    If fModSettings.StunMaxMs < fModSettings.StunMinMs Then Begin
+      log('atomic_server.ini: StunMaxMs < StunMinMs, using StunMinMs', llWarning);
+      fModSettings.StunMaxMs := fModSettings.StunMinMs;
+    End;
+    (*
+     * Fehlende Schlüssel mit ihren Defaults anlegen, damit man sie in der Datei auch findet
+     *)
+    If Not ini.ValueExists('Mods', 'StunOnBombLanding') Then ini.WriteBool('Mods', 'StunOnBombLanding', fModSettings.StunOnBombLanding);
+    If Not ini.ValueExists('Mods', 'StunMinMs') Then ini.WriteInteger('Mods', 'StunMinMs', fModSettings.StunMinMs);
+    If Not ini.ValueExists('Mods', 'StunMaxMs') Then ini.WriteInteger('Mods', 'StunMaxMs', fModSettings.StunMaxMs);
+    If Not ini.ValueExists('Debug', 'Cheats') Then ini.WriteBool('Debug', 'Cheats', fModSettings.Cheats);
+    If Not ini.ValueExists('Debug', 'StartItems') Then ini.WriteString('Debug', 'StartItems', fModSettings.StartItems);
+  Finally
+    ini.free;
+  End;
+  s := ActiveModsText();
+  If s <> '' Then log(s, llInfo);
+  LogLeave(EnterID);
+End;
+
+Function TServer.ActiveModsText: String;
+Begin
+  result := '';
+  If fModSettings.StunOnBombLanding Then result := result + ', stun on bomb landing';
+  If fModSettings.Cheats Then result := result + ', cheats';
+  If result <> '' Then Begin
+    result := 'Active mods: ' + copy(result, 3, length(result));
+  End;
+End;
+
+Procedure TServer.ApplyStartItems(Var Powers: TAtomicPowers);
+Var
+  sl: TStringList;
+  i, j, cnt: integer;
+  item: String;
+Begin
+  (*
+   * Format: "kick,punch,grab,bomb*3" -> optional mit *n wie oft das Item genommen wird.
+   * "trigger" bezieht sich auf die bis dahin vorhandenen Bomben, sollte also hinter "bomb" stehen.
+   *)
+  sl := TStringList.Create;
+  sl.Delimiter := ',';
+  sl.StrictDelimiter := true;
+  sl.DelimitedText := fModSettings.StartItems;
+  For i := 0 To sl.Count - 1 Do Begin
+    item := lowercase(trim(sl[i]));
+    cnt := 1;
+    j := pos('*', item);
+    If j > 0 Then Begin
+      cnt := max(0, StrToIntDef(trim(copy(item, j + 1, length(item))), 1));
+      item := trim(copy(item, 1, j - 1));
+    End;
+    Case item Of
+      '': Begin // Nix zu tun
+        End;
+      'bomb': Begin
+          Powers.AvailableBombs := Powers.AvailableBombs + cnt;
+          Powers.OverAllBombs := Powers.OverAllBombs + cnt;
+        End;
+      'flame': Powers.FlameLen := min(99, Powers.FlameLen + cnt);
+      'goldflame': Powers.FlameLen := 99;
+      'speed': Powers.Speed := min(Powers.Speed * power(AtomicSpeedChange, cnt), AtomicMaxSpeed);
+      'kick': Powers.CanKickBombs := true;
+      'punch': Powers.CanPunchBombs := true;
+      'grab': Begin
+          Powers.CanGrabBombs := true;
+          Powers.CanSpooger := false;
+        End;
+      'spooger': Begin
+          Powers.CanSpooger := true;
+          Powers.CanGrabBombs := false;
+        End;
+      'jelly': Powers.JellyBombs := true;
+      'trigger': Powers.TriggerBomb := Powers.OverAllBombs;
+    Else Begin
+        log('atomic_server.ini: unknown StartItem "' + item + '"', llWarning);
+      End;
+    End;
+  End;
+  sl.free;
 End;
 
 Procedure TServer.SaveStatistics;

@@ -40,6 +40,7 @@ Type
   TIntFifo = specialize TBufferedFifo < Integer > ;
   TPointFifo = specialize TBufferedFifo < Tpoint > ;
   TPlaySoundEffectCallback = Procedure(PlayerIndex: integer; Effect: TSoundEffect) Of Object;
+  TBombLandedCallback = Procedure(x, y: integer) Of Object; // Wird aufgerufen, wenn eine geworfene Bombe (StunOnLand) auf der Kachel x, y liegen bleibt
 {$ENDIF}
 
 {$IFDEF Client}
@@ -112,6 +113,7 @@ Type
     Available: Boolean; // Wenn True, dann kann die Karte verwendet werden und Alle Spieler haben sie.
 {$IFDEF Server}
     StatisticCallback: TStatisticCallback;
+    BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
     Property BombsEnabled: Boolean read fBombsEnabled;
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
@@ -373,6 +375,7 @@ Begin
   fHash := 0;
 {$IFDEF Server}
   StatisticCallback := sStatisticCallback;
+  BombLandedCallback := Nil;
   fPlaySoundEffect := PlaySoundEffectCallback;
   fBombCount := 0;
   fBombDetonateFifo := TIntFifo.create(128);
@@ -1157,6 +1160,7 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     fBombs[fBombCount].FireLen := player.Powers.FlameLen;
     fBombs[fBombCount].Jelly := false; // Das wird vom "Kickenden" Spieler übernommen
     fBombs[fBombCount].MoveDir := bmNone;
+    fBombs[fBombCount].StunOnLand := false;
     fBombs[fBombCount].Speed := player.Powers.Speed;
     inc(fBombCount);
     player.Powers.AvailableBombs := player.Powers.AvailableBombs - 1;
@@ -1227,6 +1231,7 @@ Begin
               fBombs[i].MoveDir := bmFly;
               fBombs[i].FlyTime := 0;
               fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
+              fBombs[i].StunOnLand := true; // Nur geworfene Bomben stunnen, gepunchte nicht
               fPlaySoundEffect(PlayerIndex, seBombGrab);
               fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssThrownBombs);
               Player.Info.Animation := raPup;
@@ -1268,6 +1273,7 @@ Begin
               fBombs[i].FlyTime := 0;
               fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
               fBombs[i].Lifetime := 0; // Reset Bomb timer when punch
+              fBombs[i].StunOnLand := false;
               fPlaySoundEffect(PlayerIndex, seBombPunch);
               fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssPushedBombs);
               Player.Info.Animation := raPunch;
@@ -1473,6 +1479,11 @@ Begin
             If FielWalkable(x, y, true) And (Not BlockedByHole(x, y)) And (Not BlockedBytramp(x, y)) Then Begin
               // 1. Das Feld darf belegt werden -> Fertig
               fBombs[i].MoveDir := bmNone;
+              // Eine geworfene Bombe kann auf einem Spieler landen, ob und wen das stunnt entscheidet der Server
+              If fBombs[i].StunOnLand And assigned(BombLandedCallback) Then Begin
+                BombLandedCallback(x, y);
+              End;
+              fBombs[i].StunOnLand := false;
             End
             Else Begin
               // 2. Das Feld ist belegt, wir starten ein Bouncing
