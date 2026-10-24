@@ -1189,7 +1189,7 @@ Begin
     puDisease: Begin
         fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
-        Case random(3) Of
+        Case random(4) Of
           0: Player.Disease := Player.Disease + [dInvertedKeyboard];
           1: Begin
               Player.Disease := Player.Disease + [dNoBombs];
