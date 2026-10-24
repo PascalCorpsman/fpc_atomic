@@ -48,6 +48,7 @@
 (*               0.15 - ADD RenderQuad with TopLeft / BottomRight             *)
 (*               0.16 - Cleanup Interfaces correct rotation on all functions  *)
 (*               0.17 - ADD LoadRGBAGraphikItem, TryGetItem                   *)
+(*                      Speedup: PNGs ohne TBitmap laden (LoadPNGAsRGBA)      *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uopengl_graphikengine;
@@ -142,6 +143,8 @@ Type
 {$IFDEF DEBUGGOUTPUT}
     OpenGLBufCount: int64;
 {$ENDIF}
+    // Lädt einen RGBA Puffer (2^n) ohne Namens-Cache Prüfung als Textur, bei IsAlphaImage = false wird der Alphakanal ignoriert
+    Function AddRGBATexture(Data: PByte; Width, Height, OrigWidth, OrigHeight: Integer; Name: String; Stretch: TStretchMode; IsAlphaImage: Boolean): TGraphikItem;
   public
     Constructor create;
     Destructor destroy; override;
@@ -164,6 +167,7 @@ Type
     (*
      * Lädt einen fertigen Puffer (GL_RGBA, GL_UNSIGNED_BYTE, Width * Height * 4 Byte) als Textur, Width / Height müssen 2^n sein.
      * OrigWidth / OrigHeight ist der genutzte Bereich oben links (wie bei smClamp), der Puffer gehört weiterhin dem Aufrufer.
+     * Bei IsAlphaImage = false wird der Alphakanal des Puffers ignoriert.
      *)
     Function LoadRGBAGraphikItem(Data: PByte; Width, Height, OrigWidth, OrigHeight: Integer; Name: String; IsAlphaImage: Boolean = true): TGraphikItem;
     Function TryGetItem(Name: String; Out Item: TGraphikItem): Boolean; // True, wenn eine Textur mit exakt diesem Namen geladen ist
@@ -337,7 +341,18 @@ Function OpenGLScreenshot: TBitmap;
 
 Function GetNextPowerOfTwo(Value: integer): Integer; // Kleinste 2^n >= Value, z.B. für die Puffergröße von LoadRGBAGraphikItem
 
+(*
+ * Lädt ein PNG ohne Umweg über TBitmap als RGBA Puffer (Width * Height * 4 Byte, Alpha = 0) und bringt es
+ * gemäß Stretch auf 2^n, mit dem selben Ergebnis wie die TBitmap Varianten der Engine.
+ * Unterstützt werden smNone, smClamp und smStretchHard. In allen anderen Fällen (anderer Stretchmode,
+ * kein PNG, PNG mit Transparenz) ist das Ergebnis Nil und der Aufrufer muss den TBitmap Weg nehmen.
+ * Der Puffer muss mit FreeMem freigegeben werden.
+ *)
+Function LoadPNGAsRGBA(Const Filename: String; Stretch: TStretchMode; Out OrigWidth, OrigHeight, Width, Height: Integer): PByte;
+
 Implementation
+
+Uses GraphType;
 
 (* Unabhängige Helper Funktionen *)
 Var
@@ -370,6 +385,89 @@ Begin
   While i < Value Do
     i := i Shl 1;
   result := i;
+End;
+
+(*
+ * Quellindex für Zielindex i, exakt so gerechnet wie ugraphics.Stretchdraw + GetPixel
+ * mit imNearestNeighbour und wmClamp (inklusive der Single Genauigkeit).
+ *)
+Function NearestSourceIndex(i, DestSize, SourceSize: Integer): Integer;
+Var
+  u, x, f: Single;
+Begin
+  u := i / (DestSize - 1);
+  x := u * SourceSize;
+  result := trunc(x);
+  f := x - result;
+  If f > 0.5 Then inc(result);
+  result := min(max(result, 0), SourceSize - 1);
+End;
+
+Function LoadPNGAsRGBA(Const Filename: String; Stretch: TStretchMode; Out
+  OrigWidth, OrigHeight, Width, Height: Integer): PByte;
+Var
+  Img: TLazIntfImage;
+  Desc: TRawImageDescription;
+  Reader: TLazReaderPNG;
+  pSrc, pDst: PByte;
+  xs: Array Of Integer;
+  x, y: Integer;
+Begin
+  result := Nil;
+  OrigWidth := 0;
+  OrigHeight := 0;
+  Width := 0;
+  Height := 0;
+  If Not (Stretch In [smNone, smClamp, smStretchHard]) Then exit;
+  If lowercase(ExtractFileExt(Filename)) <> '.png' Then exit;
+  Img := TLazIntfImage.Create(0, 0);
+  Reader := TLazReaderPNG.Create;
+  Try
+    Desc.Init_BPP32_R8G8B8A8_BIO_TTB(0, 0);
+    Img.DataDescription := Desc;
+    Img.LoadFromFile(Filename, Reader);
+    // Bei Transparenz verhält sich der TBitmap Weg (Canvas.Draw) anders, dann den nehmen
+    For y := 0 To Img.Height - 1 Do Begin
+      pSrc := Img.GetDataLineStart(y);
+      For x := 0 To Img.Width - 1 Do Begin
+        If pSrc[x * 4 + 3] <> 255 Then exit;
+      End;
+    End;
+    OrigWidth := Img.Width;
+    OrigHeight := Img.Height;
+    Width := OrigWidth;
+    Height := OrigHeight;
+    If Stretch <> smNone Then Begin
+      Width := GetNextPowerOfTwo(OrigWidth);
+      Height := GetNextPowerOfTwo(OrigHeight);
+    End;
+    result := AllocMem(Width * Height * 4); // Bei smClamp bleibt der Rand 0
+    If (Stretch = smStretchHard) And ((Width <> OrigWidth) Or (Height <> OrigHeight)) Then Begin
+      // Wie Stretchdraw: wird gestretcht, dann immer in beiden Richtungen (auch wenn eine schon 2^n ist)
+      setlength(xs, Width);
+      For x := 0 To Width - 1 Do Begin
+        xs[x] := NearestSourceIndex(x, Width, OrigWidth);
+      End;
+      For y := 0 To Height - 1 Do Begin
+        pSrc := Img.GetDataLineStart(NearestSourceIndex(y, Height, OrigHeight));
+        pDst := result + y * Width * 4;
+        For x := 0 To Width - 1 Do Begin
+          PLongWord(pDst)[x] := PLongWord(pSrc)[xs[x]];
+        End;
+      End;
+    End
+    Else Begin
+      For y := 0 To OrigHeight - 1 Do Begin
+        Move(Img.GetDataLineStart(y)^, (result + y * Width * 4)^, OrigWidth * 4);
+      End;
+    End;
+    For x := 0 To Width * Height - 1 Do Begin
+      result[x * 4 + 3] := 0;
+    End;
+  Finally
+    Reader.Free;
+    Img.Free;
+  End;
 End;
 
 {$IFDEF DEBUGGOUTPUT}
@@ -1765,6 +1863,7 @@ Var
   bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
 {$ENDIF}
   ow, oh, nw, nh: INteger;
+  pData: PByte;
 {$IFDEF LCLGTK3}
   IntfImg: TLazIntfImage;
   IntfImg2: TLazIntfImage;
@@ -1783,6 +1882,16 @@ Begin
 {$ENDIF}
         exit;
       End;
+    End;
+    // Schneller Weg ohne TBitmap (PNG, smNone, smClamp, smStretchHard)
+    pData := LoadPNGAsRGBA(Filename, Stretch, ow, oh, nw, nh);
+    If assigned(pData) Then Begin
+      Try
+        result := AddRGBATexture(pData, nw, nh, ow, oh, Data, Stretch, false);
+      Finally
+        FreeMem(pData);
+      End;
+      exit;
     End;
     // Graphik mus geladen werden
     b := TBitmap.create;
@@ -2416,29 +2525,20 @@ Begin
   b.free;
 End;
 
-Function TOpenGL_GraphikEngine.LoadRGBAGraphikItem(Data: PByte; Width,
-  Height, OrigWidth, OrigHeight: Integer; Name: String; IsAlphaImage: Boolean
-  ): TGraphikItem;
+Function TOpenGL_GraphikEngine.AddRGBATexture(Data: PByte; Width, Height,
+  OrigWidth, OrigHeight: Integer; Name: String; Stretch: TStretchMode;
+  IsAlphaImage: Boolean): TGraphikItem;
 Var
   img: Integer;
 {$IFDEF LEGACYMODE}
   bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
 {$ENDIF}
 Begin
-  // Graphik bereits geladen
-  If TryGetItem(Name, result) Then Begin
-{$IFDEF DEBUGGOUTPUT}
-    writeln('TGraphikEngine.LoadRGBAGraphikItem(' + name + ')');
-    writeln('OpenGL Buffer : ' + FileSizetoString(OpenGLBufCount));
-    writeln('TextureCount : ' + inttostr(high(Fimages) + 1));
-{$ENDIF}
-    exit;
-  End;
   If Not (IsPowerOfTwo(Width) And IsPowerOfTwo(Height)) Then Begin
     Raise Exception.create('Error Image ' + extractfilename(name) + ' has invalid Width / Height, has to be 2^x.');
   End;
 {$IFDEF DEBUGGOUTPUT}
-  writeln('TGraphikEngine.LoadRGBAGraphikItem(' + name + ')');
+  writeln('TGraphikEngine.AddRGBATexture(' + name + ')');
   writeln('Orig size : ' + inttostr(OrigWidth) + 'x' + inttostr(OrigHeight));
   writeln('OpenGL size : ' + inttostr(Width) + 'x' + inttostr(Height));
   OpenGLBufCount := OpenGLBufCount + (Width * Height * 4);
@@ -2454,7 +2554,13 @@ Begin
   glBindTexture(GL_TEXTURE_2D, img);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, gl_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Data);
+  // Ohne Alpha wird der Alphakanal des Puffers ignoriert, wie bei den Funktionen die GL_RGB hochladen
+  If IsAlphaImage Then Begin
+    glTexImage2D(GL_TEXTURE_2D, 0, gl_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Data);
+  End
+  Else Begin
+    glTexImage2D(GL_TEXTURE_2D, 0, gl_RGB, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Data);
+  End;
 {$IFDEF LEGACYMODE}
   If Not (Bool{$IFDEF USE_GL} = 1{$ENDIF}) Then
     gldisable(GL_TEXTURE_2D);
@@ -2463,7 +2569,7 @@ Begin
   setlength(Fimages, high(Fimages) + 2);
   Fimages[high(Fimages)].Image := img;
   Fimages[high(Fimages)].Name := LowerCase(Name);
-  Fimages[high(Fimages)].Stretched := smClamp;
+  Fimages[high(Fimages)].Stretched := Stretch;
   Fimages[high(Fimages)].OrigHeight := OrigHeight;
   Fimages[high(Fimages)].OrigWidth := OrigWidth;
   Fimages[high(Fimages)].StretchedHeight := Height;
@@ -2473,6 +2579,22 @@ Begin
 {$IFDEF DEBUGGOUTPUT}
   writeln('TextureCount : ' + inttostr(high(Fimages) + 1));
 {$ENDIF}
+End;
+
+Function TOpenGL_GraphikEngine.LoadRGBAGraphikItem(Data: PByte; Width,
+  Height, OrigWidth, OrigHeight: Integer; Name: String; IsAlphaImage: Boolean
+  ): TGraphikItem;
+Begin
+  // Graphik bereits geladen
+  If TryGetItem(Name, result) Then Begin
+{$IFDEF DEBUGGOUTPUT}
+    writeln('TGraphikEngine.LoadRGBAGraphikItem(' + name + ')');
+    writeln('OpenGL Buffer : ' + FileSizetoString(OpenGLBufCount));
+    writeln('TextureCount : ' + inttostr(high(Fimages) + 1));
+{$ENDIF}
+    exit;
+  End;
+  result := AddRGBATexture(Data, Width, Height, OrigWidth, OrigHeight, Name, smClamp, IsAlphaImage);
 End;
 
 Function TOpenGL_GraphikEngine.TryGetItem(Name: String; Out Item: TGraphikItem
@@ -2510,7 +2632,8 @@ Var
   temp, b: TBitmap;
   jp: TJPEGImage;
   png: TPortableNetworkGraphic;
-  i: Integer;
+  i, ow, oh, nw, nh: Integer;
+  pData, p: PByte;
 {$IFDEF LCLGTK3}
   IntfImg: TLazIntfImage;
 {$ENDIF}
@@ -2529,6 +2652,26 @@ Begin
 {$ENDIF}
       exit;
     End;
+  // Schneller Weg ohne TBitmap (PNG, smNone, smClamp)
+  // smStretchHard nicht: der TBitmap Weg liefert da unter Windows andere Pixel (schwarze Punkte durch Stretchdraw auf pf32bit),
+  // das Ergebnis soll sich durch die Optimierung aber nicht ändern.
+  pData := Nil;
+  If Stretch <> smStretchHard Then Begin
+    pData := LoadPNGAsRGBA(Filename, Stretch, ow, oh, nw, nh);
+  End;
+  If assigned(pData) Then Begin
+    Try
+      p := pData;
+      For i := 0 To nw * nh - 1 Do Begin
+        If (p[0] = Color.r) And (p[1] = Color.g) And (p[2] = Color.b) Then p[3] := 255; // Alpha ist invertiert: 255 = transparent
+        inc(p, 4);
+      End;
+      result := AddRGBATexture(pData, nw, nh, ow, oh, Data, Stretch, true);
+    Finally
+      FreeMem(pData);
+    End;
+    exit;
+  End;
   // Graphik mus geladen werden
   b := TBitmap.create;
   // create the raw image

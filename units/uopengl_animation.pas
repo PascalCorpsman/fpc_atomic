@@ -39,6 +39,7 @@
 (*               0.12 - FIX: GetFirstBitmap was not correct scaled            *)
 (*               0.13 - Speedup loading by using TMemorystream ?              *)
 (*               0.14 - CreateOpenGLData mit bereits geladener Textur         *)
+(*                      CloneFromShared                                       *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -158,6 +159,11 @@ Type
      *)
     Function LoadFromFile(Const Filename: String; InitOpenGLData: Boolean = True): Boolean;
     Procedure CloneFrom(Const Animation: TOpenGL_Animation);
+    (*
+     * Wie CloneFrom, kopiert aber keine Bitmaps, sondern nutzt die bereits geladenen Texturen von Animation mit (deutlich schneller).
+     * Achtung: ohne Bitmap gehen GetFirstBitmap, GetBitmapOf, SaveToFile und CloneFrom auf dem Klon nicht.
+     *)
+    Procedure CloneFromShared(Const Animation: TOpenGL_Animation);
 
     (*
      * Alles zum Verwalten, sollte außer in Editoren nicht verwendet werden !
@@ -965,6 +971,38 @@ Begin
   fname := Animation.fName;
   For i := 0 To high(fSprites) Do Begin
     CreateOpenGLData(i);
+  End;
+End;
+
+Procedure TOpenGL_Animation.CloneFromShared(Const Animation: TOpenGL_Animation);
+Var
+  i: Integer;
+Begin
+  // Hat die Quelle noch keine OpenGL Daten, gibt es nichts zu teilen
+  For i := 0 To high(Animation.fSprites) Do Begin
+    If Animation.fSprites[i].SpriteIndex = -1 Then Begin
+      CloneFrom(Animation);
+      exit;
+    End;
+  End;
+  Clear;
+  AngleOffset := Animation.AngleOffset;
+  setlength(fSprites, length(Animation.fSprites));
+  For i := 0 To high(fSprites) Do Begin
+    fSprites[i] := Animation.fSprites[i];
+    fSprites[i].Bitmap := Nil;
+    fSprites[i].AlphaMask := Nil;
+    fSprites[i].SpriteIndex := -1;
+  End;
+  Tag := 0;
+  fname := Animation.fName;
+  For i := 0 To high(fSprites) Do Begin
+    If fSprites[i].Derived Then Begin
+      CreateOpenGLData(i);
+    End
+    Else Begin
+      CreateOpenGLData(i, OpenGL_SpriteEngine.Sprite[Animation.fSprites[i].SpriteIndex].Image);
+    End;
   End;
 End;
 

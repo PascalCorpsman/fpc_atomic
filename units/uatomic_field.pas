@@ -505,7 +505,7 @@ Begin
   For i := 0 To FieldWidth - 1 Do
     For j := 0 To FieldHeight - 1 Do Begin
       fxBricks[i, j].ani := TOpenGL_Animation.Create;
-      fxBricks[i, j].ani.CloneFrom(xBrick);
+      fxBricks[i, j].ani.CloneFromShared(xBrick); // Die Klone brauchen nur die Textur, nicht das Bitmap
       fxBricks[i, j].ani.Tag := i + j * FieldWidth;
       // TODO: Das Problem ist wenn der Server zu Langsam ist scheint das nicht zu gehen ...
       fxBricks[i, j].ani.OnAnimationOverflowEvent := @OnxBrickOverflow;
