@@ -683,7 +683,7 @@ Begin
         For j := 0 To high(Players) Do Begin
           If Players[j].Info.Alive Then Begin
             If (trunc(Players[j].Info.Position.x) = px) And
-              (trunc(Players[j].Info.Position.x) = px) Then Begin
+              (trunc(Players[j].Info.Position.y) = py) Then Begin
               px := -1;
               break;
             End;
