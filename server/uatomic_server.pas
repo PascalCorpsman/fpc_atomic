@@ -136,7 +136,8 @@ Type
     Procedure HurryHandling;
     Procedure LoadModSettings();
     Function ActiveModsText(): String; // Leer, wenn kein Mod aktiv ist
-    Procedure ApplyStartItems(Var Powers: TAtomicPowers);
+    Procedure ApplyStartItems(Var Powers: TAtomicPowers; Items: String);
+    Procedure HandleDebugCommand(Const Stream: TStream; UID: integer);
   public
     Constructor Create(Port, AutoTimeOut: Integer);
     Destructor Destroy(); override;
@@ -415,6 +416,9 @@ Begin
     miUpdateFieldSetup: Begin
         HandleUpdateFieldSetup(Chunk.Data, Chunk.UID);
       End;
+    miDebugCommand: Begin
+        HandleDebugCommand(Chunk.Data, Chunk.UID);
+      End;
     miStartGame: Begin
         If fGameState = gsShowHighscore Then Begin
           If MatchFinished() Then Begin
@@ -645,6 +649,10 @@ Begin
   i := fSettings.MasterUid;
   m.Write(i, sizeof(i));
   SendChunk(miRequestLoginResult, m, UID);
+  // Dem neuen Spieler mitteilen ob er Cheats nutzen darf (nur der Master darf sie auch ausführen)
+  m := TMemoryStream.Create;
+  m.Write(fModSettings.Cheats, sizeof(fModSettings.Cheats));
+  SendChunk(miCheatsActive, m, UID);
   // Den neuen Spieler darauf hinweisen, dass Mods aktiv sind
   ModsText := ActiveModsText();
   If ModsText <> '' Then Begin
@@ -1032,6 +1040,7 @@ Var
   m: TMemoryStream;
   Startindex: Array[0..length(PlayerColors) - 1] Of Integer;
   pu: TPowerUps;
+  s: String;
 Begin
   EnterID := LogEnter('TServer.HandleStartRound');
   HandleStatisticCallback(ssGamesStarted);
@@ -1081,7 +1090,12 @@ Begin
     // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
     fPLayer[i].MaxHitPoints := 0;
     If fModSettings.HitPoints Then Begin
-      fPLayer[i].MaxHitPoints := min(255, max(1, StrToIntDef(fModSettings.Handicap.Values[fPLayer[i].UserName], fModSettings.DefaultHitPoints)));
+      (*
+       * Spielen 2 Spieler an einem PC, haben beide den selben Namen, der 2. (Keyboard 1) wird deshalb als "Name~2" gesucht (~ ist in Spielernamen nicht erlaubt, siehe ValidNodeName)
+       *)
+      s := fPLayer[i].UserName;
+      If (fPLayer[i].UID > 0) And (fPLayer[i].Keyboard = ks1) Then s := s + '~2';
+      fPLayer[i].MaxHitPoints := min(255, max(1, StrToIntDef(fModSettings.Handicap.Values[s], fModSettings.DefaultHitPoints)));
     End;
     fPLayer[i].HitPoints := fPLayer[i].MaxHitPoints;
     fPLayer[i].Info.HitPoints := 0;
@@ -1090,7 +1104,7 @@ Begin
     fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
-    If fModSettings.Cheats Then ApplyStartItems(fPLayer[i].Powers);
+    If fModSettings.Cheats Then ApplyStartItems(fPLayer[i].Powers, fModSettings.StartItems);
     For pu In TPowerUps Do Begin
       fPLayer[i].PowerUpCounter[pu] := 0;
     End;
@@ -1424,6 +1438,87 @@ Begin
   fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.InvulnTimeMs);
   HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
   result := true;
+End;
+
+Procedure TServer.HandleDebugCommand(Const Stream: TStream; UID: integer);
+Var
+  PlayerIndex, EnterID: integer;
+  Command: TCheatCommand;
+  s: String;
+Begin
+  EnterID := LogEnter('TServer.HandleDebugCommand');
+  PlayerIndex := -1;
+  Command := ccHurry;
+  Stream.Read(Command, sizeof(Command));
+  Stream.Read(PlayerIndex, sizeof(PlayerIndex));
+  (*
+   * Cheats nur, wenn der Server sie erlaubt und nur vom Master, alles andere wird verworfen
+   *)
+  If Not fModSettings.Cheats Then Begin
+    log('Cheat rejected, cheats are disabled (uid: ' + inttostr(UID) + ')', llWarning);
+    LogLeave(EnterID);
+    exit;
+  End;
+  If UID <> fSettings.MasterUid Then Begin
+    log('Cheat rejected, only the master is allowed to cheat (uid: ' + inttostr(UID) + ')', llWarning);
+    LogLeave(EnterID);
+    exit;
+  End;
+  If (fGameState <> gsPlaying) Or (PlayerIndex < 0) Or (PlayerIndex > high(fPLayer)) Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  If (Not fPLayer[PlayerIndex].Info.Alive) Or (fPLayer[PlayerIndex].Info.Dying) Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  (*
+   * Die Cheats prüfen bewusst nicht auf HurryActive o.ä. damit man Randfälle gezielt erzeugen kann
+   *)
+  s := '';
+  Case Command Of
+    ccPositiveDisease: Begin
+        fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.PositiveMinMs + random(fModSettings.PositiveMaxMs - fModSettings.PositiveMinMs + 1));
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'positive disease';
+      End;
+    ccHitMe: Begin
+        If HandlePlayerHit(PlayerIndex) Then Begin
+          s := 'hit, ' + inttostr(fPLayer[PlayerIndex].HitPoints) + ' hit points left';
+        End
+        Else Begin
+          HandlePlaySoundEffect(PlayerIndex, seAtomicDie);
+          fActualField.KillPlayer(fPLayer, PlayerIndex);
+          s := 'hit, player died';
+        End;
+      End;
+    ccGhost: Begin // Kommt mit dem Geister Mod
+        s := 'ghosts not implemented yet';
+      End;
+    ccHurry: Begin
+        If (fPlayingTimedesc = -1000) Or (fPlayingTimedesc > 80000) Then Begin
+          fPlayingTimedesc := 80000; // Ab hier beginnt HurryHandling die Steine zu setzen
+          SendChunk(miShowHurry, Nil, 0);
+        End;
+        s := 'hurry started';
+      End;
+    ccStun: Begin
+        fPLayer[PlayerIndex].StunTimer := max(fPLayer[PlayerIndex].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
+        s := 'stun';
+      End;
+    ccAllItems: Begin
+        ApplyStartItems(fPLayer[PlayerIndex].Powers, 'kick,punch,grab,bomb*3,flame*3');
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'all items';
+      End;
+    ccMaxHitPoints: Begin
+        fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].MaxHitPoints;
+        If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
+        s := 'hit points: ' + inttostr(fPLayer[PlayerIndex].HitPoints);
+      End;
+  End;
+  log('Cheat for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleSwitchToWaitForPlayersToConnect;
@@ -2041,6 +2136,13 @@ Begin
   m.write(i, sizeof(i));
   // 1. Alles was die Spieler angeht
   For i := 0 To high(fplayer) Do Begin
+    // Die Restzeiten werden nur für die Zustandsanzeige im Cheat Modus übertragen
+    fPLayer[i].Info.CheatInvulnTime := 0;
+    fPLayer[i].Info.CheatStunTime := 0;
+    If fModSettings.Cheats Then Begin
+      fPLayer[i].Info.CheatInvulnTime := min(high(uint16), fPLayer[i].InvulnTimer);
+      fPLayer[i].Info.CheatStunTime := min(high(uint16), fPLayer[i].StunTimer);
+    End;
     (*
      * Der Spieler langweilt sich und wird nicht zufällig gerade gegrillt
      *)
@@ -2591,7 +2693,7 @@ Begin
   End;
 End;
 
-Procedure TServer.ApplyStartItems(Var Powers: TAtomicPowers);
+Procedure TServer.ApplyStartItems(Var Powers: TAtomicPowers; Items: String);
 Var
   sl: TStringList;
   i, j, cnt: integer;
@@ -2604,7 +2706,7 @@ Begin
   sl := TStringList.Create;
   sl.Delimiter := ',';
   sl.StrictDelimiter := true;
-  sl.DelimitedText := fModSettings.StartItems;
+  sl.DelimitedText := Items;
   For i := 0 To sl.Count - 1 Do Begin
     item := lowercase(trim(sl[i]));
     cnt := 1;

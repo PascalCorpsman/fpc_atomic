@@ -143,6 +143,7 @@ Const
    *                       ADD: invulnerability of players (base for further mods), ends when hurry starts
    *                       ADD: optional positive disease, makes the player invulnerable for some time (not during hurry)
    *                       ADD: optional hit points per player name (handicap) -> need change in ProtocollVersion
+   *                       ADD: cheat keys F3..F11 (without F10) for testing the mods (only master, only if enabled in atomic_server.ini)
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -517,7 +518,22 @@ Type
     Direction: Single; // Blickrichtung im Mathematischen Drehsinn
     ColorIndex: uint8; // 0 .. length(PlayerColors) - 1 -> Zur Anzeige / Auswahl beim Rendering
     HitPoints: uint8; // Mod Trefferpunkte: Anzeige im Client wie viele Treffer der Spieler noch aushält, 0 = nicht anzeigen (Mod aus oder ShowHitPoints = 0)
+    CheatInvulnTime: uint16; // Nur bei aktiven Cheats: Restzeit der Unverwundbarkeit in ms (für die Zustandsanzeige), sonst 0
+    CheatStunTime: uint16; // Nur bei aktiven Cheats: Restzeit des Stun in ms (für die Zustandsanzeige), sonst 0
   End;
+
+  (*
+   * Cheats zum Testen der Mods, werden per miDebugCommand vom Client zum Server gesendet
+   *)
+  TCheatCommand = (
+    ccPositiveDisease // F5, Positive Krankheit -> Unverwundbar
+    , ccHitMe // F6, Treffer wie durch eine Flamme (Trefferpunkt weg bzw. sterben)
+    , ccGhost // F7, Geist (kommt mit dem Geister Mod)
+    , ccHurry // F8, Hurry sofort starten
+    , ccStun // F9, Stun
+    , ccAllItems // F4, Kick, Punch, Grab, Bomben, Flammen
+    , ccMaxHitPoints // F11, Trefferpunkte wieder auf Maximum
+    );
 
   TAtomicKey = (
     akNone, // Kein Gültiger Key
@@ -681,6 +697,7 @@ Type
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speichert ein Scheme in einen Stream
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
+Function CheatCommandToString(Value: TCheatCommand): String;
 
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
@@ -944,6 +961,20 @@ Begin
   result.PowerUps[puSuperBadDisease] := empty;
   result.PowerUps[puSlow] := empty;
   result.PowerUps[purandom] := empty;
+End;
+
+Function CheatCommandToString(Value: TCheatCommand): String;
+Begin
+  result := '';
+  Case Value Of
+    ccPositiveDisease: result := 'positive disease';
+    ccHitMe: result := 'hit me';
+    ccGhost: result := 'ghost (not yet)';
+    ccHurry: result := 'start hurry';
+    ccStun: result := 'stun me';
+    ccAllItems: result := 'all items';
+    ccMaxHitPoints: result := 'max hit points';
+  End;
 End;
 
 End.

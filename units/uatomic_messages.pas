@@ -45,6 +45,7 @@ Const
   miChangePlayerKey = 135;
   miUpdateFieldSetup = 137;
   miClientKeyEvent = 138;
+  miDebugCommand = 139; // Der Client will einen Cheat ausführen (nur Master und nur wenn der Server Cheats erlaubt)
 
   (*
    * Nachrichten vom Server an den Client
@@ -61,6 +62,7 @@ Const
   miPlaySoundEffekt = 233;
   miUpdateMasterID = 234; // Der Master Spieler hat sich geändert (nur Relevant, wenn während eines Matches der Master Raus fliegt)
   miShowHurry = 235;
+  miCheatsActive = 236; // Der Server teilt beim Login mit, ob Cheats erlaubt sind
 
 Function MessageIdentifierToString(value: integer): String;
 Inline;
@@ -87,6 +89,7 @@ Begin
     miChangePlayerKey: result := 'ChangePlayerKey';
     miUpdateFieldSetup: result := 'UpdateFieldSetup';
     miClientKeyEvent: result := 'ClientKeyEvent';
+    miDebugCommand: result := 'DebugCommand';
 
     miRequestLoginResult: result := 'RequestLoginResult';
     miSplashHint: result := 'SplashHint';
@@ -100,6 +103,7 @@ Begin
     miPlaySoundEffekt: result := 'PlaySoundEffekt';
     miUpdateMasterID: result := 'UpdateMasterID';
     miShowHurry: result := 'ShowHurry';
+    miCheatsActive: result := 'CheatsActive';
   End;
 End;
 
