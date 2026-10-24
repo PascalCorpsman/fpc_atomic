@@ -127,14 +127,14 @@ End;
 
 (*
  * Färbt PNGImage in PlayerColor ein und lädt es unter Name als Textur in die Graphikengine.
- * Das Bild landet oben links in einer 2^n Textur (wie smClamp), Fuchsia wird
+ * Die Textur hat die Originalgröße (kein Auffüllen auf 2^n, spart ca. 40% Speicher), Fuchsia wird
  * nach dem Einfärben transparent (Alpha = 255).
  *)
 Function LoadColorTabledTexture(PNGImage: String; PlayerColor: TRGB; Name: String): TGraphikItem;
 Var
   Img: TLazIntfImage;
   pSrc, pDst, pStart: PByte;
-  r, g, b, n, k, m, x, y, w, h, nw, nh: Integer;
+  r, g, b, n, k, m, x, y, w, h: Integer;
   cr, cg, cb: Integer;
 Begin
   result := Default(TGraphikItem);
@@ -145,16 +145,14 @@ Begin
   Img := GetRawImage(PNGImage);
   w := Img.Width;
   h := Img.Height;
-  nw := GetNextPowerOfTwo(w);
-  nh := GetNextPowerOfTwo(h);
   cr := PlayerColor.r;
   cg := PlayerColor.g;
   cb := PlayerColor.b;
-  pStart := AllocMem(nw * nh * 4); // Der Rand außerhalb des Bildes bleibt 0, wie bei smClamp
+  GetMem(pStart, w * h * 4);
   Try
     For y := 0 To h - 1 Do Begin
       pSrc := Img.GetDataLineStart(y);
-      pDst := pStart + y * nw * 4;
+      pDst := pStart + y * w * 4;
       For x := 0 To w - 1 Do Begin
         r := pSrc[0];
         g := pSrc[1];
@@ -188,7 +186,7 @@ Begin
         inc(pDst, 4);
       End;
     End;
-    result := OpenGL_GraphikEngine.LoadRGBAGraphikItem(pStart, nw, nh, w, h, Name, true);
+    result := OpenGL_GraphikEngine.LoadRGBAGraphikItem(pStart, w, h, w, h, Name, true);
   Finally
     FreeMem(pStart);
   End;

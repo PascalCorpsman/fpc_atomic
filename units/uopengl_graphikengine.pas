@@ -143,7 +143,8 @@ Type
 {$IFDEF DEBUGGOUTPUT}
     OpenGLBufCount: int64;
 {$ENDIF}
-    // Lädt einen RGBA Puffer (2^n) ohne Namens-Cache Prüfung als Textur, bei IsAlphaImage = false wird der Alphakanal ignoriert
+    // Lädt einen RGBA Puffer ohne Namens-Cache Prüfung als Textur, bei IsAlphaImage = false wird der Alphakanal ignoriert
+    // Achtung: prüft nicht auf 2^n, das muss der Aufrufer tun, wenn er es braucht.
     Function AddRGBATexture(Data: PByte; Width, Height, OrigWidth, OrigHeight: Integer; Name: String; Stretch: TStretchMode; IsAlphaImage: Boolean): TGraphikItem;
   public
     Constructor create;
@@ -165,7 +166,9 @@ Type
     Function LoadAlphaColorGraphik(Const Graphik: TBitmap; Name: String; Color: TRGB; Stretch: TStretchmode = smNone): Integer; overload; Deprecated 'use *Item version'; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
     Function LoadAlphaColorGraphikItem(Const Graphik: TBitmap; Name: String; Color: TRGB; Stretch: TStretchmode = smNone): TGraphikItem; overload;
     (*
-     * Lädt einen fertigen Puffer (GL_RGBA, GL_UNSIGNED_BYTE, Width * Height * 4 Byte) als Textur, Width / Height müssen 2^n sein.
+     * Lädt einen fertigen Puffer (GL_RGBA, GL_UNSIGNED_BYTE, Width * Height * 4 Byte) als Textur.
+     * Width / Height dürfen beliebig sein (Texturen ungleich 2^n brauchen OpenGL >= 2.0, im Shader Modus also immer gegeben),
+     * Width = OrigWidth und Height = OrigHeight spart den Rand ganz.
      * OrigWidth / OrigHeight ist der genutzte Bereich oben links (wie bei smClamp), der Puffer gehört weiterhin dem Aufrufer.
      * Bei IsAlphaImage = false wird der Alphakanal des Puffers ignoriert.
      *)
@@ -1887,6 +1890,8 @@ Begin
     pData := LoadPNGAsRGBA(Filename, Stretch, ow, oh, nw, nh);
     If assigned(pData) Then Begin
       Try
+        If Not (IsPowerOfTwo(nw) And IsPowerOfTwo(nh)) Then
+          Raise Exception.create('Error Image ' + extractfilename(Filename) + ' has invalid Width / Height, has to be 2^x.');
         result := AddRGBATexture(pData, nw, nh, ow, oh, Data, Stretch, false);
       Finally
         FreeMem(pData);
@@ -2534,9 +2539,6 @@ Var
   bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
 {$ENDIF}
 Begin
-  If Not (IsPowerOfTwo(Width) And IsPowerOfTwo(Height)) Then Begin
-    Raise Exception.create('Error Image ' + extractfilename(name) + ' has invalid Width / Height, has to be 2^x.');
-  End;
 {$IFDEF DEBUGGOUTPUT}
   writeln('TGraphikEngine.AddRGBATexture(' + name + ')');
   writeln('Orig size : ' + inttostr(OrigWidth) + 'x' + inttostr(OrigHeight));
@@ -2658,6 +2660,8 @@ Begin
   pData := LoadPNGAsRGBA(Filename, Stretch, ow, oh, nw, nh);
   If assigned(pData) Then Begin
     Try
+      If Not (IsPowerOfTwo(nw) And IsPowerOfTwo(nh)) Then
+        Raise Exception.create('Error Image ' + extractfilename(Filename) + ' has invalid Width / Height, has to be 2^x.');
       p := pData;
       For i := 0 To nw * nh - 1 Do Begin
         If (p[0] = Color.r) And (p[1] = Color.g) And (p[2] = Color.b) Then p[3] := 255; // Alpha ist invertiert: 255 = transparent
