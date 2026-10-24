@@ -140,6 +140,9 @@ Const
    *                       FIX: connect on some linux devices stalled
    *                       FIX: trampolin placing was wrong
    *                       ADD: optional mods via atomic_server.ini (default off), first mod: thrown bombs landing on a player stun him
+   *                       ADD: invulnerability of players (base for further mods), ends when hurry starts
+   *                       FIX: disease "super slow" was never chosen
+   *                       FIX: respawned powerups could be placed below a bomb
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -225,7 +228,11 @@ Const
   AtomicDiseaseColorChangePeriodTime = 1500; //
   AtomicDiseaseColorChangePeriodRelaxTime = 500; // Zeit in derer der Atomic trotz Krankheit nicht Blinkt bezogen auf AtomicDiseaseColorChangePeriodTime
 
-  AtomicStunColorChangeTime = 50; // Zeit in ms, nach derer ein gestunnter Atomic zwischen seiner Farbe und schwarz / weiß wechselt
+  (*
+   * Damit man Stun und Unverwundbarkeit unterscheiden kann, blinken beide in unterschiedlicher Farbe und Geschwindigkeit
+   *)
+  AtomicStunColorChangeTime = 50; // Zeit in ms, nach derer ein gestunnter Atomic zwischen seiner Farbe und schwarz (bzw. rot) wechselt
+  AtomicInvulnColorChangeTime = 150; // Zeit in ms, nach derer ein unverwundbarer Atomic zwischen seiner Farbe und weiß (bzw. rot) wechselt
 
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..
@@ -277,6 +284,7 @@ Const
   TeamIndexRed = 1;
 
   WhiteColorIndex = 0; // Siehe PlayerColors
+  BlackColorIndex = 1; // Siehe PlayerColors
   RedColorIndex = 2; // Siehe PlayerColors
 
   (*
@@ -568,6 +576,7 @@ Type
     Powers: TAtomicPowers;
     PowerUpCounter: Array[TPowerUps] Of Integer; // Zähler, welche Powerups der Spieler wie oft aufgenommen hat, wenn er stirbt werden diese wieder "Verteilt"
     StunTimer: Integer; // Zeit in ms, wie lange der Spieler noch gestunnt ist (0 = nicht gestunnt), so lange kann er sich weder bewegen noch Aktionen ausführen
+    InvulnTimer: Integer; // Zeit in ms, wie lange der Spieler noch unverwundbar ist (0 = verwundbar), endet spätestens mit Beginn des Hurry
 {$ENDIF}
   End;
 
@@ -584,6 +593,8 @@ Type
      *)
     Cheats: Boolean; // Master Schalter, nur wenn True werden die folgenden Debug Werte ausgewertet
     StartItems: String; // z.B. "kick,punch,grab,bomb*3" diese Items bekommt jeder Spieler zu Rundenbeginn
+    RoundTimeSec: Integer; // > 0 überschreibt die Rundenzeit in s (Hurry beginnt bei 80s Restzeit, 90 = Hurry nach 10s)
+    StartInvulnMs: Integer; // Zeit in ms, so lange sind alle Spieler zu Rundenbeginn unverwundbar
   End;
 {$ENDIF}
 

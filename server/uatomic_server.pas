@@ -1039,6 +1039,9 @@ Begin
   Else Begin
     fPlayingTimedesc := fSettings.PlayTime * 1000;
   End;
+  If fModSettings.Cheats And (fModSettings.RoundTimeSec > 0) Then Begin
+    fPlayingTimedesc := fModSettings.RoundTimeSec * 1000; // Zum Testen des Hurry, gilt auch im Infinity Mode
+  End;
   fPlayingTimeasc := 0;
   For i := 0 To high(Startindex) Do Begin
     Startindex[i] := i;
@@ -1070,6 +1073,8 @@ Begin
     fPLayer[i].Disease := [];
     fPLayer[i].DiseaseCounter := 0;
     fPLayer[i].StunTimer := 0;
+    fPLayer[i].InvulnTimer := 0;
+    If fModSettings.Cheats Then fPLayer[i].InvulnTimer := fModSettings.StartInvulnMs;
     fPLayer[i].IdleTimer := 0;
     fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
@@ -1371,11 +1376,11 @@ Var
 Begin
   If Not fModSettings.StunOnBombLanding Then exit;
   (*
-   * Jeder Spieler auf der Kachel wird gestunnt, egal ob Gegner, Team Kollege oder der Werfer selbst.
+   * Jeder Spieler auf der Kachel wird gestunnt, egal ob Gegner, Team Kollege oder der Werfer selbst (Unverwundbare sind immun).
    * Bei mehrfachem Treffen gilt die längere Zeit, es wird nicht addiert.
    *)
   For i := 0 To high(fPLayer) Do Begin
-    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) And (Not fPLayer[i].Flying) And
+    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) And (Not fPLayer[i].Flying) And (fPLayer[i].InvulnTimer <= 0) And
       (trunc(fPLayer[i].Info.Position.x) = x) And (trunc(fPLayer[i].Info.Position.y) = y) Then Begin
       fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
     End;
@@ -1872,6 +1877,15 @@ Begin
       If Stunned Then Begin
         fPLayer[i].MoveState := StunMoveState;
       End;
+      (*
+       * Die Unverwundbarkeit läuft ab, mit Beginn des Hurry ist sie sofort vorbei
+       *)
+      If fActualField.HurryActive() Then Begin
+        fPLayer[i].InvulnTimer := 0;
+      End
+      Else Begin
+        fPLayer[i].InvulnTimer := max(0, fPLayer[i].InvulnTimer - FrameRate);
+      End;
 
       (*
        * Das "Krank" sein ;)
@@ -1999,10 +2013,21 @@ Begin
       If fPLayer[i].UID > 0 Then HandlePlaySoundEffect(i, seZen); // Nur "echte" spieler kriegen den Ton
     End;
     (*
-     * Ein gestunnter Spieler blinkt schnell zwischen seiner Farbe und weiß (bzw. rot, wenn er selbst weiß ist)
-     * das hat Vorrang vor dem Blinken der Krankheit.
+     * Ein gestunnter Spieler blinkt schnell zwischen seiner Farbe und schwarz (bzw. rot, wenn er selbst schwarz ist)
+     * Ein unverwundbarer Spieler blinkt langsamer zwischen seiner Farbe und weiß (bzw. rot, wenn er selbst weiß ist)
+     * beides hat Vorrang vor dem Blinken der Krankheit.
      *)
     If (fPLayer[i].StunTimer > 0) And ((fPLayer[i].StunTimer Div AtomicStunColorChangeTime) Mod 2 = 0) Then Begin
+      DiseasedInfo := fPLayer[i].Info;
+      If DiseasedInfo.ColorIndex = BlackColorIndex Then Begin
+        DiseasedInfo.ColorIndex := RedColorIndex;
+      End
+      Else Begin
+        DiseasedInfo.ColorIndex := BlackColorIndex;
+      End;
+      m.Write(DiseasedInfo, sizeof(DiseasedInfo));
+    End
+    Else If (fPLayer[i].InvulnTimer > 0) And ((fPLayer[i].InvulnTimer Div AtomicInvulnColorChangeTime) Mod 2 = 0) Then Begin
       DiseasedInfo := fPLayer[i].Info;
       If DiseasedInfo.ColorIndex = WhiteColorIndex Then Begin
         DiseasedInfo.ColorIndex := RedColorIndex;
@@ -2413,6 +2438,8 @@ Begin
   fModSettings.StunMaxMs := 500;
   fModSettings.Cheats := false;
   fModSettings.StartItems := '';
+  fModSettings.RoundTimeSec := 0;
+  fModSettings.StartInvulnMs := 0;
   s := GetAtomicServerIniFile();
   If Not ForceDirectories(ExtractFileDir(s)) Then Begin
     log('Unable to create: ' + s, llCritical);
@@ -2426,6 +2453,8 @@ Begin
     fModSettings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', fModSettings.StunMaxMs);
     fModSettings.Cheats := ini.ReadBool('Debug', 'Cheats', fModSettings.Cheats);
     fModSettings.StartItems := ini.ReadString('Debug', 'StartItems', fModSettings.StartItems);
+    fModSettings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
+    fModSettings.StartInvulnMs := ini.ReadInteger('Debug', 'StartInvulnMs', fModSettings.StartInvulnMs);
     (*
      * Ungültige Werte auf gültige Grenzen ziehen
      *)
@@ -2437,6 +2466,14 @@ Begin
       log('atomic_server.ini: StunMaxMs < StunMinMs, using StunMinMs', llWarning);
       fModSettings.StunMaxMs := fModSettings.StunMinMs;
     End;
+    If fModSettings.RoundTimeSec < 0 Then Begin
+      log('atomic_server.ini: RoundTimeSec < 0, using 0', llWarning);
+      fModSettings.RoundTimeSec := 0;
+    End;
+    If fModSettings.StartInvulnMs < 0 Then Begin
+      log('atomic_server.ini: StartInvulnMs < 0, using 0', llWarning);
+      fModSettings.StartInvulnMs := 0;
+    End;
     (*
      * Fehlende Schlüssel mit ihren Defaults anlegen, damit man sie in der Datei auch findet
      *)
@@ -2445,6 +2482,8 @@ Begin
     If Not ini.ValueExists('Mods', 'StunMaxMs') Then ini.WriteInteger('Mods', 'StunMaxMs', fModSettings.StunMaxMs);
     If Not ini.ValueExists('Debug', 'Cheats') Then ini.WriteBool('Debug', 'Cheats', fModSettings.Cheats);
     If Not ini.ValueExists('Debug', 'StartItems') Then ini.WriteString('Debug', 'StartItems', fModSettings.StartItems);
+    If Not ini.ValueExists('Debug', 'RoundTimeSec') Then ini.WriteInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
+    If Not ini.ValueExists('Debug', 'StartInvulnMs') Then ini.WriteInteger('Debug', 'StartInvulnMs', fModSettings.StartInvulnMs);
   Finally
     ini.free;
   End;

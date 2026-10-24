@@ -115,6 +115,7 @@ Type
     StatisticCallback: TStatisticCallback;
     BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
     Property BombsEnabled: Boolean read fBombsEnabled;
+    Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
     Property Sound: String read fSoundFile;
@@ -1858,7 +1859,8 @@ Begin
     // Die Kollision Spieler gegen eine Flamme -> Spieler i stirbt und wird von Spieler "fField[x, y].FlamePlayer" gekillt
     If fField[x, y].Flame <> [] Then Begin
       // TODO: Während eines Teleport vorgangs ist der Spieler unsterblich -> Klären ob das wirklich gewollt ist..
-      If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) Then Begin
+      // Ein unverwundbarer Spieler ignoriert die Flammen (der Hurry Tod passiert in HandleMovePlayer und ist davon nicht betroffen)
+      If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) And (Players[i].InvulnTimer <= 0) Then Begin
         If i = fField[x, y].FlamePlayer Then Begin
           // Selfkill
           Players[fField[x, y].FlamePlayer].Kills := Players[fField[x, y].FlamePlayer].Kills - 1;
@@ -2077,6 +2079,11 @@ Begin
   fField[p.x, p.y].Tramp := false;
   fField[p.x, p.y].TrampRunning := false;
   fField[p.x, p.y].Counter := 0;
+End;
+
+Function TAtomicField.HurryActive: Boolean;
+Begin
+  result := fHurryIndex <> -1;
 End;
 
 Procedure TAtomicField.KillPlayer(Var Players: TPlayers; Index: integer);
