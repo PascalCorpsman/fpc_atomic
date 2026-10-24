@@ -45,7 +45,7 @@ Const
   miChangePlayerKey = 135;
   miUpdateFieldSetup = 137;
   miClientKeyEvent = 138;
-  miDebugCommand = 139; // Der Client will einen Cheat ausführen (nur Master und nur wenn der Server Cheats erlaubt)
+  miDebugCommand = 139; // Der Client will einen Befehl des Mod Test Modus ausführen (nur Master und nur wenn der Server ihn erlaubt)
 
   (*
    * Nachrichten vom Server an den Client
@@ -62,7 +62,7 @@ Const
   miPlaySoundEffekt = 233;
   miUpdateMasterID = 234; // Der Master Spieler hat sich geändert (nur Relevant, wenn während eines Matches der Master Raus fliegt)
   miShowHurry = 235;
-  miModInfo = 236; // Der Server teilt beim Login die Mod Einstellungen mit, die der Client braucht (Cheats erlaubt, Geister Flackern)
+  miModInfo = 236; // Der Server teilt beim Login die Mod Einstellungen mit, die der Client braucht (Mod Test Modus, Geister Flackern)
 
 Function MessageIdentifierToString(value: integer): String;
 Inline;

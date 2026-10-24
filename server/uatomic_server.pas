@@ -654,9 +654,9 @@ Begin
   i := fSettings.MasterUid;
   m.Write(i, sizeof(i));
   SendChunk(miRequestLoginResult, m, UID);
-  // Dem neuen Spieler mitteilen ob er Cheats nutzen darf (nur der Master darf sie auch ausführen) und wie Geister flackern
+  // Dem neuen Spieler mitteilen ob der Mod Test Modus an ist (nur der Master darf Test Befehle ausführen) und wie Geister flackern
   m := TMemoryStream.Create;
-  m.Write(fModSettings.Cheats, sizeof(fModSettings.Cheats));
+  m.Write(fModSettings.ModTestMode, sizeof(fModSettings.ModTestMode));
   m.Write(fModSettings.GhostFlickerMs, sizeof(fModSettings.GhostFlickerMs));
   SendChunk(miModInfo, m, UID);
   // Allen Mitteilen das wir nen neuen Spieler haben
@@ -1052,7 +1052,7 @@ Begin
   Else Begin
     fPlayingTimedesc := fSettings.PlayTime * 1000;
   End;
-  If fModSettings.Cheats And (fModSettings.RoundTimeSec > 0) Then Begin
+  If fModSettings.ModTestMode And (fModSettings.RoundTimeSec > 0) Then Begin
     fPlayingTimedesc := fModSettings.RoundTimeSec * 1000; // Zum Testen des Hurry, gilt auch im Infinity Mode
   End;
   fPlayingTimeasc := 0;
@@ -1087,7 +1087,7 @@ Begin
     fPLayer[i].DiseaseCounter := 0;
     fPLayer[i].StunTimer := 0;
     fPLayer[i].InvulnTimer := 0;
-    If fModSettings.Cheats Then fPLayer[i].InvulnTimer := fModSettings.StartInvulnMs;
+    If fModSettings.ModTestMode Then fPLayer[i].InvulnTimer := fModSettings.StartInvulnMs;
     // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
     fPLayer[i].MaxHitPoints := 0;
     If fModSettings.HitPoints Then Begin
@@ -1105,10 +1105,11 @@ Begin
     fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
     fPLayer[i].Info.Ghost := false;
     fPLayer[i].GhostBombActive := false;
+    fPLayer[i].GhostCount := 0;
     fPLayer[i].StartPosition := fPLayer[i].Info.Position;
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
-    If fModSettings.Cheats Then ApplyStartItems(fPLayer[i].Powers, fModSettings.StartItems);
+    If fModSettings.ModTestMode Then ApplyStartItems(fPLayer[i].Powers, fModSettings.StartItems);
     For pu In TPowerUps Do Begin
       fPLayer[i].PowerUpCounter[pu] := 0;
     End;
@@ -1454,6 +1455,9 @@ Begin
   fPLayer[PlayerIndex].GhostRingPos := FieldToGhostRing(fPLayer[PlayerIndex].Info.Position);
   fPLayer[PlayerIndex].Info.Position := GhostRingToPosition(fPLayer[PlayerIndex].GhostRingPos);
   fPLayer[PlayerIndex].GhostDir := 0;
+  fPLayer[PlayerIndex].GhostCount := fPLayer[PlayerIndex].GhostCount + 1;
+  fPLayer[PlayerIndex].GhostTimer := fModSettings.GhostMaxTimeMs;
+  fPLayer[PlayerIndex].Info.GhostTime := min(high(uint16), fPLayer[PlayerIndex].GhostTimer);
   fPLayer[PlayerIndex].Info.Animation := raStandStill;
   fPLayer[PlayerIndex].Info.Counter := 0;
   fPLayer[PlayerIndex].GhostBombActive := false;
@@ -1475,6 +1479,7 @@ Begin
    *)
   p := fActualField.FindFreeField(trunc(fPLayer[GhostIndex].StartPosition.x), trunc(fPLayer[GhostIndex].StartPosition.y));
   fPLayer[GhostIndex].Info.Ghost := false;
+  fPLayer[GhostIndex].Info.GhostTime := 0;
   fPLayer[GhostIndex].Info.Alive := true;
   fPLayer[GhostIndex].Info.Dying := false;
   fPLayer[GhostIndex].Info.Position := v2(p.x + 0.5, p.y + 0.5);
@@ -1508,6 +1513,20 @@ Begin
     If fActualField.HurryActive() Then Begin
       fPLayer[i].Info.Ghost := false;
       Continue;
+    End;
+    (*
+     * Trifft ein Geist innerhalb von GhostMaxTimeMs keinen Gegner, verschwindet er endgültig.
+     * Eine schon geworfene Geisterbombe explodiert noch, belebt aber nicht mehr (siehe HandlePlayerVsMap).
+     *)
+    If fModSettings.GhostMaxTimeMs > 0 Then Begin
+      fPLayer[i].GhostTimer := fPLayer[i].GhostTimer - FrameRate;
+      If fPLayer[i].GhostTimer <= 0 Then Begin
+        fPLayer[i].Info.Ghost := false;
+        fPLayer[i].Info.GhostTime := 0;
+        log('Ghost vanished: ' + fPLayer[i].UserName, llInfo);
+        Continue;
+      End;
+      fPLayer[i].Info.GhostTime := min(high(uint16), fPLayer[i].GhostTimer);
     End;
     // Die Rahmenposition, auf der der Geist gerade (am ehesten) steht
     cur := round(fPLayer[i].GhostRingPos) Mod GhostRingLength;
@@ -1600,24 +1619,24 @@ End;
 Procedure TServer.HandleDebugCommand(Const Stream: TStream; UID: integer);
 Var
   PlayerIndex, EnterID: integer;
-  Command: TCheatCommand;
+  Command: TModTestCommand;
   s: String;
 Begin
   EnterID := LogEnter('TServer.HandleDebugCommand');
   PlayerIndex := -1;
-  Command := ccHurry;
+  Command := mtHurry;
   Stream.Read(Command, sizeof(Command));
   Stream.Read(PlayerIndex, sizeof(PlayerIndex));
   (*
-   * Cheats nur, wenn der Server sie erlaubt und nur vom Master, alles andere wird verworfen
+   * Test Befehle nur, wenn der Server den Mod Test Modus erlaubt und nur vom Master, alles andere wird verworfen
    *)
-  If Not fModSettings.Cheats Then Begin
-    log('Cheat rejected, cheats are disabled (uid: ' + inttostr(UID) + ')', llWarning);
+  If Not fModSettings.ModTestMode Then Begin
+    log('Mod test command rejected, mod test mode is disabled (uid: ' + inttostr(UID) + ')', llWarning);
     LogLeave(EnterID);
     exit;
   End;
   If UID <> fSettings.MasterUid Then Begin
-    log('Cheat rejected, only the master is allowed to cheat (uid: ' + inttostr(UID) + ')', llWarning);
+    log('Mod test command rejected, only the master is allowed (uid: ' + inttostr(UID) + ')', llWarning);
     LogLeave(EnterID);
     exit;
   End;
@@ -1625,23 +1644,23 @@ Begin
     LogLeave(EnterID);
     exit;
   End;
-  // Nur der Geist Cheat darf auch auf einen Geist angewendet werden (zurück ins Spiel holen)
+  // Nur der Geist Befehl darf auch auf einen Geist angewendet werden (zurück ins Spiel holen)
   If ((Not fPLayer[PlayerIndex].Info.Alive) Or (fPLayer[PlayerIndex].Info.Dying)) And
-    (Not ((Command = ccGhost) And fPLayer[PlayerIndex].Info.Ghost)) Then Begin
+    (Not ((Command = mtGhost) And fPLayer[PlayerIndex].Info.Ghost)) Then Begin
     LogLeave(EnterID);
     exit;
   End;
   (*
-   * Die Cheats prüfen bewusst nicht auf HurryActive o.ä. damit man Randfälle gezielt erzeugen kann
+   * Die Test Befehle prüfen bewusst nicht auf HurryActive o.ä. damit man Randfälle gezielt erzeugen kann
    *)
   s := '';
   Case Command Of
-    ccPositiveDisease: Begin
+    mtPositiveDisease: Begin
         fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.PositiveMinMs + random(fModSettings.PositiveMaxMs - fModSettings.PositiveMinMs + 1));
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         s := 'positive disease';
       End;
-    ccHitMe: Begin
+    mtHitMe: Begin
         If HandlePlayerHit(PlayerIndex) Then Begin
           s := 'hit, ' + inttostr(fPLayer[PlayerIndex].HitPoints) + ' hit points left';
         End
@@ -1651,7 +1670,7 @@ Begin
           s := 'hit, player died';
         End;
       End;
-    ccGhost: Begin
+    mtGhost: Begin
         If fPLayer[PlayerIndex].Info.Ghost Then Begin
           HandleGhostRevive(PlayerIndex);
           s := 'ghost revived';
@@ -1664,29 +1683,29 @@ Begin
           s := 'ghost';
         End;
       End;
-    ccHurry: Begin
+    mtHurry: Begin
         If (fPlayingTimedesc = -1000) Or (fPlayingTimedesc > 80000) Then Begin
           fPlayingTimedesc := 80000; // Ab hier beginnt HurryHandling die Steine zu setzen
           SendChunk(miShowHurry, Nil, 0);
         End;
         s := 'hurry started';
       End;
-    ccStun: Begin
+    mtStun: Begin
         fPLayer[PlayerIndex].StunTimer := max(fPLayer[PlayerIndex].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
         s := 'stun';
       End;
-    ccAllItems: Begin
+    mtAllItems: Begin
         ApplyStartItems(fPLayer[PlayerIndex].Powers, 'kick,punch,grab,bomb*3,flame*3');
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         s := 'all items';
       End;
-    ccMaxHitPoints: Begin
+    mtMaxHitPoints: Begin
         fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].MaxHitPoints;
         If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
         s := 'hit points: ' + inttostr(fPLayer[PlayerIndex].HitPoints);
       End;
   End;
-  log('Cheat for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
+  log('Mod test command for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
   LogLeave(EnterID);
 End;
 
@@ -2269,7 +2288,9 @@ Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fPLayer[i].Info.Dying := false;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
-          If fModSettings.Ghosts And (Not fActualField.HurryActive()) Then MakeGhost(i);
+          // Geist werden nur bis GhostMaxCount mal pro Runde (0 = unbegrenzt)
+          If fModSettings.Ghosts And (Not fActualField.HurryActive()) And
+            ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount)) Then MakeGhost(i);
         End;
       End
       Else Begin
@@ -2278,7 +2299,7 @@ Begin
     End
     Else Begin
       fPLayer[i].Info.Dying := false;
-      If fModSettings.Cheats And fModSettings.GhostsKeepRound And fPLayer[i].Info.Ghost Then inc(alive[fPLayer[i].Team]); // siehe EndGameCheck
+      If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And fPLayer[i].Info.Ghost Then inc(alive[fPLayer[i].Team]); // siehe EndGameCheck
     End;
   End;
   If fSettings.TeamPlay Then Begin
@@ -2309,12 +2330,12 @@ Begin
   m.write(i, sizeof(i));
   // 1. Alles was die Spieler angeht
   For i := 0 To high(fplayer) Do Begin
-    // Die Restzeiten werden nur für die Zustandsanzeige im Cheat Modus übertragen
-    fPLayer[i].Info.CheatInvulnTime := 0;
-    fPLayer[i].Info.CheatStunTime := 0;
-    If fModSettings.Cheats Then Begin
-      fPLayer[i].Info.CheatInvulnTime := min(high(uint16), fPLayer[i].InvulnTimer);
-      fPLayer[i].Info.CheatStunTime := min(high(uint16), fPLayer[i].StunTimer);
+    // Die Restzeiten werden nur für die Zustandsanzeige im Mod Test Modus übertragen
+    fPLayer[i].Info.TestInvulnTime := 0;
+    fPLayer[i].Info.TestStunTime := 0;
+    If fModSettings.ModTestMode Then Begin
+      fPLayer[i].Info.TestInvulnTime := min(high(uint16), fPLayer[i].InvulnTimer);
+      fPLayer[i].Info.TestStunTime := min(high(uint16), fPLayer[i].StunTimer);
     End;
     (*
      * Der Spieler langweilt sich und wird nicht zufällig gerade gegrillt
@@ -2425,7 +2446,7 @@ Begin
   SoundSends := Nil;
   For i := 0 To high(fPLayer) Do Begin
     // Zum Testen der Geister zu zweit (Debug) zählen Geister als lebendig, sonst wäre die Runde sofort vorbei
-    If fPLayer[i].Info.Alive Or (fModSettings.Cheats And fModSettings.GhostsKeepRound And fPLayer[i].Info.Ghost) Then Begin
+    If fPLayer[i].Info.Alive Or (fModSettings.ModTestMode And fModSettings.GhostsKeepRound And fPLayer[i].Info.Ghost) Then Begin
       inc(cnt);
       cntindex := i;
       If fPLayer[i].Team = TeamIndexWhite Then Begin
@@ -2759,13 +2780,15 @@ Begin
   fModSettings.GhostReviveInvulnMs := 3000;
   fModSettings.GhostFlameLen := 2;
   fModSettings.GhostFlickerMs := 200;
+  fModSettings.GhostMaxCount := 1;
+  fModSettings.GhostMaxTimeMs := 0;
   fModSettings.HitPoints := false;
   fModSettings.InvulnTimeMs := 5000;
   fModSettings.DefaultHitPoints := 1;
   fModSettings.ShowHitPoints := true;
   If Not assigned(fModSettings.Handicap) Then fModSettings.Handicap := TStringList.Create;
   fModSettings.Handicap.Clear;
-  fModSettings.Cheats := false;
+  fModSettings.ModTestMode := false;
   fModSettings.StartItems := '';
   fModSettings.RoundTimeSec := 0;
   fModSettings.StartInvulnMs := 0;
@@ -2789,12 +2812,14 @@ Begin
     fModSettings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', fModSettings.GhostReviveInvulnMs);
     fModSettings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', fModSettings.GhostFlameLen);
     fModSettings.GhostFlickerMs := ini.ReadInteger('Mods', 'GhostFlickerMs', fModSettings.GhostFlickerMs);
+    fModSettings.GhostMaxCount := ini.ReadInteger('Mods', 'GhostMaxCount', fModSettings.GhostMaxCount);
+    fModSettings.GhostMaxTimeMs := ini.ReadInteger('Mods', 'GhostMaxTimeMs', fModSettings.GhostMaxTimeMs);
     fModSettings.HitPoints := ini.ReadBool('Mods', 'HitPoints', fModSettings.HitPoints);
     fModSettings.InvulnTimeMs := ini.ReadInteger('Mods', 'InvulnTimeMs', fModSettings.InvulnTimeMs);
     fModSettings.DefaultHitPoints := ini.ReadInteger('Mods', 'DefaultHitPoints', fModSettings.DefaultHitPoints);
     fModSettings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', fModSettings.ShowHitPoints);
     ini.ReadSectionValues('Handicap', fModSettings.Handicap); // Spielername=Trefferpunkte
-    fModSettings.Cheats := ini.ReadBool('Debug', 'Cheats', fModSettings.Cheats);
+    fModSettings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', fModSettings.ModTestMode);
     fModSettings.StartItems := ini.ReadString('Debug', 'StartItems', fModSettings.StartItems);
     fModSettings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
     fModSettings.StartInvulnMs := ini.ReadInteger('Debug', 'StartInvulnMs', fModSettings.StartInvulnMs);
@@ -2829,6 +2854,14 @@ Begin
     If (fModSettings.GhostFlameLen < 1) Or (fModSettings.GhostFlameLen > 99) Then Begin
       log('atomic_server.ini: GhostFlameLen not in 1..99, clamping', llWarning);
       fModSettings.GhostFlameLen := min(99, max(1, fModSettings.GhostFlameLen));
+    End;
+    If (fModSettings.GhostMaxCount < 0) Or (fModSettings.GhostMaxCount > 99) Then Begin
+      log('atomic_server.ini: GhostMaxCount not in 0..99, clamping', llWarning);
+      fModSettings.GhostMaxCount := min(99, max(0, fModSettings.GhostMaxCount));
+    End;
+    If (fModSettings.GhostMaxTimeMs < 0) Or (fModSettings.GhostMaxTimeMs > 600000) Then Begin
+      log('atomic_server.ini: GhostMaxTimeMs not in 0..600000, clamping', llWarning);
+      fModSettings.GhostMaxTimeMs := min(600000, max(0, fModSettings.GhostMaxTimeMs));
     End;
     If (fModSettings.GhostFlickerMs < 0) Or (fModSettings.GhostFlickerMs > 5000) Then Begin
       log('atomic_server.ini: GhostFlickerMs not in 0..5000, clamping', llWarning);
@@ -2865,11 +2898,13 @@ Begin
     If Not ini.ValueExists('Mods', 'GhostReviveInvulnMs') Then ini.WriteInteger('Mods', 'GhostReviveInvulnMs', fModSettings.GhostReviveInvulnMs);
     If Not ini.ValueExists('Mods', 'GhostFlameLen') Then ini.WriteInteger('Mods', 'GhostFlameLen', fModSettings.GhostFlameLen);
     If Not ini.ValueExists('Mods', 'GhostFlickerMs') Then ini.WriteInteger('Mods', 'GhostFlickerMs', fModSettings.GhostFlickerMs);
+    If Not ini.ValueExists('Mods', 'GhostMaxCount') Then ini.WriteInteger('Mods', 'GhostMaxCount', fModSettings.GhostMaxCount);
+    If Not ini.ValueExists('Mods', 'GhostMaxTimeMs') Then ini.WriteInteger('Mods', 'GhostMaxTimeMs', fModSettings.GhostMaxTimeMs);
     If Not ini.ValueExists('Mods', 'HitPoints') Then ini.WriteBool('Mods', 'HitPoints', fModSettings.HitPoints);
     If Not ini.ValueExists('Mods', 'InvulnTimeMs') Then ini.WriteInteger('Mods', 'InvulnTimeMs', fModSettings.InvulnTimeMs);
     If Not ini.ValueExists('Mods', 'DefaultHitPoints') Then ini.WriteInteger('Mods', 'DefaultHitPoints', fModSettings.DefaultHitPoints);
     If Not ini.ValueExists('Mods', 'ShowHitPoints') Then ini.WriteBool('Mods', 'ShowHitPoints', fModSettings.ShowHitPoints);
-    If Not ini.ValueExists('Debug', 'Cheats') Then ini.WriteBool('Debug', 'Cheats', fModSettings.Cheats);
+    If Not ini.ValueExists('Debug', 'ModTestMode') Then ini.WriteBool('Debug', 'ModTestMode', fModSettings.ModTestMode);
     If Not ini.ValueExists('Debug', 'StartItems') Then ini.WriteString('Debug', 'StartItems', fModSettings.StartItems);
     If Not ini.ValueExists('Debug', 'RoundTimeSec') Then ini.WriteInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
     If Not ini.ValueExists('Debug', 'StartInvulnMs') Then ini.WriteInteger('Debug', 'StartInvulnMs', fModSettings.StartInvulnMs);
@@ -2889,7 +2924,7 @@ Begin
   If fModSettings.PositiveDisease Then result := result + ', positive disease';
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
-  If fModSettings.Cheats Then result := result + ', cheats';
+  If fModSettings.ModTestMode Then result := result + ', mod test mode';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));
   End;

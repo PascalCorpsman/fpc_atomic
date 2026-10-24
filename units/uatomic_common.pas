@@ -143,8 +143,9 @@ Const
    *                       ADD: invulnerability of players (base for further mods), ends when hurry starts
    *                       ADD: optional positive disease, makes the player invulnerable for some time (not during hurry)
    *                       ADD: optional hit points per player name (handicap) -> need change in ProtocollVersion
-   *                       ADD: cheat keys F3..F11 (without F10) for testing the mods (only master, only if enabled in atomic_server.ini)
+   *                       ADD: mod test mode with keys F3..F11 (without F10) for testing the mods (only master, only if enabled in atomic_server.ini)
    *                       ADD: optional ghosts, dead players walk around the border and can throw bombs to get back into the game
+   *                       ADD: ghosts: max count per round and optional max time until they vanish (flicker faster before)
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -244,6 +245,7 @@ Const
    *)
   GhostRingLength = 2 * FieldWidth + 2 * FieldHeight; // Anzahl der Positionen auf dem Rahmen (52)
   GhostSpeed = 5; // Geschwindigkeit eines Geistes in Randfeldern pro Sekunde
+  GhostWarnTime = 5000; // Zeit in ms, so lange vor dem Verschwinden (GhostMaxTimeMs) flackert ein Geist doppelt so schnell
   GhostThrowDistance = 3; // So viele Felder senkrecht vom Rand ins Feld wirft ein Geist seine Bombe
   GhostScale = 0.5; // Geister werden im Client verkleinert auf dem Rahmen außerhalb des Spielfeldes gerendert
 
@@ -529,22 +531,23 @@ Type
     Direction: Single; // Blickrichtung im Mathematischen Drehsinn
     ColorIndex: uint8; // 0 .. length(PlayerColors) - 1 -> Zur Anzeige / Auswahl beim Rendering
     HitPoints: uint8; // Mod Trefferpunkte: Anzeige im Client wie viele Treffer der Spieler noch aushält, 0 = nicht anzeigen (Mod aus oder ShowHitPoints = 0)
-    CheatInvulnTime: uint16; // Nur bei aktiven Cheats: Restzeit der Unverwundbarkeit in ms (für die Zustandsanzeige), sonst 0
-    CheatStunTime: uint16; // Nur bei aktiven Cheats: Restzeit des Stun in ms (für die Zustandsanzeige), sonst 0
+    TestInvulnTime: uint16; // Nur im Mod Test Modus: Restzeit der Unverwundbarkeit in ms (für die Zustandsanzeige), sonst 0
+    TestStunTime: uint16; // Nur im Mod Test Modus: Restzeit des Stun in ms (für die Zustandsanzeige), sonst 0
     Ghost: Boolean; // Mod Geister: True, der Spieler ist tot (Alive = false) und läuft als Geist am Rand entlang
+    GhostTime: uint16; // Mod Geister: Restzeit in ms bis der Geist verschwindet (für die Warnung im Client), 0 = kein Limit
   End;
 
   (*
-   * Cheats zum Testen der Mods, werden per miDebugCommand vom Client zum Server gesendet
+   * Befehle des Mod Test Modus zum Testen der Mods, werden per miDebugCommand vom Client zum Server gesendet
    *)
-  TCheatCommand = (
-    ccPositiveDisease // F5, Positive Krankheit -> Unverwundbar
-    , ccHitMe // F6, Treffer wie durch eine Flamme (Trefferpunkt weg bzw. sterben)
-    , ccGhost // F7, zum Geist machen bzw. als Geist zurück ins Spiel
-    , ccHurry // F8, Hurry sofort starten
-    , ccStun // F9, Stun
-    , ccAllItems // F4, Kick, Punch, Grab, Bomben, Flammen
-    , ccMaxHitPoints // F11, Trefferpunkte wieder auf Maximum
+  TModTestCommand = (
+    mtPositiveDisease // F5, Positive Krankheit -> Unverwundbar
+    , mtHitMe // F6, Treffer wie durch eine Flamme (Trefferpunkt weg bzw. sterben)
+    , mtGhost // F7, zum Geist machen bzw. als Geist zurück ins Spiel
+    , mtHurry // F8, Hurry sofort starten
+    , mtStun // F9, Stun
+    , mtAllItems // F4, Kick, Punch, Grab, Bomben, Flammen
+    , mtMaxHitPoints // F11, Trefferpunkte wieder auf Maximum
     );
 
   TAtomicKey = (
@@ -612,6 +615,8 @@ Type
     HitPoints: Integer; // Mod Trefferpunkte: Anzahl Treffer die der Spieler noch aushält (Info.HitPoints ist nur die Anzeige davon)
     GhostRingPos: Single; // Mod Geister: Position auf dem Rahmen [0..GhostRingLength[, der ganzzahlige Anteil ist die Rahmenposition, siehe GhostRingToField
     GhostDir: Integer; // Mod Geister: Letzte Laufrichtung auf dem Ring (-1, 0, 1), damit läuft der Geist bis zum nächsten Randfeld weiter
+    GhostCount: Integer; // Mod Geister: Wie oft der Spieler in dieser Runde schon Geist geworden ist
+    GhostTimer: Integer; // Mod Geister: Zeit in ms bis der Geist verschwindet, wenn er keinen Gegner trifft (nur wenn GhostMaxTimeMs > 0)
     GhostBombActive: Boolean; // Mod Geister: True, so lange die geworfene Geisterbombe noch nicht explodiert ist
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
@@ -633,6 +638,8 @@ Type
     GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
     GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
     GhostFlickerMs: Integer; // Zeit in ms, Geister sind im Client 3 Takte sichtbar und 1 Takt unsichtbar, 0 = kein Flackern
+    GhostMaxCount: Integer; // Wie oft ein Spieler pro Runde Geist werden kann, 0 = unbegrenzt
+    GhostMaxTimeMs: Integer; // Zeit in ms, nach derer ein Geist ohne Treffer auf einen Gegner verschwindet, 0 = unbegrenzt
     HitPoints: Boolean; // True, Spieler halten mehrere Treffer aus (pro Spielername in [Handicap], nicht im Hurry)
     InvulnTimeMs: Integer; // Zeit in ms, so lange ist der Spieler nach einem nicht tödlichen Treffer unverwundbar (>= FlameTime)
     DefaultHitPoints: Integer; // Trefferpunkte, wenn der Spieler nicht in [Handicap] steht
@@ -641,7 +648,7 @@ Type
     (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)
-    Cheats: Boolean; // Master Schalter, nur wenn True werden die folgenden Debug Werte ausgewertet
+    ModTestMode: Boolean; // Master Schalter für den Mod Test Modus, nur wenn True werden die folgenden Debug Werte und die Test Tasten ausgewertet
     StartItems: String; // z.B. "kick,punch,grab,bomb*3" diese Items bekommt jeder Spieler zu Rundenbeginn
     RoundTimeSec: Integer; // > 0 überschreibt die Rundenzeit in s (Hurry beginnt bei 80s Restzeit, 90 = Hurry nach 10s)
     StartInvulnMs: Integer; // Zeit in ms, so lange sind alle Spieler zu Rundenbeginn unverwundbar
@@ -718,7 +725,7 @@ Type
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speichert ein Scheme in einen Stream
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
-Function CheatCommandToString(Value: TCheatCommand): String;
+Function ModTestCommandToString(Value: TModTestCommand): String;
 
 {$IFDEF Server}
 Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
@@ -1042,17 +1049,17 @@ Begin
 End;
 {$ENDIF}
 
-Function CheatCommandToString(Value: TCheatCommand): String;
+Function ModTestCommandToString(Value: TModTestCommand): String;
 Begin
   result := '';
   Case Value Of
-    ccPositiveDisease: result := 'positive disease';
-    ccHitMe: result := 'hit me';
-    ccGhost: result := 'ghost on / off';
-    ccHurry: result := 'start hurry';
-    ccStun: result := 'stun me';
-    ccAllItems: result := 'all items';
-    ccMaxHitPoints: result := 'max hit points';
+    mtPositiveDisease: result := 'positive disease';
+    mtHitMe: result := 'hit me';
+    mtGhost: result := 'ghost on / off';
+    mtHurry: result := 'start hurry';
+    mtStun: result := 'stun me';
+    mtAllItems: result := 'all items';
+    mtMaxHitPoints: result := 'max hit points';
   End;
 End;
 

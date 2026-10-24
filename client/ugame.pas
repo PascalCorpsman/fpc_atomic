@@ -115,11 +115,11 @@ Type
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
     fFields: Array Of TAtomicField;
     fScheme: TScheme;
-    fCheatsActive: Boolean; // True, wenn der Server Cheats erlaubt (miModInfo), nur dann reagieren die F-Tasten
+    fModTestMode: Boolean; // True, wenn der Server den Mod Test Modus erlaubt (miModInfo), nur dann reagieren die F-Tasten
     fGhostFlickerMs: Integer; // Zeit in ms eines Flacker Taktes der Geister (miModInfo), 0 = kein Flackern
-    fShowCheatHelp: Boolean; // True, die Cheat Hilfe (F3) wird angezeigt
-    fCheatMessage: String; // Rückmeldung zum zuletzt gesendeten Cheat
-    fCheatMessageTimeStamp: QWord; // Zeitpunkt, an dem fCheatMessage gesetzt wurde
+    fShowModTestHelp: Boolean; // True, die Hilfe des Mod Test Modus (F3) wird angezeigt
+    fModTestMessage: String; // Rückmeldung zum zuletzt gesendeten Test Befehl
+    fModTestMessageTimeStamp: QWord; // Zeitpunkt, an dem fModTestMessage gesetzt wurde
 {$IFNDEF DebuggMode}
     fPlayer: TPlayers;
 {$ENDIF}
@@ -154,7 +154,7 @@ Type
     Function KeyboardkeyToAtomicKey(key: word; Const aKeyset: TKeySet): TAtomicKey;
     Procedure CheckKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
     Procedure CheckKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
-    Procedure CheckCheatKey(Key: Word; Shift: TShiftState);
+    Procedure CheckModTestKey(Key: Word; Shift: TShiftState);
     Procedure ConvertKeyToControl(aKey: TAtomicKey; Const Event: TKeyEvent);
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
@@ -655,7 +655,7 @@ Begin
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
           End;
-          If fCheatsActive Then CheckCheatKey(Key, Shift);
+          If fModTestMode Then CheckModTestKey(Key, Shift);
           For k In TKeySet Do Begin
             If fPlayerIndex[k] <> -1 Then CheckKeyDown(KeyboardkeyToAtomicKey(key, k), k);
           End;
@@ -667,42 +667,42 @@ Begin
   End;
 End;
 
-Procedure TGame.CheckCheatKey(Key: Word; Shift: TShiftState);
+Procedure TGame.CheckModTestKey(Key: Word; Shift: TShiftState);
 Var
   m: TMemoryStream;
-  Command: TCheatCommand;
+  Command: TModTestCommand;
   k: TKeySet;
 Begin
   Case Key Of
     VK_F3: Begin
-        fShowCheatHelp := Not fShowCheatHelp;
+        fShowModTestHelp := Not fShowModTestHelp;
         exit;
       End;
-    VK_F5: Command := ccPositiveDisease;
-    VK_F6: Command := ccHitMe;
-    VK_F7: Command := ccGhost;
-    VK_F8: Command := ccHurry;
-    VK_F9: Command := ccStun;
-    VK_F4: Command := ccAllItems; // F10 ist unter Windows die Menü Taste
-    VK_F11: Command := ccMaxHitPoints;
+    VK_F5: Command := mtPositiveDisease;
+    VK_F6: Command := mtHitMe;
+    VK_F7: Command := mtGhost;
+    VK_F8: Command := mtHurry;
+    VK_F9: Command := mtStun;
+    VK_F4: Command := mtAllItems; // F10 ist unter Windows die Menü Taste
+    VK_F11: Command := mtMaxHitPoints;
   Else
     exit;
   End;
-  // Mit Shift wirkt der Cheat auf den 2. Spieler an diesem PC
+  // Mit Shift wirkt der Test Befehl auf den 2. Spieler an diesem PC
   k := ks0;
   If (ssShift In Shift) And (fPlayerIndex[ks1] <> -1) Then k := ks1;
   If fPlayerIndex[k] = -1 Then exit;
   If fUserID <> fMasterUserID Then Begin
-    fCheatMessage := 'Cheats: only the master player';
-    fCheatMessageTimeStamp := GetTickCount64;
+    fModTestMessage := 'Mod test mode: only the master player';
+    fModTestMessageTimeStamp := GetTickCount64;
     exit;
   End;
   m := TMemoryStream.Create;
   m.Write(Command, sizeof(Command));
   m.Write(fPlayerIndex[k], sizeof(fPlayerIndex[k]));
   SendChunk(miDebugCommand, m);
-  fCheatMessage := 'Cheat: ' + CheatCommandToString(Command);
-  fCheatMessageTimeStamp := GetTickCount64;
+  fModTestMessage := 'Test: ' + ModTestCommandToString(Command);
+  fModTestMessageTimeStamp := GetTickCount64;
 End;
 
 Procedure TGame.CheckKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
@@ -1008,9 +1008,9 @@ Begin
   fWaitingForLocalServer := false;
 
   fChunkManager.SetNoDelay(true);
-  fCheatsActive := false; // Wird vom Server ggf. mittels miModInfo aktiviert
+  fModTestMode := false; // Wird vom Server ggf. mittels miModInfo aktiviert
   fGhostFlickerMs := 0;
-  fShowCheatHelp := false;
+  fShowModTestHelp := false;
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
 {$IFDEF Release}
@@ -1203,8 +1203,8 @@ Begin
         HandleHurryUp();
       End;
     miModInfo: Begin
-        fCheatsActive := false;
-        Chunk.Data.Read(fCheatsActive, sizeof(fCheatsActive));
+        fModTestMode := false;
+        Chunk.Data.Read(fModTestMode, sizeof(fModTestMode));
         fGhostFlickerMs := 0;
         Chunk.Data.Read(fGhostFlickerMs, sizeof(fGhostFlickerMs));
       End;
@@ -1957,15 +1957,15 @@ Begin
       AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, inttostr(fPlayer[i].Info.HitPoints));
     End;
   End;
-  If fCheatsActive Then Begin
+  If fModTestMode Then Begin
     (*
-     * Damit nie unbemerkt mit Cheats gespielt wird, steht das immer unten im Bild
+     * Damit nie unbemerkt im Mod Test Modus gespielt wird, steht das immer unten im Bild
      *)
     AtomicFont.Color := clYellow;
-    AtomicFont.Textout(10, GameHeight - 16, atomic_dialog_Layer + atomic_EPSILON, 'CHEATS ACTIVE - F3: HELP');
-    // Rückmeldung zum letzten Cheat
-    If (fCheatMessage <> '') And (GetTickCount64 - fCheatMessageTimeStamp < 2000) Then Begin
-      AtomicFont.Textout(330, GameHeight - 16, atomic_dialog_Layer + atomic_EPSILON, fCheatMessage);
+    AtomicFont.Textout(10, GameHeight - 16, atomic_dialog_Layer + atomic_EPSILON, 'MOD TEST MODE - F3: HELP');
+    // Rückmeldung zum letzten Test Befehl
+    If (fModTestMessage <> '') And (GetTickCount64 - fModTestMessageTimeStamp < 2000) Then Begin
+      AtomicFont.Textout(330, GameHeight - 16, atomic_dialog_Layer + atomic_EPSILON, fModTestMessage);
     End;
     (*
      * Zustandsanzeige je Spieler: Restzeiten von Unverwundbarkeit und Stun über dem Kopf
@@ -1974,8 +1974,8 @@ Begin
     For i := 0 To high(fPlayer) Do Begin
       If fPlayer[i].Info.Alive And (Not fPlayer[i].Info.Dying) Then Begin
         s := '';
-        If fPlayer[i].Info.CheatInvulnTime > 0 Then s := s + format('I%.1f ', [fPlayer[i].Info.CheatInvulnTime / 1000]);
-        If fPlayer[i].Info.CheatStunTime > 0 Then s := s + format('S%.1f', [fPlayer[i].Info.CheatStunTime / 1000]);
+        If fPlayer[i].Info.TestInvulnTime > 0 Then s := s + format('I%.1f ', [fPlayer[i].Info.TestInvulnTime / 1000]);
+        If fPlayer[i].Info.TestStunTime > 0 Then s := s + format('S%.1f', [fPlayer[i].Info.TestStunTime / 1000]);
         If s <> '' Then Begin
           x := round(fPlayer[i].Info.Position.x * FieldBlockWidth) + FieldxOff - 20;
           y := round((fPlayer[i].Info.Position.y - 2) * FieldBlockHeight) + FieldyOff;
@@ -1983,16 +1983,16 @@ Begin
         End;
       End;
     End;
-    If fShowCheatHelp Then Begin
+    If fShowModTestHelp Then Begin
       AtomicFont.Color := clWhite;
       AtomicFont.Textout(120, 100, atomic_dialog_Layer + atomic_EPSILON, 'F3  : hide this help');
-      AtomicFont.Textout(120, 120, atomic_dialog_Layer + atomic_EPSILON, 'F4  : ' + CheatCommandToString(ccAllItems));
-      AtomicFont.Textout(120, 140, atomic_dialog_Layer + atomic_EPSILON, 'F5  : ' + CheatCommandToString(ccPositiveDisease));
-      AtomicFont.Textout(120, 160, atomic_dialog_Layer + atomic_EPSILON, 'F6  : ' + CheatCommandToString(ccHitMe));
-      AtomicFont.Textout(120, 180, atomic_dialog_Layer + atomic_EPSILON, 'F7  : ' + CheatCommandToString(ccGhost));
-      AtomicFont.Textout(120, 200, atomic_dialog_Layer + atomic_EPSILON, 'F8  : ' + CheatCommandToString(ccHurry));
-      AtomicFont.Textout(120, 220, atomic_dialog_Layer + atomic_EPSILON, 'F9  : ' + CheatCommandToString(ccStun));
-      AtomicFont.Textout(120, 240, atomic_dialog_Layer + atomic_EPSILON, 'F11 : ' + CheatCommandToString(ccMaxHitPoints));
+      AtomicFont.Textout(120, 120, atomic_dialog_Layer + atomic_EPSILON, 'F4  : ' + ModTestCommandToString(mtAllItems));
+      AtomicFont.Textout(120, 140, atomic_dialog_Layer + atomic_EPSILON, 'F5  : ' + ModTestCommandToString(mtPositiveDisease));
+      AtomicFont.Textout(120, 160, atomic_dialog_Layer + atomic_EPSILON, 'F6  : ' + ModTestCommandToString(mtHitMe));
+      AtomicFont.Textout(120, 180, atomic_dialog_Layer + atomic_EPSILON, 'F7  : ' + ModTestCommandToString(mtGhost));
+      AtomicFont.Textout(120, 200, atomic_dialog_Layer + atomic_EPSILON, 'F8  : ' + ModTestCommandToString(mtHurry));
+      AtomicFont.Textout(120, 220, atomic_dialog_Layer + atomic_EPSILON, 'F9  : ' + ModTestCommandToString(mtStun));
+      AtomicFont.Textout(120, 240, atomic_dialog_Layer + atomic_EPSILON, 'F11 : ' + ModTestCommandToString(mtMaxHitPoints));
       AtomicFont.Textout(120, 270, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2. player on this pc');
       AtomicFont.Textout(120, 290, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned (seconds)');
     End;
@@ -2698,7 +2698,7 @@ End;
 
 Procedure TGame.Render;
 Var
-  i: Integer;
+  i, t: Integer;
   n: QWORD;
   m: TMatrix4x4;
 Begin
@@ -2733,7 +2733,13 @@ Begin
           End;
           // Geister (Mod) werden klein auf dem Rahmen und flackernd gerendert (nicht in der Pause)
           If fPlayer[i].Info.Ghost Then Begin
-            If fPause Or (fGhostFlickerMs = 0) Or ((GetTickCount64 Div fGhostFlickerMs) Mod 4 <> 3) Then Begin
+            // Kurz bevor der Geist verschwindet (GhostMaxTimeMs), flackert er doppelt so schnell
+            t := fGhostFlickerMs;
+            If (fPlayer[i].Info.GhostTime > 0) And (fPlayer[i].Info.GhostTime <= GhostWarnTime) Then Begin
+              If t = 0 Then t := 200;
+              t := max(1, t Div 2);
+            End;
+            If fPause Or (t = 0) Or ((GetTickCount64 Div t) Mod 4 <> 3) Then Begin
               RenderGhost(fPlayer[i].Info);
             End;
             fPlayer[i].edge := false;
