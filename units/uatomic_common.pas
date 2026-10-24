@@ -141,6 +141,7 @@ Const
    *                       FIX: trampolin placing was wrong
    *                       ADD: optional mods via atomic_server.ini (default off), first mod: thrown bombs landing on a player stun him
    *                       ADD: invulnerability of players (base for further mods), ends when hurry starts
+   *                       ADD: optional positive disease, makes the player invulnerable for some time (not during hurry)
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -588,6 +589,10 @@ Type
     StunOnBombLanding: Boolean; // True, Landet eine geworfene Bombe auf einem Spieler, wird dieser gestunnt
     StunMinMs: Integer; // Minimale Stun Zeit in ms
     StunMaxMs: Integer; // Maximale Stun Zeit in ms
+    PositiveDisease: Boolean; // True, ein Teil der Krankheits Items macht statt krank unverwundbar (nicht im Hurry)
+    PositiveDiseaseChance: Integer; // in %, Anteil der Krankheits Items die positiv wirken
+    PositiveMinMs: Integer; // Minimale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
+    PositiveMaxMs: Integer; // Maximale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
     (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)

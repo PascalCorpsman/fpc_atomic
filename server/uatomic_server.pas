@@ -1192,6 +1192,17 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
       End;
     puDisease: Begin
+        (*
+         * Positive Krankheit (Mod): Statt krank wird der Spieler für eine zufällige Zeit unverwundbar.
+         * Das ist keine TDisease, damit sie weder ansteckt noch die Krankheitsstatistik zählt.
+         * Im Hurry gibt es keinen Schutz mehr, dann wird es immer eine normale Krankheit.
+         *)
+        If fModSettings.PositiveDisease And (Not fActualField.HurryActive()) And (random(100) < fModSettings.PositiveDiseaseChance) Then Begin
+          HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+          Player.InvulnTimer := max(Player.InvulnTimer, fModSettings.PositiveMinMs + random(fModSettings.PositiveMaxMs - fModSettings.PositiveMinMs + 1));
+          LogLeave(EnterID);
+          exit;
+        End;
         fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
         Case random(4) Of
@@ -2436,6 +2447,10 @@ Begin
   fModSettings.StunOnBombLanding := false;
   fModSettings.StunMinMs := 100;
   fModSettings.StunMaxMs := 500;
+  fModSettings.PositiveDisease := false;
+  fModSettings.PositiveDiseaseChance := 15;
+  fModSettings.PositiveMinMs := 5000;
+  fModSettings.PositiveMaxMs := 20000;
   fModSettings.Cheats := false;
   fModSettings.StartItems := '';
   fModSettings.RoundTimeSec := 0;
@@ -2451,6 +2466,10 @@ Begin
     fModSettings.StunOnBombLanding := ini.ReadBool('Mods', 'StunOnBombLanding', fModSettings.StunOnBombLanding);
     fModSettings.StunMinMs := ini.ReadInteger('Mods', 'StunMinMs', fModSettings.StunMinMs);
     fModSettings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', fModSettings.StunMaxMs);
+    fModSettings.PositiveDisease := ini.ReadBool('Mods', 'PositiveDisease', fModSettings.PositiveDisease);
+    fModSettings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', fModSettings.PositiveDiseaseChance);
+    fModSettings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', fModSettings.PositiveMinMs);
+    fModSettings.PositiveMaxMs := ini.ReadInteger('Mods', 'PositiveMaxMs', fModSettings.PositiveMaxMs);
     fModSettings.Cheats := ini.ReadBool('Debug', 'Cheats', fModSettings.Cheats);
     fModSettings.StartItems := ini.ReadString('Debug', 'StartItems', fModSettings.StartItems);
     fModSettings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
@@ -2466,6 +2485,18 @@ Begin
       log('atomic_server.ini: StunMaxMs < StunMinMs, using StunMinMs', llWarning);
       fModSettings.StunMaxMs := fModSettings.StunMinMs;
     End;
+    If (fModSettings.PositiveDiseaseChance < 0) Or (fModSettings.PositiveDiseaseChance > 100) Then Begin
+      log('atomic_server.ini: PositiveDiseaseChance not in 0..100, clamping', llWarning);
+      fModSettings.PositiveDiseaseChance := min(100, max(0, fModSettings.PositiveDiseaseChance));
+    End;
+    If fModSettings.PositiveMinMs < 0 Then Begin
+      log('atomic_server.ini: PositiveMinMs < 0, using 0', llWarning);
+      fModSettings.PositiveMinMs := 0;
+    End;
+    If fModSettings.PositiveMaxMs < fModSettings.PositiveMinMs Then Begin
+      log('atomic_server.ini: PositiveMaxMs < PositiveMinMs, using PositiveMinMs', llWarning);
+      fModSettings.PositiveMaxMs := fModSettings.PositiveMinMs;
+    End;
     If fModSettings.RoundTimeSec < 0 Then Begin
       log('atomic_server.ini: RoundTimeSec < 0, using 0', llWarning);
       fModSettings.RoundTimeSec := 0;
@@ -2480,6 +2511,10 @@ Begin
     If Not ini.ValueExists('Mods', 'StunOnBombLanding') Then ini.WriteBool('Mods', 'StunOnBombLanding', fModSettings.StunOnBombLanding);
     If Not ini.ValueExists('Mods', 'StunMinMs') Then ini.WriteInteger('Mods', 'StunMinMs', fModSettings.StunMinMs);
     If Not ini.ValueExists('Mods', 'StunMaxMs') Then ini.WriteInteger('Mods', 'StunMaxMs', fModSettings.StunMaxMs);
+    If Not ini.ValueExists('Mods', 'PositiveDisease') Then ini.WriteBool('Mods', 'PositiveDisease', fModSettings.PositiveDisease);
+    If Not ini.ValueExists('Mods', 'PositiveDiseaseChance') Then ini.WriteInteger('Mods', 'PositiveDiseaseChance', fModSettings.PositiveDiseaseChance);
+    If Not ini.ValueExists('Mods', 'PositiveMinMs') Then ini.WriteInteger('Mods', 'PositiveMinMs', fModSettings.PositiveMinMs);
+    If Not ini.ValueExists('Mods', 'PositiveMaxMs') Then ini.WriteInteger('Mods', 'PositiveMaxMs', fModSettings.PositiveMaxMs);
     If Not ini.ValueExists('Debug', 'Cheats') Then ini.WriteBool('Debug', 'Cheats', fModSettings.Cheats);
     If Not ini.ValueExists('Debug', 'StartItems') Then ini.WriteString('Debug', 'StartItems', fModSettings.StartItems);
     If Not ini.ValueExists('Debug', 'RoundTimeSec') Then ini.WriteInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
@@ -2496,6 +2531,7 @@ Function TServer.ActiveModsText: String;
 Begin
   result := '';
   If fModSettings.StunOnBombLanding Then result := result + ', stun on bomb landing';
+  If fModSettings.PositiveDisease Then result := result + ', positive disease';
   If fModSettings.Cheats Then result := result + ', cheats';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));
