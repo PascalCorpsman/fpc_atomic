@@ -142,11 +142,12 @@ Const
    *                       ADD: optional mods via atomic_server.ini (default off), first mod: thrown bombs landing on a player stun him
    *                       ADD: invulnerability of players (base for further mods), ends when hurry starts
    *                       ADD: optional positive disease, makes the player invulnerable for some time (not during hurry)
+   *                       ADD: optional hit points per player name (handicap) -> need change in ProtocollVersion
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
 
-  ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   Version = '0.13004';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
@@ -515,6 +516,7 @@ Type
     Position: TVector2; // Position in Weltkoordinaten (muss noch mit FieldBlockWidth, FieldBlockHeight skalliert werden zum Rendern
     Direction: Single; // Blickrichtung im Mathematischen Drehsinn
     ColorIndex: uint8; // 0 .. length(PlayerColors) - 1 -> Zur Anzeige / Auswahl beim Rendering
+    HitPoints: uint8; // Mod Trefferpunkte: Anzeige im Client wie viele Treffer der Spieler noch aushält, 0 = nicht anzeigen (Mod aus oder ShowHitPoints = 0)
   End;
 
   TAtomicKey = (
@@ -578,6 +580,8 @@ Type
     PowerUpCounter: Array[TPowerUps] Of Integer; // Zähler, welche Powerups der Spieler wie oft aufgenommen hat, wenn er stirbt werden diese wieder "Verteilt"
     StunTimer: Integer; // Zeit in ms, wie lange der Spieler noch gestunnt ist (0 = nicht gestunnt), so lange kann er sich weder bewegen noch Aktionen ausführen
     InvulnTimer: Integer; // Zeit in ms, wie lange der Spieler noch unverwundbar ist (0 = verwundbar), endet spätestens mit Beginn des Hurry
+    MaxHitPoints: Integer; // Mod Trefferpunkte: Trefferpunkte zu Rundenbeginn (aus [Handicap] bzw. DefaultHitPoints)
+    HitPoints: Integer; // Mod Trefferpunkte: Anzahl Treffer die der Spieler noch aushält (Info.HitPoints ist nur die Anzeige davon)
 {$ENDIF}
   End;
 
@@ -593,6 +597,11 @@ Type
     PositiveDiseaseChance: Integer; // in %, Anteil der Krankheits Items die positiv wirken
     PositiveMinMs: Integer; // Minimale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
     PositiveMaxMs: Integer; // Maximale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
+    HitPoints: Boolean; // True, Spieler halten mehrere Treffer aus (pro Spielername in [Handicap], nicht im Hurry)
+    InvulnTimeMs: Integer; // Zeit in ms, so lange ist der Spieler nach einem nicht tödlichen Treffer unverwundbar (>= FlameTime)
+    DefaultHitPoints: Integer; // Trefferpunkte, wenn der Spieler nicht in [Handicap] steht
+    ShowHitPoints: Boolean; // True, die Clients zeigen die Trefferpunkte über den Spielern an
+    Handicap: TStringList; // Inhalt von [Handicap] als Spielername=Trefferpunkte
     (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)

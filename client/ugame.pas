@@ -1862,6 +1862,18 @@ Begin
   End;
   AtomicFont.BackColor := clBlack; // Auf Jeden Fall die BackColor wieder Resetten
   (*
+   * Trefferpunkte Mod: Über dem Kopf des Spielers steht wie viele Treffer er noch aushält,
+   * aber nur wenn es mehr als einer ist (sonst ist es ja wie im Original).
+   *)
+  AtomicFont.Color := clWhite;
+  For i := 0 To high(fPlayer) Do Begin
+    If fPlayer[i].Info.Alive And (Not fPlayer[i].Info.Dying) And (fPlayer[i].Info.HitPoints > 1) Then Begin
+      x := round(fPlayer[i].Info.Position.x * FieldBlockWidth) + FieldxOff - 5;
+      y := round((fPlayer[i].Info.Position.y - 1.5) * FieldBlockHeight) + FieldyOff;
+      AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, inttostr(fPlayer[i].Info.HitPoints));
+    End;
+  End;
+  (*
    * Die Verbleibende Spielzeit
    *)
   AtomicBigFont.Textout(500, 10, atomic_dialog_Layer + atomic_EPSILON, fPlayingTime_s);

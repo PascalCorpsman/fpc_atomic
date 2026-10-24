@@ -41,6 +41,7 @@ Type
   TPointFifo = specialize TBufferedFifo < Tpoint > ;
   TPlaySoundEffectCallback = Procedure(PlayerIndex: integer; Effect: TSoundEffect) Of Object;
   TBombLandedCallback = Procedure(x, y: integer) Of Object; // Wird aufgerufen, wenn eine geworfene Bombe (StunOnLand) auf der Kachel x, y liegen bleibt
+  TPlayerHitCallback = Function(PlayerIndex: integer): Boolean Of Object; // Wird bei einem Treffer durch eine Flamme aufgerufen, True = der Spieler überlebt den Treffer
 {$ENDIF}
 
 {$IFDEF Client}
@@ -114,6 +115,7 @@ Type
 {$IFDEF Server}
     StatisticCallback: TStatisticCallback;
     BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
+    PlayerHitCallback: TPlayerHitCallback; // Optional, wird vom Server gesetzt (Trefferpunkte Mod)
     Property BombsEnabled: Boolean read fBombsEnabled;
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
 {$ENDIF}
@@ -377,6 +379,7 @@ Begin
 {$IFDEF Server}
   StatisticCallback := sStatisticCallback;
   BombLandedCallback := Nil;
+  PlayerHitCallback := Nil;
   fPlaySoundEffect := PlaySoundEffectCallback;
   fBombCount := 0;
   fBombDetonateFifo := TIntFifo.create(128);
@@ -1861,6 +1864,10 @@ Begin
       // TODO: Während eines Teleport vorgangs ist der Spieler unsterblich -> Klären ob das wirklich gewollt ist..
       // Ein unverwundbarer Spieler ignoriert die Flammen (der Hurry Tod passiert in HandleMovePlayer und ist davon nicht betroffen)
       If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) And (Players[i].InvulnTimer <= 0) Then Begin
+        // Überlebt der Spieler den Treffer (Trefferpunkte Mod), gibt es weder Kill noch Tod
+        If assigned(PlayerHitCallback) Then Begin
+          If PlayerHitCallback(i) Then Continue;
+        End;
         If i = fField[x, y].FlamePlayer Then Begin
           // Selfkill
           Players[fField[x, y].FlamePlayer].Kills := Players[fField[x, y].FlamePlayer].Kills - 1;

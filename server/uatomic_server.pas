@@ -110,6 +110,7 @@ Type
     Procedure HandlePlaySoundEffect(PlayerIndex: integer; Effect: TSoundEffect);
     Procedure HandleStatisticCallback(StatSelector: TStatSelector; Value: uint64 = 1);
     Procedure HandleBombLanded(x, y: integer);
+    Function HandlePlayerHit(PlayerIndex: integer): Boolean;
 
     Procedure HandleLoadSettings(Const Stream: TStream);
     Procedure HandleChangePlayerKey(PlayerIndex, Direction: Integer; PlayerName: String; UID: Integer);
@@ -192,6 +193,7 @@ Begin
   For i := 0 To sl.Count - 1 Do Begin
     fFields[i] := TAtomicField.Create(@HandlePlaySoundEffect, @HandleStatisticCallback, fPlayerStatistics);
     fFields[i].BombLandedCallback := @HandleBombLanded;
+    fFields[i].PlayerHitCallback := @HandlePlayerHit;
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
@@ -242,6 +244,7 @@ Begin
   setlength(fFields, 0);
   UnLoadAiLib(); // da ist das AiDeInit mit drin ;)
   fPlayerStatistics.free;
+  fModSettings.Handicap.free;
   LogLeave(EnterID);
 End;
 
@@ -1075,6 +1078,14 @@ Begin
     fPLayer[i].StunTimer := 0;
     fPLayer[i].InvulnTimer := 0;
     If fModSettings.Cheats Then fPLayer[i].InvulnTimer := fModSettings.StartInvulnMs;
+    // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
+    fPLayer[i].MaxHitPoints := 0;
+    If fModSettings.HitPoints Then Begin
+      fPLayer[i].MaxHitPoints := min(255, max(1, StrToIntDef(fModSettings.Handicap.Values[fPLayer[i].UserName], fModSettings.DefaultHitPoints)));
+    End;
+    fPLayer[i].HitPoints := fPLayer[i].MaxHitPoints;
+    fPLayer[i].Info.HitPoints := 0;
+    If fModSettings.ShowHitPoints Then fPLayer[i].Info.HitPoints := fPLayer[i].HitPoints;
     fPLayer[i].IdleTimer := 0;
     fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
@@ -1396,6 +1407,23 @@ Begin
       fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
     End;
   End;
+End;
+
+Function TServer.HandlePlayerHit(PlayerIndex: integer): Boolean;
+Begin
+  result := false;
+  (*
+   * Trefferpunkte Mod: So lange der Spieler noch mehr als einen Trefferpunkt hat, kostet ein Treffer nur einen Punkt
+   * (auch bei der eigenen Bombe) und er ist danach kurz unverwundbar. Im Hurry ist jeder Treffer tödlich.
+   *)
+  If Not fModSettings.HitPoints Then exit;
+  If fActualField.HurryActive() Then exit;
+  If fPLayer[PlayerIndex].HitPoints <= 1 Then exit;
+  fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].HitPoints - 1;
+  If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
+  fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.InvulnTimeMs);
+  HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
+  result := true;
 End;
 
 Procedure TServer.HandleSwitchToWaitForPlayersToConnect;
@@ -2451,6 +2479,12 @@ Begin
   fModSettings.PositiveDiseaseChance := 15;
   fModSettings.PositiveMinMs := 5000;
   fModSettings.PositiveMaxMs := 20000;
+  fModSettings.HitPoints := false;
+  fModSettings.InvulnTimeMs := 5000;
+  fModSettings.DefaultHitPoints := 1;
+  fModSettings.ShowHitPoints := true;
+  If Not assigned(fModSettings.Handicap) Then fModSettings.Handicap := TStringList.Create;
+  fModSettings.Handicap.Clear;
   fModSettings.Cheats := false;
   fModSettings.StartItems := '';
   fModSettings.RoundTimeSec := 0;
@@ -2470,6 +2504,11 @@ Begin
     fModSettings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', fModSettings.PositiveDiseaseChance);
     fModSettings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', fModSettings.PositiveMinMs);
     fModSettings.PositiveMaxMs := ini.ReadInteger('Mods', 'PositiveMaxMs', fModSettings.PositiveMaxMs);
+    fModSettings.HitPoints := ini.ReadBool('Mods', 'HitPoints', fModSettings.HitPoints);
+    fModSettings.InvulnTimeMs := ini.ReadInteger('Mods', 'InvulnTimeMs', fModSettings.InvulnTimeMs);
+    fModSettings.DefaultHitPoints := ini.ReadInteger('Mods', 'DefaultHitPoints', fModSettings.DefaultHitPoints);
+    fModSettings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', fModSettings.ShowHitPoints);
+    ini.ReadSectionValues('Handicap', fModSettings.Handicap); // Spielername=Trefferpunkte
     fModSettings.Cheats := ini.ReadBool('Debug', 'Cheats', fModSettings.Cheats);
     fModSettings.StartItems := ini.ReadString('Debug', 'StartItems', fModSettings.StartItems);
     fModSettings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
@@ -2497,6 +2536,15 @@ Begin
       log('atomic_server.ini: PositiveMaxMs < PositiveMinMs, using PositiveMinMs', llWarning);
       fModSettings.PositiveMaxMs := fModSettings.PositiveMinMs;
     End;
+    If fModSettings.InvulnTimeMs < FlameTime Then Begin
+      // Sonst trifft die selbe Flamme den Spieler im nächsten Frame gleich noch mal
+      log('atomic_server.ini: InvulnTimeMs < ' + inttostr(FlameTime) + ', using ' + inttostr(FlameTime), llWarning);
+      fModSettings.InvulnTimeMs := FlameTime;
+    End;
+    If (fModSettings.DefaultHitPoints < 1) Or (fModSettings.DefaultHitPoints > 255) Then Begin
+      log('atomic_server.ini: DefaultHitPoints not in 1..255, clamping', llWarning);
+      fModSettings.DefaultHitPoints := min(255, max(1, fModSettings.DefaultHitPoints));
+    End;
     If fModSettings.RoundTimeSec < 0 Then Begin
       log('atomic_server.ini: RoundTimeSec < 0, using 0', llWarning);
       fModSettings.RoundTimeSec := 0;
@@ -2515,6 +2563,10 @@ Begin
     If Not ini.ValueExists('Mods', 'PositiveDiseaseChance') Then ini.WriteInteger('Mods', 'PositiveDiseaseChance', fModSettings.PositiveDiseaseChance);
     If Not ini.ValueExists('Mods', 'PositiveMinMs') Then ini.WriteInteger('Mods', 'PositiveMinMs', fModSettings.PositiveMinMs);
     If Not ini.ValueExists('Mods', 'PositiveMaxMs') Then ini.WriteInteger('Mods', 'PositiveMaxMs', fModSettings.PositiveMaxMs);
+    If Not ini.ValueExists('Mods', 'HitPoints') Then ini.WriteBool('Mods', 'HitPoints', fModSettings.HitPoints);
+    If Not ini.ValueExists('Mods', 'InvulnTimeMs') Then ini.WriteInteger('Mods', 'InvulnTimeMs', fModSettings.InvulnTimeMs);
+    If Not ini.ValueExists('Mods', 'DefaultHitPoints') Then ini.WriteInteger('Mods', 'DefaultHitPoints', fModSettings.DefaultHitPoints);
+    If Not ini.ValueExists('Mods', 'ShowHitPoints') Then ini.WriteBool('Mods', 'ShowHitPoints', fModSettings.ShowHitPoints);
     If Not ini.ValueExists('Debug', 'Cheats') Then ini.WriteBool('Debug', 'Cheats', fModSettings.Cheats);
     If Not ini.ValueExists('Debug', 'StartItems') Then ini.WriteString('Debug', 'StartItems', fModSettings.StartItems);
     If Not ini.ValueExists('Debug', 'RoundTimeSec') Then ini.WriteInteger('Debug', 'RoundTimeSec', fModSettings.RoundTimeSec);
@@ -2532,6 +2584,7 @@ Begin
   result := '';
   If fModSettings.StunOnBombLanding Then result := result + ', stun on bomb landing';
   If fModSettings.PositiveDisease Then result := result + ', positive disease';
+  If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Cheats Then result := result + ', cheats';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));
