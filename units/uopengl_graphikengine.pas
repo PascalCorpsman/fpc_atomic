@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uOpenGLGraphikEngine.pas                                        ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.16                                                         *)
+(* Version     : 0.17                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -47,6 +47,7 @@
 (*                      ShaderVAO before glVertexAttribPointer calls          *)
 (*               0.15 - ADD RenderQuad with TopLeft / BottomRight             *)
 (*               0.16 - Cleanup Interfaces correct rotation on all functions  *)
+(*               0.17 - ADD LoadRGBAGraphikItem, TryGetItem                   *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uopengl_graphikengine;
@@ -160,6 +161,12 @@ Type
     Function LoadAlphaColorGraphikItem(Filename: String; Color: TRGB; Stretch: TStretchmode = smNone): TGraphikItem; overload;
     Function LoadAlphaColorGraphik(Const Graphik: TBitmap; Name: String; Color: TRGB; Stretch: TStretchmode = smNone): Integer; overload; Deprecated 'use *Item version'; // Lädt eine Alphagraphik und setzt den Wert von Color = Transparent.
     Function LoadAlphaColorGraphikItem(Const Graphik: TBitmap; Name: String; Color: TRGB; Stretch: TStretchmode = smNone): TGraphikItem; overload;
+    (*
+     * Lädt einen fertigen Puffer (GL_RGBA, GL_UNSIGNED_BYTE, Width * Height * 4 Byte) als Textur, Width / Height müssen 2^n sein.
+     * OrigWidth / OrigHeight ist der genutzte Bereich oben links (wie bei smClamp), der Puffer gehört weiterhin dem Aufrufer.
+     *)
+    Function LoadRGBAGraphikItem(Data: PByte; Width, Height, OrigWidth, OrigHeight: Integer; Name: String; IsAlphaImage: Boolean = true): TGraphikItem;
+    Function TryGetItem(Name: String; Out Item: TGraphikItem): Boolean; // True, wenn eine Textur mit exakt diesem Namen geladen ist
     (*
     Funktionen die NICHT Machen was sie sollen
 
@@ -327,6 +334,8 @@ Erstellt einen Screenshot aus dem Aktuellen Framebuffer,
 inclusive Ermittlung der Auflösung.
 *)
 Function OpenGLScreenshot: TBitmap;
+
+Function GetNextPowerOfTwo(Value: integer): Integer; // Kleinste 2^n >= Value, z.B. für die Puffergröße von LoadRGBAGraphikItem
 
 Implementation
 
@@ -2405,6 +2414,81 @@ Begin
     Raise Exception.create('Error Image ' + extractfilename(name) + ' has invalid Width / Height, has to be 2^x.');
   End;
   b.free;
+End;
+
+Function TOpenGL_GraphikEngine.LoadRGBAGraphikItem(Data: PByte; Width,
+  Height, OrigWidth, OrigHeight: Integer; Name: String; IsAlphaImage: Boolean
+  ): TGraphikItem;
+Var
+  img: Integer;
+{$IFDEF LEGACYMODE}
+  bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
+{$ENDIF}
+Begin
+  // Graphik bereits geladen
+  If TryGetItem(Name, result) Then Begin
+{$IFDEF DEBUGGOUTPUT}
+    writeln('TGraphikEngine.LoadRGBAGraphikItem(' + name + ')');
+    writeln('OpenGL Buffer : ' + FileSizetoString(OpenGLBufCount));
+    writeln('TextureCount : ' + inttostr(high(Fimages) + 1));
+{$ENDIF}
+    exit;
+  End;
+  If Not (IsPowerOfTwo(Width) And IsPowerOfTwo(Height)) Then Begin
+    Raise Exception.create('Error Image ' + extractfilename(name) + ' has invalid Width / Height, has to be 2^x.');
+  End;
+{$IFDEF DEBUGGOUTPUT}
+  writeln('TGraphikEngine.LoadRGBAGraphikItem(' + name + ')');
+  writeln('Orig size : ' + inttostr(OrigWidth) + 'x' + inttostr(OrigHeight));
+  writeln('OpenGL size : ' + inttostr(Width) + 'x' + inttostr(Height));
+  OpenGLBufCount := OpenGLBufCount + (Width * Height * 4);
+  writeln('OpenGL Buffer : ' + FileSizetoString(OpenGLBufCount));
+{$ENDIF}
+  // Übergeben an OpenGL
+  glGenTextures(1, @img);
+{$IFDEF LEGACYMODE}
+  bool := glIsEnabled(GL_TEXTURE_2D);
+  If Not (Bool{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    glEnable(GL_TEXTURE_2D);
+{$ENDIF}
+  glBindTexture(GL_TEXTURE_2D, img);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, gl_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Data);
+{$IFDEF LEGACYMODE}
+  If Not (Bool{$IFDEF USE_GL} = 1{$ENDIF}) Then
+    gldisable(GL_TEXTURE_2D);
+{$ENDIF}
+  // Übernehmen in die Engine
+  setlength(Fimages, high(Fimages) + 2);
+  Fimages[high(Fimages)].Image := img;
+  Fimages[high(Fimages)].Name := LowerCase(Name);
+  Fimages[high(Fimages)].Stretched := smClamp;
+  Fimages[high(Fimages)].OrigHeight := OrigHeight;
+  Fimages[high(Fimages)].OrigWidth := OrigWidth;
+  Fimages[high(Fimages)].StretchedHeight := Height;
+  Fimages[high(Fimages)].StretchedWidth := Width;
+  Fimages[high(Fimages)].IsAlphaImage := IsAlphaImage;
+  result := Fimages[high(Fimages)];
+{$IFDEF DEBUGGOUTPUT}
+  writeln('TextureCount : ' + inttostr(high(Fimages) + 1));
+{$ENDIF}
+End;
+
+Function TOpenGL_GraphikEngine.TryGetItem(Name: String; Out Item: TGraphikItem
+  ): Boolean;
+Var
+  Data: String;
+  i: Integer;
+Begin
+  result := false;
+  Item := Default(TGraphikItem);
+  Data := LowerCase(Name);
+  For i := 0 To high(Fimages) Do
+    If Fimages[i].Name = Data Then Begin
+      Item := Fimages[i];
+      exit(true);
+    End;
 End;
 
 Function TOpenGL_GraphikEngine.LoadAlphaColorGraphik(Filename: String;
