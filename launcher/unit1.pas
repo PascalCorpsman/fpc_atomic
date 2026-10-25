@@ -56,6 +56,7 @@ Type
     Label6: TLabel;
     Label7: TLabel;
     Label8: TLabel;
+    Label9: TLabel;
     Panel1: TPanel;
     Timer1: TTimer;
     Procedure Button1Click(Sender: TObject);
@@ -67,6 +68,7 @@ Type
     Procedure Button7Click(Sender: TObject);
     Procedure Button8Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
+    Procedure Label9Click(Sender: TObject);
     Procedure CheckBox3Change(Sender: TObject);
     Procedure Edit1Change(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
@@ -87,6 +89,7 @@ Type
     Procedure LoadSettings();
     Procedure UpdateStatus();
     Procedure StoreSettings();
+    Procedure ApplyLanguage();
 
     Procedure LoadSideImage();
     Procedure OnDoLog(Const LogText: String);
@@ -103,7 +106,7 @@ Implementation
 {$R *.lfm}
 
 Uses process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global
+  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -174,8 +177,8 @@ Begin
     If ParamStr(i) = '-port' Then edit3.text := ParamStr(i + 1);
   End;
   CheckBox3Change(Nil);
-  Edit1Change(Nil);
-  UpdateStatus();
+  // Die Texte in der eingestellten Sprache, das setzt auch die Namensprüfung und den Status
+  ApplyLanguage();
 End;
 
 Procedure TForm1.Button3Click(Sender: TObject);
@@ -194,7 +197,7 @@ Begin
   // Short Prechecks
   If (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
     (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage('Error, installation not complete, please run "Check for updates"');
+    showmessage(Tr('Error, installation not complete, please run "Check for updates"'));
     exit;
   End;
   // Run the App ;)
@@ -260,6 +263,7 @@ Begin
     Keys[ks1].AchsisDirection[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
   End;
   Dialog.LoadKeys(Keys[ks0], Keys[ks1]);
+  TranslateForm(Dialog);
   If Dialog.Execute() Then Begin
     Keys[ks0] := Dialog.GetKeys(ks0);
     Keys[ks1] := Dialog.GetKeys(ks1);
@@ -320,12 +324,14 @@ End;
 Procedure TForm1.Button7Click(Sender: TObject);
 Begin
   // Mods, der Dialog liest und schreibt atomic_server.ini selbst
+  TranslateForm(form4);
   form4.ShowModal;
 End;
 
 Procedure TForm1.Button8Click(Sender: TObject);
 Begin
   // Spiel Optionen, die selben Schlüssel wie im Optionen Menü des Spiels
+  TranslateForm(form5);
   form5.LoadFromIni(ini);
   If form5.ShowModal = mrOK Then Begin
     form5.SaveToIni(ini);
@@ -336,6 +342,19 @@ End;
 Procedure TForm1.Label8Click(Sender: TObject);
 Begin
   OpenManual('MANUAL.md');
+End;
+
+Procedure TForm1.Label9Click(Sender: TObject);
+Begin
+  // Englisch <-> Deutsch, gemerkt in fpc_atomic.cfg
+  If Language = lgGerman Then Begin
+    Language := lgEnglish;
+  End
+  Else Begin
+    Language := lgGerman;
+  End;
+  ini.WriteString('Launcher', 'Language', LanguageCodes[Language]);
+  ApplyLanguage();
 End;
 
 Procedure TForm1.CheckBox3Change(Sender: TObject);
@@ -351,11 +370,11 @@ Procedure TForm1.Edit1Change(Sender: TObject);
 Begin
   // Den Spielernamen sofort prüfen, die Meldung beim Launch bleibt als Sicherheitsnetz
   If ValidNodeName(trim(Edit1.Text)) Then Begin
-    Label4.Caption := '✓ valid name';
+    Label4.Caption := Tr('✓ valid name');
     Label4.Font.Color := clGreen;
   End
   Else Begin
-    Label4.Caption := '✗ a-z 0-9 _ space, max. 19';
+    Label4.Caption := Tr('✗ a-z 0-9 _ space, max. 19');
     Label4.Font.Color := clRed;
   End;
 End;
@@ -415,7 +434,7 @@ Var
   sl: TStringList;
 Begin
   If Not ValidNodeName(trim(Edit1.text)) Then Begin
-    showmessage(Edit1.text + LineEnding + 'is not a valid nodename, (need to be less than 20 chars and no spezial chars!');
+    showmessage(Edit1.text + LineEnding + Tr('is not a valid nodename, (need to be less than 20 chars and no spezial chars!'));
     exit;
   End;
   // Launch
@@ -423,9 +442,9 @@ Begin
   ini.UpdateFile;
   sl := CheckForFiles();
   If sl.count <> 0 Then Begin
-    showmessage('Error, the following files are missing:' + LineEnding +
+    showmessage(Tr('Error, the following files are missing:') + LineEnding +
       sl.Text + LineEnding +
-      'Please re run cd_data_extractor');
+      Tr('Please re run cd_data_extractor'));
     sl.free;
     exit;
   End;
@@ -433,7 +452,7 @@ Begin
   // Short Prechecks
   If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
     (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage('Error, installation not complete, please run "Check for updates"');
+    showmessage(Tr('Error, installation not complete, please run "Check for updates"'));
     exit;
   End;
   // Run the App ;)
@@ -492,10 +511,10 @@ Var
 Begin
 {$IFDEF Linux}
   If DirectoryExists('cd_data_extractor') Then Begin
-    If id_yes = Application.MessageBox('In the launcher location there is a folder named "cd_data_extractor", this will crash the update process' + LineEnding +
-      'Do you want to rename that folder ?', 'Warning', MB_YESNO) Then Begin
+    If id_yes = Application.MessageBox(pchar(Tr('In the launcher location there is a folder named "cd_data_extractor", this will crash the update process') + LineEnding +
+      Tr('Do you want to rename that folder ?')), pchar(Tr('Warning')), MB_YESNO) Then Begin
       If Not RenameFile('cd_data_extractor' + PathDelim, 'cd_data_extractor_' + PathDelim) Then Begin
-        showmessage('Error, could not rename.');
+        showmessage(Tr('Error, could not rename.'));
         exit;
       End;
     End
@@ -531,11 +550,12 @@ Begin
   End;
   log('Online launcher version: ' + format('%0.2f', [Atomic_Version.LauncherVersion / 100]));
   log('Local launcher version: ' + format('%0.2f', [LauncherVersion / 100]));
+  TranslateForm(form3);
   form3.InitWith(Atomic_Version, Version = -1);
   If form3.GetFilesToDLCount() = 0 Then Begin
     UpToDate := true;
     showmessage(
-      'Your version of fpc_atomic is up to date.'
+      Tr('Your version of fpc_atomic is up to date.')
       //      + LineEnding + LineEnding +
       //      'But the additional *.zip files are not checked.' + LineEnding + LineEnding +
       //      'If you want, you can check these files now manually and update them.'
@@ -604,6 +624,12 @@ Begin
   edit2.text := ini.ReadString('Launcher', 'Router_IP', '127.0.0.1');
   edit3.text := ini.ReadString('Launcher', 'Router_Port', '5521');
   CheckBox6.Checked := ini.ReadBool('Launcher', 'ShowAfterGame', false);
+  If ini.ReadString('Launcher', 'Language', LanguageCodes[lgEnglish]) = LanguageCodes[lgGerman] Then Begin
+    Language := lgGerman;
+  End
+  Else Begin
+    Language := lgEnglish;
+  End;
 End;
 
 Procedure TForm1.UpdateStatus;
@@ -614,11 +640,11 @@ Begin
   // Links: sind die Spieldaten vollständig, rechts: die installierte Version (ohne Netzwerkzugriff)
   sl := CheckForFiles();
   If sl.Count = 0 Then Begin
-    Label5.Caption := '✓ Game data found';
+    Label5.Caption := Tr('✓ Game data found');
     Label5.Font.Color := clGreen;
   End
   Else Begin
-    Label5.Caption := '✗ Game data missing, run CD extractor';
+    Label5.Caption := Tr('✗ Game data missing, run CD extractor');
     Label5.Font.Color := clRed;
   End;
   // Die fehlenden Dateien stehen im Tooltip
@@ -628,14 +654,32 @@ Begin
   sl.free;
   Panel1MouseEnter(Nil);
   If Version = -1 Then Begin
-    Label6.Caption := 'Game ver. unknown';
+    Label6.Caption := Tr('Game ver. unknown');
   End
   Else Begin
     fm := DefaultFormatSettings;
     fm.DecimalSeparator := '.';
-    Label6.Caption := 'Game ver. ' + format('%0.5f', [Version], fm);
+    Label6.Caption := Tr('Game ver. ') + format('%0.5f', [Version], fm);
   End;
-  If UpToDate Then Label6.Caption := Label6.Caption + ', up to date';
+  If UpToDate Then Label6.Caption := Label6.Caption + Tr(', up to date');
+End;
+
+Procedure TForm1.ApplyLanguage;
+Begin
+  // Die Dialoge werden erst direkt vor dem Anzeigen übersetzt (Button1Click, Button5Click, Button7Click, Button8Click)
+  TranslateForm(self);
+  // Der Link zeigt immer die andere Sprache, in dieser Sprache
+  If Language = lgGerman Then Begin
+    Label9.Caption := 'English';
+    Label9.Hint := 'Show the launcher in English.';
+  End
+  Else Begin
+    Label9.Caption := 'Deutsch';
+    Label9.Hint := 'Den Launcher auf Deutsch anzeigen.';
+  End;
+  // Die Texte, die erst der Code setzt
+  Edit1Change(Nil);
+  UpdateStatus();
 End;
 
 Procedure TForm1.StoreSettings;

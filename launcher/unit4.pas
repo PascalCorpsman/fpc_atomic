@@ -219,7 +219,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global;
+Uses uatomic_global, ulanguage;
 
 Function ValidHandicapName(aName: String): Boolean;
 Begin
@@ -338,7 +338,7 @@ Begin
   // OK
   If Not ControlsToSettings() Then exit;
   If Not SaveModSettingsToFile(GetAtomicServerIniFile(), fSettings) Then Begin
-    showmessage('Error, could not write:' + LineEnding + GetAtomicServerIniFile());
+    showmessage(Tr('Error, could not write:') + LineEnding + GetAtomicServerIniFile());
     exit;
   End;
   ModalResult := mrOK;
@@ -487,22 +487,22 @@ Begin
   result := false;
   If SpinEdit2.Value < SpinEdit1.Value Then Begin
     ShowModPage(TabSheet1);
-    showmessage('Error, max. stun time is smaller than min. stun time.');
+    showmessage(Tr('Error, max. stun time is smaller than min. stun time.'));
     exit;
   End;
   If SpinEdit22.Value < SpinEdit21.Value Then Begin
     ShowModPage(TabSheet10);
-    showmessage('Error, max. stun time is smaller than min. stun time.');
+    showmessage(Tr('Error, max. stun time is smaller than min. stun time.'));
     exit;
   End;
   If SpinEdit5.Value < SpinEdit4.Value Then Begin
     ShowModPage(TabSheet2);
-    showmessage('Error, max. time is smaller than min. time.');
+    showmessage(Tr('Error, max. time is smaller than min. time.'));
     exit;
   End;
   If SpinEdit17.Value < SpinEdit16.Value Then Begin
     ShowModPage(TabSheet7);
-    showmessage('Error, max. time is smaller than min. time.');
+    showmessage(Tr('Error, max. time is smaller than min. time.'));
     exit;
   End;
   // Die Handicap Tabelle, leere Zeilen werden ignoriert
@@ -510,8 +510,8 @@ Begin
     If Not ValidHandicapRow(i) Then Begin
       ShowModPage(TabSheet3);
       StringGrid1.Row := i;
-      showmessage('Error, invalid handicap in line ' + inttostr(i) + ':' + LineEnding +
-        'The player name needs to be a valid name (optional with ~2 at the end) and the hit points need to be in 1..' + inttostr(ModMaxHitPoints) + '.');
+      showmessage(format(Tr('Error, invalid handicap in line %d:'), [i]) + LineEnding +
+        format(Tr('The player name needs to be a valid name (optional with ~2 at the end) and the hit points need to be in 1..%d.'), [ModMaxHitPoints]));
       exit;
     End;
     n := trim(StringGrid1.Cells[0, i]);
@@ -519,7 +519,7 @@ Begin
       If (n <> '') And (lowercase(n) = lowercase(trim(StringGrid1.Cells[0, j]))) Then Begin
         ShowModPage(TabSheet3);
         StringGrid1.Row := i;
-        showmessage('Error, the player name "' + n + '" is used twice.');
+        showmessage(format(Tr('Error, the player name "%s" is used twice.'), [n]));
         exit;
       End;
     End;

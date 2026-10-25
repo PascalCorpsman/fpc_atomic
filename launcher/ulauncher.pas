@@ -52,6 +52,7 @@ Const
    *                   ADD: Strg + Launch hostet, Shift + Launch tritt einem Netzwerkspiel direkt bei
    *                   FIX: Versionsnummer im Titel mit Komma (0,11)
    *                   ADD: Option, nach dem Spiel wieder den Launcher anzeigen
+   *                   ADD: Launcher auf Englisch oder Deutsch (Link unten rechts), auf Deutsch öffnen die Links die deutschen Handbücher
    * Known Bugs :
    *)
   {
@@ -117,23 +118,28 @@ Function CheckForFiles(): TStringList;
 (*
  * Öffnet ein Handbuch (z.B. MANUAL.md) mit dem dafür eingestellten Programm,
  * liegt es nicht neben dem Launcher, dann online unter ManualUrl.
+ * Ist der Launcher auf Deutsch, dann die deutsche Fassung (z.B. MANUAL_DE.md).
  *)
 Procedure OpenManual(Const Filename: String);
 
 Implementation
 
-Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf;
+Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf, ulanguage;
 
 Procedure OpenManual(Const Filename: String);
 Var
-  s: String;
+  s, f: String;
 Begin
-  s := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
+  f := Filename;
+  If Language = lgGerman Then Begin
+    f := ChangeFileExt(f, '') + '_DE' + ExtractFileExt(f);
+  End;
+  s := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + f;
   If FileExists(s) Then Begin
     OpenDocument(s);
   End
   Else Begin
-    OpenURL(ManualUrl + Filename);
+    OpenURL(ManualUrl + f);
   End;
 End;
 

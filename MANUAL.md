@@ -1,5 +1,7 @@
 # Detailed user Manual
 
+[Deutsche Version](MANUAL_DE.md)
+
 If you have a markdown viewer installed on your machine (e.g. VSCode) it is highly recommended to read the manual local on your machine, after you run the cd_data_extractor. Doing so enables a lot of graphics inside the manual which increases readabillity by a lot.
 
 ## Starting the Game/Server
@@ -57,7 +59,7 @@ The key binding can be changed in the options dialog
 - When pressed while walking towards a bomb "punch" a bomb in walk direction (if powerup was collected)
 
 ## Game mods
-FPC Atomic has optional game mods (stun on bomb landing, positive disease, hit points per player, ghosts) and a mod test mode. All of them are off by default and can be set up in the launcher with "Mods...". See the [mods manual](MODS_MANUAL.md) for details ([German version](MODS_MANUAL_DE.md)).
+FPC Atomic has optional game mods (e.g. stun on bomb landing, positive disease, hit points per player, ghosts) and a mod test mode. All of them are off by default and can be set up in the launcher with "Mods...". See the [mods manual](MODS_MANUAL.md) for details ([German version](MODS_MANUAL_DE.md)).
 
 ## Connecting a Client over the Internet to a local server
 To connect a client to a server over the Internet, follow these steps: 
@@ -103,6 +105,8 @@ Since ver 0.08 the launcher supports command line commands:
 - -cti: will check the checkbox "Join through a router"
 
 In the launcher, **Ctrl + Launch** (or Ctrl+Alt+L) starts the game and hosts a network game directly, without the main menu (the game gets the parameter -host). **Shift + Launch** (or Shift+Alt+L) joins a network game directly (parameter -join): the game searches the local network, if it finds no game it asks for IP and port. The button **Game...** sets the options of the game (team play, scheme, play time, ...) without starting it. There the sound effects can also be switched off, independent of the music ("Play music" in the launcher).
+
+The link at the bottom right of the launcher switches it between English and German. In German the manual links in the launcher open the German manuals.
 
 ## Included AI
 The server will automatically load ai.so (or ai.dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development.

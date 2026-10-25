@@ -26,9 +26,9 @@ Die Mods sind eine Einstellung des **Servers**. Nur der PC, der das Spiel hostet
 
 Am einfachsten geht es im Launcher: **Mods...** anklicken, links die gewünschten Mods anhaken und rechts ihre Werte einstellen. **OK** speichert. Die Einstellungen gelten für das **nächste Spiel, das auf diesem PC gehostet wird** (der Server liest sie beim Start).
 
-Gespeichert werden die Einstellungen in `atomic_server.ini` im Konfigurationsordner (Launcher: **Config folder**), siehe [atomic_server.ini von Hand bearbeiten](#atomic_serverini-von-hand-bearbeiten).
+Gespeichert werden die Einstellungen in `atomic_server.ini` im Konfigurationsordner (Launcher: **Konfigordner**), siehe [atomic_server.ini von Hand bearbeiten](#atomic_serverini-von-hand-bearbeiten).
 
-Die Oberfläche des Launchers ist englisch. Die Namen der Einstellungen stehen deshalb in den Tabellen so, wie sie im Dialog heißen.
+Die Namen der Einstellungen stehen in den Tabellen so, wie sie im Launcher auf Deutsch heißen (umschalten mit dem Link unten rechts im Launcher).
 
 ### Allgemeine Regeln
 
@@ -39,21 +39,21 @@ Die Oberfläche des Launchers ist englisch. Die Namen der Einstellungen stehen d
 
 ## Stun bei Bombenlandung
 
-Eine **geworfene** Bombe (Handschuh, siehe [erste Aktion](MANUAL.md#first-action-double-pressed)), die auf einem Spieler landet, stunnt diesen Spieler. Ein gestunnter Spieler kann sich weder bewegen noch eine Aktion ausführen. Geboxte Bomben stunnen nicht.
+Eine **geworfene** Bombe (Handschuh, siehe [erste Aktion](MANUAL_DE.md#erste-aktion-doppelt-gedrückt)), die auf einem Spieler landet, stunnt diesen Spieler. Ein gestunnter Spieler kann sich weder bewegen noch eine Aktion ausführen. Geboxte Bomben stunnen nicht.
 
 Der Stun trifft jeden auf dem Feld: Gegner, Teamkollegen und den Werfer selbst. Unverwundbare sind immun.
 
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `StunOnBombLanding` | 0 (aus) | 0 / 1 |
-| Min. stun time (ms) | `StunMinMs` | 100 | 0 .. 10000 |
-| Max. stun time (ms) | `StunMaxMs` | 500 | 0 .. 10000, nicht kleiner als Min. |
+| Min. Stun-Zeit (ms) | `StunMinMs` | 100 | 0 .. 10000 |
+| Max. Stun-Zeit (ms) | `StunMaxMs` | 500 | 0 .. 10000, nicht kleiner als Min. |
 
 Die Stun-Zeit ist zufällig zwischen Min. und Max.
 
 ## Boxhandschuh
 
-Mit dem Box-Item ![](data/res/powpunch.png) stunnt die [zweite Aktion](MANUAL.md#second-action) einen **Gegner**, der auf dem Feld direkt vor dem Spieler steht (in Blickrichtung). Das geht auch im Stehen.
+Mit dem Box-Item ![](data/res/powpunch.png) stunnt die [zweite Aktion](MANUAL_DE.md#zweite-aktion) einen **Gegner**, der auf dem Feld direkt vor dem Spieler steht (in Blickrichtung). Das geht auch im Stehen.
 
 - Liegt auf demselben Feld eine Bombe, wird nur der Gegner gestunnt, die Bombe bleibt liegen. Ohne Gegner wird die Bombe wie gewohnt geboxt.
 - Teamkollegen, Unverwundbare, fliegende und sterbende Spieler werden nicht gestunnt.
@@ -62,9 +62,9 @@ Mit dem Box-Item ![](data/res/powpunch.png) stunnt die [zweite Aktion](MANUAL.md
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `PunchStun` | 0 (aus) | 0 / 1 |
-| Min. stun time (ms) | `PunchStunMinMs` | 300 | 0 .. 10000 |
-| Max. stun time (ms) | `PunchStunMaxMs` | 800 | 0 .. 10000, nicht kleiner als Min. |
-| Wait before next punch (ms) | `PunchStunCooldownMs` | 1500 | 0 .. 10000 |
+| Min. Stun-Zeit (ms) | `PunchStunMinMs` | 300 | 0 .. 10000 |
+| Max. Stun-Zeit (ms) | `PunchStunMaxMs` | 800 | 0 .. 10000, nicht kleiner als Min. |
+| Pause bis zum nächsten Schlag (ms) | `PunchStunCooldownMs` | 1500 | 0 .. 10000 |
 
 ## Positive Krankheit
 
@@ -75,9 +75,9 @@ Im Hurry ist ein Krankheits-Item immer eine normale Krankheit. Die schlimme Kran
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `PositiveDisease` | 0 (aus) | 0 / 1 |
-| Chance of a disease item (%) | `PositiveDiseaseChance` | 15 | 0 .. 100 |
-| Min. invulnerable time (ms) | `PositiveMinMs` | 5000 | 0 .. 120000 |
-| Max. invulnerable time (ms) | `PositiveMaxMs` | 20000 | 0 .. 120000, nicht kleiner als Min. |
+| Chance pro Krankheits-Item (%) | `PositiveDiseaseChance` | 15 | 0 .. 100 |
+| Min. Unverwundbarkeit (ms) | `PositiveMinMs` | 5000 | 0 .. 120000 |
+| Max. Unverwundbarkeit (ms) | `PositiveMaxMs` | 20000 | 0 .. 120000, nicht kleiner als Min. |
 
 ## Durch Steine laufen
 
@@ -93,10 +93,10 @@ Ein Teil der Krankheits-Items ![](data/res/powdisea.png) lässt den Spieler für
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `BrickWalk` | 0 (aus) | 0 / 1 |
-| Chance of a disease item (%) | `BrickWalkChance` | 15 | 0 .. 100 |
-| Min. time (ms) | `BrickWalkMinMs` | 5000 | 0 .. 120000 |
-| Max. time (ms) | `BrickWalkMaxMs` | 10000 | 0 .. 120000, nicht kleiner als Min. |
-| See-through (%) | `BrickWalkTransparency` | 50 | 0 .. 100, 0 = normal, 100 = unsichtbar |
+| Chance pro Krankheits-Item (%) | `BrickWalkChance` | 15 | 0 .. 100 |
+| Min. Zeit (ms) | `BrickWalkMinMs` | 5000 | 0 .. 120000 |
+| Max. Zeit (ms) | `BrickWalkMaxMs` | 10000 | 0 .. 120000, nicht kleiner als Min. |
+| Durchsichtig (%) | `BrickWalkTransparency` | 50 | 0 .. 100, 0 = normal, 100 = unsichtbar |
 
 Die Durchsichtigkeit entsteht, indem der Spieler nur in einem Teil der Bilder gezeichnet wird. Er kann deshalb etwas flackern.
 
@@ -111,10 +111,10 @@ Ein Teil der Krankheits-Items ![](data/res/powdisea.png) macht den Bildschirm de
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `FlashDisease` | 0 (aus) | 0 / 1 |
-| Chance of a disease item (%) | `FlashDiseaseChance` | 15 | 0 .. 100 |
-| Strength (%) | `FlashDiseaseIntensity` | 90 | 0 .. 100, 100 = man sieht nichts mehr |
-| Duration (ms) | `FlashDiseaseMs` | 2500 | 0 .. 10000 |
-| Fade back (ms) | `FlashDiseaseFadeMs` | 2000 | 0 .. 10000 |
+| Chance pro Krankheits-Item (%) | `FlashDiseaseChance` | 15 | 0 .. 100 |
+| Stärke (%) | `FlashDiseaseIntensity` | 90 | 0 .. 100, 100 = man sieht nichts mehr |
+| Dauer (ms) | `FlashDiseaseMs` | 2500 | 0 .. 10000 |
+| Ausblenden (ms) | `FlashDiseaseFadeMs` | 2000 | 0 .. 10000 |
 
 ## Weiße Bombe
 
@@ -128,10 +128,10 @@ Ein Teil der Items unter den Steinen sind **weiße Bomben**. Sie sehen aus wie e
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `WhiteBomb` | 0 (aus) | 0 / 1 |
-| Share of the items (%) | `WhiteBombChance` | 10 | 0 .. 100 |
-| Strength (%) | `WhiteBombIntensity` | 90 | 0 .. 100, 100 = man sieht nichts mehr |
-| Duration (ms) | `WhiteBombMs` | 2500 | 0 .. 10000 |
-| Fade back (ms) | `WhiteBombFadeMs` | 2000 | 0 .. 10000 |
+| Anteil der Items (%) | `WhiteBombChance` | 10 | 0 .. 100 |
+| Stärke (%) | `WhiteBombIntensity` | 90 | 0 .. 100, 100 = man sieht nichts mehr |
+| Dauer (ms) | `WhiteBombMs` | 2500 | 0 .. 10000 |
+| Ausblenden (ms) | `WhiteBombFadeMs` | 2000 | 0 .. 10000 |
 
 ## Flammenwerfer
 
@@ -149,11 +149,11 @@ Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie e
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `FlameThrower` | 0 (aus) | 0 / 1 |
-| Share of the items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
-| Fuel per item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
-| Range (tiles) | `FlameThrowerRange` | 3 | 1 .. 14 |
-| Time to kill (ms) | `FlameThrowerKillMs` | 1000 | 0 .. 10000 |
-| Burn items in the beam | `FlameThrowerBurnItems` | 1 (an) | 0 / 1 |
+| Anteil der Items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
+| Treibstoff pro Item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
+| Reichweite (Felder) | `FlameThrowerRange` | 3 | 1 .. 14 |
+| Zeit bis zum Treffer (ms) | `FlameThrowerKillMs` | 1000 | 0 .. 10000 |
+| Items im Strahl verbrennen | `FlameThrowerBurnItems` | 1 (an) | 0 / 1 |
 
 ## Trefferpunkte (Handicap)
 
@@ -166,9 +166,9 @@ Im Hurry ist jeder Treffer tödlich, egal wie viele Trefferpunkte noch übrig si
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `HitPoints` | 0 (aus) | 0 / 1 |
-| Invulnerable after a hit (ms) | `InvulnTimeMs` | 5000 | 500 .. 60000 |
-| Default hit points | `DefaultHitPoints` | 1 | 1 .. 255 |
-| Show hit points above the players | `ShowHitPoints` | 1 (an) | 0 / 1 |
+| Unverwundbar nach Treffer (ms) | `InvulnTimeMs` | 5000 | 500 .. 60000 |
+| Standard-Trefferpunkte | `DefaultHitPoints` | 1 | 1 .. 255 |
+| Trefferpunkte über den Spielern anzeigen | `ShowHitPoints` | 1 (an) | 0 / 1 |
 | Handicap-Tabelle | Abschnitt `[Handicap]` | leer | `Spielername=Trefferpunkte`, 1 .. 255 |
 
 **Zwei Spieler an einem PC:** Der zweite Spieler an einem PC (Tastatur 2) hat denselben Spielernamen wie der erste. In der Handicap-Tabelle steht er als `Name~2`, z. B.
@@ -188,7 +188,7 @@ KI-Spieler haben keinen Spielernamen und bekommen deshalb immer die Standard-Tre
 Ein Spieler, der stirbt, verlässt die Runde nicht. Er läuft als kleiner, flackernder **Geist** auf einem Rahmen rund um das Spielfeld weiter (außerhalb des Spielfelds).
 
 - **Bewegen:** Die Richtungstasten bewegen den Geist am Rahmen entlang. Wenn er stehen bleibt, schaut er immer ins Feld.
-- **Werfen:** Die [erste Aktion](MANUAL.md#first-action) wirft eine Geisterbombe gerade ins Feld: Sie fliegt 3 Felder vom Rand in die Zeile oder Spalte vor dem Geist. Es kann immer nur eine Geisterbombe unterwegs sein. Die Flammenlänge der Geisterbombe ist einstellbar.
+- **Werfen:** Die [erste Aktion](MANUAL_DE.md#erste-aktion) wirft eine Geisterbombe gerade ins Feld: Sie fliegt 3 Felder vom Rand in die Zeile oder Spalte vor dem Geist. Es kann immer nur eine Geisterbombe unterwegs sein. Die Flammenlänge der Geisterbombe ist einstellbar.
 - **Zurückkommen:** Trifft die Flamme einer Geisterbombe einen **Gegner** (Teamkollegen zählen nicht), kommt der Geist an seiner Startposition ins Spiel zurück (oder auf dem nächsten freien Feld). Er hat dann die Fähigkeiten aus dem Schema (seine Items wurden beim Tod verteilt), volle Trefferpunkte und ist kurz unverwundbar.
 - Für eine Geisterbombe bekommt der Geist keinen Kill. Der getroffene Spieler stirbt (oder verliert einen Trefferpunkt) wie gewohnt.
 - Ist [Stun bei Bombenlandung](#stun-bei-bombenlandung) an, stunnen Geisterbomben wie geworfene Bomben.
@@ -199,17 +199,17 @@ Ein Spieler, der stirbt, verlässt die Runde nicht. Er läuft als kleiner, flack
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `Ghosts` | 0 (aus) | 0 / 1 |
-| Flame length of the ghost bomb | `GhostFlameLen` | 2 | 1 .. 99 |
-| Invulnerable after return (ms) | `GhostReviveInvulnMs` | 3000 | 0 .. 60000 |
-| Max. times ghost per round | `GhostMaxCount` | 1 | 0 .. 99, 0 = unbegrenzt |
-| Max. time as ghost (ms) | `GhostMaxTimeMs` | 0 | 0 .. 600000, 0 = unbegrenzt |
-| Flicker time (ms) | `GhostFlickerMs` | 200 | 0 .. 5000, 0 = kein Flackern |
+| Flammenlänge der Geisterbombe | `GhostFlameLen` | 2 | 1 .. 99 |
+| Unverwundbar nach Rückkehr (ms) | `GhostReviveInvulnMs` | 3000 | 0 .. 60000 |
+| Max. Anzahl Geist pro Runde | `GhostMaxCount` | 1 | 0 .. 99, 0 = unbegrenzt |
+| Max. Zeit als Geist (ms) | `GhostMaxTimeMs` | 0 | 0 .. 600000, 0 = unbegrenzt |
+| Flackerzeit (ms) | `GhostFlickerMs` | 200 | 0 .. 5000, 0 = kein Flackern |
 
 Die Flackerzeit ist die Länge eines Takts: Ein Geist ist 3 Takte sichtbar und 1 Takt unsichtbar.
 
 ## Handschuh beim Start
 
-Manchmal beginnt eine Runde in einer kleinen Nische zwischen Steinen, und eine versehentlich gelegte Bombe sperrt den Spieler ein. Mit diesem Mod kann jeder Spieler die Bombe unter sich werfen wie mit dem Handschuh ![](data/res/powgrab.png) (die [erste Aktion](MANUAL.md#first-action-double-pressed) zweimal drücken), **bis zum ersten Schritt** der Runde.
+Manchmal beginnt eine Runde in einer kleinen Nische zwischen Steinen, und eine versehentlich gelegte Bombe sperrt den Spieler ein. Mit diesem Mod kann jeder Spieler die Bombe unter sich werfen wie mit dem Handschuh ![](data/res/powgrab.png) (die [erste Aktion](MANUAL_DE.md#erste-aktion-doppelt-gedrückt) zweimal drücken), **bis zum ersten Schritt** der Runde.
 
 - Eine Richtungstaste gegen eine Wand dreht den Spieler nur, ohne Schritt. So lässt sich der Wurf zielen.
 - Spieler mit Spooger ![](data/res/powspoog.png) spoogen stattdessen wie gewohnt.
@@ -233,9 +233,9 @@ Spieler können über den Rand des Spielfelds laufen und kommen auf der Gegensei
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `OpenBorders` | 0 (aus) | 0 / 1 |
-| Top <-> bottom | `OpenBordersTopBottom` | 1 (an) | 0 / 1 |
-| Left <-> right | `OpenBordersLeftRight` | 1 (an) | 0 / 1 |
-| Open after (s) | `OpenBordersActiveSec` | 30 | 0 .. 600, 0 = ab Rundenbeginn |
+| Oben <-> unten | `OpenBordersTopBottom` | 1 (an) | 0 / 1 |
+| Links <-> rechts | `OpenBordersLeftRight` | 1 (an) | 0 / 1 |
+| Offen nach (s) | `OpenBordersActiveSec` | 30 | 0 .. 600, 0 = ab Rundenbeginn |
 
 ## Teleporter
 
@@ -249,9 +249,9 @@ Teleporter in der Mitte der Ränder bringen den Spieler zum Teleporter am gegen�
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
 | Mod an / aus | `Teleporters` | 0 (aus) | 0 / 1 |
-| Top <-> bottom | `TeleportersTopBottom` | 1 (an) | 0 / 1 |
-| Left <-> right | `TeleportersLeftRight` | 1 (an) | 0 / 1 |
-| Appear after (s) | `TeleportersActiveSec` | 60 | 0 .. 600, 0 = ab Rundenbeginn |
+| Oben <-> unten | `TeleportersTopBottom` | 1 (an) | 0 / 1 |
+| Links <-> rechts | `TeleportersLeftRight` | 1 (an) | 0 / 1 |
+| Erscheinen nach (s) | `TeleportersActiveSec` | 60 | 0 .. 600, 0 = ab Rundenbeginn |
 
 ## Mod-Test-Modus
 
@@ -282,15 +282,15 @@ Diese Einstellungen wirken nur, solange der Mod-Test-Modus an ist:
 
 | Einstellung (Dialog) | ini-Schlüssel (Abschnitt `[Debug]`) | Default | Bereich |
 |---|---|---|---|
-| Mod test mode an / aus | `ModTestMode` | 0 (aus) | 0 / 1 |
-| Start items | `StartItems` | leer | z. B. `kick,punch,grab,bomb*3` |
-| Round time (s, 0 = normal) | `RoundTimeSec` | 0 | 0 .. 3600, 0 = Zeit aus den Spieleinstellungen |
-| Invulnerable at start (ms) | `StartInvulnMs` | 0 | 0 .. 600000 |
-| Ghosts count as alive | `GhostsKeepRound` | 0 (aus) | 0 / 1 |
+| Mod-Test-Modus an / aus | `ModTestMode` | 0 (aus) | 0 / 1 |
+| Start-Items | `StartItems` | leer | z. B. `kick,punch,grab,bomb*3` |
+| Rundenzeit (s, 0 = normal) | `RoundTimeSec` | 0 | 0 .. 3600, 0 = Zeit aus den Spieleinstellungen |
+| Unverwundbar beim Start (ms) | `StartInvulnMs` | 0 | 0 .. 600000 |
+| Geister zählen als lebendig | `GhostsKeepRound` | 0 (aus) | 0 / 1 |
 
-- **Start items:** Jeder Spieler bekommt diese Items zu Beginn jeder Runde. Kommagetrennt, `*n` nimmt ein Item n-mal. Mögliche Items: `bomb`, `flame`, `goldflame`, `speed`, `kick`, `punch`, `grab`, `spooger`, `jelly`, `trigger`. `trigger` gehört hinter `bomb`, es gilt für die Bomben davor.
-- **Round time:** Der Hurry beginnt bei 80 s Restzeit, `90` startet den Hurry also nach 10 s.
-- **Ghosts count as alive:** Die Runde endet nicht, solange noch Geister übrig sind. So lassen sich Geister auch mit nur 2 Spielern testen.
+- **Start-Items:** Jeder Spieler bekommt diese Items zu Beginn jeder Runde. Kommagetrennt, `*n` nimmt ein Item n-mal. Mögliche Items: `bomb`, `flame`, `goldflame`, `speed`, `kick`, `punch`, `grab`, `spooger`, `jelly`, `trigger`. `trigger` gehört hinter `bomb`, es gilt für die Bomben davor.
+- **Rundenzeit:** Der Hurry beginnt bei 80 s Restzeit, `90` startet den Hurry also nach 10 s.
+- **Geister zählen als lebendig:** Die Runde endet nicht, solange noch Geister übrig sind. So lassen sich Geister auch mit nur 2 Spielern testen.
 
 ## atomic_server.ini von Hand bearbeiten
 
