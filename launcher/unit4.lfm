@@ -26,6 +26,7 @@ object Form4: TForm4
       'Hit points'
       'Ghosts'
       'Glove at start'
+      'Open borders'
       'Mod test mode'
     )
     ItemHeight = 0
@@ -511,6 +512,58 @@ object Form4: TForm4
         Width = 328
         BevelOuter = bvNone
         ParentColor = True
+      end
+    end
+    object TabSheet8: TTabSheet
+      Caption = 'TabSheet8'
+      object CheckBox10: TCheckBox
+        Left = 8
+        Height = 19
+        Top = 8
+        Caption = 'Open borders'
+        Font.Style = [fsBold]
+        ParentFont = False
+        OnChange = CheckBox1Change
+      end
+      object Label33: TLabel
+        Left = 8
+        Height = 32
+        Top = 34
+        Width = 312
+        AutoSize = False
+        Caption = 'Players can walk over the border of the field and come out on the opposite side.'
+        WordWrap = True
+      end
+      object Panel8: TPanel
+        Left = 0
+        Height = 236
+        Top = 72
+        Width = 328
+        BevelOuter = bvNone
+        ParentColor = True
+        object CheckBox11: TCheckBox
+          Hint = 'Players walk from the top border to the bottom border and back.'
+          Left = 8
+          Height = 19
+          Top = 10
+          Caption = 'Top <-> bottom'
+        end
+        object CheckBox12: TCheckBox
+          Hint = 'Players walk from the left border to the right border and back.'
+          Left = 8
+          Height = 19
+          Top = 40
+          Caption = 'Left <-> right'
+        end
+        object Label34: TLabel
+          Left = 8
+          Height = 96
+          Top = 76
+          Width = 312
+          AutoSize = False
+          Caption = 'If the tile on the opposite side is blocked (brick, bomb), the border works like a wall. Only players go over the border, bombs and flames stop there as usual.'
+          WordWrap = True
+        end
       end
     end
     object TabSheet5: TTabSheet

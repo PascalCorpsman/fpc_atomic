@@ -119,6 +119,8 @@ Type
     BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
     PlayerHitCallback: TPlayerHitCallback; // Optional, wird vom Server gesetzt (Trefferpunkte Mod)
     GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
+    WrapLeftRight: Boolean; // Mod offene Grenzen: Spieler laufen links / rechts über den Rand auf die Gegenseite
+    WrapTopBottom: Boolean; // Mod offene Grenzen: Spieler laufen oben / unten über den Rand auf die Gegenseite
     Property BombsEnabled: Boolean read fBombsEnabled;
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
     Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
@@ -386,6 +388,8 @@ Begin
   BombLandedCallback := Nil;
   PlayerHitCallback := Nil;
   GhostReviveCallback := Nil;
+  WrapLeftRight := false;
+  WrapTopBottom := false;
   fPlaySoundEffect := PlaySoundEffectCallback;
   fBombCount := 0;
   fBombDetonateFifo := TIntFifo.create(128);
@@ -624,6 +628,9 @@ Function TAtomicField.PlayerWalkable(Const Player: TPlayer; x, y: integer
 Var
   i, px, py: Integer;
 Begin
+  // Mod offene Grenzen: das Nachbarfeld hinter dem Rand ist das Feld auf der Gegenseite
+  If WrapLeftRight Then x := (x + FieldWidth) Mod FieldWidth;
+  If WrapTopBottom Then y := (y + FieldHeight) Mod FieldHeight;
   result := FielWalkable(x, y, false);
   If result Then exit;
   (*
@@ -928,6 +935,37 @@ Begin
   End;
   cSpeed := 0;
   rSpeed := Players[PlayerIndex].Powers.Speed / FrameRate; // So Umrechnen dass Speed = Kachel Pro Sekunde ist.
+
+  (*
+   * Mod offene Grenzen: Wer auf der Mitte einer Randkachel steht und weiter nach außen läuft, steht sofort auf der Gegenseite,
+   * wenn das Feld dort begehbar ist (sonst wirkt der Rand wie eine Wand). Danach läuft er dort ganz normal weiter.
+   *)
+  If WrapLeftRight Or WrapTopBottom Then Begin
+    x := trunc(Players[PlayerIndex].Info.Position.x);
+    y := trunc(Players[PlayerIndex].Info.Position.y);
+    Case Players[PlayerIndex].MoveState Of
+      msRight: Begin
+          If WrapLeftRight And (Players[PlayerIndex].Info.Position.x >= FieldWidth - 0.5) And PlayerWalkable(Players[PlayerIndex], x + 1, y) Then Begin
+            Players[PlayerIndex].Info.Position := v2(0.5, y + 0.5);
+          End;
+        End;
+      msLeft: Begin
+          If WrapLeftRight And (Players[PlayerIndex].Info.Position.x <= 0.5) And PlayerWalkable(Players[PlayerIndex], x - 1, y) Then Begin
+            Players[PlayerIndex].Info.Position := v2(FieldWidth - 0.5, y + 0.5);
+          End;
+        End;
+      msUp: Begin
+          If WrapTopBottom And (Players[PlayerIndex].Info.Position.y <= 0.5) And PlayerWalkable(Players[PlayerIndex], x, y - 1) Then Begin
+            Players[PlayerIndex].Info.Position := v2(x + 0.5, FieldHeight - 0.5);
+          End;
+        End;
+      msDown: Begin
+          If WrapTopBottom And (Players[PlayerIndex].Info.Position.y >= FieldHeight - 0.5) And PlayerWalkable(Players[PlayerIndex], x, y + 1) Then Begin
+            Players[PlayerIndex].Info.Position := v2(x + 0.5, 0.5);
+          End;
+        End;
+    End;
+  End;
 
   // Das Bewegen der Spielfigur anhand seiner Daten
   Case Players[PlayerIndex].MoveState Of

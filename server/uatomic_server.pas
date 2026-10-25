@@ -200,6 +200,8 @@ Begin
     fFields[i].BombLandedCallback := @HandleBombLanded;
     fFields[i].PlayerHitCallback := @HandlePlayerHit;
     fFields[i].GhostReviveCallback := @HandleGhostRevive;
+    fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
+    fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
@@ -2813,6 +2815,7 @@ Begin
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
   If fModSettings.GloveAtStart Then result := result + ', glove at start';
+  If fModSettings.OpenBorders Then result := result + ', open borders';
   If fModSettings.ModTestMode Then result := result + ', mod test mode';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));

@@ -150,6 +150,7 @@ Const
    *                       ADD: launcher: new layout (live name check, game data / version status) and mods dialog for atomic_server.ini
    *                       ADD: optional glove at start, until the first step of a round every player can throw a bomb like with the glove
    *                       ADD: optional disease "walk through bricks", the player is drawn see-through
+   *                       ADD: optional open borders, players walk over the border and come out on the opposite side
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -680,6 +681,9 @@ Type
     ShowHitPoints: Boolean; // True, die Clients zeigen die Trefferpunkte über den Spielern an
     Handicap: TStringList; // Inhalt von [Handicap] als Spielername=Trefferpunkte
     GloveAtStart: Boolean; // True, bis zum ersten Schritt einer Runde kann jeder seine Bombe werfen wie mit Handschuh (gegen das Einsperren beim Start)
+    OpenBorders: Boolean; // True, Spieler können über den Rand laufen und kommen auf der Gegenseite heraus
+    OpenBordersTopBottom: Boolean; // Offene Grenzen oben <-> unten
+    OpenBordersLeftRight: Boolean; // Offene Grenzen links <-> rechts
     (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)
@@ -1121,6 +1125,9 @@ Begin
   If Not assigned(Settings.Handicap) Then Settings.Handicap := TStringList.Create;
   Settings.Handicap.Clear;
   Settings.GloveAtStart := false;
+  Settings.OpenBorders := false;
+  Settings.OpenBordersTopBottom := true;
+  Settings.OpenBordersLeftRight := true;
   Settings.ModTestMode := false;
   Settings.StartItems := '';
   Settings.RoundTimeSec := 0;
@@ -1177,6 +1184,9 @@ Begin
   WriteI('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
   WriteB('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
   WriteB('Mods', 'GloveAtStart', Settings.GloveAtStart);
+  WriteB('Mods', 'OpenBorders', Settings.OpenBorders);
+  WriteB('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
+  WriteB('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
   WriteB('Debug', 'ModTestMode', Settings.ModTestMode);
   WriteS('Debug', 'StartItems', Settings.StartItems);
   WriteI('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1230,6 +1240,9 @@ Begin
     Settings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
     ini.ReadSectionValues('Handicap', Settings.Handicap); // Spielername=Trefferpunkte
     Settings.GloveAtStart := ini.ReadBool('Mods', 'GloveAtStart', Settings.GloveAtStart);
+    Settings.OpenBorders := ini.ReadBool('Mods', 'OpenBorders', Settings.OpenBorders);
+    Settings.OpenBordersTopBottom := ini.ReadBool('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
+    Settings.OpenBordersLeftRight := ini.ReadBool('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
     Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
     Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
     Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);

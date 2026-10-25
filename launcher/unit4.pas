@@ -48,6 +48,9 @@ Type
     CheckBox7: TCheckBox;
     CheckBox8: TCheckBox;
     CheckBox9: TCheckBox;
+    CheckBox10: TCheckBox;
+    CheckBox11: TCheckBox;
+    CheckBox12: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -75,6 +78,8 @@ Type
     Label30: TLabel;
     Label31: TLabel;
     Label32: TLabel;
+    Label33: TLabel;
+    Label34: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -90,6 +95,7 @@ Type
     Panel5: TPanel;
     Panel6: TPanel;
     Panel7: TPanel;
+    Panel8: TPanel;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
@@ -116,6 +122,7 @@ Type
     TabSheet5: TTabSheet;
     TabSheet6: TTabSheet;
     TabSheet7: TTabSheet;
+    TabSheet8: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -168,22 +175,24 @@ Begin
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 7);
+  setlength(fModCheckBoxes, 8);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox2;
   fModCheckBoxes[2] := CheckBox9;
   fModCheckBoxes[3] := CheckBox3;
   fModCheckBoxes[4] := CheckBox4;
   fModCheckBoxes[5] := CheckBox8;
-  fModCheckBoxes[6] := CheckBox5;
-  setlength(fModPanels, 7);
+  fModCheckBoxes[6] := CheckBox10;
+  fModCheckBoxes[7] := CheckBox5;
+  setlength(fModPanels, 8);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel2;
   fModPanels[2] := Panel7;
   fModPanels[3] := Panel3;
   fModPanels[4] := Panel4;
   fModPanels[5] := Panel6;
-  fModPanels[6] := Panel5;
+  fModPanels[6] := Panel8;
+  fModPanels[7] := Panel5;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
@@ -331,6 +340,10 @@ Begin
 
   CheckBox8.Checked := fSettings.GloveAtStart;
 
+  CheckBox10.Checked := fSettings.OpenBorders;
+  CheckBox11.Checked := fSettings.OpenBordersTopBottom;
+  CheckBox12.Checked := fSettings.OpenBordersLeftRight;
+
   CheckBox5.Checked := fSettings.ModTestMode;
   Edit1.Text := fSettings.StartItems;
   SpinEdit13.Value := fSettings.RoundTimeSec;
@@ -415,6 +428,10 @@ Begin
   fSettings.GhostFlickerMs := SpinEdit12.Value;
 
   fSettings.GloveAtStart := CheckBox8.Checked;
+
+  fSettings.OpenBorders := CheckBox10.Checked;
+  fSettings.OpenBordersTopBottom := CheckBox11.Checked;
+  fSettings.OpenBordersLeftRight := CheckBox12.Checked;
 
   fSettings.ModTestMode := CheckBox5.Checked;
   fSettings.StartItems := trim(Edit1.Text);
