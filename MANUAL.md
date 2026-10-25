@@ -57,7 +57,7 @@ The key binding can be changed in the options dialog
 - When pressed while walking towards a bomb "punch" a bomb in walk direction (if powerup was collected)
 
 ## Game mods
-FPC Atomic has optional game mods (stun on bomb landing, positive disease, hit points per player, ghosts) and a mod test mode. All of them are off by default and can be set up in the launcher with "Mods...". See the [mods manual](MODS_MANUAL.md) for details.
+FPC Atomic has optional game mods (stun on bomb landing, positive disease, hit points per player, ghosts) and a mod test mode. All of them are off by default and can be set up in the launcher with "Mods...". See the [mods manual](MODS_MANUAL.md) for details ([German version](MODS_MANUAL_DE.md)).
 
 ## Connecting a Client over the Internet to a local server
 To connect a client to a server over the Internet, follow these steps: 

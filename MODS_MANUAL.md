@@ -1,5 +1,7 @@
 # Game mods
 
+[Deutsche Version](MODS_MANUAL_DE.md)
+
 FPC Atomic has some optional game mods that change the rules of the original game. All mods are **off by default**, so without changing anything the game plays exactly like the original.
 
 - [Setting up the mods](#setting-up-the-mods)
