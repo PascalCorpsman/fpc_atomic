@@ -118,6 +118,7 @@ Type
     Procedure MakeGhost(PlayerIndex: integer);
     Procedure SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
     Procedure HandleWhiteBomb(PlayerIndex: integer);
+    Procedure HandleFlameThrowers();
     Procedure HandleGhosts();
 
     Procedure HandleLoadSettings(Const Stream: TStream);
@@ -208,6 +209,10 @@ Begin
     fFields[i].WhiteBombCallback := @HandleWhiteBomb;
     fFields[i].WhiteBombChance := 0;
     If fModSettings.WhiteBomb Then fFields[i].WhiteBombChance := fModSettings.WhiteBombChance;
+    fFields[i].FlameThrowerChance := 0;
+    If fModSettings.FlameThrower Then fFields[i].FlameThrowerChance := fModSettings.FlameThrowerChance;
+    fFields[i].FlameThrowerFuelMs := fModSettings.FlameThrowerFuelMs;
+    fFields[i].FlameThrowerBurnItems := fModSettings.FlameThrowerBurnItems;
     fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
     fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
     fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
@@ -1105,6 +1110,10 @@ Begin
     fPLayer[i].Info.BrickWalk := false;
     fPLayer[i].PunchStunCooldown := 0;
     fPLayer[i].WhiteBombs := 0;
+    fPLayer[i].FlameThrowerFuel := 0;
+    fPLayer[i].FlameThrowerFiring := false;
+    fPLayer[i].FlameThrowerExposure := 0;
+    fPLayer[i].Info.FlameThrowerLen := 0;
     // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
     fPLayer[i].MaxHitPoints := 0;
     If fModSettings.HitPoints Then Begin
@@ -1531,6 +1540,62 @@ Begin
   End;
 End;
 
+Procedure TServer.HandleFlameThrowers;
+Var
+  i, j, k, len, dx, dy, x, y: integer;
+  InBeam: Array[0..length(PlayerColors) - 1] Of integer; // Index des Werfers, in dessen Strahl der Spieler steht, -1 = in keinem
+Begin
+  (*
+   * Mod Flammenwerfer: So lange die zweite Aktion gedrückt ist, feuert der Spieler in Blickrichtung und verbraucht dabei Tank.
+   * Ein Gegner, der FlameThrowerKillMs am Stück in einem Strahl steht, wird getroffen (wie von einer Flamme).
+   *)
+  For i := 0 To high(fPLayer) Do Begin
+    InBeam[i] := -1;
+  End;
+  For i := 0 To high(fPLayer) Do Begin
+    fPLayer[i].Info.FlameThrowerLen := 0;
+    If (Not fPLayer[i].Info.Alive) Or fPLayer[i].Info.Dying Or fPLayer[i].Flying Then Continue;
+    If (fPLayer[i].FlameThrowerFuel <= 0) Or (Not fPLayer[i].FlameThrowerFiring) Or (fPLayer[i].StunTimer > 0) Then Continue;
+    fPLayer[i].FlameThrowerFuel := max(0, fPLayer[i].FlameThrowerFuel - FrameRate);
+    dx := 0;
+    dy := 0;
+    Case (trunc(fPLayer[i].Info.Direction) Div 90) Of
+      0: dx := 1;
+      1: dy := -1;
+      2: dx := -1;
+      3: dy := 1;
+    End;
+    x := trunc(fPLayer[i].Info.Position.x);
+    y := trunc(fPLayer[i].Info.Position.y);
+    len := fActualField.FlameThrowerBeam(x, y, dx, dy, fModSettings.FlameThrowerRange);
+    fPLayer[i].Info.FlameThrowerLen := len;
+    For j := 0 To high(fPLayer) Do Begin
+      If (j = i) Or (Not fPLayer[j].Info.Alive) Or fPLayer[j].Info.Dying Then Continue;
+      If fSettings.TeamPlay And (fPLayer[j].Team = fPLayer[i].Team) Then Continue;
+      For k := 1 To len Do Begin
+        If (trunc(fPLayer[j].Info.Position.x) = x + k * dx) And (trunc(fPLayer[j].Info.Position.y) = y + k * dy) Then Begin
+          InBeam[j] := i;
+        End;
+      End;
+    End;
+  End;
+  For j := 0 To high(fPLayer) Do Begin
+    // Wer den Strahl verlässt (oder unverwundbar ist), fängt wieder bei 0 an
+    If (InBeam[j] = -1) Or (fPLayer[j].InvulnTimer > 0) Then Begin
+      fPLayer[j].FlameThrowerExposure := 0;
+      Continue;
+    End;
+    fPLayer[j].FlameThrowerExposure := fPLayer[j].FlameThrowerExposure + FrameRate;
+    If fPLayer[j].FlameThrowerExposure >= fModSettings.FlameThrowerKillMs Then Begin
+      fPLayer[j].FlameThrowerExposure := 0;
+      If HandlePlayerHit(j) Then Continue; // Trefferpunkte Mod
+      HandlePlaySoundEffect(j, seAtomicDie);
+      fActualField.KillPlayer(fPLayer, j);
+      fPLayer[InBeam[j]].Kills := fPLayer[InBeam[j]].Kills + 1;
+    End;
+  End;
+End;
+
 Procedure TServer.MakeGhost(PlayerIndex: integer);
 Begin
   (*
@@ -1580,6 +1645,7 @@ Begin
   fPLayer[GhostIndex].StunTimer := 0;
   fPLayer[GhostIndex].BrickWalkTimer := 0;
   fPLayer[GhostIndex].WhiteBombs := 0;
+  fPLayer[GhostIndex].FlameThrowerFuel := 0;
   fPLayer[GhostIndex].Info.BrickWalk := false;
   fPLayer[GhostIndex].InvulnTimer := fModSettings.GhostReviveInvulnMs;
   fPLayer[GhostIndex].Powers := PowersFromScheme(fSettings.Scheme);
@@ -1787,6 +1853,7 @@ Begin
       End;
     mtAllItems: Begin
         ApplyStartItems(fPLayer[PlayerIndex].Powers, 'kick,punch,grab,bomb*3,flame*3');
+        If fModSettings.FlameThrower Then fPLayer[PlayerIndex].FlameThrowerFuel := fPLayer[PlayerIndex].FlameThrowerFuel + fModSettings.FlameThrowerFuelMs;
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         s := 'all items';
       End;
@@ -1929,6 +1996,7 @@ Begin
           End;
         End;
       akSecondAction: Begin
+          fPLayer[Player].FlameThrowerFiring := true; // Mod Flammenwerfer, so lange bis die Taste los gelassen wird
           If (Not (dNoBombs In fPLayer[Player].Disease)) Then Begin
             If Double Then Begin
               fPLayer[Player].Action := aaSecondDouble;
@@ -1941,8 +2009,14 @@ Begin
     End;
   End
   Else Begin
-    // Nur die "Cursor" werden false gemacht -> immer Stillstand
-    fPLayer[Player].MoveState := msStill;
+    If key = akSecondAction Then Begin
+      // Mod Flammenwerfer: Der Client meldet das Loslassen der zweiten Aktion, das darf die Bewegung nicht stoppen
+      fPLayer[Player].FlameThrowerFiring := false;
+    End
+    Else Begin
+      // Nur die "Cursor" werden false gemacht -> immer Stillstand
+      fPLayer[Player].MoveState := msStill;
+    End;
   End;
 End;
 
@@ -2377,6 +2451,7 @@ Begin
       End;
     End;
   End;
+  HandleFlameThrowers();
   HandleGhosts();
   // Bomben Handeln
   // TODO: Magic Numbers -> entfernen klären ...
@@ -2905,6 +2980,7 @@ Begin
   If fModSettings.BrickWalk Then result := result + ', walk through bricks';
   If fModSettings.FlashDisease Then result := result + ', white screen';
   If fModSettings.WhiteBomb Then result := result + ', white bomb';
+  If fModSettings.FlameThrower Then result := result + ', flamethrower';
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
   If fModSettings.GloveAtStart Then result := result + ', glove at start';

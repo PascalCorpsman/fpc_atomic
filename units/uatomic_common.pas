@@ -155,6 +155,7 @@ Const
    *                       ADD: optional boxing glove, with the punch item the second action stuns an opponent in front of the player
    *                       ADD: optional disease "white screen", the screen of the player turns white for some time
    *                       ADD: optional white bomb item, the next bomb explodes without flames and turns the screens of all opponents white
+   *                       ADD: optional flamethrower item, hold the second action to fire, opponents in the beam die after some time
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -273,6 +274,10 @@ Const
   ModMaxFlashChance = 100; // in %
   ModMaxFlashIntensity = 100; // in %, 100 = komplett weiß
   ModMaxFlashMs = 10000; // Dauer und Übergang zurück
+  ModMaxFlameThrowerChance = 100; // in %
+  ModMaxFlameThrowerFuelMs = 60000;
+  ModMaxFlameThrowerRange = FieldWidth - 1; // untere Grenze 1
+  ModMaxFlameThrowerKillMs = 10000;
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -525,6 +530,7 @@ Type
     TrampOffset: Byte; // Das Tramp Running Offset, sonst sehen die alle Gleich aus..
     Counter: uint16; // Der Zähler, der Zählt wie Lange die Aktuelle animation schon läuft (Entweder Flamme oder Explosion oder Trampolin)
     WhiteBomb: Boolean; // Mod weiße Bombe: True, das PowerUp (immer puExtraBomb) ist eine weiße Bombe, der Client zeichnet es weiß
+    FlameThrowerItem: Boolean; // Mod Flammenwerfer: True, das PowerUp (immer puLongerFlameLength) ist ein Flammenwerfer, der Client zeichnet einen roten Rahmen
   End;
 
   TFieldBricks = Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TFieldBrick;
@@ -575,6 +581,7 @@ Type
     GhostTime: uint16; // Mod Geister: Restzeit in ms bis der Geist verschwindet (für die Warnung im Client), 0 = kein Limit
     BrickWalk: Boolean; // Mod durch Blöcke laufen: True, der Spieler kann durch Blöcke laufen bzw. steht noch in einem (der Client zeichnet ihn durchsichtig)
     TestBrickWalkTime: uint16; // Nur im Mod Test Modus: Restzeit von "durch Blöcke laufen" in ms (für die Zustandsanzeige), sonst 0
+    FlameThrowerLen: uint8; // Mod Flammenwerfer: Länge des Strahls in Kacheln in Blickrichtung, 0 = feuert gerade nicht
   End;
 
   (*
@@ -665,6 +672,9 @@ Type
     BrickWalkTimer: Integer; // Mod durch Blöcke laufen: Zeit in ms, so lange kann der Spieler noch Blöcke betreten (danach nur noch heraus laufen)
     PunchStunCooldown: Integer; // Mod Boxhandschuh: Zeit in ms, so lange kann der Spieler keinen Gegner mehr stunnen
     WhiteBombs: Integer; // Mod weiße Bombe: So viele der nächsten gelegten Bomben sind weiß
+    FlameThrowerFuel: Integer; // Mod Flammenwerfer: Zeit in ms, so lange kann der Spieler noch feuern (0 = kein Flammenwerfer)
+    FlameThrowerFiring: Boolean; // Mod Flammenwerfer: True, so lange die zweite Aktion gedrückt ist
+    FlameThrowerExposure: Integer; // Mod Flammenwerfer: Zeit in ms, so lange steht der Spieler schon am Stück in einem Strahl
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
   End;
@@ -700,6 +710,12 @@ Type
     WhiteBombIntensity: Integer; // in %, wie weiß der Bildschirm der Gegner wird
     WhiteBombMs: Integer; // Zeit in ms, so lange bleibt der Bildschirm weiß
     WhiteBombFadeMs: Integer; // Zeit in ms, so lange dauert der Übergang zurück
+    FlameThrower: Boolean; // True, ein Teil der Items unter den Steinen sind Flammenwerfer (zweite Aktion gedrückt halten)
+    FlameThrowerChance: Integer; // in %, Anteil der Items unter den Steinen, die zum Flammenwerfer werden
+    FlameThrowerFuelMs: Integer; // Zeit in ms, so lange kann man mit einem Item feuern (wird nur beim Feuern verbraucht, weitere Items füllen auf)
+    FlameThrowerRange: Integer; // Reichweite des Strahls in Kacheln
+    FlameThrowerKillMs: Integer; // Zeit in ms, so lange muss ein Gegner am Stück im Strahl stehen, bis er getroffen ist
+    FlameThrowerBurnItems: Boolean; // True, Items im Strahl verbrennen sofort (wie bei einer Flamme), sonst geht der Strahl darüber hinweg
     Ghosts: Boolean; // True, Tote laufen bis zum Hurry als Geist am Rand und können mit einem Treffer eines Gegners zurück ins Spiel
     GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
     GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
@@ -1162,6 +1178,12 @@ Begin
   Settings.WhiteBombIntensity := 90;
   Settings.WhiteBombMs := 2500;
   Settings.WhiteBombFadeMs := 2000;
+  Settings.FlameThrower := false;
+  Settings.FlameThrowerChance := 5;
+  Settings.FlameThrowerFuelMs := 5000;
+  Settings.FlameThrowerRange := 3;
+  Settings.FlameThrowerKillMs := 1000;
+  Settings.FlameThrowerBurnItems := true;
   Settings.Ghosts := false;
   Settings.GhostReviveInvulnMs := 3000;
   Settings.GhostFlameLen := 2;
@@ -1242,6 +1264,12 @@ Begin
   WriteI('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
   WriteI('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
   WriteI('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
+  WriteB('Mods', 'FlameThrower', Settings.FlameThrower);
+  WriteI('Mods', 'FlameThrowerChance', Settings.FlameThrowerChance);
+  WriteI('Mods', 'FlameThrowerFuelMs', Settings.FlameThrowerFuelMs);
+  WriteI('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
+  WriteI('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
+  WriteB('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
   WriteB('Mods', 'Ghosts', Settings.Ghosts);
   WriteI('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
   WriteI('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1316,6 +1344,12 @@ Begin
     Settings.WhiteBombIntensity := ini.ReadInteger('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
     Settings.WhiteBombMs := ini.ReadInteger('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
     Settings.WhiteBombFadeMs := ini.ReadInteger('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
+    Settings.FlameThrower := ini.ReadBool('Mods', 'FlameThrower', Settings.FlameThrower);
+    Settings.FlameThrowerChance := ini.ReadInteger('Mods', 'FlameThrowerChance', Settings.FlameThrowerChance);
+    Settings.FlameThrowerFuelMs := ini.ReadInteger('Mods', 'FlameThrowerFuelMs', Settings.FlameThrowerFuelMs);
+    Settings.FlameThrowerRange := ini.ReadInteger('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
+    Settings.FlameThrowerKillMs := ini.ReadInteger('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
+    Settings.FlameThrowerBurnItems := ini.ReadBool('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
     Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
     Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
     Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1380,6 +1414,10 @@ Begin
     Clamp('WhiteBombIntensity', Settings.WhiteBombIntensity, 0, ModMaxFlashIntensity);
     Clamp('WhiteBombMs', Settings.WhiteBombMs, 0, ModMaxFlashMs);
     Clamp('WhiteBombFadeMs', Settings.WhiteBombFadeMs, 0, ModMaxFlashMs);
+    Clamp('FlameThrowerChance', Settings.FlameThrowerChance, 0, ModMaxFlameThrowerChance);
+    Clamp('FlameThrowerFuelMs', Settings.FlameThrowerFuelMs, 0, ModMaxFlameThrowerFuelMs);
+    Clamp('FlameThrowerRange', Settings.FlameThrowerRange, 1, ModMaxFlameThrowerRange);
+    Clamp('FlameThrowerKillMs', Settings.FlameThrowerKillMs, 0, ModMaxFlameThrowerKillMs);
     Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
     Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
     Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);

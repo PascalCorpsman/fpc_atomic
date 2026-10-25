@@ -131,12 +131,16 @@ Type
     PlayerPunchCallback: TPlayerPunchCallback; // Optional, wird vom Server gesetzt (Boxhandschuh Mod)
     WhiteBombCallback: TWhiteBombCallback; // Optional, wird vom Server gesetzt (Weiße Bombe Mod)
     WhiteBombChance: Integer; // Mod weiße Bombe: in %, so viele der Items unter den Steinen werden zur weißen Bombe, 0 = Mod aus
+    FlameThrowerChance: Integer; // Mod Flammenwerfer: in %, so viele der Items unter den Steinen werden zum Flammenwerfer, 0 = Mod aus
+    FlameThrowerFuelMs: Integer; // Mod Flammenwerfer: so viel Zeit zum Feuern bringt ein Item
+    FlameThrowerBurnItems: Boolean; // Mod Flammenwerfer: True, Items im Strahl verbrennen sofort
     WrapLeftRight: Boolean; // Mod offene Grenzen: Die Karte ist links / rechts offen, sobald UpdateOpenBorders sie öffnet
     WrapTopBottom: Boolean; // Mod offene Grenzen: Die Karte ist oben / unten offen, sobald UpdateOpenBorders sie öffnet
     PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
     PortalLeftRight: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter links / rechts
     Procedure UpdatePortals(Active: Boolean); // Wird vom Server jeden Frame aufgerufen, Active = die Zeit bis zum Erscheinen ist um
     Procedure UpdateOpenBorders(Active, Warning: Boolean); // Wird vom Server jeden Frame aufgerufen, Warning = die Grenzen öffnen in Kürze
+    Function FlameThrowerBeam(x, y, dx, dy, Range: integer): integer; // Mod Flammenwerfer: Länge des Strahls ab x, y in Richtung dx, dy, zündet eine Bombe am Ende
     Property BombsEnabled: Boolean read fBombsEnabled;
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
     Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
@@ -412,6 +416,9 @@ Begin
   PlayerPunchCallback := Nil;
   WhiteBombCallback := Nil;
   WhiteBombChance := 0;
+  FlameThrowerChance := 0;
+  FlameThrowerFuelMs := 0;
+  FlameThrowerBurnItems := false;
   WrapLeftRight := false;
   WrapTopBottom := false;
   PortalTopBottom := false;
@@ -658,6 +665,39 @@ Begin
   End;
 End;
 
+Function TAtomicField.FlameThrowerBeam(x, y, dx, dy, Range: integer
+  ): integer;
+Var
+  i, j: integer;
+Begin
+  (*
+   * Mod Flammenwerfer: Der Strahl beginnt auf dem Feld vor x, y und stoppt an Steinen und festen Blöcken (ohne sie zu zerstören).
+   * Liegt eine Bombe im Strahl, wird sie gezündet und der Strahl endet dort.
+   *)
+  result := 0;
+  For i := 1 To Range Do Begin
+    x := x + dx;
+    y := y + dy;
+    If (x < 0) Or (x > FieldWidth - 1) Or (y < 0) Or (y > FieldHeight - 1) Then exit;
+    If fField[x, y].BrickData <> bdBlank Then exit;
+    result := i;
+    If FlameThrowerBurnItems And (fField[x, y].PowerUp <> puNone) Then Begin
+      // Items im Strahl verbrennen sofort (sonst geht der Strahl darüber hinweg), direkt, denn HandleBombs leert fPowerUpClearFifo zu Beginn
+      fField[x, y].PowerUp := puNone;
+      fField[x, y].WhiteBomb := false;
+      fField[x, y].FlameThrowerItem := false;
+    End;
+    For j := 0 To fBombCount - 1 Do Begin
+      If (trunc(fBombs[j].Position.x) = x) And (trunc(fBombs[j].Position.y) = y) And (fBombs[j].MoveDir <> bmFly) Then Begin
+        // Wie beim Zünden der Trigger Bomben
+        fBombs[j].Animation := baNormal;
+        fBombs[j].Lifetime := max(fBombs[j].Lifetime, AtomicBombDetonateTime);
+        exit;
+      End;
+    End;
+  End;
+End;
+
 Procedure TAtomicField.UpdatePortals(Active: Boolean);
 Begin
   // Im Hurry sind die Teleporter weg (wie die Löcher)
@@ -744,6 +784,7 @@ Begin
       fField[i, j].Counter := 0;
       fField[i, j].PowerUp := puNone;
       fField[i, j].WhiteBomb := false;
+      fField[i, j].FlameThrowerItem := false;
       fField[i, j].Flame := [];
       fField[i, j].FlameColor := 0;
       fField[i, j].FlamePlayer := -1;
@@ -873,6 +914,11 @@ Begin
         If (fField[i, j].PowerUp <> puNone) And (WhiteBombChance > 0) And (random(100) < WhiteBombChance) Then Begin
           fField[i, j].PowerUp := puExtraBomb;
           fField[i, j].WhiteBomb := true;
+        End;
+        // Mod Flammenwerfer: ebenso ein Teil der Items (sieht aus wie ein Flammen Item mit rotem Rahmen)
+        If (fField[i, j].PowerUp <> puNone) And (Not fField[i, j].WhiteBomb) And (FlameThrowerChance > 0) And (random(100) < FlameThrowerChance) Then Begin
+          fField[i, j].PowerUp := puLongerFlameLength;
+          fField[i, j].FlameThrowerItem := true;
         End;
       End;
     End;
@@ -1428,6 +1474,8 @@ Begin
         End;
       End;
     aaSecond: Begin
+        // Mod Flammenwerfer: So lange er gefüllt ist, ist die zweite Aktion der Flammenwerfer (kein Zünden, kein Boxen)
+        If Player.FlameThrowerFuel > 0 Then exit;
         handled := false; // This flag allows to trigger bombs while walking = more responsive ;)
         (*
          * Mod Boxhandschuh: Steht ein Gegner auf dem Feld vor dem Spieler, wird er gestunnt (auch im Stehen).
@@ -1957,6 +2005,7 @@ Begin
     End;
     fField[p.x, p.y].PowerUp := puNone;
     fField[p.x, p.y].WhiteBomb := false;
+    fField[p.x, p.y].FlameThrowerItem := false;
   End;
 End;
 
@@ -2024,6 +2073,12 @@ Begin
         Players[i].WhiteBombs := Players[i].WhiteBombs + 1;
         fPlaySoundEffect(i, seGetGoodPowerUp);
         fField[x, y].WhiteBomb := false;
+      End
+      Else If fField[x, y].FlameThrowerItem Then Begin
+        // Mod Flammenwerfer: füllt den Tank auf
+        Players[i].FlameThrowerFuel := Players[i].FlameThrowerFuel + FlameThrowerFuelMs;
+        fPlaySoundEffect(i, seGetGoodPowerUp);
+        fField[x, y].FlameThrowerItem := false;
       End
       Else Begin
         PlayerGetsPowerUp(Players[i], i, fField[x, y].PowerUp);
@@ -2658,6 +2713,37 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     glDisable(GL_BLEND);
   End;
 
+  Procedure RenderFlameThrowerItem(x, y: integer);
+  Const
+    w = 3; // Breite des Rahmens in Pixeln
+  Var
+    l, t, r, b: Single;
+
+    Procedure Rect(x1, y1, x2, y2: Single);
+    Begin
+      glShaderBegin(GL_TRIANGLE_FAN);
+      glShaderVertex(x1, y1, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(x2, y1, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(x2, y2, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(x1, y2, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderEnd();
+    End;
+
+  Begin
+    // Mod Flammenwerfer: Das Flammen Item bekommt einen roten Rahmen
+    l := Fieldxoff + x * FieldBlockWidth;
+    t := FieldyOff + y * FieldBlockHeight;
+    r := l + FieldBlockWidth;
+    b := t + FieldBlockHeight;
+    UseColorShader;
+    SetShaderColor(1, 0, 0);
+    Rect(l, t, r, t + w);
+    Rect(l, b - w, r, b);
+    Rect(l, t, l + w, b);
+    Rect(r - w, t, r, b);
+    UseTextureShader;
+  End;
+
   Procedure RenderTramp(x, y: integer);
   Begin
     If fField[x, y].Tramp Then Begin
@@ -2713,6 +2799,7 @@ Begin
             If fField[i, j].PowerUp <> puNone Then Begin
               RenderQuad(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, PowerTexs[fField[i, j].PowerUp]);
               If fField[i, j].WhiteBomb Then RenderWhiteBombItem(i, j);
+              If fField[i, j].FlameThrowerItem Then RenderFlameThrowerItem(i, j);
             End
             Else Begin
               // Es ist einfach nichts auf der Kachel, ggf ist dann ja ein Pfeil oder ein Laufband zu sehen ..

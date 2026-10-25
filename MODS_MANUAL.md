@@ -9,6 +9,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 - [Walk through bricks](#walk-through-bricks)
 - [White screen](#white-screen)
 - [White bomb](#white-bomb)
+- [Flamethrower](#flamethrower)
 - [Hit points (handicap)](#hit-points-handicap)
 - [Ghosts](#ghosts)
 - [Glove at start](#glove-at-start)
@@ -127,6 +128,27 @@ A part of the items below the bricks are **white bombs**. They look like a white
 | Strength (%) | `WhiteBombIntensity` | 90 | 0 .. 100, 100 = nothing can be seen |
 | Duration (ms) | `WhiteBombMs` | 2500 | 0 .. 10000 |
 | Fade back (ms) | `WhiteBombFadeMs` | 2000 | 0 .. 10000 |
+
+## Flamethrower
+
+A part of the items below the bricks are **flamethrowers**. They look like the flame item ![](data/res/powflame.png) with a red frame. While the player has fuel, **holding the second action** fires a beam in the direction the player looks.
+
+- The beam reaches a set number of tiles. It stops at bricks and solid blocks without destroying them, and it ignites bombs.
+- Items in the beam burn at once, like with a flame. This can be switched off, then the beam goes over them.
+- An opponent who stays in the beam for a set time without a break is hit like by a flame. Leaving the beam resets the time. Team mates are not hurt.
+- The fuel is only used up while firing. When it is empty, the flamethrower is gone. More flamethrower items add fuel.
+- While the player has fuel, the second action does not trigger or punch bombs.
+- The player can walk normally while firing, the beam turns with the player.
+- In the mod test mode F4 (all items) also gives fuel.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `FlameThrower` | 0 (off) | 0 / 1 |
+| Share of the items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
+| Fuel per item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
+| Range (tiles) | `FlameThrowerRange` | 3 | 1 .. 14 |
+| Time to kill (ms) | `FlameThrowerKillMs` | 1000 | 0 .. 10000 |
+| Burn items in the beam | `FlameThrowerBurnItems` | 1 (on) | 0 / 1 |
 
 ## Hit points (handicap)
 

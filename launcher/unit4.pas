@@ -57,6 +57,8 @@ Type
     CheckBox16: TCheckBox;
     CheckBox17: TCheckBox;
     CheckBox18: TCheckBox;
+    CheckBox19: TCheckBox;
+    CheckBox20: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -107,6 +109,12 @@ Type
     Label53: TLabel;
     Label54: TLabel;
     Label55: TLabel;
+    Label56: TLabel;
+    Label57: TLabel;
+    Label58: TLabel;
+    Label59: TLabel;
+    Label60: TLabel;
+    Label61: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -127,6 +135,7 @@ Type
     Panel10: TPanel;
     Panel11: TPanel;
     Panel12: TPanel;
+    Panel13: TPanel;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
@@ -150,6 +159,10 @@ Type
     SpinEdit29: TSpinEdit;
     SpinEdit30: TSpinEdit;
     SpinEdit31: TSpinEdit;
+    SpinEdit32: TSpinEdit;
+    SpinEdit33: TSpinEdit;
+    SpinEdit34: TSpinEdit;
+    SpinEdit35: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -171,6 +184,7 @@ Type
     TabSheet10: TTabSheet;
     TabSheet11: TTabSheet;
     TabSheet12: TTabSheet;
+    TabSheet13: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -223,32 +237,34 @@ Begin
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 12);
+  setlength(fModCheckBoxes, 13);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox16;
   fModCheckBoxes[2] := CheckBox2;
   fModCheckBoxes[3] := CheckBox9;
   fModCheckBoxes[4] := CheckBox17;
   fModCheckBoxes[5] := CheckBox18;
-  fModCheckBoxes[6] := CheckBox3;
-  fModCheckBoxes[7] := CheckBox4;
-  fModCheckBoxes[8] := CheckBox8;
-  fModCheckBoxes[9] := CheckBox10;
-  fModCheckBoxes[10] := CheckBox13;
-  fModCheckBoxes[11] := CheckBox5;
-  setlength(fModPanels, 12);
+  fModCheckBoxes[6] := CheckBox19;
+  fModCheckBoxes[7] := CheckBox3;
+  fModCheckBoxes[8] := CheckBox4;
+  fModCheckBoxes[9] := CheckBox8;
+  fModCheckBoxes[10] := CheckBox10;
+  fModCheckBoxes[11] := CheckBox13;
+  fModCheckBoxes[12] := CheckBox5;
+  setlength(fModPanels, 13);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel10;
   fModPanels[2] := Panel2;
   fModPanels[3] := Panel7;
   fModPanels[4] := Panel11;
   fModPanels[5] := Panel12;
-  fModPanels[6] := Panel3;
-  fModPanels[7] := Panel4;
-  fModPanels[8] := Panel6;
-  fModPanels[9] := Panel8;
-  fModPanels[10] := Panel9;
-  fModPanels[11] := Panel5;
+  fModPanels[6] := Panel13;
+  fModPanels[7] := Panel3;
+  fModPanels[8] := Panel4;
+  fModPanels[9] := Panel6;
+  fModPanels[10] := Panel8;
+  fModPanels[11] := Panel9;
+  fModPanels[12] := Panel5;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
@@ -270,6 +286,11 @@ Begin
   SpinEdit29.MaxValue := ModMaxFlashIntensity;
   SpinEdit30.MaxValue := ModMaxFlashMs;
   SpinEdit31.MaxValue := ModMaxFlashMs;
+  SpinEdit32.MaxValue := ModMaxFlameThrowerChance;
+  SpinEdit33.MaxValue := ModMaxFlameThrowerFuelMs;
+  SpinEdit34.MinValue := 1;
+  SpinEdit34.MaxValue := ModMaxFlameThrowerRange;
+  SpinEdit35.MaxValue := ModMaxFlameThrowerKillMs;
   SpinEdit19.MaxValue := ModMaxTeleportersActiveSec;
   SpinEdit20.MaxValue := ModMaxOpenBordersActiveSec;
   SpinEdit6.MinValue := FlameTime;
@@ -407,6 +428,13 @@ Begin
   SpinEdit30.Value := fSettings.WhiteBombMs;
   SpinEdit31.Value := fSettings.WhiteBombFadeMs;
 
+  CheckBox19.Checked := fSettings.FlameThrower;
+  SpinEdit32.Value := fSettings.FlameThrowerChance;
+  SpinEdit33.Value := fSettings.FlameThrowerFuelMs;
+  SpinEdit34.Value := fSettings.FlameThrowerRange;
+  SpinEdit35.Value := fSettings.FlameThrowerKillMs;
+  CheckBox20.Checked := fSettings.FlameThrowerBurnItems;
+
   CheckBox3.Checked := fSettings.HitPoints;
   SpinEdit6.Value := fSettings.InvulnTimeMs;
   SpinEdit7.Value := fSettings.DefaultHitPoints;
@@ -521,6 +549,13 @@ Begin
   fSettings.WhiteBombIntensity := SpinEdit29.Value;
   fSettings.WhiteBombMs := SpinEdit30.Value;
   fSettings.WhiteBombFadeMs := SpinEdit31.Value;
+
+  fSettings.FlameThrower := CheckBox19.Checked;
+  fSettings.FlameThrowerChance := SpinEdit32.Value;
+  fSettings.FlameThrowerFuelMs := SpinEdit33.Value;
+  fSettings.FlameThrowerRange := SpinEdit34.Value;
+  fSettings.FlameThrowerKillMs := SpinEdit35.Value;
+  fSettings.FlameThrowerBurnItems := CheckBox20.Checked;
 
   fSettings.HitPoints := CheckBox3.Checked;
   fSettings.InvulnTimeMs := SpinEdit6.Value;

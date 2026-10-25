@@ -171,6 +171,7 @@ Type
     Function BrickWalkVisible(): Boolean;
     Procedure RenderOpenBorders();
     Procedure RenderFlash();
+    Procedure RenderFlameThrowers();
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
 
@@ -769,6 +770,19 @@ Begin
     1: ak := akRight;
     2: ak := akUp;
     3: ak := akDown;
+    5: Begin
+        // Mod Flammenwerfer: Der Server muss wissen, wann die zweite Aktion los gelassen wird (nur dafür, die Bewegung bleibt)
+        m := TMemoryStream.Create;
+        b := false;
+        db := false;
+        ak := akSecondAction;
+        m.Write(fPlayerIndex[aKeyset], SizeOf(fPlayerIndex[aKeyset]));
+        m.Write(b, sizeof(b));
+        m.Write(ak, SizeOf(ak));
+        m.Write(db, sizeof(db));
+        SendChunk(miClientKeyEvent, m);
+        exit;
+      End;
   Else Begin
       // Unknown, or unused key ..
       exit;
@@ -1940,6 +1954,36 @@ Begin
   SetShaderTransform(ViewPort);
 End;
 
+Procedure TGame.RenderFlameThrowers;
+Var
+  i, k, dx, dy, x, y: integer;
+  ani: TOpenGL_Animation;
+Begin
+  // Mod Flammenwerfer: Der Strahl wird mit den Flammen der Explosion gezeichnet (Mitte und Ende in Blickrichtung)
+  For i := 0 To high(fPlayer) Do Begin
+    If (Not fPlayer[i].Info.Alive) Or fPlayer[i].Info.Dying Or (fPlayer[i].Info.FlameThrowerLen = 0) Then Continue;
+    dx := 0;
+    dy := 0;
+    Case (trunc(fPlayer[i].Info.Direction) Div 90) Of
+      0: dx := 1;
+      1: dy := -1;
+      2: dx := -1;
+      3: dy := 1;
+    End;
+    x := trunc(fPlayer[i].Info.Position.x);
+    y := trunc(fPlayer[i].Info.Position.y);
+    For k := 1 To fPlayer[i].Info.FlameThrowerLen Do Begin
+      If k = fPlayer[i].Info.FlameThrowerLen Then Begin
+        ani := fAtomics[i].FlameEnd;
+      End
+      Else Begin
+        ani := fAtomics[i].FlameMiddle;
+      End;
+      ani.Render(FieldxOff + (x + k * dx) * FieldBlockWidth, FieldyOff + (y + k * dy) * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON, (trunc(fPlayer[i].Info.Direction) Div 90) * 90);
+    End;
+  End;
+End;
+
 Procedure TGame.RenderFlash;
 Var
   t: QWord;
@@ -2836,6 +2880,7 @@ Begin
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
         RenderOpenBorders(); // Vor den Spielern, damit die Pfeile unter ihnen (und unter den Geistern auf dem Rahmen) liegen
+        RenderFlameThrowers();
         inc(fRenderFrame);
         For i := 0 To high(fPlayer) Do Begin
           If fPlayer[i].Info.Alive Then Begin
