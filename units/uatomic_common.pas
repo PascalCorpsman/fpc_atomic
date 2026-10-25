@@ -536,6 +536,7 @@ Type
     TrampOffset: Byte; // Das Tramp Running Offset, sonst sehen die alle Gleich aus..
     Counter: uint16; // Der Zähler, der Zählt wie Lange die Aktuelle animation schon läuft (Entweder Flamme oder Explosion oder Trampolin)
     WhiteBomb: Boolean; // Mod weiße Bombe: True, das PowerUp (immer puExtraBomb) ist eine weiße Bombe, der Client zeichnet es weiß
+    FlameGhost: Boolean; // Mod Geister: True, die Flamme stammt von einer Geisterbombe (belebt den Geist, kein Kill)
     FlameThrowerItem: Boolean; // Mod Flammenwerfer: True, das PowerUp (immer puLongerFlameLength) ist ein Flammenwerfer, der Client zeichnet einen roten Rahmen
   End;
 
@@ -581,13 +582,14 @@ Type
     Direction: Single; // Blickrichtung im Mathematischen Drehsinn
     ColorIndex: uint8; // 0 .. length(PlayerColors) - 1 -> Zur Anzeige / Auswahl beim Rendering
     HitPoints: uint8; // Mod Trefferpunkte: Anzeige im Client wie viele Treffer der Spieler noch aushält, 0 = nicht anzeigen (Mod aus oder ShowHitPoints = 0)
-    TestInvulnTime: uint16; // Nur im Mod Test Modus: Restzeit der Unverwundbarkeit in ms (für die Zustandsanzeige), sonst 0
-    TestStunTime: uint16; // Nur im Mod Test Modus: Restzeit des Stun in ms (für die Zustandsanzeige), sonst 0
+    TestInvulnTime: uint16; // Nur im Mod Test Modus: Restzeit der Unverwundbarkeit in 1/10 s (für die Zustandsanzeige), sonst 0
+    TestStunTime: uint16; // Nur im Mod Test Modus: Restzeit des Stun in 1/10 s (für die Zustandsanzeige), sonst 0
     Ghost: Boolean; // Mod Geister: True, der Spieler ist tot (Alive = false) und läuft als Geist am Rand entlang
     GhostTime: uint16; // Mod Geister: Restzeit in ms bis der Geist verschwindet (für die Warnung im Client), 0 = kein Limit
     BrickWalk: Boolean; // Mod durch Blöcke laufen: True, der Spieler kann durch Blöcke laufen bzw. steht noch in einem (der Client zeichnet ihn durchsichtig)
-    TestBrickWalkTime: uint16; // Nur im Mod Test Modus: Restzeit von "durch Blöcke laufen" in ms (für die Zustandsanzeige), sonst 0
+    TestBrickWalkTime: uint16; // Nur im Mod Test Modus: Restzeit von "durch Blöcke laufen" in 1/10 s (für die Zustandsanzeige), sonst 0
     FlameThrowerLen: uint8; // Mod Flammenwerfer: Länge des Strahls in Kacheln in Blickrichtung, 0 = feuert gerade nicht
+    FlameThrowerColor: uint8; // Mod Flammenwerfer: Farbe des Strahls (die echte Farbe des Spielers, ColorIndex blinkt ggf.)
   End;
 
   (*

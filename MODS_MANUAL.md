@@ -237,7 +237,7 @@ Players can walk over the border of the field and come out on the opposite side,
 Teleporters in the middle of the borders bring the player to the teleporter on the opposite border, top <-> bottom and / or left <-> right. They work like the holes of some maps and look like them, with a turquoise ring around.
 
 - The teleporters appear a set time after the start of a round. Before that they are normal tiles.
-- The teleporter tiles and the tiles next to them (towards the middle of the field) stay free of bricks from the start.
+- The teleporter tiles stay free from the start, and the tiles next to them have no bricks (solid blocks stay).
 - No bombs can be placed on a teleporter, rolling bombs stop in front of it.
 - During hurry the teleporters are gone.
 

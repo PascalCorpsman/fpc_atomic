@@ -63,6 +63,7 @@ Type
     fBombs: Array[0..FieldWidth * FieldHeight - 1] Of TBombInfo; // Das Array ist eigentlich hoch Dynamisch, aber so allokieren wir nicht andauernd neuen Speicher
     fBombCount: Integer;
     fBombDetonateFifo: TIntFifo;
+    fDetonateGhost: Boolean; // Mod Geister: True, die gerade explodierende Bombe ist eine Geisterbombe (für FlameGhost in Detonate)
     fPowerUpClearFifo: TPointFifo;
     fPlaySoundEffect: TPlaySoundEffectCallback;
     fHurryIndex: integer; // Der Index in der HurryCoords Konstante, wenn Hurry Aktiv ist. -1 = deaktiviert
@@ -119,6 +120,7 @@ Type
     Function Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: integer; Flame: TFlame): Boolean;
     Function FielWalkable(x, y: integer; AlsoCheckPowerUps: Boolean): Boolean;
     Function PlayerWalkable(Const Player: TPlayer; x, y: integer): Boolean; // Wie FielWalkable, aber mit "durch Blöcke laufen" (Mod)
+    Function IsPortalCell(x, y: integer): Boolean; // True, wenn auf x, y ein Teleporter am Rand liegt, auch wenn er (noch) nicht aktiv ist (Mod)
 {$ENDIF}
   public
     Name: String;
@@ -598,6 +600,7 @@ Begin
   Case fField[x, y].BrickData Of
     bdBlank: Begin
         fField[x, y].FlamePlayer := TriggerPlayerindex;
+        fField[x, y].FlameGhost := fDetonateGhost;
         If fField[x, y].PowerUp = puNone Then Begin
           fField[x, y].FlameColor := ColorIndex;
           If Not (fCross In fField[x, y].Flame) Then Begin // Sonst sieht es komisch aus ..
@@ -619,6 +622,7 @@ Begin
         fField[x, y].Exploding := true;
         fField[x, y].ExplodingRenderFlag := true;
         fField[x, y].FlamePlayer := TriggerPlayerindex; // Damit ein Spieler, der im Block steht (Mod durch Blöcke laufen), einen Verursacher hat
+        fField[x, y].FlameGhost := fDetonateGhost;
         // fField[x, y].BrickData := bdBlank; // der darf nicht Gleich weg genommen werden, da sonst  2 Bomben auch 2 Steine auf einmal wegsprengen !
         fField[x, y].Counter := 0;
         result := False;
@@ -697,6 +701,13 @@ Begin
       End;
     End;
   End;
+End;
+
+Function TAtomicField.IsPortalCell(x, y: integer): Boolean;
+Begin
+  // Mod Teleporter am Rand: Hier liegt ein Teleporter, egal ob er gerade aktiv ist (für das Freihalten und den Sprung)
+  result := (PortalTopBottom And (x = FieldWidth Div 2) And ((y = 0) Or (y = FieldHeight - 1))) Or
+    (PortalLeftRight And (y = FieldHeight Div 2) And ((x = 0) Or (x = FieldWidth - 1)));
 End;
 
 Procedure TAtomicField.UpdatePortals(Active: Boolean);
@@ -789,6 +800,7 @@ Begin
       fField[i, j].Flame := [];
       fField[i, j].FlameColor := 0;
       fField[i, j].FlamePlayer := -1;
+      fField[i, j].FlameGhost := false;
       fField[i, j].Tramp := false;
       fField[i, j].TrampRunning := false;
       fField[i, j].TrampOffset := random(256);
@@ -867,17 +879,18 @@ Begin
   fWrapLeftRight := false;
   fWrapWarnTopBottom := false;
   fWrapWarnLeftRight := false;
-  If PortalTopBottom Then Begin
-    SetBlank(FieldWidth Div 2, 0);
-    SetBlank(FieldWidth Div 2, 1);
-    SetBlank(FieldWidth Div 2, FieldHeight - 1);
-    SetBlank(FieldWidth Div 2, FieldHeight - 2);
-  End;
-  If PortalLeftRight Then Begin
-    SetBlank(0, FieldHeight Div 2);
-    SetBlank(1, FieldHeight Div 2);
-    SetBlank(FieldWidth - 1, FieldHeight Div 2);
-    SetBlank(FieldWidth - 2, FieldHeight Div 2);
+  // Der Nachbar verliert nur einen zerstörbaren Stein, feste Blöcke (die Säulen der Karte) bleiben
+  For i := 0 To FieldWidth - 1 Do Begin
+    For j := 0 To FieldHeight - 1 Do Begin
+      If IsPortalCell(i, j) Then Begin
+        SetBlank(i, j);
+        fField[i, j].Tramp := false;
+      End;
+      If (IsPortalCell(i - 1, j) Or IsPortalCell(i + 1, j) Or IsPortalCell(i, j - 1) Or IsPortalCell(i, j + 1)) And
+        (fField[i, j].BrickData = bdBrick) Then Begin
+        SetBlank(i, j);
+      End;
+    End;
   End;
   // 3. Die PowerUps die Hinter den "Bricks" liegen
   For i := 0 To FieldWidth - 1 Do Begin
@@ -1477,7 +1490,7 @@ Begin
       End;
     aaSecond: Begin
         // Mod Flammenwerfer: So lange er gefüllt ist, ist die zweite Aktion der Flammenwerfer (kein Zünden, kein Boxen)
-        If Player.FlameThrowerFuel > 0 Then exit;
+        If (Player.FlameThrowerFuel > 0) And (Player.UID <> AIPlayer) Then exit;
         handled := false; // This flag allows to trigger bombs while walking = more responsive ;)
         (*
          * Mod Boxhandschuh: Steht ein Gegner auf dem Feld vor dem Spieler, wird er gestunnt (auch im Stehen).
@@ -1558,8 +1571,9 @@ Type
       result := fHoles[x, y];
     End
     Else Begin
-      result := IsPortal(x, y); // Teleporter am Rand (Mod) halten Bomben auf wie Löcher
+      result := false;
     End;
+    result := result Or IsPortal(x, y); // Teleporter am Rand (Mod) halten Bomben auf wie Löcher
   End;
 
   Function BlockedByTramp(x, y: integer): Boolean; // Gillt nur für Bomben, wenn diese sich bewegen, deswegen extra
@@ -1607,6 +1621,7 @@ Type
      *)
     //If fField[x, y].Flame = [] Then Begin
     fField[x, y].FlamePlayer := TriggerPlayerindex;
+    fField[x, y].FlameGhost := fDetonateGhost;
     //End;
     fField[x, y].Flame := fField[x, y].Flame + [fend];
   End;
@@ -1925,6 +1940,7 @@ Begin
     End;
     x := trunc(fBombs[index].Position.x);
     y := trunc(fBombs[index].Position.y);
+    fDetonateGhost := fBombs[index].GhostBomb;
     If fField[x, y].BrickData = bdSolid Then continue; // Die Bombe Explodiert auf einem Festen Brick -> dann richtet sie keinen Schaden an
     If fField[x, y].BrickData = bdBrick Then Begin // Die Bombe explodiert auf einem Brick, den macht sie kaputt, aber nichts weiter ..
       Detonate(x, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fCross);
@@ -2040,7 +2056,8 @@ Begin
         yy := random(FieldHeight);
         If (fField[x, yy].BrickData = bdBlank) And
           (fField[x, yy].Flame = []) And
-          (fField[x, yy].PowerUp = puNone) Then Begin
+          (fField[x, yy].PowerUp = puNone) And
+          (Not IsPortalCell(x, yy)) Then Begin // Mod Teleporter am Rand
           // Prüfung Kein Spieler auf dem Feld
           b := true;
           For i := 0 To high(Players) Do Begin
@@ -2134,7 +2151,7 @@ Begin
     // Die Kollision Spieler gegen eine Flamme -> Spieler i stirbt und wird von Spieler "fField[x, y].FlamePlayer" gekillt
     // Mod durch Blöcke laufen: Wer in einem Block steht, wird von dessen Explosion getroffen wie von einer Flamme
     If (fField[x, y].Flame <> []) Or
-      (Players[i].Info.BrickWalk And fField[x, y].Exploding And (fField[x, y].Counter < FlameTime)) Then Begin
+      ((fField[x, y].BrickData = bdBrick) And fField[x, y].Exploding) Then Begin
       // TODO: Während eines Teleport vorgangs ist der Spieler unsterblich -> Klären ob das wirklich gewollt ist..
       // Ein unverwundbarer Spieler ignoriert die Flammen (der Hurry Tod passiert in HandleMovePlayer und ist davon nicht betroffen)
       If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) And (Players[i].InvulnTimer <= 0) Then Begin
@@ -2142,7 +2159,7 @@ Begin
          * Geister Mod: Trifft die Flamme eines Geistes einen Gegner, darf der Geist zurück ins Spiel.
          * Der Geist bekommt für diesen Treffer keinen Kill.
          *)
-        GhostFlame := Players[fField[x, y].FlamePlayer].Info.Ghost;
+        GhostFlame := fField[x, y].FlameGhost; // Entscheidend ist die Bombe, nicht ob der Werfer gerade (noch) ein Geist ist
         If GhostFlame And (fField[x, y].FlamePlayer <> i) And ((Not fTeamPlay) Or (Players[fField[x, y].FlamePlayer].Team <> Players[i].Team)) Then Begin
           If assigned(GhostReviveCallback) Then GhostReviveCallback(fField[x, y].FlamePlayer);
         End;
@@ -2155,8 +2172,7 @@ Begin
           Players[fField[x, y].FlamePlayer].Kills := Players[fField[x, y].FlamePlayer].Kills - 1;
           fPlayerStatistics.UpdatePlayerID(i, pssFriendlyFireKills);
         End
-        Else If GhostFlame Then Begin
-          // Getötet durch eine Geisterbombe -> kein Kill für den Geist
+        Else If GhostFlame Then Begin // Getötet durch eine Geisterbombe -> kein Kill für den Geist
         End
         Else Begin
           // Echter Kill ;)
@@ -2516,6 +2532,7 @@ Begin
         If fHasHoles And (fHurryIndex = -1) Then Begin // Auf Löchern dürfen keine PowerUps erzeugt werden
           If fHoles[x, y] Then noHole := false;
         End;
+        If IsPortalCell(x, y) Then noHole := false; // Mod Teleporter am Rand, die gelten hier auch als Loch
         If (fField[x, y].BrickData = bdBlank) And (fField[x, y].Flame = []) And (fField[x, y].PowerUp = puNone) And noHole Then Begin
           b := true;
           // Verhindern dass ein Powerup da generiert wird wo ein Spieler Steht.
@@ -2562,7 +2579,8 @@ Begin
   x := trunc(Player.Info.Position.x);
   y := trunc(Player.Info.Position.y);
   // Mod Teleporter am Rand: immer zum gegenüberliegenden Teleporter, dort ist IsInHohle noch gesetzt, er springt also nicht gleich zurück
-  If IsPortal(x, y) Then Begin
+  // (IsPortalCell statt IsPortal, beginnt der Hurry während der Animation, ist der Teleporter schon aus)
+  If IsPortalCell(x, y) Then Begin
     If (y = 0) And (x = FieldWidth Div 2) Then Begin
       Player.Info.Position.y := FieldHeight - 0.5;
     End

@@ -1054,7 +1054,7 @@ End;
 
 Procedure TServer.HandleStartRound;
 Var
-  a, b, c, i, EnterID: Integer;
+  a, b, c, i, j, EnterID: Integer;
   n: QWord;
   m: TMemoryStream;
   Startindex: Array[0..length(PlayerColors) - 1] Of Integer;
@@ -1121,7 +1121,14 @@ Begin
        * Spielen 2 Spieler an einem PC, haben beide den selben Namen, der 2. (Keyboard 1) wird deshalb als "Name~2" gesucht (~ ist in Spielernamen nicht erlaubt, siehe ValidNodeName)
        *)
       s := fPLayer[i].UserName;
-      If (fPLayer[i].UID > 0) And (fPLayer[i].Keyboard = ks1) Then s := s + '~2';
+      If (fPLayer[i].UID > 0) And (fPLayer[i].Keyboard = ks1) Then Begin
+        For j := 0 To high(fPLayer) Do Begin
+          If (j <> i) And (fPLayer[j].UID = fPLayer[i].UID) And (fPLayer[j].Keyboard = ks0) Then Begin
+            s := s + '~2';
+            break;
+          End;
+        End;
+      End;
       fPLayer[i].MaxHitPoints := min(255, max(1, StrToIntDef(fModSettings.Handicap.Values[s], fModSettings.DefaultHitPoints)));
     End;
     fPLayer[i].HitPoints := fPLayer[i].MaxHitPoints;
@@ -1196,6 +1203,7 @@ Begin
     For i := 0 To high(fPLayer) Do Begin
       fPLayer[i].MoveState := msStill;
       fPLayer[i].Action := aaNone;
+      fPLayer[i].FlameThrowerFiring := false; // Das Loslassen der zweiten Aktion während der Pause käme sonst nie an
     End;
   End;
   m := TMemoryStream.Create;
@@ -1536,6 +1544,7 @@ Begin
   For i := 0 To high(fPLayer) Do Begin
     If i = PlayerIndex Then Continue;
     If fSettings.TeamPlay And (fPLayer[i].Team = fPLayer[PlayerIndex].Team) Then Continue;
+    If (Not fPLayer[i].Info.Alive) And (Not fPLayer[i].Info.Ghost) Then Continue; // Zuschauer (tot) nicht
     SendFlash(i, fModSettings.WhiteBombIntensity, fModSettings.WhiteBombMs, fModSettings.WhiteBombFadeMs);
   End;
 End;
@@ -1569,8 +1578,10 @@ Begin
     y := trunc(fPLayer[i].Info.Position.y);
     len := fActualField.FlameThrowerBeam(x, y, dx, dy, fModSettings.FlameThrowerRange);
     fPLayer[i].Info.FlameThrowerLen := len;
+    fPLayer[i].Info.FlameThrowerColor := fPLayer[i].Info.ColorIndex;
     For j := 0 To high(fPLayer) Do Begin
-      If (j = i) Or (Not fPLayer[j].Info.Alive) Or fPLayer[j].Info.Dying Then Continue;
+      // Wie bei den Flammen: Fliegende und Teleportierende werden nicht getroffen
+      If (j = i) Or (Not fPLayer[j].Info.Alive) Or fPLayer[j].Info.Dying Or fPLayer[j].Flying Or (fPLayer[j].Info.Animation = raTeleport) Then Continue;
       If fSettings.TeamPlay And (fPLayer[j].Team = fPLayer[i].Team) Then Continue;
       For k := 1 To len Do Begin
         If (trunc(fPLayer[j].Info.Position.x) = x + k * dx) And (trunc(fPLayer[j].Info.Position.y) = y + k * dy) Then Begin
@@ -1589,9 +1600,14 @@ Begin
     If fPLayer[j].FlameThrowerExposure >= fModSettings.FlameThrowerKillMs Then Begin
       fPLayer[j].FlameThrowerExposure := 0;
       If HandlePlayerHit(j) Then Continue; // Trefferpunkte Mod
-      HandlePlaySoundEffect(j, seAtomicDie);
-      fActualField.KillPlayer(fPLayer, j);
+      // Wie der Kill durch eine Flamme (TAtomicField.HandlePlayerVsMap), der Werfer ist immer ein Gegner
       fPLayer[InBeam[j]].Kills := fPLayer[InBeam[j]].Kills + 1;
+      fPlayerStatistics.UpdatePlayerID(InBeam[j], pssKills);
+      HandlePlaySoundEffect(j, seAtomicDie);
+      HandlePlaySoundEffect(j, seOtherPlayerDied);
+      HandleStatisticCallback(ssPlayerDeaths);
+      fPlayerStatistics.UpdatePlayerID(j, pssDeaths);
+      fActualField.KillPlayer(fPLayer, j);
     End;
   End;
 End;
@@ -1617,6 +1633,7 @@ Begin
   fPLayer[PlayerIndex].InvulnTimer := 0;
   fPLayer[PlayerIndex].BrickWalkTimer := 0;
   fPLayer[PlayerIndex].Info.BrickWalk := false;
+  fPLayer[PlayerIndex].StartGlove := false;
   fPLayer[PlayerIndex].Action := aaNone;
 End;
 
@@ -1794,6 +1811,11 @@ Begin
   End;
   If UID <> fSettings.MasterUid Then Begin
     log('Mod test command rejected, only the master is allowed (uid: ' + inttostr(UID) + ')', llWarning);
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fpausing Then Begin
+    log('Mod test command rejected, the game is paused', llWarning);
     LogLeave(EnterID);
     exit;
   End;
@@ -2084,6 +2106,7 @@ Begin
         End;
       End;
       fPLayer[i].UserName := '';
+      fPLayer[i].FlameThrowerFiring := false; // Mod Flammenwerfer, das Loslassen der Taste kommt nicht mehr
       If fPLayer[i].Info.Alive Then Begin // Sollte der Spieler noch am Leben sein -> stirbt er evtl jetzt
         fPLayer[i].Info.Alive := fPLayer[i].UID <> NoPlayer;
       End;
@@ -2413,8 +2436,8 @@ Begin
       Else Begin
         fPLayer[i].InvulnTimer := max(0, fPLayer[i].InvulnTimer - FrameRate);
         fPLayer[i].BrickWalkTimer := max(0, fPLayer[i].BrickWalkTimer - FrameRate);
-        fPLayer[i].PunchStunCooldown := max(0, fPLayer[i].PunchStunCooldown - FrameRate);
       End;
+      fPLayer[i].PunchStunCooldown := max(0, fPLayer[i].PunchStunCooldown - FrameRate); // Auch im Hurry
 
       (*
        * Das "Krank" sein ;)
@@ -2430,6 +2453,18 @@ Begin
             If fPLayer[j].Disease = [] Then Begin // Ist Spieler j aber auch schon krank dann zählt es nicht, denn dann weis keiner so genau wer hier wen ansteckt..
               fPlayerStatistics.UpdatePlayerID(i, pssDiseaseSpread);
               fPlayerStatistics.UpdatePlayerID(j, pssDiseased);
+            End;
+            (*
+             * Wer dSuperSlow neu bekommt, wird wie beim Aufnehmen verlangsamt, sonst wäre BeforeSlowDiseaseSpeed
+             * nicht gesetzt und der Spieler nach dem Heilen mit Geschwindigkeit 0 eingefroren.
+             *)
+            If (dSuperSlow In fPLayer[i].Disease) And (Not (dSuperSlow In fPLayer[j].Disease)) Then Begin
+              fPLayer[j].BeforeSlowDiseaseSpeed := fPLayer[j].Powers.Speed;
+              fPLayer[j].Powers.Speed := AtomicSlowSpeed / (AtomicSpeedChange * AtomicSpeedChange);
+            End;
+            If (dSuperSlow In fPLayer[j].Disease) And (Not (dSuperSlow In fPLayer[i].Disease)) Then Begin
+              fPLayer[i].BeforeSlowDiseaseSpeed := fPLayer[i].Powers.Speed;
+              fPLayer[i].Powers.Speed := AtomicSlowSpeed / (AtomicSpeedChange * AtomicSpeedChange);
             End;
             // Die Krankheiten vereinen sich zu was auch immer beide haben -> j
             fPLayer[j].Disease := fPLayer[i].Disease + fPLayer[j].Disease;
@@ -2542,9 +2577,9 @@ Begin
     fPLayer[i].Info.TestStunTime := 0;
     fPLayer[i].Info.TestBrickWalkTime := 0;
     If fModSettings.ModTestMode Then Begin
-      fPLayer[i].Info.TestInvulnTime := min(high(uint16), fPLayer[i].InvulnTimer);
-      fPLayer[i].Info.TestStunTime := min(high(uint16), fPLayer[i].StunTimer);
-      fPLayer[i].Info.TestBrickWalkTime := min(high(uint16), fPLayer[i].BrickWalkTimer);
+      fPLayer[i].Info.TestInvulnTime := min(high(uint16), fPLayer[i].InvulnTimer Div 100);
+      fPLayer[i].Info.TestStunTime := min(high(uint16), fPLayer[i].StunTimer Div 100);
+      fPLayer[i].Info.TestBrickWalkTime := min(high(uint16), fPLayer[i].BrickWalkTimer Div 100);
     End;
     (*
      * Der Spieler langweilt sich und wird nicht zufällig gerade gegrillt
@@ -2561,7 +2596,7 @@ Begin
      * Ein unverwundbarer Spieler blinkt langsamer zwischen seiner Farbe und weiß (bzw. rot, wenn er selbst weiß ist)
      * beides hat Vorrang vor dem Blinken der Krankheit.
      *)
-    If (fPLayer[i].StunTimer > 0) And ((fPLayer[i].StunTimer Div AtomicStunColorChangeTime) Mod 2 = 0) Then Begin
+    If (fPLayer[i].StunTimer > 0) And (Not fPLayer[i].Info.Dying) And ((fPLayer[i].StunTimer Div AtomicStunColorChangeTime) Mod 2 = 0) Then Begin
       DiseasedInfo := fPLayer[i].Info;
       If DiseasedInfo.ColorIndex = BlackColorIndex Then Begin
         DiseasedInfo.ColorIndex := RedColorIndex;
@@ -2571,7 +2606,7 @@ Begin
       End;
       m.Write(DiseasedInfo, sizeof(DiseasedInfo));
     End
-    Else If (fPLayer[i].InvulnTimer > 0) And ((fPLayer[i].InvulnTimer Div AtomicInvulnColorChangeTime) Mod 2 = 0) Then Begin
+    Else If (fPLayer[i].InvulnTimer > 0) And (Not fPLayer[i].Info.Dying) And ((fPLayer[i].InvulnTimer Div AtomicInvulnColorChangeTime) Mod 2 = 0) Then Begin
       DiseasedInfo := fPLayer[i].Info;
       If DiseasedInfo.ColorIndex = WhiteColorIndex Then Begin
         DiseasedInfo.ColorIndex := RedColorIndex;

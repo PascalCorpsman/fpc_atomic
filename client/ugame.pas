@@ -1977,10 +1977,10 @@ Begin
     y := trunc(fPlayer[i].Info.Position.y);
     For k := 1 To fPlayer[i].Info.FlameThrowerLen Do Begin
       If k = fPlayer[i].Info.FlameThrowerLen Then Begin
-        ani := fAtomics[i].FlameEnd;
+        ani := fAtomics[fPlayer[i].Info.FlameThrowerColor].FlameEnd;
       End
       Else Begin
-        ani := fAtomics[i].FlameMiddle;
+        ani := fAtomics[fPlayer[i].Info.FlameThrowerColor].FlameMiddle;
       End;
       ani.Render(FieldxOff + (x + k * dx) * FieldBlockWidth, FieldyOff + (y + k * dy) * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON, (trunc(fPlayer[i].Info.Direction) Div 90) * 90);
     End;
@@ -2125,9 +2125,9 @@ Begin
     For i := 0 To high(fPlayer) Do Begin
       If fPlayer[i].Info.Alive And (Not fPlayer[i].Info.Dying) Then Begin
         s := '';
-        If fPlayer[i].Info.TestInvulnTime > 0 Then s := s + format('I%.1f ', [fPlayer[i].Info.TestInvulnTime / 1000]);
-        If fPlayer[i].Info.TestStunTime > 0 Then s := s + format('S%.1f ', [fPlayer[i].Info.TestStunTime / 1000]);
-        If fPlayer[i].Info.TestBrickWalkTime > 0 Then s := s + format('B%.1f', [fPlayer[i].Info.TestBrickWalkTime / 1000]);
+        If fPlayer[i].Info.TestInvulnTime > 0 Then s := s + format('I%.1f ', [fPlayer[i].Info.TestInvulnTime / 10]);
+        If fPlayer[i].Info.TestStunTime > 0 Then s := s + format('S%.1f ', [fPlayer[i].Info.TestStunTime / 10]);
+        If fPlayer[i].Info.TestBrickWalkTime > 0 Then s := s + format('B%.1f', [fPlayer[i].Info.TestBrickWalkTime / 10]);
         If s <> '' Then Begin
           x := round(fPlayer[i].Info.Position.x * FieldBlockWidth) + FieldxOff - 20;
           y := round((fPlayer[i].Info.Position.y - 2) * FieldBlockHeight) + FieldyOff;

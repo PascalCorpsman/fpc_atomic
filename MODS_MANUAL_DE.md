@@ -239,7 +239,7 @@ Spieler können über den Rand des Spielfelds laufen und kommen auf der Gegensei
 Teleporter in der Mitte der Ränder bringen den Spieler zum Teleporter am gegenüberliegenden Rand, oben <-> unten und / oder links <-> rechts. Sie funktionieren wie die Löcher mancher Karten und sehen auch so aus, mit einem türkisen Ring darum.
 
 - Die Teleporter erscheinen eine einstellbare Zeit nach Rundenbeginn. Vorher sind es normale Felder.
-- Die Teleporter-Felder und die Felder daneben (zur Feldmitte hin) bleiben von Anfang an frei von Steinen.
+- Die Teleporter-Felder bleiben von Anfang an frei, und auf den Feldern daneben liegen keine Steine (feste Blöcke bleiben).
 - Auf einen Teleporter kann keine Bombe gelegt werden, rollende Bomben bleiben davor stehen.
 - Im Hurry sind die Teleporter weg.
 
