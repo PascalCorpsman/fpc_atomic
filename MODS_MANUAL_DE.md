@@ -269,6 +269,7 @@ Nur der Spieler, der das Spiel hostet (der Master), kann während einer Runde di
 | F9 | Mich stunnen |
 | F11 | Meine Trefferpunkte auffüllen |
 | F12 | Durch Steine laufen |
+| Einfg | Je 2 Items der Mods auf freie Felder legen: weiße Bombe, Flammenwerfer, Box-Item, Krankheit |
 
 Mit gehaltener **Shift**-Taste wirkt die Taste auf den zweiten Spieler an diesem PC. F10 wird nicht benutzt, weil Windows damit das Fenstermenü öffnet.
 

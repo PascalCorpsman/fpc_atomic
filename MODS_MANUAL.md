@@ -267,6 +267,7 @@ Only the player who hosts the game (the master) can use the test keys during a r
 | F12 | Walk through bricks |
 | F2 | White screen |
 | F1 | Next bomb is a white bomb |
+| Ins | Spawn 2 of each mod item on free tiles: white bomb, flamethrower, punch, disease |
 
 Hold **Shift** to use the key on the second player of this PC. F10 is not used, because Windows uses it for the window menu.
 

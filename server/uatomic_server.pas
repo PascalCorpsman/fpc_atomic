@@ -1775,7 +1775,7 @@ End;
 
 Procedure TServer.HandleDebugCommand(Const Stream: TStream; UID: integer);
 Var
-  PlayerIndex, EnterID: integer;
+  PlayerIndex, EnterID, i: integer;
   Command: TModTestCommand;
   s: String;
 Begin
@@ -1870,6 +1870,18 @@ Begin
     mtFlash: Begin
         SendFlash(PlayerIndex, fModSettings.FlashDiseaseIntensity, fModSettings.FlashDiseaseMs, fModSettings.FlashDiseaseFadeMs);
         s := 'white screen';
+      End;
+    mtSpawnItems: Begin
+        (*
+         * Je 2 Items der neuen Mods: weiße Bombe, Flammenwerfer, Box Item (Boxhandschuh) und Krankheit (positive Krankheit, durch Steine laufen, weißer Bildschirm)
+         *)
+        For i := 1 To 2 Do Begin
+          fActualField.SpawnTestItem(fPLayer, puExtraBomb, true, false);
+          fActualField.SpawnTestItem(fPLayer, puLongerFlameLength, false, true);
+          fActualField.SpawnTestItem(fPLayer, puCanPunch, false, false);
+          fActualField.SpawnTestItem(fPLayer, puDisease, false, false);
+        End;
+        s := 'mod items spawned';
       End;
     mtWhiteBomb: Begin
         fPLayer[PlayerIndex].WhiteBombs := fPLayer[PlayerIndex].WhiteBombs + 1;

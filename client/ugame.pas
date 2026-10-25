@@ -698,6 +698,7 @@ Begin
     VK_F12: Command := mtBrickWalk;
     VK_F2: Command := mtFlash;
     VK_F1: Command := mtWhiteBomb;
+    VK_INSERT: Command := mtSpawnItems;
   Else
     exit;
   End;
@@ -2145,9 +2146,10 @@ Begin
       AtomicFont.Textout(120, 220, atomic_dialog_Layer + atomic_EPSILON, 'F9  : ' + ModTestCommandToString(mtStun));
       AtomicFont.Textout(120, 240, atomic_dialog_Layer + atomic_EPSILON, 'F11 : ' + ModTestCommandToString(mtMaxHitPoints));
       AtomicFont.Textout(120, 260, atomic_dialog_Layer + atomic_EPSILON, 'F12 : ' + ModTestCommandToString(mtBrickWalk));
-      AtomicFont.Textout(120, 290, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2. player on this pc');
-      AtomicFont.Textout(120, 310, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned,');
-      AtomicFont.Textout(120, 330, atomic_dialog_Layer + atomic_EPSILON, 'B = walk through bricks (seconds)');
+      AtomicFont.Textout(120, 280, atomic_dialog_Layer + atomic_EPSILON, 'Ins : ' + ModTestCommandToString(mtSpawnItems));
+      AtomicFont.Textout(120, 310, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2. player on this pc');
+      AtomicFont.Textout(120, 330, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned,');
+      AtomicFont.Textout(120, 350, atomic_dialog_Layer + atomic_EPSILON, 'B = walk through bricks (seconds)');
     End;
   End;
   (*

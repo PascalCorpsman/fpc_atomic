@@ -598,6 +598,7 @@ Type
     , mtBrickWalk // F12, durch Blöcke laufen
     , mtFlash // F2, weißer Bildschirm
     , mtWhiteBomb // F1, die nächste gelegte Bombe ist weiß
+    , mtSpawnItems // Einfg, die Items der neuen Mods auf freie Felder verteilen
     );
 
   TAtomicKey = (
@@ -1484,6 +1485,7 @@ Begin
     mtBrickWalk: result := 'walk through bricks';
     mtFlash: result := 'white screen';
     mtWhiteBomb: result := 'white bomb';
+    mtSpawnItems: result := 'spawn mod items';
   End;
 End;
 

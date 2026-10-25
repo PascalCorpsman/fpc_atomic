@@ -145,6 +145,7 @@ Type
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
     Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
     Function FindFreeField(x, y: integer): TPoint; // Liefert das zu x, y nächste Feld ohne Stein, Bombe, Flamme und Loch
+    Function SpawnTestItem(Const Players: TPlayers; PowerUp: TPowerUps; WhiteBomb, FlameThrower: Boolean): Boolean; // Mod Test Modus: Item auf ein zufälliges freies Feld legen
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
     Property OpenTopBottom: Boolean read fWrapTopBottom; // Mod offene Grenzen, für die Pfeile im Client
@@ -2409,6 +2410,37 @@ Begin
   inc(fBombCount);
   fPlaySoundEffect(PlayerIndex, seBombGrab);
   result := true;
+End;
+
+Function TAtomicField.SpawnTestItem(Const Players: TPlayers;
+  PowerUp: TPowerUps; WhiteBomb, FlameThrower: Boolean): Boolean;
+Var
+  i, j, x, y: integer;
+  b: Boolean;
+Begin
+  (*
+   * Mod Test Modus: Das Item kommt auf ein zufälliges freies Feld (kein Stein, Item, Bombe, Flamme, Loch, Teleporter und kein Spieler)
+   *)
+  result := false;
+  For i := 0 To 500 Do Begin
+    x := random(FieldWidth);
+    y := random(FieldHeight);
+    If (fField[x, y].BrickData <> bdBlank) Or (fField[x, y].PowerUp <> puNone) Or (fField[x, y].Flame <> []) Then Continue;
+    If (fHasHoles And (fHurryIndex = -1) And fHoles[x, y]) Or IsPortal(x, y) Then Continue;
+    b := true;
+    For j := 0 To fBombCount - 1 Do Begin
+      If (trunc(fBombs[j].Position.x) = x) And (trunc(fBombs[j].Position.y) = y) Then b := false;
+    End;
+    For j := 0 To high(Players) Do Begin
+      If Players[j].Info.Alive And (trunc(Players[j].Info.Position.x) = x) And (trunc(Players[j].Info.Position.y) = y) Then b := false;
+    End;
+    If Not b Then Continue;
+    fField[x, y].PowerUp := PowerUp;
+    fField[x, y].WhiteBomb := WhiteBomb;
+    fField[x, y].FlameThrowerItem := FlameThrower;
+    result := true;
+    exit;
+  End;
 End;
 
 Function TAtomicField.FindFreeField(x, y: integer): TPoint;
