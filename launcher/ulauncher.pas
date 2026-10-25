@@ -25,6 +25,7 @@ Const
   VersionInfoUrl = 'https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/bin/fpc_atomic.version'; // URL zum DL der Versionsinfo .JSON
   JSON_ROOT = 'fpc_atomic';
   FPC_AtomicIniSection = 'FPC_Atomic'; // Section in FPC_atomic.cfg
+  ManualUrl = 'https://github.com/PascalCorpsman/fpc_atomic/blob/main/'; // Dort liegen die Handbücher online, falls sie nicht neben dem Launcher liegen
 
   (*
    * Historie : 0.01 = Initial version
@@ -106,9 +107,28 @@ Function Change_DLL_To_lib_so(Const filename: String): String;
 
 Function CheckForFiles(): TStringList;
 
+(*
+ * Öffnet ein Handbuch (z.B. MANUAL.md) mit dem dafür eingestellten Programm,
+ * liegt es nicht neben dem Launcher, dann online unter ManualUrl.
+ *)
+Procedure OpenManual(Const Filename: String);
+
 Implementation
 
-Uses uJSON, LazFileUtils, ucdextractor, uatomic_global;
+Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf;
+
+Procedure OpenManual(Const Filename: String);
+Var
+  s: String;
+Begin
+  s := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
+  If FileExists(s) Then Begin
+    OpenDocument(s);
+  End
+  Else Begin
+    OpenURL(ManualUrl + Filename);
+  End;
+End;
 
 Function FileSizeToString(Value: Int64): String;
 Var

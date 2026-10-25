@@ -20,7 +20,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  ComCtrls, CheckLst, Spin, Grids, uatomic_common;
+  ComCtrls, CheckLst, Spin, Grids, uatomic_common, ulauncher;
 
 Type
 
@@ -115,6 +115,7 @@ Type
     Label59: TLabel;
     Label60: TLabel;
     Label61: TLabel;
+    Label62: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -189,6 +190,7 @@ Type
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
+    Procedure Label62Click(Sender: TObject);
     Procedure CheckBox1Change(Sender: TObject);
     Procedure CheckListBox1ClickCheck(Sender: TObject);
     Procedure CheckListBox1SelectionChange(Sender: TObject; User: boolean);
@@ -358,6 +360,11 @@ Begin
   If StringGrid1.Row >= StringGrid1.FixedRows Then Begin
     StringGrid1.DeleteRow(StringGrid1.Row);
   End;
+End;
+
+Procedure TForm4.Label62Click(Sender: TObject);
+Begin
+  OpenManual('MODS_MANUAL.md');
 End;
 
 Procedure TForm4.CheckBox1Change(Sender: TObject);

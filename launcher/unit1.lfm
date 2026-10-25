@@ -275,6 +275,18 @@ object Form1: TForm1
       OnClick = Button6Click
     end
   end
+  object Label8: TLabel
+    Cursor = crHandPoint
+    Hint = 'Open the game manual (MANUAL.md).'
+    Left = 10
+    Height = 15
+    Top = 451
+    Caption = 'Manual'
+    Font.Color = clBlue
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = Label8Click
+  end
   object Button3: TButton
     Left = 366
     Height = 25

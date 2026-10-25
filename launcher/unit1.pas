@@ -53,6 +53,7 @@ Type
     Label5: TLabel;
     Label6: TLabel;
     Label7: TLabel;
+    Label8: TLabel;
     Panel1: TPanel;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
@@ -61,6 +62,7 @@ Type
     Procedure Button5Click(Sender: TObject);
     Procedure Button6Click(Sender: TObject);
     Procedure Button7Click(Sender: TObject);
+    Procedure Label8Click(Sender: TObject);
     Procedure CheckBox3Change(Sender: TObject);
     Procedure Edit1Change(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
@@ -313,6 +315,11 @@ Procedure TForm1.Button7Click(Sender: TObject);
 Begin
   // Mods, der Dialog liest und schreibt atomic_server.ini selbst
   form4.ShowModal;
+End;
+
+Procedure TForm1.Label8Click(Sender: TObject);
+Begin
+  OpenManual('MANUAL.md');
 End;
 
 Procedure TForm1.CheckBox3Change(Sender: TObject);

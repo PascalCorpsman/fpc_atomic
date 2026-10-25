@@ -1125,6 +1125,18 @@ object Form4: TForm4
     Top = 334
     Caption = 'Changes apply to the next game started on this PC.'
   end
+  object Label62: TLabel
+    Cursor = crHandPoint
+    Hint = 'Open the mods manual (MODS_MANUAL.md, with a link to the German version).'
+    Left = 100
+    Height = 15
+    Top = 365
+    Caption = 'Mods manual'
+    Font.Color = clBlue
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = Label62Click
+  end
   object Button1: TButton
     Hint = 'Reset all mods to their default values (all off). Saved only with OK.'
     Left = 8
