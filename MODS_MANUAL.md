@@ -141,6 +141,7 @@ A part of the items below the bricks are **flamethrowers**. They look like a red
 - The fuel is only used up while firing. When it is empty, the flamethrower is gone. More flamethrower items add fuel.
 - While the player has fuel, the second action does not trigger or punch bombs.
 - The player can walk normally while firing, the beam turns with the player.
+- If the key is released while the game window has no focus (e.g. Alt+Tab), the game does not notice it: the beam keeps firing until the key is pressed and released again in the game.
 - In the mod test mode F4 (all items) also gives fuel.
 
 | Setting | ini key | Default | Range |
@@ -177,6 +178,8 @@ Anna~2=1
 ```
 
 When shown, the number above a player is only visible while the player has more than 1 hit point.
+
+AI players have no player name, so they always get the default hit points.
 
 ## Ghosts
 

@@ -143,6 +143,7 @@ Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie e
 - Der Tank leert sich nur beim Feuern. Ist er leer, ist der Flammenwerfer weg. Weitere Flammenwerfer-Items füllen den Tank auf.
 - Solange der Spieler Tank hat, zündet und boxt die zweite Aktion keine Bomben.
 - Beim Feuern läuft man normal schnell, der Strahl dreht sich mit.
+- Lässt man die Taste los, während das Spielfenster nicht aktiv ist (z. B. Alt+Tab), bekommt das Spiel das nicht mit: Der Strahl feuert weiter, bis man die Taste im Spiel erneut drückt und loslässt.
 - Im Mod-Test-Modus gibt F4 (alle Items) auch Tank.
 
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
@@ -179,6 +180,8 @@ Anna~2=1
 ```
 
 Ist die Anzeige an, steht die Zahl nur über einem Spieler, solange er mehr als 1 Trefferpunkt hat.
+
+KI-Spieler haben keinen Spielernamen und bekommen deshalb immer die Standard-Trefferpunkte.
 
 ## Geister
 
