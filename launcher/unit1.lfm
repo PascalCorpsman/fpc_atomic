@@ -1,5 +1,4 @@
 object Form1: TForm1
-  ShowHint = True
   Left = 347
   Height = 481
   Top = 107
@@ -11,6 +10,7 @@ object Form1: TForm1
   BorderStyle = bsSingle
   KeyPreview = True
   Position = poScreenCenter
+  ShowHint = True
   LCLVersion = '5.99.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
@@ -59,9 +59,9 @@ object Form1: TForm1
       ParentFont = False
     end
     object Button5: TButton
-      Hint = 'Choose the keys or a gamepad for the 1st and 2nd player on this PC.'
       Left = 8
       Height = 25
+      Hint = 'Choose the keys or a gamepad for the 1st and 2nd player on this PC.'
       Top = 52
       Width = 230
       Caption = '&Key assignment...'
@@ -79,36 +79,36 @@ object Form1: TForm1
     ClientWidth = 246
     TabOrder = 1
     object CheckBox2: TCheckBox
-      Hint = 'Start the game in fullscreen mode.'
       Left = 8
       Height = 19
+      Hint = 'Start the game in fullscreen mode.'
       Top = 4
       Width = 88
       Caption = '&Fullscreen'
       TabOrder = 0
     end
     object CheckBox4: TCheckBox
-      Hint = 'Play the music. The sound effects can be switched off in Game...'
       Left = 124
       Height = 19
+      Hint = 'Play the music. The sound effects can be switched off in Game...'
       Top = 4
       Width = 100
       Caption = 'Play mu&sic'
       TabOrder = 1
     end
     object CheckBox5: TCheckBox
-      Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
       Left = 8
       Height = 19
+      Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
       Top = 28
       Width = 88
       Caption = 'Fill &window'
       TabOrder = 2
     end
     object CheckBox1: TCheckBox
-      Hint = 'Show the frames per second in the game.'
       Left = 124
       Height = 19
+      Hint = 'Show the frames per second in the game.'
       Top = 28
       Width = 86
       Caption = 'S&how FPS'
@@ -125,9 +125,9 @@ object Form1: TForm1
     ClientWidth = 246
     TabOrder = 2
     object CheckBox3: TCheckBox
-      Hint = 'Join a game over the internet: the game connects to the router IP and port below. Not needed in the local network.'
       Left = 8
       Height = 19
+      Hint = 'Join a game over the internet: the game connects to the router IP and port below. Not needed in the local network.'
       Top = 2
       Width = 160
       Caption = '&Join through a router'
@@ -143,9 +143,9 @@ object Form1: TForm1
       FocusControl = Edit2
     end
     object Edit2: TEdit
-      Hint = 'IP address of the router of the player who hosts the game.'
       Left = 88
       Height = 23
+      Hint = 'IP address of the router of the player who hosts the game.'
       Top = 28
       Width = 150
       TabOrder = 1
@@ -160,9 +160,9 @@ object Form1: TForm1
       FocusControl = Edit3
     end
     object Edit3: TEdit
-      Hint = 'Port the router forwards to the server of the host (default 5521).'
       Left = 88
       Height = 23
+      Hint = 'Port the router forwards to the server of the host (default 5521).'
       Top = 56
       Width = 150
       TabOrder = 2
@@ -171,9 +171,9 @@ object Form1: TForm1
   end
   object Panel1: TPanel
     Cursor = crHandPoint
-    Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
     Left = 8
     Height = 50
+    Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
     Top = 308
     Width = 448
     BevelOuter = bvNone
@@ -189,9 +189,9 @@ object Form1: TForm1
     OnMouseMove = Panel1MouseMove
     object Label7: TLabel
       Cursor = crHandPoint
-      Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
       Left = 0
       Height = 50
+      Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
       Top = 0
       Width = 448
       Align = alClient
@@ -219,9 +219,9 @@ object Form1: TForm1
     ParentFont = False
   end
   object Label6: TLabel
-    Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
     Left = 234
     Height = 15
+    Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
     Top = 362
     Width = 220
     Alignment = taRightJustify
@@ -238,9 +238,9 @@ object Form1: TForm1
     ClientWidth = 446
     TabOrder = 4
     object Button7: TButton
-      Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
       Left = 8
       Height = 25
+      Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
       Top = 2
       Width = 81
       Caption = '&Mods...'
@@ -248,9 +248,9 @@ object Form1: TForm1
       OnClick = Button7Click
     end
     object Button8: TButton
-      Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
       Left = 95
       Height = 25
+      Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
       Top = 2
       Width = 81
       Caption = '&Game...'
@@ -258,9 +258,9 @@ object Form1: TForm1
       OnClick = Button8Click
     end
     object Button1: TButton
-      Hint = 'Check online for a new version and download it.'
       Left = 182
       Height = 25
+      Hint = 'Check online for a new version and download it.'
       Top = 2
       Width = 81
       Caption = '&Updates...'
@@ -268,9 +268,9 @@ object Form1: TForm1
       OnClick = Button1Click
     end
     object Button4: TButton
-      Hint = 'Extract the game data from the original Atomic Bomberman CD.'
       Left = 269
       Height = 25
+      Hint = 'Extract the game data from the original Atomic Bomberman CD.'
       Top = 2
       Width = 81
       Caption = 'CD e&xtractor...'
@@ -278,9 +278,9 @@ object Form1: TForm1
       OnClick = Button4Click
     end
     object Button6: TButton
-      Hint = 'Open the folder with the settings, the logs and atomic_server.ini.'
       Left = 356
       Height = 25
+      Hint = 'Open the folder with the settings, the logs and atomic_server.ini.'
       Top = 2
       Width = 81
       Caption = '&Config folder'
@@ -290,9 +290,9 @@ object Form1: TForm1
   end
   object Label8: TLabel
     Cursor = crHandPoint
-    Hint = 'Open the game manual (MANUAL.md).'
     Left = 10
     Height = 15
+    Hint = 'Open the game manual (MANUAL.md).'
     Top = 451
     Caption = 'Manual'
     Font.Color = clBlue

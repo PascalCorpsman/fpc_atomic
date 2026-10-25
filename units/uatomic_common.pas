@@ -265,25 +265,25 @@ Const
   ModMaxBrickWalkChance = 100; // in %
   ModMaxBrickWalkMs = 120000; // BrickWalkMinMs, BrickWalkMaxMs
   ModMaxBrickWalkTransparency = 100; // in %, 100 = unsichtbar
-  ModMaxGhostReviveInvulnMs = 60000;
+  ModMaxGhostReviveInvulnMs = 60000; // Zeit in ms, GhostReviveInvulnMs
   ModMaxGhostFlameLen = 99; // untere Grenze 1
-  ModMaxGhostFlickerMs = 5000;
+  ModMaxGhostFlickerMs = 5000; // Zeit in ms, GhostFlickerMs
   ModMaxGhostCount = 99; // GhostMaxCount
   ModMaxGhostTimeMs = 600000; // GhostMaxTimeMs
   ModMaxInvulnTimeMs = 60000; // untere Grenze FlameTime, sonst trifft die selbe Flamme den Spieler im nächsten Frame gleich noch mal
   ModMaxHitPoints = 255; // DefaultHitPoints und [Handicap], untere Grenze 1 (TAtomicInfo.HitPoints ist ein uint8)
-  ModMaxRoundTimeSec = 3600;
-  ModMaxStartInvulnMs = 600000;
-  ModMaxTeleportersActiveSec = 600;
-  ModMaxOpenBordersActiveSec = 600;
-  ModMaxPunchStunCooldownMs = 10000;
+  ModMaxRoundTimeSec = 3600; // Zeit in s, RoundTimeSec
+  ModMaxStartInvulnMs = 600000; // Zeit in ms, StartInvulnMs
+  ModMaxTeleportersActiveSec = 600; // Zeit in s, TeleportersActiveSec
+  ModMaxOpenBordersActiveSec = 600; // Zeit in s, OpenBordersActiveSec
+  ModMaxPunchStunCooldownMs = 10000; // Zeit in ms, PunchStunCooldownMs
   ModMaxFlashChance = 100; // in %
   ModMaxFlashIntensity = 100; // in %, 100 = komplett weiß
   ModMaxFlashMs = 10000; // Dauer und Übergang zurück
   ModMaxFlameThrowerChance = 100; // in %
-  ModMaxFlameThrowerFuelMs = 60000;
+  ModMaxFlameThrowerFuelMs = 60000; // Zeit in ms, FlameThrowerFuelMs
   ModMaxFlameThrowerRange = FieldWidth - 1; // untere Grenze 1
-  ModMaxFlameThrowerKillMs = 10000;
+  ModMaxFlameThrowerKillMs = 10000; // Zeit in ms, FlameThrowerKillMs
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -1456,7 +1456,7 @@ Var
 Begin
   result := false;
   If Not ForceDirectories(ExtractFileDir(Filename)) Then Begin
-    log('Unable to create: ' + Filename, llError);
+    log('Unable to create: ' + Filename, llCritical);
     exit;
   End;
   Try
@@ -1475,7 +1475,7 @@ Begin
     End;
   Except
     On av: Exception Do Begin
-      log('Unable to write: ' + Filename + ' ' + av.Message, llError);
+      log('Unable to write: ' + Filename + ' ' + av.Message, llCritical);
     End;
   End;
 End;

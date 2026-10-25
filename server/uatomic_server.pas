@@ -68,7 +68,7 @@ Type
 
     fSettings: TAtomicSettings;
     fModSettings: TModSettings; // Die Optionalen Mods aus atomic_server.ini
-    fRoundTimeMs: Integer; // Zeit in ms seit Rundenbeginn (für die Teleporter am Rand)
+    fRoundTimeMs: Integer; // Zeit in ms seit Rundenbeginn (für Teleporter und offene Grenzen)
     fFields: Array Of TAtomicField;
     fConnectedClientCount: integer; // Anzahl der Tatsächlich verbundenen Clients, wird bestimmt bei HandleSwitchToPlayerSetup und ist immer <= GetActivePlayerCount()
     fActualField: TAtomicField; // Das Feld, welches für dieses Match Aktiv ist, Wird mittels miUpdateFieldSetup gesetzt
@@ -1129,7 +1129,7 @@ Begin
           End;
         End;
       End;
-      fPLayer[i].MaxHitPoints := min(255, max(1, StrToIntDef(fModSettings.Handicap.Values[s], fModSettings.DefaultHitPoints)));
+      fPLayer[i].MaxHitPoints := min(ModMaxHitPoints, max(1, StrToIntDef(fModSettings.Handicap.Values[s], fModSettings.DefaultHitPoints)));
     End;
     fPLayer[i].HitPoints := fPLayer[i].MaxHitPoints;
     fPLayer[i].Info.HitPoints := 0;
@@ -1463,9 +1463,13 @@ End;
 
 Procedure TServer.HandleBombLanded(x, y: integer);
 Var
-  i: integer;
+  i, EnterID: integer;
 Begin
-  If Not fModSettings.StunOnBombLanding Then exit;
+  EnterID := LogEnter('TServer.HandleBombLanded');
+  If Not fModSettings.StunOnBombLanding Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
   (*
    * Jeder Spieler auf der Kachel wird gestunnt, egal ob Gegner, Team Kollege oder der Werfer selbst (Unverwundbare sind immun).
    * Bei mehrfachem Treffen gilt die längere Zeit, es wird nicht addiert.
@@ -1476,19 +1480,27 @@ Begin
       fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
     End;
   End;
+  LogLeave(EnterID);
 End;
 
 Function TServer.HandlePlayerPunch(PlayerIndex, x, y: integer): Boolean;
 Var
-  i: integer;
+  i, EnterID: integer;
 Begin
+  EnterID := LogEnter('TServer.HandlePlayerPunch');
   result := false;
   (*
    * Boxhandschuh Mod: Alle Gegner auf dem Feld x, y werden gestunnt (Unverwundbare sind immun, wie beim Stun durch eine Bombe).
    * Danach kann der Schläger PunchStunCooldownMs lang nicht erneut schlagen.
    *)
-  If Not fModSettings.PunchStun Then exit;
-  If fPLayer[PlayerIndex].PunchStunCooldown > 0 Then exit;
+  If Not fModSettings.PunchStun Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fPLayer[PlayerIndex].PunchStunCooldown > 0 Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
   For i := 0 To high(fPLayer) Do Begin
     If i = PlayerIndex Then Continue;
     If fSettings.TeamPlay And (fPLayer[i].Team = fPLayer[PlayerIndex].Team) Then Continue;
@@ -1501,23 +1513,37 @@ Begin
   If result Then Begin
     fPLayer[PlayerIndex].PunchStunCooldown := fModSettings.PunchStunCooldownMs;
   End;
+  LogLeave(EnterID);
 End;
 
 Function TServer.HandlePlayerHit(PlayerIndex: integer): Boolean;
+Var
+  EnterID: integer;
 Begin
+  EnterID := LogEnter('TServer.HandlePlayerHit');
   result := false;
   (*
    * Trefferpunkte Mod: So lange der Spieler noch mehr als einen Trefferpunkt hat, kostet ein Treffer nur einen Punkt
    * (auch bei der eigenen Bombe) und er ist danach kurz unverwundbar. Im Hurry ist jeder Treffer tödlich.
    *)
-  If Not fModSettings.HitPoints Then exit;
-  If fActualField.HurryActive() Then exit;
-  If fPLayer[PlayerIndex].HitPoints <= 1 Then exit;
+  If Not fModSettings.HitPoints Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fActualField.HurryActive() Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fPLayer[PlayerIndex].HitPoints <= 1 Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
   fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].HitPoints - 1;
   If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
   fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.InvulnTimeMs);
   HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
   result := true;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
@@ -1538,8 +1564,9 @@ End;
 
 Procedure TServer.HandleWhiteBomb(PlayerIndex: integer);
 Var
-  i: integer;
+  i, EnterID: integer;
 Begin
+  EnterID := LogEnter('TServer.HandleWhiteBomb');
   // Mod weiße Bombe: Alle Gegner auf dem ganzen Feld werden geflasht, nicht der Leger und nicht seine Teamkollegen
   For i := 0 To high(fPLayer) Do Begin
     If i = PlayerIndex Then Continue;
@@ -1547,6 +1574,7 @@ Begin
     If (Not fPLayer[i].Info.Alive) And (Not fPLayer[i].Info.Ghost) Then Continue; // Zuschauer (tot) nicht
     SendFlash(i, fModSettings.WhiteBombIntensity, fModSettings.WhiteBombMs, fModSettings.WhiteBombFadeMs);
   End;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleFlameThrowers;
@@ -1613,7 +1641,10 @@ Begin
 End;
 
 Procedure TServer.MakeGhost(PlayerIndex: integer);
+Var
+  EnterID: integer;
 Begin
+  EnterID := LogEnter('TServer.MakeGhost');
   (*
    * Geister Mod: Der Tote läuft ab jetzt auf dem nächsten Randfeld als Geist weiter (Alive bleibt false!)
    *)
@@ -1635,14 +1666,20 @@ Begin
   fPLayer[PlayerIndex].Info.BrickWalk := false;
   fPLayer[PlayerIndex].StartGlove := false;
   fPLayer[PlayerIndex].Action := aaNone;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleGhostRevive(GhostIndex: integer);
 Var
   p: TPoint;
   pu: TPowerUps;
+  EnterID: integer;
 Begin
-  If Not fPLayer[GhostIndex].Info.Ghost Then exit;
+  EnterID := LogEnter('TServer.HandleGhostRevive');
+  If Not fPLayer[GhostIndex].Info.Ghost Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
   (*
    * Der Geist kommt an seiner Startposition (bzw. dem nächsten freien Feld) zurück,
    * und zwar wie zu Rundenbeginn, seine Items wurden ja beim Sterben verteilt.
@@ -1673,6 +1710,7 @@ Begin
   If fModSettings.ShowHitPoints Then fPLayer[GhostIndex].Info.HitPoints := fPLayer[GhostIndex].HitPoints;
   HandlePlaySoundEffect(GhostIndex, seGetGoodPowerUp);
   log('Ghost revived: ' + fPLayer[GhostIndex].UserName, llInfo);
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.HandleGhosts;
@@ -2530,7 +2568,7 @@ Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fPLayer[i].Info.Dying := false;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
-          // Geist werden nur bis GhostMaxCount mal pro Runde (0 = unbegrenzt)
+          // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt)
           If fModSettings.Ghosts And (Not fActualField.HurryActive()) And
             ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount)) Then MakeGhost(i);
         End;
@@ -3044,7 +3082,9 @@ Var
   sl: TStringList;
   i, j, cnt: integer;
   item: String;
+  EnterID: integer;
 Begin
+  EnterID := LogEnter('TServer.ApplyStartItems');
   (*
    * Format: "kick,punch,grab,bomb*3" -> optional mit *n wie oft das Item genommen wird.
    * "trigger" bezieht sich auf die bis dahin vorhandenen Bomben, sollte also hinter "bomb" stehen.
@@ -3089,6 +3129,7 @@ Begin
     End;
   End;
   sl.free;
+  LogLeave(EnterID);
 End;
 
 Procedure TServer.SaveStatistics;

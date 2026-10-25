@@ -2766,7 +2766,7 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
 
   Procedure RenderFlameThrowerItem(x, y: integer);
   Const
-    w = 3; // Breite des Rahmens in Pixeln
+    BorderWidth = 3; // Breite des Rahmens in Pixeln
   Var
     l, t, r, b: Single;
 
@@ -2793,10 +2793,10 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     Rect(l, t, r, b);
     glDisable(GL_BLEND);
     SetShaderColor(1, 0, 0);
-    Rect(l, t, r, t + w);
-    Rect(l, b - w, r, b);
-    Rect(l, t, l + w, b);
-    Rect(r - w, t, r, b);
+    Rect(l, t, r, t + BorderWidth);
+    Rect(l, b - BorderWidth, r, b);
+    Rect(l, t, l + BorderWidth, b);
+    Rect(r - BorderWidth, t, r, b);
     UseTextureShader;
   End;
 
