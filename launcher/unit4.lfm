@@ -556,13 +556,27 @@ object Form4: TForm4
           Top = 40
           Caption = 'Left <-> right'
         end
+        object Label38: TLabel
+          Left = 8
+          Height = 15
+          Top = 72
+          Caption = 'Open after (s)'
+        end
+        object SpinEdit20: TSpinEdit
+          Hint = 'Seconds after the start of a round until the borders open, so nobody flees from the start corner at once. 0 = from the start.'
+          Left = 220
+          Height = 23
+          Top = 68
+          Width = 96
+          Increment = 5
+        end
         object Label34: TLabel
           Left = 8
           Height = 96
-          Top = 76
+          Top = 104
           Width = 312
           AutoSize = False
-          Caption = 'If the tile on the opposite side is blocked (brick, bomb), the border works like a wall. Only players go over the border, bombs and flames stop there as usual.'
+          Caption = 'Arrows on the frame show the open borders, they blink 3 s before the borders open. If the tile on the opposite side is blocked (brick, bomb), the border works like a wall. Only players go over the border.'
           WordWrap = True
         end
       end

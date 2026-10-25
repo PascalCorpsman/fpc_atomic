@@ -165,6 +165,7 @@ Type
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
     Procedure RenderGhost(Const Info: TAtomicInfo);
     Function BrickWalkVisible(): Boolean;
+    Procedure RenderOpenBorders();
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
 
@@ -1922,6 +1923,35 @@ Begin
   SetShaderTransform(ViewPort);
 End;
 
+Procedure TGame.RenderOpenBorders;
+Var
+  i: Integer;
+  tb, lr: Boolean;
+Begin
+  (*
+   * Mod offene Grenzen: Pfeile außen auf dem Rahmen zeigen, welche Ränder offen sind.
+   * Kurz vor dem Öffnen blinken sie (OpenBordersWarnTime).
+   *)
+  tb := fActualField.OpenTopBottom Or (fActualField.OpenWarnTopBottom And ((GetTickCount64 Div 250) Mod 2 = 0));
+  lr := fActualField.OpenLeftRight Or (fActualField.OpenWarnLeftRight And ((GetTickCount64 Div 250) Mod 2 = 0));
+  If Not (tb Or lr) Then exit;
+  glBindTexture(GL_TEXTURE_2D, 0);
+  AtomicFont.Color := clYellow;
+  AtomicFont.BackColor := clBlack;
+  If lr Then Begin
+    For i := 0 To FieldHeight - 1 Do Begin
+      AtomicFont.Textout(5, FieldyOff + i * FieldBlockHeight + 11, atomic_Layer - atomic_EPSILON, '<');
+      AtomicFont.Textout(FieldxOff + FieldWidth * FieldBlockWidth + 5, FieldyOff + i * FieldBlockHeight + 11, atomic_Layer - atomic_EPSILON, '>');
+    End;
+  End;
+  If tb Then Begin
+    For i := 0 To FieldWidth - 1 Do Begin
+      AtomicFont.Textout(FieldxOff + i * FieldBlockWidth + 15, FieldyOff - 16, atomic_Layer - atomic_EPSILON, '^');
+      AtomicFont.Textout(FieldxOff + i * FieldBlockWidth + 15, FieldyOff + FieldHeight * FieldBlockHeight + 2, atomic_Layer - atomic_EPSILON, 'v');
+    End;
+  End;
+End;
+
 Function TGame.BrickWalkVisible: Boolean;
 Var
   k: Int64;
@@ -2748,6 +2778,7 @@ Begin
     gs_Gaming: Begin
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
+        RenderOpenBorders(); // Vor den Spielern, damit die Pfeile unter ihnen (und unter den Geistern auf dem Rahmen) liegen
         inc(fRenderFrame);
         For i := 0 To high(fPlayer) Do Begin
           If fPlayer[i].Info.Alive Then Begin

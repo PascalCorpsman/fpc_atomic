@@ -143,16 +143,19 @@ Sometimes a round starts in a small pocket between bricks, and a bomb placed by 
 
 Players can walk over the border of the field and come out on the opposite side, top <-> bottom and / or left <-> right.
 
+- The borders open a set time after the start of a round, so nobody can flee from the start corner at once.
+- Yellow arrows on the frame around the field show which borders are open. They blink during the last 3 s before the borders open.
 - A player standing in the middle of a border tile who keeps walking outwards is at once on the opposite tile and walks on there.
 - If the opposite tile is blocked (brick, solid block, bomb), the border works like a wall.
 - Only players go over the border. Kicked bombs and flames stop at the border as usual.
-- During hurry the border fills up with solid blocks, so the borders close by themselves.
+- With the hurry the borders close again.
 
 | Setting | ini key | Default | Range |
 |---|---|---|---|
 | Mod on / off | `OpenBorders` | 0 (off) | 0 / 1 |
 | Top <-> bottom | `OpenBordersTopBottom` | 1 (on) | 0 / 1 |
 | Left <-> right | `OpenBordersLeftRight` | 1 (on) | 0 / 1 |
+| Open after (s) | `OpenBordersActiveSec` | 30 | 0 .. 600, 0 = from the start |
 
 ## Teleporters
 

@@ -84,6 +84,10 @@ Type
     fHasHoles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
     fPortalTopBottom: Boolean; // Mod Teleporter am Rand: True, die Teleporter oben / unten sind gerade aktiv (der Client bekommt das mit AppendGamingData)
     fPortalLeftRight: Boolean; // Mod Teleporter am Rand: True, die Teleporter links / rechts sind gerade aktiv
+    fWrapTopBottom: Boolean; // Mod offene Grenzen: True, oben / unten ist gerade offen (der Client bekommt das mit AppendGamingData)
+    fWrapLeftRight: Boolean; // Mod offene Grenzen: True, links / rechts ist gerade offen
+    fWrapWarnTopBottom: Boolean; // Mod offene Grenzen: True, oben / unten öffnet in Kürze (die Pfeile blinken)
+    fWrapWarnLeftRight: Boolean; // Mod offene Grenzen: True, links / rechts öffnet in Kürze
     fHoles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
 
     fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
@@ -122,17 +126,22 @@ Type
     BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
     PlayerHitCallback: TPlayerHitCallback; // Optional, wird vom Server gesetzt (Trefferpunkte Mod)
     GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
-    WrapLeftRight: Boolean; // Mod offene Grenzen: Spieler laufen links / rechts über den Rand auf die Gegenseite
-    WrapTopBottom: Boolean; // Mod offene Grenzen: Spieler laufen oben / unten über den Rand auf die Gegenseite
+    WrapLeftRight: Boolean; // Mod offene Grenzen: Die Karte ist links / rechts offen, sobald UpdateOpenBorders sie öffnet
+    WrapTopBottom: Boolean; // Mod offene Grenzen: Die Karte ist oben / unten offen, sobald UpdateOpenBorders sie öffnet
     PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
     PortalLeftRight: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter links / rechts
     Procedure UpdatePortals(Active: Boolean); // Wird vom Server jeden Frame aufgerufen, Active = die Zeit bis zum Erscheinen ist um
+    Procedure UpdateOpenBorders(Active, Warning: Boolean); // Wird vom Server jeden Frame aufgerufen, Warning = die Grenzen öffnen in Kürze
     Property BombsEnabled: Boolean read fBombsEnabled;
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
     Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
     Function FindFreeField(x, y: integer): TPoint; // Liefert das zu x, y nächste Feld ohne Stein, Bombe, Flamme und Loch
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
+    Property OpenTopBottom: Boolean read fWrapTopBottom; // Mod offene Grenzen, für die Pfeile im Client
+    Property OpenLeftRight: Boolean read fWrapLeftRight;
+    Property OpenWarnTopBottom: Boolean read fWrapWarnTopBottom;
+    Property OpenWarnLeftRight: Boolean read fWrapWarnLeftRight;
     Property Sound: String read fSoundFile;
     Constructor Create(
 {$IFDEF Server}
@@ -648,14 +657,23 @@ Begin
   fPortalLeftRight := PortalLeftRight And Active And (fHurryIndex = -1);
 End;
 
+Procedure TAtomicField.UpdateOpenBorders(Active, Warning: Boolean);
+Begin
+  // Mit dem Hurry schließen die Grenzen (der Hurry füllt den Rand ohnehin mit festen Steinen)
+  fWrapTopBottom := WrapTopBottom And Active And (fHurryIndex = -1);
+  fWrapLeftRight := WrapLeftRight And Active And (fHurryIndex = -1);
+  fWrapWarnTopBottom := WrapTopBottom And Warning And (Not Active) And (fHurryIndex = -1);
+  fWrapWarnLeftRight := WrapLeftRight And Warning And (Not Active) And (fHurryIndex = -1);
+End;
+
 Function TAtomicField.PlayerWalkable(Const Player: TPlayer; x, y: integer
   ): Boolean;
 Var
   i, px, py: Integer;
 Begin
   // Mod offene Grenzen: das Nachbarfeld hinter dem Rand ist das Feld auf der Gegenseite
-  If WrapLeftRight Then x := (x + FieldWidth) Mod FieldWidth;
-  If WrapTopBottom Then y := (y + FieldHeight) Mod FieldHeight;
+  If fWrapLeftRight Then x := (x + FieldWidth) Mod FieldWidth;
+  If fWrapTopBottom Then y := (y + FieldHeight) Mod FieldHeight;
   result := FielWalkable(x, y, false);
   If result Then exit;
   (*
@@ -794,6 +812,10 @@ Begin
   // 2.6 Mod Teleporter am Rand: Die Teleporter Felder und je ein Nachbar ins Feld hinein bleiben immer frei (auch vor dem Erscheinen)
   fPortalTopBottom := false;
   fPortalLeftRight := false;
+  fWrapTopBottom := false;
+  fWrapLeftRight := false;
+  fWrapWarnTopBottom := false;
+  fWrapWarnLeftRight := false;
   If PortalTopBottom Then Begin
     SetBlank(FieldWidth Div 2, 0);
     SetBlank(FieldWidth Div 2, 1);
@@ -856,6 +878,10 @@ Begin
   stream.Write(b, SizeOf(b));
   stream.Write(fPortalTopBottom, SizeOf(fPortalTopBottom));
   stream.Write(fPortalLeftRight, SizeOf(fPortalLeftRight));
+  stream.Write(fWrapTopBottom, SizeOf(fWrapTopBottom));
+  stream.Write(fWrapLeftRight, SizeOf(fWrapLeftRight));
+  stream.Write(fWrapWarnTopBottom, SizeOf(fWrapWarnTopBottom));
+  stream.Write(fWrapWarnLeftRight, SizeOf(fWrapWarnLeftRight));
 
   // Sicherstellen, dass das ExplodingRenderFlag nur als Flanke raus geht (Also genau 1 mal gesetzt ist !)
   For i := 0 To high(fField) Do Begin
@@ -982,27 +1008,27 @@ Begin
    * Mod offene Grenzen: Wer auf der Mitte einer Randkachel steht und weiter nach außen läuft, steht sofort auf der Gegenseite,
    * wenn das Feld dort begehbar ist (sonst wirkt der Rand wie eine Wand). Danach läuft er dort ganz normal weiter.
    *)
-  If WrapLeftRight Or WrapTopBottom Then Begin
+  If fWrapLeftRight Or fWrapTopBottom Then Begin
     x := trunc(Players[PlayerIndex].Info.Position.x);
     y := trunc(Players[PlayerIndex].Info.Position.y);
     Case Players[PlayerIndex].MoveState Of
       msRight: Begin
-          If WrapLeftRight And (Players[PlayerIndex].Info.Position.x >= FieldWidth - 0.5) And PlayerWalkable(Players[PlayerIndex], x + 1, y) Then Begin
+          If fWrapLeftRight And (Players[PlayerIndex].Info.Position.x >= FieldWidth - 0.5) And PlayerWalkable(Players[PlayerIndex], x + 1, y) Then Begin
             Players[PlayerIndex].Info.Position := v2(0.5, y + 0.5);
           End;
         End;
       msLeft: Begin
-          If WrapLeftRight And (Players[PlayerIndex].Info.Position.x <= 0.5) And PlayerWalkable(Players[PlayerIndex], x - 1, y) Then Begin
+          If fWrapLeftRight And (Players[PlayerIndex].Info.Position.x <= 0.5) And PlayerWalkable(Players[PlayerIndex], x - 1, y) Then Begin
             Players[PlayerIndex].Info.Position := v2(FieldWidth - 0.5, y + 0.5);
           End;
         End;
       msUp: Begin
-          If WrapTopBottom And (Players[PlayerIndex].Info.Position.y <= 0.5) And PlayerWalkable(Players[PlayerIndex], x, y - 1) Then Begin
+          If fWrapTopBottom And (Players[PlayerIndex].Info.Position.y <= 0.5) And PlayerWalkable(Players[PlayerIndex], x, y - 1) Then Begin
             Players[PlayerIndex].Info.Position := v2(x + 0.5, FieldHeight - 0.5);
           End;
         End;
       msDown: Begin
-          If WrapTopBottom And (Players[PlayerIndex].Info.Position.y >= FieldHeight - 0.5) And PlayerWalkable(Players[PlayerIndex], x, y + 1) Then Begin
+          If fWrapTopBottom And (Players[PlayerIndex].Info.Position.y >= FieldHeight - 0.5) And PlayerWalkable(Players[PlayerIndex], x, y + 1) Then Begin
             Players[PlayerIndex].Info.Position := v2(x + 0.5, 0.5);
           End;
         End;
@@ -2646,6 +2672,10 @@ Begin
   stream.read(fHurryMode, sizeof(fHurryMode));
   stream.read(fPortalTopBottom, sizeof(fPortalTopBottom));
   stream.read(fPortalLeftRight, sizeof(fPortalLeftRight));
+  stream.read(fWrapTopBottom, sizeof(fWrapTopBottom));
+  stream.read(fWrapLeftRight, sizeof(fWrapLeftRight));
+  stream.read(fWrapWarnTopBottom, sizeof(fWrapWarnTopBottom));
+  stream.read(fWrapWarnLeftRight, sizeof(fWrapWarnLeftRight));
 
   // GGF Starten einer Brick Explosion Animation
   For i := 0 To FieldWidth - 1 Do Begin

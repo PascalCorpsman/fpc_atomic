@@ -150,7 +150,7 @@ Const
    *                       ADD: launcher: new layout (live name check, game data / version status) and mods dialog for atomic_server.ini
    *                       ADD: optional glove at start, until the first step of a round every player can throw a bomb like with the glove
    *                       ADD: optional disease "walk through bricks", the player is drawn see-through
-   *                       ADD: optional open borders, players walk over the border and come out on the opposite side
+   *                       ADD: optional open borders, players walk over the border and come out on the opposite side (after a set time, shown by arrows on the frame)
    *                       ADD: optional teleporters in the middle of the borders, they bring the player to the opposite border
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
@@ -265,6 +265,7 @@ Const
   ModMaxRoundTimeSec = 3600;
   ModMaxStartInvulnMs = 600000;
   ModMaxTeleportersActiveSec = 600;
+  ModMaxOpenBordersActiveSec = 600;
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -275,6 +276,7 @@ Const
   GhostWarnTime = 5000; // Zeit in ms, so lange vor dem Verschwinden (GhostMaxTimeMs) flackert ein Geist doppelt so schnell
   GhostThrowDistance = 3; // So viele Felder senkrecht vom Rand ins Feld wirft ein Geist seine Bombe
   GhostScale = 0.5; // Geister werden im Client verkleinert auf dem Rahmen außerhalb des Spielfeldes gerendert
+  OpenBordersWarnTime = 3000; // Zeit in ms, so lange vor dem Öffnen blinken die Pfeile der offenen Grenzen
 
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..
@@ -686,6 +688,7 @@ Type
     OpenBorders: Boolean; // True, Spieler können über den Rand laufen und kommen auf der Gegenseite heraus
     OpenBordersTopBottom: Boolean; // Offene Grenzen oben <-> unten
     OpenBordersLeftRight: Boolean; // Offene Grenzen links <-> rechts
+    OpenBordersActiveSec: Integer; // Zeit in s nach Rundenbeginn, ab der die Grenzen offen sind (damit keiner gleich aus seiner Startecke flieht)
     Teleporters: Boolean; // True, in der Mitte der Ränder gibt es Teleporter, die zum gegenüberliegenden Rand bringen (nicht im Hurry)
     TeleportersTopBottom: Boolean; // Teleporter oben <-> unten
     TeleportersLeftRight: Boolean; // Teleporter links <-> rechts
@@ -1134,6 +1137,7 @@ Begin
   Settings.OpenBorders := false;
   Settings.OpenBordersTopBottom := true;
   Settings.OpenBordersLeftRight := true;
+  Settings.OpenBordersActiveSec := 30;
   Settings.Teleporters := false;
   Settings.TeleportersTopBottom := true;
   Settings.TeleportersLeftRight := true;
@@ -1197,6 +1201,7 @@ Begin
   WriteB('Mods', 'OpenBorders', Settings.OpenBorders);
   WriteB('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
   WriteB('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
+  WriteI('Mods', 'OpenBordersActiveSec', Settings.OpenBordersActiveSec);
   WriteB('Mods', 'Teleporters', Settings.Teleporters);
   WriteB('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
   WriteB('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
@@ -1257,6 +1262,7 @@ Begin
     Settings.OpenBorders := ini.ReadBool('Mods', 'OpenBorders', Settings.OpenBorders);
     Settings.OpenBordersTopBottom := ini.ReadBool('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
     Settings.OpenBordersLeftRight := ini.ReadBool('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
+    Settings.OpenBordersActiveSec := ini.ReadInteger('Mods', 'OpenBordersActiveSec', Settings.OpenBordersActiveSec);
     Settings.Teleporters := ini.ReadBool('Mods', 'Teleporters', Settings.Teleporters);
     Settings.TeleportersTopBottom := ini.ReadBool('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
     Settings.TeleportersLeftRight := ini.ReadBool('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
@@ -1300,6 +1306,7 @@ Begin
     Clamp('RoundTimeSec', Settings.RoundTimeSec, 0, ModMaxRoundTimeSec);
     Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
     Clamp('TeleportersActiveSec', Settings.TeleportersActiveSec, 0, ModMaxTeleportersActiveSec);
+    Clamp('OpenBordersActiveSec', Settings.OpenBordersActiveSec, 0, ModMaxOpenBordersActiveSec);
     (*
      * Fehlende Schlüssel mit ihren Defaults anlegen, damit man sie in der Datei auch findet
      *)

@@ -86,6 +86,7 @@ Type
     Label35: TLabel;
     Label36: TLabel;
     Label37: TLabel;
+    Label38: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -114,6 +115,7 @@ Type
     SpinEdit17: TSpinEdit;
     SpinEdit18: TSpinEdit;
     SpinEdit19: TSpinEdit;
+    SpinEdit20: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -215,6 +217,7 @@ Begin
   SpinEdit17.MaxValue := ModMaxBrickWalkMs;
   SpinEdit18.MaxValue := ModMaxBrickWalkTransparency;
   SpinEdit19.MaxValue := ModMaxTeleportersActiveSec;
+  SpinEdit20.MaxValue := ModMaxOpenBordersActiveSec;
   SpinEdit6.MinValue := FlameTime;
   SpinEdit6.MaxValue := ModMaxInvulnTimeMs;
   SpinEdit7.MinValue := 1;
@@ -355,6 +358,7 @@ Begin
   CheckBox10.Checked := fSettings.OpenBorders;
   CheckBox11.Checked := fSettings.OpenBordersTopBottom;
   CheckBox12.Checked := fSettings.OpenBordersLeftRight;
+  SpinEdit20.Value := fSettings.OpenBordersActiveSec;
 
   CheckBox13.Checked := fSettings.Teleporters;
   CheckBox14.Checked := fSettings.TeleportersTopBottom;
@@ -449,6 +453,7 @@ Begin
   fSettings.OpenBorders := CheckBox10.Checked;
   fSettings.OpenBordersTopBottom := CheckBox11.Checked;
   fSettings.OpenBordersLeftRight := CheckBox12.Checked;
+  fSettings.OpenBordersActiveSec := SpinEdit20.Value;
 
   fSettings.Teleporters := CheckBox13.Checked;
   fSettings.TeleportersTopBottom := CheckBox14.Checked;

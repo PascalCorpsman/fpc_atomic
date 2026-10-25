@@ -2162,6 +2162,9 @@ Begin
   // Die Teleporter am Rand (Mod) erscheinen erst nach TeleportersActiveSec
   fRoundTimeMs := min(fRoundTimeMs + FrameRate, high(Integer) - FrameRate);
   fActualField.UpdatePortals(fRoundTimeMs >= fModSettings.TeleportersActiveSec * 1000);
+  // Die offenen Grenzen (Mod) öffnen erst nach OpenBordersActiveSec, damit keiner gleich aus seiner Startecke flieht
+  fActualField.UpdateOpenBorders(fRoundTimeMs >= fModSettings.OpenBordersActiveSec * 1000,
+    fRoundTimeMs >= fModSettings.OpenBordersActiveSec * 1000 - OpenBordersWarnTime);
   If fPlayingTimedesc <> -1000 Then Begin
     fPlayingTimedesc := fPlayingTimedesc - FrameRate;
   End;
