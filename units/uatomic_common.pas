@@ -136,7 +136,9 @@ Const
    *                       ADD: Spawn bricks on haunted hall only if there is no player close
    *                       ADD: GTK3 now default on Linux
    *                       ADD: Improved SDL2 errormessage
-   *             0.13004 =
+   *             0.13004 = ADD: speedup startup
+   *                       FIX: connect on some linux devices stalled
+   *                       FIX: trampolin placing was wrong
    *)
 
   ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
