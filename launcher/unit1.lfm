@@ -182,6 +182,7 @@ object Form1: TForm1
     ParentBackground = False
     ParentColor = False
     TabOrder = 3
+    TabStop = True
     OnClick = Button2Click
     OnMouseEnter = Panel1MouseEnter
     OnMouseLeave = Panel1MouseEnter

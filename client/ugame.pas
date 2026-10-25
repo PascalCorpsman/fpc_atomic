@@ -703,9 +703,9 @@ Begin
   Else
     exit;
   End;
-  // Mit Shift wirkt der Test Befehl auf den 2. Spieler an diesem PC
+  // Mit Shift wirkt der Test Befehl auf den 2. Spieler an diesem PC, spielt hier nur einer auf Tastatur 2, dann immer auf ihn
   k := ks0;
-  If (ssShift In Shift) And (fPlayerIndex[ks1] <> -1) Then k := ks1;
+  If ((ssShift In Shift) Or (fPlayerIndex[ks0] = -1)) And (fPlayerIndex[ks1] <> -1) Then k := ks1;
   If fPlayerIndex[k] = -1 Then exit;
   If fUserID <> fMasterUserID Then Begin
     fModTestMessage := 'Mod test mode: only the master player';
@@ -2149,7 +2149,7 @@ Begin
       AtomicFont.Textout(120, 240, atomic_dialog_Layer + atomic_EPSILON, 'F11 : ' + ModTestCommandToString(mtMaxHitPoints));
       AtomicFont.Textout(120, 260, atomic_dialog_Layer + atomic_EPSILON, 'F12 : ' + ModTestCommandToString(mtBrickWalk));
       AtomicFont.Textout(120, 280, atomic_dialog_Layer + atomic_EPSILON, 'Ins : ' + ModTestCommandToString(mtSpawnItems));
-      AtomicFont.Textout(120, 310, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2. player on this pc');
+      AtomicFont.Textout(120, 310, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2nd player on this PC');
       AtomicFont.Textout(120, 330, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned,');
       AtomicFont.Textout(120, 350, atomic_dialog_Layer + atomic_EPSILON, 'B = walk through bricks (seconds)');
     End;
@@ -2898,8 +2898,8 @@ Begin
         inc(fRenderFrame);
         For i := 0 To high(fPlayer) Do Begin
           If fPlayer[i].Info.Alive Then Begin
-            // Wer durch Blöcke laufen kann, wird durchsichtig gezeichnet (nicht in der Pause und nicht beim Sterben)
-            If fPause Or fPlayer[i].Info.Dying Or (Not fPlayer[i].Info.BrickWalk) Or BrickWalkVisible() Then Begin
+            // Wer durch Blöcke laufen kann, wird durchsichtig gezeichnet (nicht in der Pause, nicht beim Sterben und nie auf dem Frame mit der Flanke einer einmaligen Animation)
+            If fPause Or fPlayer[i].Info.Dying Or fPlayer[i].Edge Or (Not fPlayer[i].Info.BrickWalk) Or BrickWalkVisible() Then Begin
               RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
               fPlayer[i].edge := false;
             End;

@@ -369,7 +369,7 @@ End;
 
 Procedure TForm4.CheckBox1Change(Sender: TObject);
 Begin
-  // Gemeinsam für die Checkboxen CheckBox1..5 oben auf den Seiten
+  // Gemeinsam für die Checkboxen oben auf den Seiten der Mods (fModCheckBoxes)
   UpdateModEnabled();
 End;
 

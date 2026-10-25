@@ -57,6 +57,7 @@ Type
     Procedure SetPlayTime(Value: integer);
     Function GetPlayTime(): integer;
     Procedure SetScheme(Const Value: String);
+    Procedure ReadSchemes();
   public
     Procedure LoadFromIni(Const ini: TIniFile);
     Procedure SaveToIni(Const ini: TIniFile);
@@ -75,8 +76,6 @@ Uses ulauncher, math;
 
 Procedure TForm5.FormCreate(Sender: TObject);
 Var
-  sr: TSearchRec;
-  sl: TStringList;
   i: integer;
 Begin
   caption := 'Game options';
@@ -86,7 +85,14 @@ Begin
   For i := 3 To 20 Do Begin
     ComboBox3.Items.Add(format('%d:%0.2d', [(i * 30) Div 60, (i * 30) Mod 60]));
   End;
-  // Alle Schemes, die im Spiel zur Auswahl stehen
+End;
+
+Procedure TForm5.ReadSchemes;
+Var
+  sr: TSearchRec;
+  sl: TStringList;
+Begin
+  // Alle Schemes, die im Spiel zur Auswahl stehen (jedes Mal neu, der CD Extraktor kann sie inzwischen angelegt haben)
   sl := TStringList.Create;
   sl.Sorted := true;
   If FindFirst('data' + PathDelim + 'schemes' + PathDelim + '*', faAnyFile, sr) = 0 Then Begin
@@ -144,6 +150,7 @@ End;
 
 Procedure TForm5.LoadFromIni(Const ini: TIniFile);
 Begin
+  ReadSchemes();
   CheckBox1.Checked := ini.ReadBool(FPC_AtomicIniSection, 'TeamPlay', false);
   CheckBox2.Checked := ini.ReadBool(FPC_AtomicIniSection, 'RandomStart', true);
   CheckBox3.Checked := ini.ReadBool(FPC_AtomicIniSection, 'LostPlayersRevertToAI', false);

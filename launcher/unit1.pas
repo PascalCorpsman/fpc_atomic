@@ -359,8 +359,9 @@ End;
 Procedure TForm1.FormKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Begin
-  // Der Launch "Knopf" ist ein Panel (nur so lässt er sich blau färben), daher Alt+L hier von Hand
-  If (ssAlt In Shift) And (key = VK_L) Then Begin
+  // Der Launch "Knopf" ist ein Panel (nur so lässt er sich blau färben), daher Alt+L und Return / Leertaste (wenn er den Fokus hat) hier von Hand
+  If ((ssAlt In Shift) And (key = VK_L)) Or
+    ((ActiveControl = Panel1) And ((key = VK_RETURN) Or (key = VK_SPACE))) Then Begin
     key := 0;
     Button2Click(Nil);
   End;

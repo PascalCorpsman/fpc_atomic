@@ -141,7 +141,7 @@ Uses lazfileutils, LazUTF8, LCLType
   , bass
   //  , unit18 // Der Fortschrittsbalken während des Updates
   , uatomicfont
-  , uscreens // sHost für den Parameter -host (und sJoinNetwork im AUTOMODE)
+  , uscreens // sHost / sJoinNetwork für die Parameter -host / -join (und den AUTOMODE)
   , usdl_input
   , uopengl_legacychecker
   , uopengl_shaderprimitives
