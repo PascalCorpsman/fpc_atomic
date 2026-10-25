@@ -8,6 +8,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 - [Positive disease](#positive-disease)
 - [Walk through bricks](#walk-through-bricks)
 - [White screen](#white-screen)
+- [White bomb](#white-bomb)
 - [Hit points (handicap)](#hit-points-handicap)
 - [Ghosts](#ghosts)
 - [Glove at start](#glove-at-start)
@@ -109,6 +110,23 @@ A part of the disease items ![](data/res/powdisea.png) turns the screen of the p
 | Strength (%) | `FlashDiseaseIntensity` | 90 | 0 .. 100, 100 = nothing can be seen |
 | Duration (ms) | `FlashDiseaseMs` | 2500 | 0 .. 10000 |
 | Fade back (ms) | `FlashDiseaseFadeMs` | 2000 | 0 .. 10000 |
+
+## White bomb
+
+A part of the items below the bricks are **white bombs**. They look like a white extra bomb item. After picking one up, the next placed bomb is white:
+
+- It explodes after the normal time, but without flames, so it destroys nothing and kills nobody.
+- It turns the screens of **all opponents** on the whole field white, like the [white screen](#white-screen) disease. Team mates and the player who placed it are not affected.
+- It is an extra bomb. It does not count to the bombs of the player, afterwards the player places normal bombs again.
+- It can be kicked, thrown and punched like any other bomb.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `WhiteBomb` | 0 (off) | 0 / 1 |
+| Share of the items (%) | `WhiteBombChance` | 10 | 0 .. 100 |
+| Strength (%) | `WhiteBombIntensity` | 90 | 0 .. 100, 100 = nothing can be seen |
+| Duration (ms) | `WhiteBombMs` | 2500 | 0 .. 10000 |
+| Fade back (ms) | `WhiteBombFadeMs` | 2000 | 0 .. 10000 |
 
 ## Hit points (handicap)
 
@@ -224,6 +242,7 @@ Only the player who hosts the game (the master) can use the test keys during a r
 | F11 | Refill my hit points |
 | F12 | Walk through bricks |
 | F2 | White screen |
+| F1 | Next bomb is a white bomb |
 
 Hold **Shift** to use the key on the second player of this PC. F10 is not used, because Windows uses it for the window menu.
 

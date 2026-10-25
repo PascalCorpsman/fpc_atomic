@@ -696,6 +696,7 @@ Begin
     VK_F11: Command := mtMaxHitPoints;
     VK_F12: Command := mtBrickWalk;
     VK_F2: Command := mtFlash;
+    VK_F1: Command := mtWhiteBomb;
   Else
     exit;
   End;
@@ -2089,6 +2090,7 @@ Begin
     End;
     If fShowModTestHelp Then Begin
       AtomicFont.Color := clWhite;
+      AtomicFont.Textout(120, 60, atomic_dialog_Layer + atomic_EPSILON, 'F1  : ' + ModTestCommandToString(mtWhiteBomb));
       AtomicFont.Textout(120, 80, atomic_dialog_Layer + atomic_EPSILON, 'F2  : ' + ModTestCommandToString(mtFlash));
       AtomicFont.Textout(120, 100, atomic_dialog_Layer + atomic_EPSILON, 'F3  : hide this help');
       AtomicFont.Textout(120, 120, atomic_dialog_Layer + atomic_EPSILON, 'F4  : ' + ModTestCommandToString(mtAllItems));

@@ -44,6 +44,7 @@ Type
   TPlayerHitCallback = Function(PlayerIndex: integer): Boolean Of Object; // Wird bei einem Treffer durch eine Flamme aufgerufen, True = der Spieler überlebt den Treffer
   TGhostReviveCallback = Procedure(GhostIndex: integer) Of Object; // Wird aufgerufen, wenn die Flamme eines Geistes einen Gegner getroffen hat -> der Geist darf zurück ins Spiel
   TPlayerPunchCallback = Function(PlayerIndex, x, y: integer): Boolean Of Object; // Wird aufgerufen, wenn ein Spieler mit Punch Item auf das Feld x, y schlägt, True = ein Gegner wurde gestunnt
+  TWhiteBombCallback = Procedure(PlayerIndex: integer) Of Object; // Wird aufgerufen, wenn eine weiße Bombe von PlayerIndex explodiert -> alle Gegner flashen
 {$ENDIF}
 
 {$IFDEF Client}
@@ -128,6 +129,8 @@ Type
     PlayerHitCallback: TPlayerHitCallback; // Optional, wird vom Server gesetzt (Trefferpunkte Mod)
     GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
     PlayerPunchCallback: TPlayerPunchCallback; // Optional, wird vom Server gesetzt (Boxhandschuh Mod)
+    WhiteBombCallback: TWhiteBombCallback; // Optional, wird vom Server gesetzt (Weiße Bombe Mod)
+    WhiteBombChance: Integer; // Mod weiße Bombe: in %, so viele der Items unter den Steinen werden zur weißen Bombe, 0 = Mod aus
     WrapLeftRight: Boolean; // Mod offene Grenzen: Die Karte ist links / rechts offen, sobald UpdateOpenBorders sie öffnet
     WrapTopBottom: Boolean; // Mod offene Grenzen: Die Karte ist oben / unten offen, sobald UpdateOpenBorders sie öffnet
     PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
@@ -407,6 +410,8 @@ Begin
   PlayerHitCallback := Nil;
   GhostReviveCallback := Nil;
   PlayerPunchCallback := Nil;
+  WhiteBombCallback := Nil;
+  WhiteBombChance := 0;
   WrapLeftRight := false;
   WrapTopBottom := false;
   PortalTopBottom := false;
@@ -738,6 +743,7 @@ Begin
       fField[i, j].ExplodingRenderFlag := false;
       fField[i, j].Counter := 0;
       fField[i, j].PowerUp := puNone;
+      fField[i, j].WhiteBomb := false;
       fField[i, j].Flame := [];
       fField[i, j].FlameColor := 0;
       fField[i, j].FlamePlayer := -1;
@@ -862,6 +868,11 @@ Begin
         // TODO: das sollte ggf noch feiner Justiert werden ..
         If fField[i, j].PowerUp <> puNone Then Begin
           If Scheme.PowerUps[fField[i, j].PowerUp].Forbidden Then fField[i, j].PowerUp := puNone;
+        End;
+        // Mod weiße Bombe: Ein Teil der Items wird zur weißen Bombe (sie sieht aus wie ein weißes Bomben Item)
+        If (fField[i, j].PowerUp <> puNone) And (WhiteBombChance > 0) And (random(100) < WhiteBombChance) Then Begin
+          fField[i, j].PowerUp := puExtraBomb;
+          fField[i, j].WhiteBomb := true;
         End;
       End;
     End;
@@ -1279,8 +1290,8 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     i: Integer;
   Begin
     result := false;
-    // Darf der Spieler überhaupt noch Bomben legen =
-    If player.Powers.AvailableBombs <= 0 Then exit;
+    // Darf der Spieler überhaupt noch Bomben legen = (eine weiße Bombe (Mod) geht immer, sie zählt nicht zu seinen Bomben)
+    If (player.Powers.AvailableBombs <= 0) And (player.WhiteBombs <= 0) Then exit;
     // Liegt auf dem Feld schon eine Bombe ?
     For i := 0 To fBombCount - 1 Do Begin
       If (trunc(fBombs[i].Position.x) = trunc(ax)) And
@@ -1295,7 +1306,12 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     fBombs[fBombCount].ColorIndex := player.info.ColorIndex;
     fBombs[fBombCount].Position.x := trunc(ax) + 0.5;
     fBombs[fBombCount].Position.y := trunc(ay) + 0.5;
-    If player.Powers.TriggerBomb > 0 Then Begin
+    If player.WhiteBombs > 0 Then Begin
+      // Mod weiße Bombe: immer eine normale Bombe (kein Trigger, kein Dud), die der Client weiß zeichnet
+      fBombs[fBombCount].Animation := baNormal;
+      fBombs[fBombCount].ColorIndex := WhiteColorIndex;
+    End
+    Else If player.Powers.TriggerBomb > 0 Then Begin
       fBombs[fBombCount].Animation := baTimeTriggered;
       player.Powers.TriggerBomb := player.Powers.TriggerBomb - 1;
     End
@@ -1317,9 +1333,15 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     fBombs[fBombCount].MoveDir := bmNone;
     fBombs[fBombCount].StunOnLand := false;
     fBombs[fBombCount].GhostBomb := false;
+    fBombs[fBombCount].WhiteBomb := player.WhiteBombs > 0;
     fBombs[fBombCount].Speed := player.Powers.Speed;
     inc(fBombCount);
-    player.Powers.AvailableBombs := player.Powers.AvailableBombs - 1;
+    If player.WhiteBombs > 0 Then Begin
+      player.WhiteBombs := player.WhiteBombs - 1;
+    End
+    Else Begin
+      player.Powers.AvailableBombs := player.Powers.AvailableBombs - 1;
+    End;
     result := true;
     If fBombCount > high(fBombs) Then Begin
       log('TAtomicField.HandleActionPlayer: bomb overflow', llfatal);
@@ -1843,6 +1865,11 @@ Begin
     If fBombs[index].GhostBomb Then Begin
       Players[fBombs[index].PlayerIndex].GhostBombActive := false;
     End
+    Else If fBombs[index].WhiteBomb Then Begin
+      // Mod weiße Bombe: kein Strahl und kein Schaden, sie flasht nur die Gegner (und gibt dem Spieler keine Bombe zurück)
+      If assigned(WhiteBombCallback) Then WhiteBombCallback(fBombs[index].PlayerIndex);
+      Continue;
+    End
     Else Begin
       Players[fBombs[index].PlayerIndex].Powers.AvailableBombs := Players[fBombs[index].PlayerIndex].Powers.AvailableBombs + 1;
     End;
@@ -1929,6 +1956,7 @@ Begin
       StatisticCallback(ssPowerUpDestroyed);
     End;
     fField[p.x, p.y].PowerUp := puNone;
+    fField[p.x, p.y].WhiteBomb := false;
   End;
 End;
 
@@ -1991,7 +2019,15 @@ Begin
     y := trunc(Players[i].Info.Position.y);
     // Die Kollision Spieler gegen PowerUp (die PowerUps unter einem Block gibt es erst, wenn er weg ist, Mod durch Blöcke laufen)
     If (fField[x, y].PowerUp <> puNone) And (fField[x, y].BrickData = bdBlank) Then Begin
-      PlayerGetsPowerUp(Players[i], i, fField[x, y].PowerUp);
+      If fField[x, y].WhiteBomb Then Begin
+        // Mod weiße Bombe: die nächste gelegte Bombe ist weiß
+        Players[i].WhiteBombs := Players[i].WhiteBombs + 1;
+        fPlaySoundEffect(i, seGetGoodPowerUp);
+        fField[x, y].WhiteBomb := false;
+      End
+      Else Begin
+        PlayerGetsPowerUp(Players[i], i, fField[x, y].PowerUp);
+      End;
       fField[x, y].PowerUp := puNone;
     End;
     // Die Kollision gegen ein Loch
@@ -2314,6 +2350,7 @@ Begin
   fBombs[fBombCount].FlyFinTime := AtomicBombBigFlyTime;
   fBombs[fBombCount].StunOnLand := true;
   fBombs[fBombCount].GhostBomb := true;
+  fBombs[fBombCount].WhiteBomb := false;
   inc(fBombCount);
   fPlaySoundEffect(PlayerIndex, seBombGrab);
   result := true;
@@ -2602,6 +2639,25 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     UseTextureShader;
   End;
 
+  Procedure RenderWhiteBombItem(x, y: integer);
+  Begin
+    (*
+     * Mod weiße Bombe: Das Bomben Item wird mit Weiß überdeckt (die Grafiken lassen sich nur abdunkeln, nicht aufhellen)
+     *)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    UseColorShader;
+    SetShaderColor(1, 1, 1, 0.6);
+    glShaderBegin(GL_TRIANGLE_FAN);
+    glShaderVertex(Fieldxoff + x * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderVertex(Fieldxoff + (x + 1) * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderVertex(Fieldxoff + (x + 1) * FieldBlockWidth, FieldyOff + (y + 1) * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderVertex(Fieldxoff + x * FieldBlockWidth, FieldyOff + (y + 1) * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderEnd();
+    UseTextureShader;
+    glDisable(GL_BLEND);
+  End;
+
   Procedure RenderTramp(x, y: integer);
   Begin
     If fField[x, y].Tramp Then Begin
@@ -2656,6 +2712,7 @@ Begin
             // Render der Powerups
             If fField[i, j].PowerUp <> puNone Then Begin
               RenderQuad(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, PowerTexs[fField[i, j].PowerUp]);
+              If fField[i, j].WhiteBomb Then RenderWhiteBombItem(i, j);
             End
             Else Begin
               // Es ist einfach nichts auf der Kachel, ggf ist dann ja ein Pfeil oder ein Laufband zu sehen ..

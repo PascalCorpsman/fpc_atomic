@@ -117,6 +117,7 @@ Type
     Procedure HandleGhostRevive(GhostIndex: integer);
     Procedure MakeGhost(PlayerIndex: integer);
     Procedure SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
+    Procedure HandleWhiteBomb(PlayerIndex: integer);
     Procedure HandleGhosts();
 
     Procedure HandleLoadSettings(Const Stream: TStream);
@@ -204,6 +205,9 @@ Begin
     fFields[i].PlayerHitCallback := @HandlePlayerHit;
     fFields[i].GhostReviveCallback := @HandleGhostRevive;
     fFields[i].PlayerPunchCallback := @HandlePlayerPunch;
+    fFields[i].WhiteBombCallback := @HandleWhiteBomb;
+    fFields[i].WhiteBombChance := 0;
+    If fModSettings.WhiteBomb Then fFields[i].WhiteBombChance := fModSettings.WhiteBombChance;
     fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
     fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
     fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
@@ -1100,6 +1104,7 @@ Begin
     fPLayer[i].BrickWalkTimer := 0;
     fPLayer[i].Info.BrickWalk := false;
     fPLayer[i].PunchStunCooldown := 0;
+    fPLayer[i].WhiteBombs := 0;
     // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
     fPLayer[i].MaxHitPoints := 0;
     If fModSettings.HitPoints Then Begin
@@ -1514,6 +1519,18 @@ Begin
   SendChunk(miFlash, m, fPLayer[PlayerIndex].UID);
 End;
 
+Procedure TServer.HandleWhiteBomb(PlayerIndex: integer);
+Var
+  i: integer;
+Begin
+  // Mod weiße Bombe: Alle Gegner auf dem ganzen Feld werden geflasht, nicht der Leger und nicht seine Teamkollegen
+  For i := 0 To high(fPLayer) Do Begin
+    If i = PlayerIndex Then Continue;
+    If fSettings.TeamPlay And (fPLayer[i].Team = fPLayer[PlayerIndex].Team) Then Continue;
+    SendFlash(i, fModSettings.WhiteBombIntensity, fModSettings.WhiteBombMs, fModSettings.WhiteBombFadeMs);
+  End;
+End;
+
 Procedure TServer.MakeGhost(PlayerIndex: integer);
 Begin
   (*
@@ -1562,6 +1579,7 @@ Begin
   fPLayer[GhostIndex].DiseaseCounter := 0;
   fPLayer[GhostIndex].StunTimer := 0;
   fPLayer[GhostIndex].BrickWalkTimer := 0;
+  fPLayer[GhostIndex].WhiteBombs := 0;
   fPLayer[GhostIndex].Info.BrickWalk := false;
   fPLayer[GhostIndex].InvulnTimer := fModSettings.GhostReviveInvulnMs;
   fPLayer[GhostIndex].Powers := PowersFromScheme(fSettings.Scheme);
@@ -1785,6 +1803,11 @@ Begin
     mtFlash: Begin
         SendFlash(PlayerIndex, fModSettings.FlashDiseaseIntensity, fModSettings.FlashDiseaseMs, fModSettings.FlashDiseaseFadeMs);
         s := 'white screen';
+      End;
+    mtWhiteBomb: Begin
+        fPLayer[PlayerIndex].WhiteBombs := fPLayer[PlayerIndex].WhiteBombs + 1;
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'white bomb';
       End;
   End;
   log('Mod test command for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
@@ -2881,6 +2904,7 @@ Begin
   If fModSettings.PositiveDisease Then result := result + ', positive disease';
   If fModSettings.BrickWalk Then result := result + ', walk through bricks';
   If fModSettings.FlashDisease Then result := result + ', white screen';
+  If fModSettings.WhiteBomb Then result := result + ', white bomb';
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
   If fModSettings.GloveAtStart Then result := result + ', glove at start';

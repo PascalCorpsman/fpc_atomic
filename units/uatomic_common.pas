@@ -154,6 +154,7 @@ Const
    *                       ADD: optional teleporters in the middle of the borders, they bring the player to the opposite border
    *                       ADD: optional boxing glove, with the punch item the second action stuns an opponent in front of the player
    *                       ADD: optional disease "white screen", the screen of the player turns white for some time
+   *                       ADD: optional white bomb item, the next bomb explodes without flames and turns the screens of all opponents white
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -405,6 +406,7 @@ Type
     DudTime: integer; // Zähler für die Jeweilige Bombe wie lange sie "Dud" ist
     StunOnLand: Boolean; // True, wenn die Bombe geworfen (nicht gepuncht) wurde, landet sie auf einem Spieler, wird dieser gestunnt (nur wenn Mod aktiv)
     GhostBomb: Boolean; // True, die Bombe wurde von einem Geist geworfen (der Geist bekommt keine Bombe zurück, darf aber nach der Explosion wieder werfen)
+    WhiteBomb: Boolean; // Mod weiße Bombe: explodiert ohne Flammen und flasht alle Gegner (zählt nicht zu den Bomben des Spielers)
 {$ENDIF}
   End;
 
@@ -522,6 +524,7 @@ Type
     TrampRunning: Boolean; // Wenn True, dann "wackelt" die Tramp Animation
     TrampOffset: Byte; // Das Tramp Running Offset, sonst sehen die alle Gleich aus..
     Counter: uint16; // Der Zähler, der Zählt wie Lange die Aktuelle animation schon läuft (Entweder Flamme oder Explosion oder Trampolin)
+    WhiteBomb: Boolean; // Mod weiße Bombe: True, das PowerUp (immer puExtraBomb) ist eine weiße Bombe, der Client zeichnet es weiß
   End;
 
   TFieldBricks = Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TFieldBrick;
@@ -587,6 +590,7 @@ Type
     , mtMaxHitPoints // F11, Trefferpunkte wieder auf Maximum
     , mtBrickWalk // F12, durch Blöcke laufen
     , mtFlash // F2, weißer Bildschirm
+    , mtWhiteBomb // F1, die nächste gelegte Bombe ist weiß
     );
 
   TAtomicKey = (
@@ -660,6 +664,7 @@ Type
     StartGlove: Boolean; // Mod Handschuh beim Start: True, bis sich der Spieler in dieser Runde das erste Mal bewegt hat, so lange kann er Bomben werfen wie mit Handschuh
     BrickWalkTimer: Integer; // Mod durch Blöcke laufen: Zeit in ms, so lange kann der Spieler noch Blöcke betreten (danach nur noch heraus laufen)
     PunchStunCooldown: Integer; // Mod Boxhandschuh: Zeit in ms, so lange kann der Spieler keinen Gegner mehr stunnen
+    WhiteBombs: Integer; // Mod weiße Bombe: So viele der nächsten gelegten Bomben sind weiß
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
   End;
@@ -690,6 +695,11 @@ Type
     FlashDiseaseIntensity: Integer; // in %, wie weiß der Bildschirm wird (100 = man sieht nichts mehr)
     FlashDiseaseMs: Integer; // Zeit in ms, so lange bleibt der Bildschirm weiß
     FlashDiseaseFadeMs: Integer; // Zeit in ms, so lange dauert der Übergang zurück
+    WhiteBomb: Boolean; // True, ein Teil der Items unter den Steinen sind weiße Bomben, die alle Gegner flashen
+    WhiteBombChance: Integer; // in %, Anteil der Items unter den Steinen, die zur weißen Bombe werden
+    WhiteBombIntensity: Integer; // in %, wie weiß der Bildschirm der Gegner wird
+    WhiteBombMs: Integer; // Zeit in ms, so lange bleibt der Bildschirm weiß
+    WhiteBombFadeMs: Integer; // Zeit in ms, so lange dauert der Übergang zurück
     Ghosts: Boolean; // True, Tote laufen bis zum Hurry als Geist am Rand und können mit einem Treffer eines Gegners zurück ins Spiel
     GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
     GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
@@ -1147,6 +1157,11 @@ Begin
   Settings.FlashDiseaseIntensity := 90;
   Settings.FlashDiseaseMs := 2500;
   Settings.FlashDiseaseFadeMs := 2000;
+  Settings.WhiteBomb := false;
+  Settings.WhiteBombChance := 10;
+  Settings.WhiteBombIntensity := 90;
+  Settings.WhiteBombMs := 2500;
+  Settings.WhiteBombFadeMs := 2000;
   Settings.Ghosts := false;
   Settings.GhostReviveInvulnMs := 3000;
   Settings.GhostFlameLen := 2;
@@ -1222,6 +1237,11 @@ Begin
   WriteI('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
   WriteI('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
   WriteI('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
+  WriteB('Mods', 'WhiteBomb', Settings.WhiteBomb);
+  WriteI('Mods', 'WhiteBombChance', Settings.WhiteBombChance);
+  WriteI('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
+  WriteI('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
+  WriteI('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
   WriteB('Mods', 'Ghosts', Settings.Ghosts);
   WriteI('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
   WriteI('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1291,6 +1311,11 @@ Begin
     Settings.FlashDiseaseIntensity := ini.ReadInteger('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
     Settings.FlashDiseaseMs := ini.ReadInteger('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
     Settings.FlashDiseaseFadeMs := ini.ReadInteger('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
+    Settings.WhiteBomb := ini.ReadBool('Mods', 'WhiteBomb', Settings.WhiteBomb);
+    Settings.WhiteBombChance := ini.ReadInteger('Mods', 'WhiteBombChance', Settings.WhiteBombChance);
+    Settings.WhiteBombIntensity := ini.ReadInteger('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
+    Settings.WhiteBombMs := ini.ReadInteger('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
+    Settings.WhiteBombFadeMs := ini.ReadInteger('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
     Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
     Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
     Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1351,6 +1376,10 @@ Begin
     Clamp('FlashDiseaseIntensity', Settings.FlashDiseaseIntensity, 0, ModMaxFlashIntensity);
     Clamp('FlashDiseaseMs', Settings.FlashDiseaseMs, 0, ModMaxFlashMs);
     Clamp('FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs, 0, ModMaxFlashMs);
+    Clamp('WhiteBombChance', Settings.WhiteBombChance, 0, ModMaxFlashChance);
+    Clamp('WhiteBombIntensity', Settings.WhiteBombIntensity, 0, ModMaxFlashIntensity);
+    Clamp('WhiteBombMs', Settings.WhiteBombMs, 0, ModMaxFlashMs);
+    Clamp('WhiteBombFadeMs', Settings.WhiteBombFadeMs, 0, ModMaxFlashMs);
     Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
     Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
     Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
@@ -1416,6 +1445,7 @@ Begin
     mtMaxHitPoints: result := 'max hit points';
     mtBrickWalk: result := 'walk through bricks';
     mtFlash: result := 'white screen';
+    mtWhiteBomb: result := 'white bomb';
   End;
 End;
 
