@@ -56,6 +56,9 @@ The key binding can be changed in the options dialog
 - Trigger all own bombs that are triggerable (and not flying)
 - When pressed while walking towards a bomb "punch" a bomb in walk direction (if powerup was collected)
 
+## Game mods
+FPC Atomic has optional game mods (stun on bomb landing, positive disease, hit points per player, ghosts) and a mod test mode. All of them are off by default and can be set up in the launcher with "Mods...". See the [mods manual](MODS_MANUAL.md) for details.
+
 ## Connecting a Client over the Internet to a local server
 To connect a client to a server over the Internet, follow these steps: 
 
@@ -96,8 +99,8 @@ During server execution it is possible to type the following commands in the con
 
 Since ver 0.08 the launcher supports command line commands:
 - -ip \<IP\> : will prefill the "Router IP" field with the value given as \<IP\>
-- -port \<port\>:  will prefill the "Router Port" field with the value given as \<port\>
-- -cti: will check the checkbox "connect through internet"
+- -port \<port\>:  will prefill the "Port" field with the value given as \<port\>
+- -cti: will check the checkbox "Join through a router"
 
 ## Included AI
 The server will automatically load ai.so (or ai.dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development.
