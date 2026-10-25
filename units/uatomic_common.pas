@@ -148,6 +148,7 @@ Const
    *                       ADD: ghosts: max count per round and optional max time until they vanish (flicker faster before)
    *                       ADD: mod settings code shared by server and launcher (defaults, limits, load / save)
    *                       ADD: launcher: new layout (live name check, game data / version status) and mods dialog for atomic_server.ini
+   *                       ADD: optional glove at start, until the first step of a round every player can throw a bomb like with the glove
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -637,6 +638,7 @@ Type
     GhostCount: Integer; // Mod Geister: Wie oft der Spieler in dieser Runde schon Geist geworden ist
     GhostTimer: Integer; // Mod Geister: Zeit in ms bis der Geist verschwindet, wenn er keinen Gegner trifft (nur wenn GhostMaxTimeMs > 0)
     GhostBombActive: Boolean; // Mod Geister: True, so lange die geworfene Geisterbombe noch nicht explodiert ist
+    StartGlove: Boolean; // Mod Handschuh beim Start: True, bis sich der Spieler in dieser Runde das erste Mal bewegt hat, so lange kann er Bomben werfen wie mit Handschuh
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
   End;
@@ -664,6 +666,7 @@ Type
     DefaultHitPoints: Integer; // Trefferpunkte, wenn der Spieler nicht in [Handicap] steht
     ShowHitPoints: Boolean; // True, die Clients zeigen die Trefferpunkte über den Spielern an
     Handicap: TStringList; // Inhalt von [Handicap] als Spielername=Trefferpunkte
+    GloveAtStart: Boolean; // True, bis zum ersten Schritt einer Runde kann jeder seine Bombe werfen wie mit Handschuh (gegen das Einsperren beim Start)
     (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)
@@ -1099,6 +1102,7 @@ Begin
   Settings.ShowHitPoints := true;
   If Not assigned(Settings.Handicap) Then Settings.Handicap := TStringList.Create;
   Settings.Handicap.Clear;
+  Settings.GloveAtStart := false;
   Settings.ModTestMode := false;
   Settings.StartItems := '';
   Settings.RoundTimeSec := 0;
@@ -1149,6 +1153,7 @@ Begin
   WriteI('Mods', 'InvulnTimeMs', Settings.InvulnTimeMs);
   WriteI('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
   WriteB('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
+  WriteB('Mods', 'GloveAtStart', Settings.GloveAtStart);
   WriteB('Debug', 'ModTestMode', Settings.ModTestMode);
   WriteS('Debug', 'StartItems', Settings.StartItems);
   WriteI('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1196,6 +1201,7 @@ Begin
     Settings.DefaultHitPoints := ini.ReadInteger('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
     Settings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
     ini.ReadSectionValues('Handicap', Settings.Handicap); // Spielername=Trefferpunkte
+    Settings.GloveAtStart := ini.ReadBool('Mods', 'GloveAtStart', Settings.GloveAtStart);
     Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
     Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
     Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);

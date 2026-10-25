@@ -1219,7 +1219,8 @@ Begin
             End;
           End;
         End;
-        If Player.Powers.CanGrabBombs Then Begin
+        // Mod Handschuh beim Start: bis zum ersten Schritt wie mit Handschuh (Spooger und Handschuh schließen sich aus)
+        If Player.Powers.CanGrabBombs Or (Player.StartGlove And (Not Player.Powers.CanSpooger)) Then Begin
           // Gibt es eine Bombe zum Graben ?
           x := trunc(player.Info.Position.x);
           y := trunc(player.Info.Position.y);

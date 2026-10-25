@@ -1107,6 +1107,7 @@ Begin
     fPLayer[i].GhostBombActive := false;
     fPLayer[i].GhostCount := 0;
     fPLayer[i].StartPosition := fPLayer[i].Info.Position;
+    fPLayer[i].StartGlove := fModSettings.GloveAtStart;
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
     If fModSettings.ModTestMode Then ApplyStartItems(fPLayer[i].Powers, fModSettings.StartItems);
@@ -2130,6 +2131,7 @@ Var
   OldCounter: UInt16;
   Stunned: Boolean;
   StunMoveState: TMoveState;
+  OldPosition: TVector2;
 Begin
   HandleStatisticCallback(ssFramesRendered);
   If fPlayingTimedesc <> -1000 Then Begin
@@ -2193,9 +2195,14 @@ Begin
         StunMoveState := fPLayer[i].MoveState;
         fPLayer[i].MoveState := msStill;
       End;
+      OldPosition := fPLayer[i].Info.Position;
       If fActualField.HandleMovePlayer(fPLayer, i, fSettings.ConveyorSpeed) Then Begin
         // im Hurry mode kann der Spieler sterben, wenn ein Solid Brick an seiner Koordinate "entsteht"
         fActualField.KillPlayer(fPLayer, i);
+      End;
+      // Handschuh beim Start: Mit dem ersten Schritt ist er weg, gegen eine Wand drücken dreht nur (damit kann man zielen)
+      If (fPLayer[i].Info.Position.x <> OldPosition.x) Or (fPLayer[i].Info.Position.y <> OldPosition.y) Then Begin
+        fPLayer[i].StartGlove := false;
       End;
       If Stunned Then Begin
         fPLayer[i].MoveState := StunMoveState;
@@ -2781,6 +2788,7 @@ Begin
   If fModSettings.PositiveDisease Then result := result + ', positive disease';
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
+  If fModSettings.GloveAtStart Then result := result + ', glove at start';
   If fModSettings.ModTestMode Then result := result + ', mod test mode';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));

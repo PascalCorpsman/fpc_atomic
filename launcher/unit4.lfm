@@ -24,6 +24,7 @@ object Form4: TForm4
       'Positive disease'
       'Hit points'
       'Ghosts'
+      'Glove at start'
       'Mod test mode'
     )
     ItemHeight = 0
@@ -386,6 +387,35 @@ object Form4: TForm4
           Caption = '0 = unlimited, flicker time 0 = no flicker. In the last 5 s before a ghost vanishes it flickers faster.'
           WordWrap = True
         end
+      end
+    end
+    object TabSheet6: TTabSheet
+      Caption = 'TabSheet6'
+      object CheckBox8: TCheckBox
+        Left = 8
+        Height = 19
+        Top = 8
+        Caption = 'Glove at start'
+        Font.Style = [fsBold]
+        ParentFont = False
+        OnChange = CheckBox1Change
+      end
+      object Label26: TLabel
+        Left = 8
+        Height = 64
+        Top = 34
+        Width = 312
+        AutoSize = False
+        Caption = 'Until the first step of a round every player can throw the bomb below the player like with the glove (press the first action twice). Pressing against a wall only turns, so you can aim before throwing.'
+        WordWrap = True
+      end
+      object Panel6: TPanel
+        Left = 0
+        Height = 204
+        Top = 104
+        Width = 328
+        BevelOuter = bvNone
+        ParentColor = True
       end
     end
     object TabSheet5: TTabSheet

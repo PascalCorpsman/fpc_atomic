@@ -7,6 +7,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 - [Positive disease](#positive-disease)
 - [Hit points (handicap)](#hit-points-handicap)
 - [Ghosts](#ghosts)
+- [Glove at start](#glove-at-start)
 - [Mod test mode](#mod-test-mode)
 - [Editing atomic_server.ini by hand](#editing-atomic_serverini-by-hand)
 
@@ -101,6 +102,18 @@ A player that dies does not leave the round but walks on as a small, flickering 
 | Flicker time (ms) | `GhostFlickerMs` | 200 | 0 .. 5000, 0 = no flicker |
 
 The flicker time is the length of one tick: a ghost is visible for 3 ticks and invisible for 1 tick.
+
+## Glove at start
+
+Sometimes a round starts in a small pocket between bricks, and a bomb placed by accident locks the player in. With this mod every player can throw the bomb below the player like with the glove ![](data/res/powgrab.png) (press the [first action](MANUAL.md#first-action-double-pressed) twice), **until the first step** of the round.
+
+- Pressing a direction key against a wall only turns the player without a step, so the throw can be aimed.
+- Players with the spooger ![](data/res/powspoog.png) spooge as usual instead.
+- A ghost that comes back into the game does not get the glove again.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `GloveAtStart` | 0 (off) | 0 / 1 |
 
 ## Mod test mode
 

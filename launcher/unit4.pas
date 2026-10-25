@@ -46,6 +46,7 @@ Type
     CheckBox5: TCheckBox;
     CheckBox6: TCheckBox;
     CheckBox7: TCheckBox;
+    CheckBox8: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -66,6 +67,7 @@ Type
     Label23: TLabel;
     Label24: TLabel;
     Label25: TLabel;
+    Label26: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -79,6 +81,7 @@ Type
     Panel3: TPanel;
     Panel4: TPanel;
     Panel5: TPanel;
+    Panel6: TPanel;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
@@ -99,6 +102,7 @@ Type
     TabSheet3: TTabSheet;
     TabSheet4: TTabSheet;
     TabSheet5: TTabSheet;
+    TabSheet6: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -150,18 +154,21 @@ Begin
   caption := 'Mods';
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
-  setlength(fModCheckBoxes, 5);
+  // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
+  setlength(fModCheckBoxes, 6);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox2;
   fModCheckBoxes[2] := CheckBox3;
   fModCheckBoxes[3] := CheckBox4;
-  fModCheckBoxes[4] := CheckBox5;
-  setlength(fModPanels, 5);
+  fModCheckBoxes[4] := CheckBox8;
+  fModCheckBoxes[5] := CheckBox5;
+  setlength(fModPanels, 6);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel2;
   fModPanels[2] := Panel3;
   fModPanels[3] := Panel4;
-  fModPanels[4] := Panel5;
+  fModPanels[4] := Panel6;
+  fModPanels[5] := Panel5;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
@@ -297,6 +304,8 @@ Begin
   SpinEdit11.Value := fSettings.GhostMaxTimeMs;
   SpinEdit12.Value := fSettings.GhostFlickerMs;
 
+  CheckBox8.Checked := fSettings.GloveAtStart;
+
   CheckBox5.Checked := fSettings.ModTestMode;
   Edit1.Text := fSettings.StartItems;
   SpinEdit13.Value := fSettings.RoundTimeSec;
@@ -368,6 +377,8 @@ Begin
   fSettings.GhostMaxCount := SpinEdit10.Value;
   fSettings.GhostMaxTimeMs := SpinEdit11.Value;
   fSettings.GhostFlickerMs := SpinEdit12.Value;
+
+  fSettings.GloveAtStart := CheckBox8.Checked;
 
   fSettings.ModTestMode := CheckBox5.Checked;
   fSettings.StartItems := trim(Edit1.Text);
