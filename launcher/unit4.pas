@@ -55,6 +55,7 @@ Type
     CheckBox14: TCheckBox;
     CheckBox15: TCheckBox;
     CheckBox16: TCheckBox;
+    CheckBox17: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -93,6 +94,12 @@ Type
     Label41: TLabel;
     Label42: TLabel;
     Label43: TLabel;
+    Label44: TLabel;
+    Label45: TLabel;
+    Label46: TLabel;
+    Label47: TLabel;
+    Label48: TLabel;
+    Label49: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -111,6 +118,7 @@ Type
     Panel8: TPanel;
     Panel9: TPanel;
     Panel10: TPanel;
+    Panel11: TPanel;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
@@ -126,6 +134,10 @@ Type
     SpinEdit21: TSpinEdit;
     SpinEdit22: TSpinEdit;
     SpinEdit23: TSpinEdit;
+    SpinEdit24: TSpinEdit;
+    SpinEdit25: TSpinEdit;
+    SpinEdit26: TSpinEdit;
+    SpinEdit27: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -145,6 +157,7 @@ Type
     TabSheet8: TTabSheet;
     TabSheet9: TTabSheet;
     TabSheet10: TTabSheet;
+    TabSheet11: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -197,28 +210,30 @@ Begin
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 10);
+  setlength(fModCheckBoxes, 11);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox16;
   fModCheckBoxes[2] := CheckBox2;
   fModCheckBoxes[3] := CheckBox9;
-  fModCheckBoxes[4] := CheckBox3;
-  fModCheckBoxes[5] := CheckBox4;
-  fModCheckBoxes[6] := CheckBox8;
-  fModCheckBoxes[7] := CheckBox10;
-  fModCheckBoxes[8] := CheckBox13;
-  fModCheckBoxes[9] := CheckBox5;
-  setlength(fModPanels, 10);
+  fModCheckBoxes[4] := CheckBox17;
+  fModCheckBoxes[5] := CheckBox3;
+  fModCheckBoxes[6] := CheckBox4;
+  fModCheckBoxes[7] := CheckBox8;
+  fModCheckBoxes[8] := CheckBox10;
+  fModCheckBoxes[9] := CheckBox13;
+  fModCheckBoxes[10] := CheckBox5;
+  setlength(fModPanels, 11);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel10;
   fModPanels[2] := Panel2;
   fModPanels[3] := Panel7;
-  fModPanels[4] := Panel3;
-  fModPanels[5] := Panel4;
-  fModPanels[6] := Panel6;
-  fModPanels[7] := Panel8;
-  fModPanels[8] := Panel9;
-  fModPanels[9] := Panel5;
+  fModPanels[4] := Panel11;
+  fModPanels[5] := Panel3;
+  fModPanels[6] := Panel4;
+  fModPanels[7] := Panel6;
+  fModPanels[8] := Panel8;
+  fModPanels[9] := Panel9;
+  fModPanels[10] := Panel5;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
@@ -232,6 +247,10 @@ Begin
   SpinEdit16.MaxValue := ModMaxBrickWalkMs;
   SpinEdit17.MaxValue := ModMaxBrickWalkMs;
   SpinEdit18.MaxValue := ModMaxBrickWalkTransparency;
+  SpinEdit24.MaxValue := ModMaxFlashChance;
+  SpinEdit25.MaxValue := ModMaxFlashIntensity;
+  SpinEdit26.MaxValue := ModMaxFlashMs;
+  SpinEdit27.MaxValue := ModMaxFlashMs;
   SpinEdit19.MaxValue := ModMaxTeleportersActiveSec;
   SpinEdit20.MaxValue := ModMaxOpenBordersActiveSec;
   SpinEdit6.MinValue := FlameTime;
@@ -357,6 +376,12 @@ Begin
   SpinEdit17.Value := fSettings.BrickWalkMaxMs;
   SpinEdit18.Value := fSettings.BrickWalkTransparency;
 
+  CheckBox17.Checked := fSettings.FlashDisease;
+  SpinEdit24.Value := fSettings.FlashDiseaseChance;
+  SpinEdit25.Value := fSettings.FlashDiseaseIntensity;
+  SpinEdit26.Value := fSettings.FlashDiseaseMs;
+  SpinEdit27.Value := fSettings.FlashDiseaseFadeMs;
+
   CheckBox3.Checked := fSettings.HitPoints;
   SpinEdit6.Value := fSettings.InvulnTimeMs;
   SpinEdit7.Value := fSettings.DefaultHitPoints;
@@ -459,6 +484,12 @@ Begin
   fSettings.BrickWalkMinMs := SpinEdit16.Value;
   fSettings.BrickWalkMaxMs := SpinEdit17.Value;
   fSettings.BrickWalkTransparency := SpinEdit18.Value;
+
+  fSettings.FlashDisease := CheckBox17.Checked;
+  fSettings.FlashDiseaseChance := SpinEdit24.Value;
+  fSettings.FlashDiseaseIntensity := SpinEdit25.Value;
+  fSettings.FlashDiseaseMs := SpinEdit26.Value;
+  fSettings.FlashDiseaseFadeMs := SpinEdit27.Value;
 
   fSettings.HitPoints := CheckBox3.Checked;
   fSettings.InvulnTimeMs := SpinEdit6.Value;

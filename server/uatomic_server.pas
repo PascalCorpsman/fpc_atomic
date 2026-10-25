@@ -116,6 +116,7 @@ Type
     Function HandlePlayerPunch(PlayerIndex, x, y: integer): Boolean;
     Procedure HandleGhostRevive(GhostIndex: integer);
     Procedure MakeGhost(PlayerIndex: integer);
+    Procedure SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
     Procedure HandleGhosts();
 
     Procedure HandleLoadSettings(Const Stream: TStream);
@@ -1253,6 +1254,13 @@ Begin
           LogLeave(EnterID);
           exit;
         End;
+        // Weißer Bildschirm (Mod), wird nach den positiven Effekten gewürfelt
+        If fModSettings.FlashDisease And (random(100) < fModSettings.FlashDiseaseChance) Then Begin
+          HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
+          SendFlash(PlayerIndex, fModSettings.FlashDiseaseIntensity, fModSettings.FlashDiseaseMs, fModSettings.FlashDiseaseFadeMs);
+          LogLeave(EnterID);
+          exit;
+        End;
         fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
         Case random(4) Of
@@ -1488,6 +1496,22 @@ Begin
   fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.InvulnTimeMs);
   HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
   result := true;
+End;
+
+Procedure TServer.SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
+Var
+  m: TMemoryStream;
+Begin
+  (*
+   * Mod weißer Bildschirm: Nur ein Mensch hat einen Bildschirm, KI Spieler bleiben unberührt.
+   * Spielen 2 Spieler an dem PC, zeigt der Client den Flash nicht an (beide teilen sich den Bildschirm).
+   *)
+  If fPLayer[PlayerIndex].UID <= 0 Then exit;
+  m := TMemoryStream.Create;
+  m.Write(Intensity, sizeof(Intensity));
+  m.Write(DurationMs, sizeof(DurationMs));
+  m.Write(FadeMs, sizeof(FadeMs));
+  SendChunk(miFlash, m, fPLayer[PlayerIndex].UID);
 End;
 
 Procedure TServer.MakeGhost(PlayerIndex: integer);
@@ -1757,6 +1781,10 @@ Begin
         fPLayer[PlayerIndex].BrickWalkTimer := max(fPLayer[PlayerIndex].BrickWalkTimer, fModSettings.BrickWalkMinMs + random(fModSettings.BrickWalkMaxMs - fModSettings.BrickWalkMinMs + 1));
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         s := 'walk through bricks';
+      End;
+    mtFlash: Begin
+        SendFlash(PlayerIndex, fModSettings.FlashDiseaseIntensity, fModSettings.FlashDiseaseMs, fModSettings.FlashDiseaseFadeMs);
+        s := 'white screen';
       End;
   End;
   log('Mod test command for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
@@ -2852,6 +2880,7 @@ Begin
   If fModSettings.PunchStun Then result := result + ', boxing glove';
   If fModSettings.PositiveDisease Then result := result + ', positive disease';
   If fModSettings.BrickWalk Then result := result + ', walk through bricks';
+  If fModSettings.FlashDisease Then result := result + ', white screen';
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
   If fModSettings.GloveAtStart Then result := result + ', glove at start';

@@ -24,6 +24,7 @@ object Form4: TForm4
       'Boxing glove'
       'Positive disease'
       'Walk through bricks'
+      'White screen'
       'Hit points'
       'Ghosts'
       'Glove at start'
@@ -341,6 +342,100 @@ object Form4: TForm4
           Width = 312
           AutoSize = False
           Caption = 'If the time ends inside a brick, the player can only walk out of it (through further bricks only while there is no free tile next to the player). No bombs can be placed inside a brick, and the player is hit when the brick explodes.'
+          WordWrap = True
+        end
+      end
+    end
+    object TabSheet11: TTabSheet
+      Caption = 'TabSheet11'
+      object CheckBox17: TCheckBox
+        Left = 8
+        Height = 19
+        Top = 8
+        Caption = 'White screen'
+        Font.Style = [fsBold]
+        ParentFont = False
+        OnChange = CheckBox1Change
+      end
+      object Label44: TLabel
+        Left = 8
+        Height = 32
+        Top = 34
+        Width = 312
+        AutoSize = False
+        Caption = 'Some disease items turn the screen of the player white for a while.'
+        WordWrap = True
+      end
+      object Panel11: TPanel
+        Left = 0
+        Height = 236
+        Top = 72
+        Width = 328
+        BevelOuter = bvNone
+        ParentColor = True
+        object Label45: TLabel
+          Left = 8
+          Height = 15
+          Top = 12
+          Caption = 'Chance of a disease item (%)'
+        end
+        object SpinEdit24: TSpinEdit
+          Hint = 'Share of the disease items that turn the screen white. Rolled after the positive effects.'
+          Left = 220
+          Height = 23
+          Top = 8
+          Width = 96
+          Increment = 5
+        end
+        object Label46: TLabel
+          Left = 8
+          Height = 15
+          Top = 42
+          Caption = 'Strength (%)'
+        end
+        object SpinEdit25: TSpinEdit
+          Hint = 'How white the screen gets: 100 = nothing can be seen any more.'
+          Left = 220
+          Height = 23
+          Top = 38
+          Width = 96
+          Increment = 10
+        end
+        object Label47: TLabel
+          Left = 8
+          Height = 15
+          Top = 72
+          Caption = 'Duration (ms)'
+        end
+        object SpinEdit26: TSpinEdit
+          Hint = 'How long the screen stays white.'
+          Left = 220
+          Height = 23
+          Top = 68
+          Width = 96
+          Increment = 500
+        end
+        object Label48: TLabel
+          Left = 8
+          Height = 15
+          Top = 102
+          Caption = 'Fade back (ms)'
+        end
+        object SpinEdit27: TSpinEdit
+          Hint = 'How long it takes until the screen is normal again.'
+          Left = 220
+          Height = 23
+          Top = 98
+          Width = 96
+          Increment = 500
+        end
+        object Label49: TLabel
+          Left = 8
+          Height = 96
+          Top = 128
+          Width = 312
+          AutoSize = False
+          Caption = 'AI players are not affected. If two players play on one PC, that PC shows no white screen, because both share the screen.'
           WordWrap = True
         end
       end

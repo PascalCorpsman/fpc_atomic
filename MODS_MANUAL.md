@@ -7,6 +7,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 - [Boxing glove](#boxing-glove)
 - [Positive disease](#positive-disease)
 - [Walk through bricks](#walk-through-bricks)
+- [White screen](#white-screen)
 - [Hit points (handicap)](#hit-points-handicap)
 - [Ghosts](#ghosts)
 - [Glove at start](#glove-at-start)
@@ -92,6 +93,22 @@ A part of the disease items ![](data/res/powdisea.png) lets the player walk **th
 | See-through (%) | `BrickWalkTransparency` | 50 | 0 .. 100, 0 = normal, 100 = invisible |
 
 The see-through effect is made by drawing the player only in a part of the frames, so it may flicker a little.
+
+## White screen
+
+A part of the disease items ![](data/res/powdisea.png) turns the screen of the player white for a while instead of a normal disease. The screen stays white for a set time and then fades back.
+
+- It is rolled after the positive effects ([positive disease](#positive-disease), [walk through bricks](#walk-through-bricks)).
+- AI players are not affected.
+- If two players play on one PC, that PC shows no white screen, because both share the screen.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `FlashDisease` | 0 (off) | 0 / 1 |
+| Chance of a disease item (%) | `FlashDiseaseChance` | 15 | 0 .. 100 |
+| Strength (%) | `FlashDiseaseIntensity` | 90 | 0 .. 100, 100 = nothing can be seen |
+| Duration (ms) | `FlashDiseaseMs` | 2500 | 0 .. 10000 |
+| Fade back (ms) | `FlashDiseaseFadeMs` | 2000 | 0 .. 10000 |
 
 ## Hit points (handicap)
 
@@ -206,6 +223,7 @@ Only the player who hosts the game (the master) can use the test keys during a r
 | F9 | Stun me |
 | F11 | Refill my hit points |
 | F12 | Walk through bricks |
+| F2 | White screen |
 
 Hold **Shift** to use the key on the second player of this PC. F10 is not used, because Windows uses it for the window menu.
 

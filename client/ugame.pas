@@ -119,6 +119,10 @@ Type
     fGhostFlickerMs: Integer; // Zeit in ms eines Flacker Taktes der Geister (miModInfo), 0 = kein Flackern
     fBrickWalkTransparency: Integer; // in %, so durchsichtig werden Spieler gezeichnet, die durch Blöcke laufen (miModInfo)
     fRenderFrame: Int64; // Zähler der gerenderten Spiel Frames, für die Durchsichtigkeit (BrickWalkVisible)
+    fFlashTimeStamp: QWord; // Mod weißer Bildschirm: Beginn des Flashs, 0 = kein Flash
+    fFlashIntensity: Integer; // in %
+    fFlashMs: Integer; // Dauer in ms
+    fFlashFadeMs: Integer; // Übergang zurück in ms
     fShowModTestHelp: Boolean; // True, die Hilfe des Mod Test Modus (F3) wird angezeigt
     fModTestMessage: String; // Rückmeldung zum zuletzt gesendeten Test Befehl
     fModTestMessageTimeStamp: QWord; // Zeitpunkt, an dem fModTestMessage gesetzt wurde
@@ -166,6 +170,7 @@ Type
     Procedure RenderGhost(Const Info: TAtomicInfo);
     Function BrickWalkVisible(): Boolean;
     Procedure RenderOpenBorders();
+    Procedure RenderFlash();
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
 
@@ -690,6 +695,7 @@ Begin
     VK_F4: Command := mtAllItems; // F10 ist unter Windows die Menü Taste
     VK_F11: Command := mtMaxHitPoints;
     VK_F12: Command := mtBrickWalk;
+    VK_F2: Command := mtFlash;
   Else
     exit;
   End;
@@ -1208,6 +1214,15 @@ Begin
     miShowHurry: Begin
         HandleHurryUp();
       End;
+    miFlash: Begin
+        Chunk.Data.Read(fFlashIntensity, sizeof(fFlashIntensity));
+        Chunk.Data.Read(fFlashMs, sizeof(fFlashMs));
+        Chunk.Data.Read(fFlashFadeMs, sizeof(fFlashFadeMs));
+        // Spielen 2 an diesem PC, teilen sie sich den Bildschirm, dann gibt es keinen Flash
+        If (fPlayerIndex[ks0] = -1) Or (fPlayerIndex[ks1] = -1) Then Begin
+          fFlashTimeStamp := GetTickCount64;
+        End;
+      End;
     miModInfo: Begin
         fModTestMode := false;
         Chunk.Data.Read(fModTestMode, sizeof(fModTestMode));
@@ -1495,6 +1510,7 @@ Var
   k: TKeySet;
 Begin
   fHurry.Enabled := false;
+  fFlashTimeStamp := 0;
   For k In TKeySet Do Begin
     fPlayerIndex[k] := -1;
     fLastKeyDown[k][akFirstAction] := 0;
@@ -1923,6 +1939,44 @@ Begin
   SetShaderTransform(ViewPort);
 End;
 
+Procedure TGame.RenderFlash;
+Var
+  t: QWord;
+  a: Single;
+Begin
+  (*
+   * Mod weißer Bildschirm: Erst fFlashMs lang mit voller Stärke, dann über fFlashFadeMs zurück.
+   * Normales Alpha Blending, damit die Stärke stufenlos geht (die Texturen der Engine nutzen ein invertiertes Alpha).
+   *)
+  If fFlashTimeStamp = 0 Then exit;
+  t := GetTickCount64 - fFlashTimeStamp;
+  If t < fFlashMs Then Begin
+    a := fFlashIntensity / 100;
+  End
+  Else If t < fFlashMs + fFlashFadeMs Then Begin
+    a := fFlashIntensity / 100 * (1 - (t - fFlashMs) / fFlashFadeMs);
+  End
+  Else Begin
+    fFlashTimeStamp := 0;
+    exit;
+  End;
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  UseColorShader;
+  SetShaderColor(1, 1, 1, a);
+  glShaderBegin(GL_TRIANGLE_FAN);
+  glShaderVertex(0, 0, atomic_dialog_Layer);
+  glShaderVertex(GameWidth, 0, atomic_dialog_Layer);
+  glShaderVertex(GameWidth, GameHeight, atomic_dialog_Layer);
+  glShaderVertex(0, GameHeight, atomic_dialog_Layer);
+  glShaderEnd();
+  UseTextureShader;
+  glDisable(GL_BLEND);
+  glEnable(GL_DEPTH_TEST);
+End;
+
 Procedure TGame.RenderOpenBorders;
 Var
   i: Integer;
@@ -2035,6 +2089,7 @@ Begin
     End;
     If fShowModTestHelp Then Begin
       AtomicFont.Color := clWhite;
+      AtomicFont.Textout(120, 80, atomic_dialog_Layer + atomic_EPSILON, 'F2  : ' + ModTestCommandToString(mtFlash));
       AtomicFont.Textout(120, 100, atomic_dialog_Layer + atomic_EPSILON, 'F3  : hide this help');
       AtomicFont.Textout(120, 120, atomic_dialog_Layer + atomic_EPSILON, 'F4  : ' + ModTestCommandToString(mtAllItems));
       AtomicFont.Textout(120, 140, atomic_dialog_Layer + atomic_EPSILON, 'F5  : ' + ModTestCommandToString(mtPositiveDisease));
@@ -2819,6 +2874,7 @@ Begin
           End;
           If n > 5 Then fHurry.Enabled := false;
         End;
+        RenderFlash();
       End;
   End;
   fSoundInfo.Render;

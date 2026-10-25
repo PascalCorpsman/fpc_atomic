@@ -153,6 +153,7 @@ Const
    *                       ADD: optional open borders, players walk over the border and come out on the opposite side (after a set time, shown by arrows on the frame)
    *                       ADD: optional teleporters in the middle of the borders, they bring the player to the opposite border
    *                       ADD: optional boxing glove, with the punch item the second action stuns an opponent in front of the player
+   *                       ADD: optional disease "white screen", the screen of the player turns white for some time
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -268,6 +269,9 @@ Const
   ModMaxTeleportersActiveSec = 600;
   ModMaxOpenBordersActiveSec = 600;
   ModMaxPunchStunCooldownMs = 10000;
+  ModMaxFlashChance = 100; // in %
+  ModMaxFlashIntensity = 100; // in %, 100 = komplett weiß
+  ModMaxFlashMs = 10000; // Dauer und Übergang zurück
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -582,6 +586,7 @@ Type
     , mtAllItems // F4, Kick, Punch, Grab, Bomben, Flammen
     , mtMaxHitPoints // F11, Trefferpunkte wieder auf Maximum
     , mtBrickWalk // F12, durch Blöcke laufen
+    , mtFlash // F2, weißer Bildschirm
     );
 
   TAtomicKey = (
@@ -680,6 +685,11 @@ Type
     BrickWalkMinMs: Integer; // Minimale Zeit in ms
     BrickWalkMaxMs: Integer; // Maximale Zeit in ms
     BrickWalkTransparency: Integer; // in %, so durchsichtig wird der Spieler gezeichnet (0 = normal, 100 = unsichtbar)
+    FlashDisease: Boolean; // True, ein Teil der Krankheits Items macht den Bildschirm des Spielers kurz weiß
+    FlashDiseaseChance: Integer; // in %, Anteil der Krankheits Items (die nicht schon positiv waren)
+    FlashDiseaseIntensity: Integer; // in %, wie weiß der Bildschirm wird (100 = man sieht nichts mehr)
+    FlashDiseaseMs: Integer; // Zeit in ms, so lange bleibt der Bildschirm weiß
+    FlashDiseaseFadeMs: Integer; // Zeit in ms, so lange dauert der Übergang zurück
     Ghosts: Boolean; // True, Tote laufen bis zum Hurry als Geist am Rand und können mit einem Treffer eines Gegners zurück ins Spiel
     GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
     GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
@@ -1132,6 +1142,11 @@ Begin
   Settings.BrickWalkMinMs := 5000;
   Settings.BrickWalkMaxMs := 10000;
   Settings.BrickWalkTransparency := 50;
+  Settings.FlashDisease := false;
+  Settings.FlashDiseaseChance := 15;
+  Settings.FlashDiseaseIntensity := 90;
+  Settings.FlashDiseaseMs := 2500;
+  Settings.FlashDiseaseFadeMs := 2000;
   Settings.Ghosts := false;
   Settings.GhostReviveInvulnMs := 3000;
   Settings.GhostFlameLen := 2;
@@ -1202,6 +1217,11 @@ Begin
   WriteI('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
   WriteI('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
   WriteI('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
+  WriteB('Mods', 'FlashDisease', Settings.FlashDisease);
+  WriteI('Mods', 'FlashDiseaseChance', Settings.FlashDiseaseChance);
+  WriteI('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
+  WriteI('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
+  WriteI('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
   WriteB('Mods', 'Ghosts', Settings.Ghosts);
   WriteI('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
   WriteI('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1266,6 +1286,11 @@ Begin
     Settings.BrickWalkMinMs := ini.ReadInteger('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
     Settings.BrickWalkMaxMs := ini.ReadInteger('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
     Settings.BrickWalkTransparency := ini.ReadInteger('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
+    Settings.FlashDisease := ini.ReadBool('Mods', 'FlashDisease', Settings.FlashDisease);
+    Settings.FlashDiseaseChance := ini.ReadInteger('Mods', 'FlashDiseaseChance', Settings.FlashDiseaseChance);
+    Settings.FlashDiseaseIntensity := ini.ReadInteger('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
+    Settings.FlashDiseaseMs := ini.ReadInteger('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
+    Settings.FlashDiseaseFadeMs := ini.ReadInteger('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
     Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
     Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
     Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1322,6 +1347,10 @@ Begin
       Settings.BrickWalkMaxMs := Settings.BrickWalkMinMs;
     End;
     Clamp('BrickWalkTransparency', Settings.BrickWalkTransparency, 0, ModMaxBrickWalkTransparency);
+    Clamp('FlashDiseaseChance', Settings.FlashDiseaseChance, 0, ModMaxFlashChance);
+    Clamp('FlashDiseaseIntensity', Settings.FlashDiseaseIntensity, 0, ModMaxFlashIntensity);
+    Clamp('FlashDiseaseMs', Settings.FlashDiseaseMs, 0, ModMaxFlashMs);
+    Clamp('FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs, 0, ModMaxFlashMs);
     Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
     Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
     Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
@@ -1386,6 +1415,7 @@ Begin
     mtAllItems: result := 'all items';
     mtMaxHitPoints: result := 'max hit points';
     mtBrickWalk: result := 'walk through bricks';
+    mtFlash: result := 'white screen';
   End;
 End;
 

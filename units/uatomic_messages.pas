@@ -63,6 +63,7 @@ Const
   miUpdateMasterID = 234; // Der Master Spieler hat sich geändert (nur Relevant, wenn während eines Matches der Master Raus fliegt)
   miShowHurry = 235;
   miModInfo = 236; // Der Server teilt beim Login die Mod Einstellungen mit, die der Client braucht (Mod Test Modus, Geister Flackern)
+  miFlash = 237; // Mod weißer Bildschirm: Der Bildschirm dieses Clients wird kurz weiß (Stärke, Dauer, Übergang)
 
 Function MessageIdentifierToString(value: integer): String;
 Inline;
@@ -104,6 +105,7 @@ Begin
     miUpdateMasterID: result := 'UpdateMasterID';
     miShowHurry: result := 'ShowHurry';
     miModInfo: result := 'ModInfo';
+    miFlash: result := 'Flash';
   End;
 End;
 
