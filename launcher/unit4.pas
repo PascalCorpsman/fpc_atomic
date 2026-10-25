@@ -54,6 +54,7 @@ Type
     CheckBox13: TCheckBox;
     CheckBox14: TCheckBox;
     CheckBox15: TCheckBox;
+    CheckBox16: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -87,6 +88,11 @@ Type
     Label36: TLabel;
     Label37: TLabel;
     Label38: TLabel;
+    Label39: TLabel;
+    Label40: TLabel;
+    Label41: TLabel;
+    Label42: TLabel;
+    Label43: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -104,6 +110,7 @@ Type
     Panel7: TPanel;
     Panel8: TPanel;
     Panel9: TPanel;
+    Panel10: TPanel;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
@@ -116,6 +123,9 @@ Type
     SpinEdit18: TSpinEdit;
     SpinEdit19: TSpinEdit;
     SpinEdit20: TSpinEdit;
+    SpinEdit21: TSpinEdit;
+    SpinEdit22: TSpinEdit;
+    SpinEdit23: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -134,6 +144,7 @@ Type
     TabSheet7: TTabSheet;
     TabSheet8: TTabSheet;
     TabSheet9: TTabSheet;
+    TabSheet10: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -186,29 +197,34 @@ Begin
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 9);
+  setlength(fModCheckBoxes, 10);
   fModCheckBoxes[0] := CheckBox1;
-  fModCheckBoxes[1] := CheckBox2;
-  fModCheckBoxes[2] := CheckBox9;
-  fModCheckBoxes[3] := CheckBox3;
-  fModCheckBoxes[4] := CheckBox4;
-  fModCheckBoxes[5] := CheckBox8;
-  fModCheckBoxes[6] := CheckBox10;
-  fModCheckBoxes[7] := CheckBox13;
-  fModCheckBoxes[8] := CheckBox5;
-  setlength(fModPanels, 9);
+  fModCheckBoxes[1] := CheckBox16;
+  fModCheckBoxes[2] := CheckBox2;
+  fModCheckBoxes[3] := CheckBox9;
+  fModCheckBoxes[4] := CheckBox3;
+  fModCheckBoxes[5] := CheckBox4;
+  fModCheckBoxes[6] := CheckBox8;
+  fModCheckBoxes[7] := CheckBox10;
+  fModCheckBoxes[8] := CheckBox13;
+  fModCheckBoxes[9] := CheckBox5;
+  setlength(fModPanels, 10);
   fModPanels[0] := Panel1;
-  fModPanels[1] := Panel2;
-  fModPanels[2] := Panel7;
-  fModPanels[3] := Panel3;
-  fModPanels[4] := Panel4;
-  fModPanels[5] := Panel6;
-  fModPanels[6] := Panel8;
-  fModPanels[7] := Panel9;
-  fModPanels[8] := Panel5;
+  fModPanels[1] := Panel10;
+  fModPanels[2] := Panel2;
+  fModPanels[3] := Panel7;
+  fModPanels[4] := Panel3;
+  fModPanels[5] := Panel4;
+  fModPanels[6] := Panel6;
+  fModPanels[7] := Panel8;
+  fModPanels[8] := Panel9;
+  fModPanels[9] := Panel5;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
+  SpinEdit21.MaxValue := ModMaxStunMs;
+  SpinEdit22.MaxValue := ModMaxStunMs;
+  SpinEdit23.MaxValue := ModMaxPunchStunCooldownMs;
   SpinEdit3.MaxValue := ModMaxPositiveDiseaseChance;
   SpinEdit4.MaxValue := ModMaxPositiveMs;
   SpinEdit5.MaxValue := ModMaxPositiveMs;
@@ -325,6 +341,11 @@ Begin
   SpinEdit1.Value := fSettings.StunMinMs;
   SpinEdit2.Value := fSettings.StunMaxMs;
 
+  CheckBox16.Checked := fSettings.PunchStun;
+  SpinEdit21.Value := fSettings.PunchStunMinMs;
+  SpinEdit22.Value := fSettings.PunchStunMaxMs;
+  SpinEdit23.Value := fSettings.PunchStunCooldownMs;
+
   CheckBox2.Checked := fSettings.PositiveDisease;
   SpinEdit3.Value := fSettings.PositiveDiseaseChance;
   SpinEdit4.Value := fSettings.PositiveMinMs;
@@ -384,6 +405,11 @@ Begin
     showmessage('Error, max. stun time is smaller than min. stun time.');
     exit;
   End;
+  If SpinEdit22.Value < SpinEdit21.Value Then Begin
+    ShowModPage(TabSheet10);
+    showmessage('Error, max. stun time is smaller than min. stun time.');
+    exit;
+  End;
   If SpinEdit5.Value < SpinEdit4.Value Then Begin
     ShowModPage(TabSheet2);
     showmessage('Error, max. time is smaller than min. time.');
@@ -417,6 +443,11 @@ Begin
   fSettings.StunOnBombLanding := CheckBox1.Checked;
   fSettings.StunMinMs := SpinEdit1.Value;
   fSettings.StunMaxMs := SpinEdit2.Value;
+
+  fSettings.PunchStun := CheckBox16.Checked;
+  fSettings.PunchStunMinMs := SpinEdit21.Value;
+  fSettings.PunchStunMaxMs := SpinEdit22.Value;
+  fSettings.PunchStunCooldownMs := SpinEdit23.Value;
 
   fSettings.PositiveDisease := CheckBox2.Checked;
   fSettings.PositiveDiseaseChance := SpinEdit3.Value;

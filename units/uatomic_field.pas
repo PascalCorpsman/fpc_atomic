@@ -43,6 +43,7 @@ Type
   TBombLandedCallback = Procedure(x, y: integer) Of Object; // Wird aufgerufen, wenn eine geworfene Bombe (StunOnLand) auf der Kachel x, y liegen bleibt
   TPlayerHitCallback = Function(PlayerIndex: integer): Boolean Of Object; // Wird bei einem Treffer durch eine Flamme aufgerufen, True = der Spieler überlebt den Treffer
   TGhostReviveCallback = Procedure(GhostIndex: integer) Of Object; // Wird aufgerufen, wenn die Flamme eines Geistes einen Gegner getroffen hat -> der Geist darf zurück ins Spiel
+  TPlayerPunchCallback = Function(PlayerIndex, x, y: integer): Boolean Of Object; // Wird aufgerufen, wenn ein Spieler mit Punch Item auf das Feld x, y schlägt, True = ein Gegner wurde gestunnt
 {$ENDIF}
 
 {$IFDEF Client}
@@ -126,6 +127,7 @@ Type
     BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
     PlayerHitCallback: TPlayerHitCallback; // Optional, wird vom Server gesetzt (Trefferpunkte Mod)
     GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
+    PlayerPunchCallback: TPlayerPunchCallback; // Optional, wird vom Server gesetzt (Boxhandschuh Mod)
     WrapLeftRight: Boolean; // Mod offene Grenzen: Die Karte ist links / rechts offen, sobald UpdateOpenBorders sie öffnet
     WrapTopBottom: Boolean; // Mod offene Grenzen: Die Karte ist oben / unten offen, sobald UpdateOpenBorders sie öffnet
     PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
@@ -404,6 +406,7 @@ Begin
   BombLandedCallback := Nil;
   PlayerHitCallback := Nil;
   GhostReviveCallback := Nil;
+  PlayerPunchCallback := Nil;
   WrapLeftRight := false;
   WrapTopBottom := false;
   PortalTopBottom := false;
@@ -1404,8 +1407,28 @@ Begin
       End;
     aaSecond: Begin
         handled := false; // This flag allows to trigger bombs while walking = more responsive ;)
+        (*
+         * Mod Boxhandschuh: Steht ein Gegner auf dem Feld vor dem Spieler, wird er gestunnt (auch im Stehen).
+         * Eine Bombe auf dem selben Feld bleibt dann liegen. Ob der Schlag trifft (Mod an, Abklingzeit, Gegner), entscheidet der Server.
+         *)
+        If Player.Powers.CanPunchBombs And assigned(PlayerPunchCallback) Then Begin
+          dx := 0;
+          dy := 0;
+          Case (trunc(player.info.Direction) Div 90) Of
+            0: dx := 1;
+            1: dy := -1;
+            2: dx := -1;
+            3: dy := 1;
+          End;
+          If PlayerPunchCallback(PlayerIndex, trunc(player.Info.Position.x) + dx, trunc(player.Info.Position.y) + dy) Then Begin
+            fPlaySoundEffect(PlayerIndex, seBombPunch);
+            Player.Info.Animation := raPunch;
+            Player.Info.Counter := 0;
+            handled := true;
+          End;
+        End;
         // Punch = Laufen gegen eine Bombe und dann Second Key ;)
-        If Player.Powers.CanPunchBombs And (Player.MoveState <> msStill) Then Begin
+        If Player.Powers.CanPunchBombs And (Player.MoveState <> msStill) And (Not handled) Then Begin
           x := trunc(player.Info.Position.x);
           y := trunc(player.Info.Position.y);
           dx := 0;

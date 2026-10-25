@@ -152,6 +152,7 @@ Const
    *                       ADD: optional disease "walk through bricks", the player is drawn see-through
    *                       ADD: optional open borders, players walk over the border and come out on the opposite side (after a set time, shown by arrows on the frame)
    *                       ADD: optional teleporters in the middle of the borders, they bring the player to the opposite border
+   *                       ADD: optional boxing glove, with the punch item the second action stuns an opponent in front of the player
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -266,6 +267,7 @@ Const
   ModMaxStartInvulnMs = 600000;
   ModMaxTeleportersActiveSec = 600;
   ModMaxOpenBordersActiveSec = 600;
+  ModMaxPunchStunCooldownMs = 10000;
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -652,6 +654,7 @@ Type
     GhostBombActive: Boolean; // Mod Geister: True, so lange die geworfene Geisterbombe noch nicht explodiert ist
     StartGlove: Boolean; // Mod Handschuh beim Start: True, bis sich der Spieler in dieser Runde das erste Mal bewegt hat, so lange kann er Bomben werfen wie mit Handschuh
     BrickWalkTimer: Integer; // Mod durch Blöcke laufen: Zeit in ms, so lange kann der Spieler noch Blöcke betreten (danach nur noch heraus laufen)
+    PunchStunCooldown: Integer; // Mod Boxhandschuh: Zeit in ms, so lange kann der Spieler keinen Gegner mehr stunnen
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
   End;
@@ -664,6 +667,10 @@ Type
     StunOnBombLanding: Boolean; // True, Landet eine geworfene Bombe auf einem Spieler, wird dieser gestunnt
     StunMinMs: Integer; // Minimale Stun Zeit in ms
     StunMaxMs: Integer; // Maximale Stun Zeit in ms
+    PunchStun: Boolean; // True, mit dem Punch Item stunnt die zweite Aktion einen Gegner direkt vor dem Spieler
+    PunchStunMinMs: Integer; // Minimale Stun Zeit in ms
+    PunchStunMaxMs: Integer; // Maximale Stun Zeit in ms
+    PunchStunCooldownMs: Integer; // Zeit in ms, so lange kann der Schläger danach nicht erneut schlagen (sonst wäre ein Dauer Stun möglich)
     PositiveDisease: Boolean; // True, ein Teil der Krankheits Items macht statt krank unverwundbar (nicht im Hurry)
     PositiveDiseaseChance: Integer; // in %, Anteil der Krankheits Items die positiv wirken
     PositiveMinMs: Integer; // Minimale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
@@ -1112,6 +1119,10 @@ Begin
   Settings.StunOnBombLanding := false;
   Settings.StunMinMs := 100;
   Settings.StunMaxMs := 500;
+  Settings.PunchStun := false;
+  Settings.PunchStunMinMs := 300;
+  Settings.PunchStunMaxMs := 800;
+  Settings.PunchStunCooldownMs := 1500;
   Settings.PositiveDisease := false;
   Settings.PositiveDiseaseChance := 15;
   Settings.PositiveMinMs := 5000;
@@ -1178,6 +1189,10 @@ Begin
   WriteB('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
   WriteI('Mods', 'StunMinMs', Settings.StunMinMs);
   WriteI('Mods', 'StunMaxMs', Settings.StunMaxMs);
+  WriteB('Mods', 'PunchStun', Settings.PunchStun);
+  WriteI('Mods', 'PunchStunMinMs', Settings.PunchStunMinMs);
+  WriteI('Mods', 'PunchStunMaxMs', Settings.PunchStunMaxMs);
+  WriteI('Mods', 'PunchStunCooldownMs', Settings.PunchStunCooldownMs);
   WriteB('Mods', 'PositiveDisease', Settings.PositiveDisease);
   WriteI('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
   WriteI('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
@@ -1238,6 +1253,10 @@ Begin
     Settings.StunOnBombLanding := ini.ReadBool('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
     Settings.StunMinMs := ini.ReadInteger('Mods', 'StunMinMs', Settings.StunMinMs);
     Settings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', Settings.StunMaxMs);
+    Settings.PunchStun := ini.ReadBool('Mods', 'PunchStun', Settings.PunchStun);
+    Settings.PunchStunMinMs := ini.ReadInteger('Mods', 'PunchStunMinMs', Settings.PunchStunMinMs);
+    Settings.PunchStunMaxMs := ini.ReadInteger('Mods', 'PunchStunMaxMs', Settings.PunchStunMaxMs);
+    Settings.PunchStunCooldownMs := ini.ReadInteger('Mods', 'PunchStunCooldownMs', Settings.PunchStunCooldownMs);
     Settings.PositiveDisease := ini.ReadBool('Mods', 'PositiveDisease', Settings.PositiveDisease);
     Settings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
     Settings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
@@ -1281,6 +1300,13 @@ Begin
       log(ExtractFileName(Filename) + ': StunMaxMs < StunMinMs, using StunMinMs', llWarning);
       Settings.StunMaxMs := Settings.StunMinMs;
     End;
+    Clamp('PunchStunMinMs', Settings.PunchStunMinMs, 0, ModMaxStunMs);
+    Clamp('PunchStunMaxMs', Settings.PunchStunMaxMs, 0, ModMaxStunMs);
+    If Settings.PunchStunMaxMs < Settings.PunchStunMinMs Then Begin
+      log(ExtractFileName(Filename) + ': PunchStunMaxMs < PunchStunMinMs, using PunchStunMinMs', llWarning);
+      Settings.PunchStunMaxMs := Settings.PunchStunMinMs;
+    End;
+    Clamp('PunchStunCooldownMs', Settings.PunchStunCooldownMs, 0, ModMaxPunchStunCooldownMs);
     Clamp('PositiveDiseaseChance', Settings.PositiveDiseaseChance, 0, ModMaxPositiveDiseaseChance);
     Clamp('PositiveMinMs', Settings.PositiveMinMs, 0, ModMaxPositiveMs);
     Clamp('PositiveMaxMs', Settings.PositiveMaxMs, 0, ModMaxPositiveMs);

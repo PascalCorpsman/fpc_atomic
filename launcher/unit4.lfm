@@ -21,6 +21,7 @@ object Form4: TForm4
     Width = 160
     Items.Strings = (
       'Stun on bomb landing'
+      'Boxing glove'
       'Positive disease'
       'Walk through bricks'
       'Hit points'
@@ -96,6 +97,86 @@ object Form4: TForm4
           Top = 38
           Width = 96
           Increment = 50
+        end
+      end
+    end
+    object TabSheet10: TTabSheet
+      Caption = 'TabSheet10'
+      object CheckBox16: TCheckBox
+        Left = 8
+        Height = 19
+        Top = 8
+        Caption = 'Boxing glove'
+        Font.Style = [fsBold]
+        ParentFont = False
+        OnChange = CheckBox1Change
+      end
+      object Label39: TLabel
+        Left = 8
+        Height = 32
+        Top = 34
+        Width = 312
+        AutoSize = False
+        Caption = 'With the punch item the second action stuns an opponent standing on the tile in front of the player.'
+        WordWrap = True
+      end
+      object Panel10: TPanel
+        Left = 0
+        Height = 236
+        Top = 72
+        Width = 328
+        BevelOuter = bvNone
+        ParentColor = True
+        object Label40: TLabel
+          Left = 8
+          Height = 15
+          Top = 12
+          Caption = 'Min. stun time (ms)'
+        end
+        object SpinEdit21: TSpinEdit
+          Hint = 'Shortest stun time. The stun time is random between min. and max.'
+          Left = 220
+          Height = 23
+          Top = 8
+          Width = 96
+          Increment = 50
+        end
+        object Label41: TLabel
+          Left = 8
+          Height = 15
+          Top = 42
+          Caption = 'Max. stun time (ms)'
+        end
+        object SpinEdit22: TSpinEdit
+          Hint = 'Longest stun time. The stun time is random between min. and max.'
+          Left = 220
+          Height = 23
+          Top = 38
+          Width = 96
+          Increment = 50
+        end
+        object Label42: TLabel
+          Left = 8
+          Height = 15
+          Top = 72
+          Caption = 'Wait before next punch (ms)'
+        end
+        object SpinEdit23: TSpinEdit
+          Hint = 'After a punch the same player cannot punch again for this time, so nobody can be stunned all the time.'
+          Left = 220
+          Height = 23
+          Top = 68
+          Width = 96
+          Increment = 100
+        end
+        object Label43: TLabel
+          Left = 8
+          Height = 96
+          Top = 104
+          Width = 312
+          AutoSize = False
+          Caption = 'Works also while standing still. A bomb on the same tile stays where it is. Team mates and invulnerable players are not stunned.'
+          WordWrap = True
         end
       end
     end

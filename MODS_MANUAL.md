@@ -4,6 +4,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 
 - [Setting up the mods](#setting-up-the-mods)
 - [Stun on bomb landing](#stun-on-bomb-landing)
+- [Boxing glove](#boxing-glove)
 - [Positive disease](#positive-disease)
 - [Walk through bricks](#walk-through-bricks)
 - [Hit points (handicap)](#hit-points-handicap)
@@ -42,6 +43,21 @@ The stun hits everyone on the tile: opponents, team mates and the thrower. Invul
 | Max. stun time (ms) | `StunMaxMs` | 500 | 0 .. 10000, not smaller than min. |
 
 The stun time is random between min. and max.
+
+## Boxing glove
+
+With the punch item ![](data/res/powpunch.png) the [second action](MANUAL.md#second-action) stuns an **opponent** who stands on the tile in front of the player (in the direction the player looks). This works also while standing still.
+
+- If a bomb lies on the same tile, only the opponent is stunned and the bomb stays where it is. Without an opponent the bomb is punched as usual.
+- Team mates, invulnerable, flying and dying players are not stunned.
+- After a punch the same player has to wait a moment before the next punch, so nobody can be stunned all the time.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `PunchStun` | 0 (off) | 0 / 1 |
+| Min. stun time (ms) | `PunchStunMinMs` | 300 | 0 .. 10000 |
+| Max. stun time (ms) | `PunchStunMaxMs` | 800 | 0 .. 10000, not smaller than min. |
+| Wait before next punch (ms) | `PunchStunCooldownMs` | 1500 | 0 .. 10000 |
 
 ## Positive disease
 

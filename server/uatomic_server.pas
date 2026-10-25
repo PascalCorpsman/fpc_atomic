@@ -113,6 +113,7 @@ Type
     Procedure HandleStatisticCallback(StatSelector: TStatSelector; Value: uint64 = 1);
     Procedure HandleBombLanded(x, y: integer);
     Function HandlePlayerHit(PlayerIndex: integer): Boolean;
+    Function HandlePlayerPunch(PlayerIndex, x, y: integer): Boolean;
     Procedure HandleGhostRevive(GhostIndex: integer);
     Procedure MakeGhost(PlayerIndex: integer);
     Procedure HandleGhosts();
@@ -201,6 +202,7 @@ Begin
     fFields[i].BombLandedCallback := @HandleBombLanded;
     fFields[i].PlayerHitCallback := @HandlePlayerHit;
     fFields[i].GhostReviveCallback := @HandleGhostRevive;
+    fFields[i].PlayerPunchCallback := @HandlePlayerPunch;
     fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
     fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
     fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
@@ -1096,6 +1098,7 @@ Begin
     If fModSettings.ModTestMode Then fPLayer[i].InvulnTimer := fModSettings.StartInvulnMs;
     fPLayer[i].BrickWalkTimer := 0;
     fPLayer[i].Info.BrickWalk := false;
+    fPLayer[i].PunchStunCooldown := 0;
     // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
     fPLayer[i].MaxHitPoints := 0;
     If fModSettings.HitPoints Then Begin
@@ -1442,6 +1445,31 @@ Begin
       (trunc(fPLayer[i].Info.Position.x) = x) And (trunc(fPLayer[i].Info.Position.y) = y) Then Begin
       fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
     End;
+  End;
+End;
+
+Function TServer.HandlePlayerPunch(PlayerIndex, x, y: integer): Boolean;
+Var
+  i: integer;
+Begin
+  result := false;
+  (*
+   * Boxhandschuh Mod: Alle Gegner auf dem Feld x, y werden gestunnt (Unverwundbare sind immun, wie beim Stun durch eine Bombe).
+   * Danach kann der Schläger PunchStunCooldownMs lang nicht erneut schlagen.
+   *)
+  If Not fModSettings.PunchStun Then exit;
+  If fPLayer[PlayerIndex].PunchStunCooldown > 0 Then exit;
+  For i := 0 To high(fPLayer) Do Begin
+    If i = PlayerIndex Then Continue;
+    If fSettings.TeamPlay And (fPLayer[i].Team = fPLayer[PlayerIndex].Team) Then Continue;
+    If (Not fPLayer[i].Info.Alive) Or fPLayer[i].Info.Dying Or fPLayer[i].Flying Or (fPLayer[i].InvulnTimer > 0) Then Continue;
+    If (trunc(fPLayer[i].Info.Position.x) = x) And (trunc(fPLayer[i].Info.Position.y) = y) Then Begin
+      fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.PunchStunMinMs + random(fModSettings.PunchStunMaxMs - fModSettings.PunchStunMinMs + 1));
+      result := true;
+    End;
+  End;
+  If result Then Begin
+    fPLayer[PlayerIndex].PunchStunCooldown := fModSettings.PunchStunCooldownMs;
   End;
 End;
 
@@ -2248,6 +2276,7 @@ Begin
       Else Begin
         fPLayer[i].InvulnTimer := max(0, fPLayer[i].InvulnTimer - FrameRate);
         fPLayer[i].BrickWalkTimer := max(0, fPLayer[i].BrickWalkTimer - FrameRate);
+        fPLayer[i].PunchStunCooldown := max(0, fPLayer[i].PunchStunCooldown - FrameRate);
       End;
 
       (*
@@ -2820,6 +2849,7 @@ Function TServer.ActiveModsText: String;
 Begin
   result := '';
   If fModSettings.StunOnBombLanding Then result := result + ', stun on bomb landing';
+  If fModSettings.PunchStun Then result := result + ', boxing glove';
   If fModSettings.PositiveDisease Then result := result + ', positive disease';
   If fModSettings.BrickWalk Then result := result + ', walk through bricks';
   If fModSettings.HitPoints Then result := result + ', hit points';
