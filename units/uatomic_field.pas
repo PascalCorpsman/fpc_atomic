@@ -109,6 +109,7 @@ Type
      *)
     Function Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: integer; Flame: TFlame): Boolean;
     Function FielWalkable(x, y: integer; AlsoCheckPowerUps: Boolean): Boolean;
+    Function PlayerWalkable(Const Player: TPlayer; x, y: integer): Boolean; // Wie FielWalkable, aber mit "durch Blöcke laufen" (Mod)
 {$ENDIF}
   public
     Name: String;
@@ -570,6 +571,7 @@ Begin
         End;
         fField[x, y].Exploding := true;
         fField[x, y].ExplodingRenderFlag := true;
+        fField[x, y].FlamePlayer := TriggerPlayerindex; // Damit ein Spieler, der im Block steht (Mod durch Blöcke laufen), einen Verursacher hat
         // fField[x, y].BrickData := bdBlank; // der darf nicht Gleich weg genommen werden, da sonst  2 Bomben auch 2 Steine auf einmal wegsprengen !
         fField[x, y].Counter := 0;
         result := False;
@@ -615,6 +617,35 @@ Begin
       exit;
     End;
   End;
+End;
+
+Function TAtomicField.PlayerWalkable(Const Player: TPlayer; x, y: integer
+  ): Boolean;
+Var
+  i, px, py: Integer;
+Begin
+  result := FielWalkable(x, y, false);
+  If result Then exit;
+  (*
+   * Mod durch Blöcke laufen: zerstörbare Blöcke sind begehbar, aber nur wenn dort keine Bombe liegt.
+   *)
+  If (x < 0) Or (x > FieldWidth - 1) Or (y < 0) Or (y > FieldHeight - 1) Then exit;
+  If fField[x, y].BrickData <> bdBrick Then exit;
+  For i := 0 To fBombCount - 1 Do Begin
+    If (x = trunc(fBombs[i].Position.x)) And (y = trunc(fBombs[i].Position.y)) And (fBombs[i].MoveDir <> bmFly) Then exit;
+  End;
+  If Player.BrickWalkTimer <= 0 Then Begin
+    (*
+     * Die Zeit ist abgelaufen: Steht der Spieler noch in einem Block und ist rundherum kein freies Feld,
+     * darf er weiter durch Blöcke laufen, bis er eines erreicht. Sonst geht es nur noch auf freie Felder.
+     *)
+    px := trunc(Player.Info.Position.x);
+    py := trunc(Player.Info.Position.y);
+    If fField[px, py].BrickData <> bdBrick Then exit;
+    If FielWalkable(px - 1, py, false) Or FielWalkable(px + 1, py, false) Or
+      FielWalkable(px, py - 1, false) Or FielWalkable(px, py + 1, false) Then exit;
+  End;
+  result := true;
 End;
 
 Procedure TAtomicField.Initialize(Const Players: TPlayers; Const Scheme: TScheme;
@@ -917,7 +948,7 @@ Begin
           If commaparty > 0.5 + Epsilon Then Begin
             y := y + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -970,7 +1001,7 @@ Begin
           If commaparty > 0.5 + Epsilon Then Begin
             y := y + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -1023,7 +1054,7 @@ Begin
           If commapartx > 0.5 + Epsilon Then Begin
             x := x + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -1076,7 +1107,7 @@ Begin
           If commapartx > 0.5 + Epsilon Then Begin
             x := x + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -1117,15 +1148,17 @@ Begin
   // evtl. ist der Spieler ja "eingesperrt"
   x := trunc(Players[PlayerIndex].Info.Position.x);
   y := trunc(Players[PlayerIndex].info.Position.y);
-  If (Not FielWalkable(x - 1, y, false)) And
-    (Not FielWalkable(x + 1, y, false)) And
-    (Not FielWalkable(x, y - 1, false)) And
-    (Not FielWalkable(x, y + 1, false)) And
+  If (Not PlayerWalkable(Players[PlayerIndex], x - 1, y)) And
+    (Not PlayerWalkable(Players[PlayerIndex], x + 1, y)) And
+    (Not PlayerWalkable(Players[PlayerIndex], x, y - 1)) And
+    (Not PlayerWalkable(Players[PlayerIndex], x, y + 1)) And
     (Players[PlayerIndex].info.Animation <> raLockedIn) Then Begin
     Players[PlayerIndex].info.Animation := raLockedIn;
     Players[PlayerIndex].info.Value := random(65536);
     Players[PlayerIndex].info.Counter := 0;
   End;
+  // Mod durch Blöcke laufen: Der Client zeichnet den Spieler durchsichtig, so lange er Blöcke betreten kann oder noch in einem steht
+  Players[PlayerIndex].Info.BrickWalk := (Players[PlayerIndex].BrickWalkTimer > 0) Or (fField[x, y].BrickData = bdBrick);
   result := fField[x, y].BrickData = bdSolid;
 End;
 
@@ -1146,6 +1179,8 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     End;
     // Es darf keine Bombe auf ein Loch gelegt werden !
     If fHasHoles And (fHurryIndex = -1) And fHoles[trunc(ax), trunc(ay)] Then exit;
+    // Und auch nicht in einen Block (Mod durch Blöcke laufen)
+    If fField[trunc(ax), trunc(ay)].BrickData <> bdBlank Then exit;
     fBombs[fBombCount].ColorIndex := player.info.ColorIndex;
     fBombs[fBombCount].Position.x := trunc(ax) + 0.5;
     fBombs[fBombCount].Position.y := trunc(ay) + 0.5;
@@ -1823,8 +1858,8 @@ Begin
     If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
     x := trunc(Players[i].Info.Position.x);
     y := trunc(Players[i].Info.Position.y);
-    // Die Kollision Spieler gegen PowerUp
-    If fField[x, y].PowerUp <> puNone Then Begin
+    // Die Kollision Spieler gegen PowerUp (die PowerUps unter einem Block gibt es erst, wenn er weg ist, Mod durch Blöcke laufen)
+    If (fField[x, y].PowerUp <> puNone) And (fField[x, y].BrickData = bdBlank) Then Begin
       PlayerGetsPowerUp(Players[i], i, fField[x, y].PowerUp);
       fField[x, y].PowerUp := puNone;
     End;
@@ -1873,7 +1908,9 @@ Begin
       Players[i].FlyTarget := v2(nx + 0.5, ny + 0.5);
     End;
     // Die Kollision Spieler gegen eine Flamme -> Spieler i stirbt und wird von Spieler "fField[x, y].FlamePlayer" gekillt
-    If fField[x, y].Flame <> [] Then Begin
+    // Mod durch Blöcke laufen: Wer in einem Block steht, wird von dessen Explosion getroffen wie von einer Flamme
+    If (fField[x, y].Flame <> []) Or
+      (Players[i].Info.BrickWalk And fField[x, y].Exploding And (fField[x, y].Counter < FlameTime)) Then Begin
       // TODO: Während eines Teleport vorgangs ist der Spieler unsterblich -> Klären ob das wirklich gewollt ist..
       // Ein unverwundbarer Spieler ignoriert die Flammen (der Hurry Tod passiert in HandleMovePlayer und ist davon nicht betroffen)
       If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) And (Players[i].InvulnTimer <= 0) Then Begin

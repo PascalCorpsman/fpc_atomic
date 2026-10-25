@@ -5,6 +5,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 - [Setting up the mods](#setting-up-the-mods)
 - [Stun on bomb landing](#stun-on-bomb-landing)
 - [Positive disease](#positive-disease)
+- [Walk through bricks](#walk-through-bricks)
 - [Hit points (handicap)](#hit-points-handicap)
 - [Ghosts](#ghosts)
 - [Glove at start](#glove-at-start)
@@ -52,6 +53,27 @@ During hurry a disease item is always a normal disease. The super bad disease ![
 | Chance of a disease item (%) | `PositiveDiseaseChance` | 15 | 0 .. 100 |
 | Min. invulnerable time (ms) | `PositiveMinMs` | 5000 | 0 .. 120000 |
 | Max. invulnerable time (ms) | `PositiveMaxMs` | 20000 | 0 .. 120000, not smaller than min. |
+
+## Walk through bricks
+
+A part of the disease items ![](data/res/powdisea.png) lets the player walk **through destructible bricks** for a random time instead of making the player sick. Solid blocks stay solid. While the effect lasts, the player is drawn see-through.
+
+- If the time ends inside a brick, the player can only walk out of it. Further bricks can only be entered while there is no free tile next to the player, so nobody gets locked in.
+- No bombs can be placed inside a brick.
+- If the brick explodes while the player is inside, the player is hit like by a flame.
+- Items hidden in a brick can only be picked up after the brick is gone.
+- During hurry a disease item is always a normal disease, and a running effect ends (the player can still walk out of a brick).
+- If the [positive disease](#positive-disease) is also on, it is rolled first. The chance here applies to the remaining disease items.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `BrickWalk` | 0 (off) | 0 / 1 |
+| Chance of a disease item (%) | `BrickWalkChance` | 15 | 0 .. 100 |
+| Min. time (ms) | `BrickWalkMinMs` | 5000 | 0 .. 120000 |
+| Max. time (ms) | `BrickWalkMaxMs` | 10000 | 0 .. 120000, not smaller than min. |
+| See-through (%) | `BrickWalkTransparency` | 50 | 0 .. 100, 0 = normal, 100 = invisible |
+
+The see-through effect is made by drawing the player only in a part of the frames, so it may flicker a little.
 
 ## Hit points (handicap)
 
@@ -117,7 +139,7 @@ Sometimes a round starts in a small pocket between bricks, and a bomb placed by 
 
 ## Mod test mode
 
-The mod test mode helps to try the mods without waiting for the right situation in a game. **It is meant for testing only:** while it is on, all players see the hint `MOD TEST MODE - F3: HELP` at the bottom of the screen, and the remaining invulnerable (`I`) and stun (`S`) times above the players.
+The mod test mode helps to try the mods without waiting for the right situation in a game. **It is meant for testing only:** while it is on, all players see the hint `MOD TEST MODE - F3: HELP` at the bottom of the screen, and the remaining invulnerable (`I`), stun (`S`) and walk through bricks (`B`) times above the players.
 
 Only the player who hosts the game (the master) can use the test keys during a round:
 
@@ -131,6 +153,7 @@ Only the player who hosts the game (the master) can use the test keys during a r
 | F8 | Start the hurry now |
 | F9 | Stun me |
 | F11 | Refill my hit points |
+| F12 | Walk through bricks |
 
 Hold **Shift** to use the key on the second player of this PC. F10 is not used, because Windows uses it for the window menu.
 

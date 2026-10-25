@@ -654,10 +654,11 @@ Begin
   i := fSettings.MasterUid;
   m.Write(i, sizeof(i));
   SendChunk(miRequestLoginResult, m, UID);
-  // Dem neuen Spieler mitteilen ob der Mod Test Modus an ist (nur der Master darf Test Befehle ausführen) und wie Geister flackern
+  // Dem neuen Spieler mitteilen ob der Mod Test Modus an ist (nur der Master darf Test Befehle ausführen), wie Geister flackern und wie durchsichtig "durch Blöcke laufen" ist
   m := TMemoryStream.Create;
   m.Write(fModSettings.ModTestMode, sizeof(fModSettings.ModTestMode));
   m.Write(fModSettings.GhostFlickerMs, sizeof(fModSettings.GhostFlickerMs));
+  m.Write(fModSettings.BrickWalkTransparency, sizeof(fModSettings.BrickWalkTransparency));
   SendChunk(miModInfo, m, UID);
   // Allen Mitteilen das wir nen neuen Spieler haben
   RefreshAllPlayerStats(0); // Allen Anwesenden Mitteilen Welche Spieler es so gibt
@@ -1088,6 +1089,8 @@ Begin
     fPLayer[i].StunTimer := 0;
     fPLayer[i].InvulnTimer := 0;
     If fModSettings.ModTestMode Then fPLayer[i].InvulnTimer := fModSettings.StartInvulnMs;
+    fPLayer[i].BrickWalkTimer := 0;
+    fPLayer[i].Info.BrickWalk := false;
     // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
     fPLayer[i].MaxHitPoints := 0;
     If fModSettings.HitPoints Then Begin
@@ -1231,6 +1234,13 @@ Begin
         If fModSettings.PositiveDisease And (Not fActualField.HurryActive()) And (random(100) < fModSettings.PositiveDiseaseChance) Then Begin
           HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
           Player.InvulnTimer := max(Player.InvulnTimer, fModSettings.PositiveMinMs + random(fModSettings.PositiveMaxMs - fModSettings.PositiveMinMs + 1));
+          LogLeave(EnterID);
+          exit;
+        End;
+        // Durch Blöcke laufen (Mod), wird erst nach der positiven Krankheit gewürfelt
+        If fModSettings.BrickWalk And (Not fActualField.HurryActive()) And (random(100) < fModSettings.BrickWalkChance) Then Begin
+          HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+          Player.BrickWalkTimer := max(Player.BrickWalkTimer, fModSettings.BrickWalkMinMs + random(fModSettings.BrickWalkMaxMs - fModSettings.BrickWalkMinMs + 1));
           LogLeave(EnterID);
           exit;
         End;
@@ -1465,6 +1475,8 @@ Begin
   fPLayer[PlayerIndex].Disease := [];
   fPLayer[PlayerIndex].StunTimer := 0;
   fPLayer[PlayerIndex].InvulnTimer := 0;
+  fPLayer[PlayerIndex].BrickWalkTimer := 0;
+  fPLayer[PlayerIndex].Info.BrickWalk := false;
   fPLayer[PlayerIndex].Action := aaNone;
 End;
 
@@ -1491,6 +1503,8 @@ Begin
   fPLayer[GhostIndex].Disease := [];
   fPLayer[GhostIndex].DiseaseCounter := 0;
   fPLayer[GhostIndex].StunTimer := 0;
+  fPLayer[GhostIndex].BrickWalkTimer := 0;
+  fPLayer[GhostIndex].Info.BrickWalk := false;
   fPLayer[GhostIndex].InvulnTimer := fModSettings.GhostReviveInvulnMs;
   fPLayer[GhostIndex].Powers := PowersFromScheme(fSettings.Scheme);
   For pu In TPowerUps Do Begin
@@ -1704,6 +1718,11 @@ Begin
         fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].MaxHitPoints;
         If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
         s := 'hit points: ' + inttostr(fPLayer[PlayerIndex].HitPoints);
+      End;
+    mtBrickWalk: Begin
+        fPLayer[PlayerIndex].BrickWalkTimer := max(fPLayer[PlayerIndex].BrickWalkTimer, fModSettings.BrickWalkMinMs + random(fModSettings.BrickWalkMaxMs - fModSettings.BrickWalkMinMs + 1));
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'walk through bricks';
       End;
   End;
   log('Mod test command for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
@@ -2212,9 +2231,11 @@ Begin
        *)
       If fActualField.HurryActive() Then Begin
         fPLayer[i].InvulnTimer := 0;
+        fPLayer[i].BrickWalkTimer := 0; // Wer noch in einem Block steht, kann ihn noch verlassen
       End
       Else Begin
         fPLayer[i].InvulnTimer := max(0, fPLayer[i].InvulnTimer - FrameRate);
+        fPLayer[i].BrickWalkTimer := max(0, fPLayer[i].BrickWalkTimer - FrameRate);
       End;
 
       (*
@@ -2340,9 +2361,11 @@ Begin
     // Die Restzeiten werden nur für die Zustandsanzeige im Mod Test Modus übertragen
     fPLayer[i].Info.TestInvulnTime := 0;
     fPLayer[i].Info.TestStunTime := 0;
+    fPLayer[i].Info.TestBrickWalkTime := 0;
     If fModSettings.ModTestMode Then Begin
       fPLayer[i].Info.TestInvulnTime := min(high(uint16), fPLayer[i].InvulnTimer);
       fPLayer[i].Info.TestStunTime := min(high(uint16), fPLayer[i].StunTimer);
+      fPLayer[i].Info.TestBrickWalkTime := min(high(uint16), fPLayer[i].BrickWalkTimer);
     End;
     (*
      * Der Spieler langweilt sich und wird nicht zufällig gerade gegrillt
@@ -2786,6 +2809,7 @@ Begin
   result := '';
   If fModSettings.StunOnBombLanding Then result := result + ', stun on bomb landing';
   If fModSettings.PositiveDisease Then result := result + ', positive disease';
+  If fModSettings.BrickWalk Then result := result + ', walk through bricks';
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
   If fModSettings.GloveAtStart Then result := result + ', glove at start';

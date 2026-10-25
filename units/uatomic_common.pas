@@ -149,6 +149,7 @@ Const
    *                       ADD: mod settings code shared by server and launcher (defaults, limits, load / save)
    *                       ADD: launcher: new layout (live name check, game data / version status) and mods dialog for atomic_server.ini
    *                       ADD: optional glove at start, until the first step of a round every player can throw a bomb like with the glove
+   *                       ADD: optional disease "walk through bricks", the player is drawn see-through
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -249,6 +250,9 @@ Const
   ModMaxStunMs = 10000; // StunMinMs, StunMaxMs
   ModMaxPositiveDiseaseChance = 100; // in %
   ModMaxPositiveMs = 120000; // PositiveMinMs, PositiveMaxMs
+  ModMaxBrickWalkChance = 100; // in %
+  ModMaxBrickWalkMs = 120000; // BrickWalkMinMs, BrickWalkMaxMs
+  ModMaxBrickWalkTransparency = 100; // in %, 100 = unsichtbar
   ModMaxGhostReviveInvulnMs = 60000;
   ModMaxGhostFlameLen = 99; // untere Grenze 1
   ModMaxGhostFlickerMs = 5000;
@@ -555,6 +559,8 @@ Type
     TestStunTime: uint16; // Nur im Mod Test Modus: Restzeit des Stun in ms (für die Zustandsanzeige), sonst 0
     Ghost: Boolean; // Mod Geister: True, der Spieler ist tot (Alive = false) und läuft als Geist am Rand entlang
     GhostTime: uint16; // Mod Geister: Restzeit in ms bis der Geist verschwindet (für die Warnung im Client), 0 = kein Limit
+    BrickWalk: Boolean; // Mod durch Blöcke laufen: True, der Spieler kann durch Blöcke laufen bzw. steht noch in einem (der Client zeichnet ihn durchsichtig)
+    TestBrickWalkTime: uint16; // Nur im Mod Test Modus: Restzeit von "durch Blöcke laufen" in ms (für die Zustandsanzeige), sonst 0
   End;
 
   (*
@@ -568,6 +574,7 @@ Type
     , mtStun // F9, Stun
     , mtAllItems // F4, Kick, Punch, Grab, Bomben, Flammen
     , mtMaxHitPoints // F11, Trefferpunkte wieder auf Maximum
+    , mtBrickWalk // F12, durch Blöcke laufen
     );
 
   TAtomicKey = (
@@ -639,6 +646,7 @@ Type
     GhostTimer: Integer; // Mod Geister: Zeit in ms bis der Geist verschwindet, wenn er keinen Gegner trifft (nur wenn GhostMaxTimeMs > 0)
     GhostBombActive: Boolean; // Mod Geister: True, so lange die geworfene Geisterbombe noch nicht explodiert ist
     StartGlove: Boolean; // Mod Handschuh beim Start: True, bis sich der Spieler in dieser Runde das erste Mal bewegt hat, so lange kann er Bomben werfen wie mit Handschuh
+    BrickWalkTimer: Integer; // Mod durch Blöcke laufen: Zeit in ms, so lange kann der Spieler noch Blöcke betreten (danach nur noch heraus laufen)
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
   End;
@@ -655,6 +663,11 @@ Type
     PositiveDiseaseChance: Integer; // in %, Anteil der Krankheits Items die positiv wirken
     PositiveMinMs: Integer; // Minimale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
     PositiveMaxMs: Integer; // Maximale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
+    BrickWalk: Boolean; // True, ein Teil der Krankheits Items lässt durch zerstörbare Blöcke laufen (nicht im Hurry)
+    BrickWalkChance: Integer; // in %, Anteil der Krankheits Items (die nicht schon positiv waren), die durch Blöcke laufen lassen
+    BrickWalkMinMs: Integer; // Minimale Zeit in ms
+    BrickWalkMaxMs: Integer; // Maximale Zeit in ms
+    BrickWalkTransparency: Integer; // in %, so durchsichtig wird der Spieler gezeichnet (0 = normal, 100 = unsichtbar)
     Ghosts: Boolean; // True, Tote laufen bis zum Hurry als Geist am Rand und können mit einem Treffer eines Gegners zurück ins Spiel
     GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
     GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
@@ -1090,6 +1103,11 @@ Begin
   Settings.PositiveDiseaseChance := 15;
   Settings.PositiveMinMs := 5000;
   Settings.PositiveMaxMs := 20000;
+  Settings.BrickWalk := false;
+  Settings.BrickWalkChance := 15;
+  Settings.BrickWalkMinMs := 5000;
+  Settings.BrickWalkMaxMs := 10000;
+  Settings.BrickWalkTransparency := 50;
   Settings.Ghosts := false;
   Settings.GhostReviveInvulnMs := 3000;
   Settings.GhostFlameLen := 2;
@@ -1143,6 +1161,11 @@ Begin
   WriteI('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
   WriteI('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
   WriteI('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
+  WriteB('Mods', 'BrickWalk', Settings.BrickWalk);
+  WriteI('Mods', 'BrickWalkChance', Settings.BrickWalkChance);
+  WriteI('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
+  WriteI('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
+  WriteI('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
   WriteB('Mods', 'Ghosts', Settings.Ghosts);
   WriteI('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
   WriteI('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1190,6 +1213,11 @@ Begin
     Settings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
     Settings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
     Settings.PositiveMaxMs := ini.ReadInteger('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
+    Settings.BrickWalk := ini.ReadBool('Mods', 'BrickWalk', Settings.BrickWalk);
+    Settings.BrickWalkChance := ini.ReadInteger('Mods', 'BrickWalkChance', Settings.BrickWalkChance);
+    Settings.BrickWalkMinMs := ini.ReadInteger('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
+    Settings.BrickWalkMaxMs := ini.ReadInteger('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
+    Settings.BrickWalkTransparency := ini.ReadInteger('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
     Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
     Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
     Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1223,6 +1251,14 @@ Begin
       log(ExtractFileName(Filename) + ': PositiveMaxMs < PositiveMinMs, using PositiveMinMs', llWarning);
       Settings.PositiveMaxMs := Settings.PositiveMinMs;
     End;
+    Clamp('BrickWalkChance', Settings.BrickWalkChance, 0, ModMaxBrickWalkChance);
+    Clamp('BrickWalkMinMs', Settings.BrickWalkMinMs, 0, ModMaxBrickWalkMs);
+    Clamp('BrickWalkMaxMs', Settings.BrickWalkMaxMs, 0, ModMaxBrickWalkMs);
+    If Settings.BrickWalkMaxMs < Settings.BrickWalkMinMs Then Begin
+      log(ExtractFileName(Filename) + ': BrickWalkMaxMs < BrickWalkMinMs, using BrickWalkMinMs', llWarning);
+      Settings.BrickWalkMaxMs := Settings.BrickWalkMinMs;
+    End;
+    Clamp('BrickWalkTransparency', Settings.BrickWalkTransparency, 0, ModMaxBrickWalkTransparency);
     Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
     Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
     Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
@@ -1284,6 +1320,7 @@ Begin
     mtStun: result := 'stun me';
     mtAllItems: result := 'all items';
     mtMaxHitPoints: result := 'max hit points';
+    mtBrickWalk: result := 'walk through bricks';
   End;
 End;
 

@@ -47,6 +47,7 @@ Type
     CheckBox6: TCheckBox;
     CheckBox7: TCheckBox;
     CheckBox8: TCheckBox;
+    CheckBox9: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -68,6 +69,12 @@ Type
     Label24: TLabel;
     Label25: TLabel;
     Label26: TLabel;
+    Label27: TLabel;
+    Label28: TLabel;
+    Label29: TLabel;
+    Label30: TLabel;
+    Label31: TLabel;
+    Label32: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -82,12 +89,17 @@ Type
     Panel4: TPanel;
     Panel5: TPanel;
     Panel6: TPanel;
+    Panel7: TPanel;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
     SpinEdit12: TSpinEdit;
     SpinEdit13: TSpinEdit;
     SpinEdit14: TSpinEdit;
+    SpinEdit15: TSpinEdit;
+    SpinEdit16: TSpinEdit;
+    SpinEdit17: TSpinEdit;
+    SpinEdit18: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -103,6 +115,7 @@ Type
     TabSheet4: TTabSheet;
     TabSheet5: TTabSheet;
     TabSheet6: TTabSheet;
+    TabSheet7: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -123,7 +136,7 @@ Type
     Function ControlsToSettings(): Boolean; // False, wenn eine Eingabe ungültig ist (dann wurde schon eine Meldung angezeigt)
     Procedure UpdateModEnabled();
     Function ValidHandicapRow(aRow: integer): Boolean;
-    Procedure ShowModPage(Index: integer);
+    Procedure ShowModPage(Page: TTabSheet);
   public
 
   End;
@@ -155,26 +168,32 @@ Begin
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 6);
+  setlength(fModCheckBoxes, 7);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox2;
-  fModCheckBoxes[2] := CheckBox3;
-  fModCheckBoxes[3] := CheckBox4;
-  fModCheckBoxes[4] := CheckBox8;
-  fModCheckBoxes[5] := CheckBox5;
-  setlength(fModPanels, 6);
+  fModCheckBoxes[2] := CheckBox9;
+  fModCheckBoxes[3] := CheckBox3;
+  fModCheckBoxes[4] := CheckBox4;
+  fModCheckBoxes[5] := CheckBox8;
+  fModCheckBoxes[6] := CheckBox5;
+  setlength(fModPanels, 7);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel2;
-  fModPanels[2] := Panel3;
-  fModPanels[3] := Panel4;
-  fModPanels[4] := Panel6;
-  fModPanels[5] := Panel5;
+  fModPanels[2] := Panel7;
+  fModPanels[3] := Panel3;
+  fModPanels[4] := Panel4;
+  fModPanels[5] := Panel6;
+  fModPanels[6] := Panel5;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
   SpinEdit3.MaxValue := ModMaxPositiveDiseaseChance;
   SpinEdit4.MaxValue := ModMaxPositiveMs;
   SpinEdit5.MaxValue := ModMaxPositiveMs;
+  SpinEdit15.MaxValue := ModMaxBrickWalkChance;
+  SpinEdit16.MaxValue := ModMaxBrickWalkMs;
+  SpinEdit17.MaxValue := ModMaxBrickWalkMs;
+  SpinEdit18.MaxValue := ModMaxBrickWalkTransparency;
   SpinEdit6.MinValue := FlameTime;
   SpinEdit6.MaxValue := ModMaxInvulnTimeMs;
   SpinEdit7.MinValue := 1;
@@ -203,7 +222,7 @@ Begin
   // Immer den aktuellen Stand der Datei zeigen, falls sie von Hand geändert wurde
   LoadModSettingsFromFile(GetAtomicServerIniFile(), fSettings);
   SettingsToControls();
-  ShowModPage(PageControl1.ActivePageIndex);
+  ShowModPage(PageControl1.ActivePage);
 End;
 
 Procedure TForm4.Button1Click(Sender: TObject);
@@ -287,6 +306,12 @@ Begin
   SpinEdit4.Value := fSettings.PositiveMinMs;
   SpinEdit5.Value := fSettings.PositiveMaxMs;
 
+  CheckBox9.Checked := fSettings.BrickWalk;
+  SpinEdit15.Value := fSettings.BrickWalkChance;
+  SpinEdit16.Value := fSettings.BrickWalkMinMs;
+  SpinEdit17.Value := fSettings.BrickWalkMaxMs;
+  SpinEdit18.Value := fSettings.BrickWalkTransparency;
+
   CheckBox3.Checked := fSettings.HitPoints;
   SpinEdit6.Value := fSettings.InvulnTimeMs;
   SpinEdit7.Value := fSettings.DefaultHitPoints;
@@ -321,19 +346,24 @@ Var
 Begin
   result := false;
   If SpinEdit2.Value < SpinEdit1.Value Then Begin
-    ShowModPage(0);
+    ShowModPage(TabSheet1);
     showmessage('Error, max. stun time is smaller than min. stun time.');
     exit;
   End;
   If SpinEdit5.Value < SpinEdit4.Value Then Begin
-    ShowModPage(1);
+    ShowModPage(TabSheet2);
+    showmessage('Error, max. time is smaller than min. time.');
+    exit;
+  End;
+  If SpinEdit17.Value < SpinEdit16.Value Then Begin
+    ShowModPage(TabSheet7);
     showmessage('Error, max. time is smaller than min. time.');
     exit;
   End;
   // Die Handicap Tabelle, leere Zeilen werden ignoriert
   For i := StringGrid1.FixedRows To StringGrid1.RowCount - 1 Do Begin
     If Not ValidHandicapRow(i) Then Begin
-      ShowModPage(2);
+      ShowModPage(TabSheet3);
       StringGrid1.Row := i;
       showmessage('Error, invalid handicap in line ' + inttostr(i) + ':' + LineEnding +
         'The player name needs to be a valid name (optional with ~2 at the end) and the hit points need to be in 1..' + inttostr(ModMaxHitPoints) + '.');
@@ -342,7 +372,7 @@ Begin
     n := trim(StringGrid1.Cells[0, i]);
     For j := StringGrid1.FixedRows To i - 1 Do Begin
       If (n <> '') And (lowercase(n) = lowercase(trim(StringGrid1.Cells[0, j]))) Then Begin
-        ShowModPage(2);
+        ShowModPage(TabSheet3);
         StringGrid1.Row := i;
         showmessage('Error, the player name "' + n + '" is used twice.');
         exit;
@@ -358,6 +388,12 @@ Begin
   fSettings.PositiveDiseaseChance := SpinEdit3.Value;
   fSettings.PositiveMinMs := SpinEdit4.Value;
   fSettings.PositiveMaxMs := SpinEdit5.Value;
+
+  fSettings.BrickWalk := CheckBox9.Checked;
+  fSettings.BrickWalkChance := SpinEdit15.Value;
+  fSettings.BrickWalkMinMs := SpinEdit16.Value;
+  fSettings.BrickWalkMaxMs := SpinEdit17.Value;
+  fSettings.BrickWalkTransparency := SpinEdit18.Value;
 
   fSettings.HitPoints := CheckBox3.Checked;
   fSettings.InvulnTimeMs := SpinEdit6.Value;
@@ -414,10 +450,10 @@ Begin
   result := ValidHandicapName(n) And (StrToIntDef(v, 0) >= 1) And (StrToIntDef(v, 0) <= ModMaxHitPoints);
 End;
 
-Procedure TForm4.ShowModPage(Index: integer);
+Procedure TForm4.ShowModPage(Page: TTabSheet);
 Begin
-  PageControl1.ActivePageIndex := Index;
-  CheckListBox1.ItemIndex := Index;
+  PageControl1.ActivePage := Page;
+  CheckListBox1.ItemIndex := Page.PageIndex;
 End;
 
 End.

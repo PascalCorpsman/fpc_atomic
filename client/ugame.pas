@@ -117,6 +117,8 @@ Type
     fScheme: TScheme;
     fModTestMode: Boolean; // True, wenn der Server den Mod Test Modus erlaubt (miModInfo), nur dann reagieren die F-Tasten
     fGhostFlickerMs: Integer; // Zeit in ms eines Flacker Taktes der Geister (miModInfo), 0 = kein Flackern
+    fBrickWalkTransparency: Integer; // in %, so durchsichtig werden Spieler gezeichnet, die durch Blöcke laufen (miModInfo)
+    fRenderFrame: Int64; // Zähler der gerenderten Spiel Frames, für die Durchsichtigkeit (BrickWalkVisible)
     fShowModTestHelp: Boolean; // True, die Hilfe des Mod Test Modus (F3) wird angezeigt
     fModTestMessage: String; // Rückmeldung zum zuletzt gesendeten Test Befehl
     fModTestMessageTimeStamp: QWord; // Zeitpunkt, an dem fModTestMessage gesetzt wurde
@@ -162,6 +164,7 @@ Type
 
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
     Procedure RenderGhost(Const Info: TAtomicInfo);
+    Function BrickWalkVisible(): Boolean;
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
 
@@ -685,6 +688,7 @@ Begin
     VK_F9: Command := mtStun;
     VK_F4: Command := mtAllItems; // F10 ist unter Windows die Menü Taste
     VK_F11: Command := mtMaxHitPoints;
+    VK_F12: Command := mtBrickWalk;
   Else
     exit;
   End;
@@ -1010,6 +1014,7 @@ Begin
   fChunkManager.SetNoDelay(true);
   fModTestMode := false; // Wird vom Server ggf. mittels miModInfo aktiviert
   fGhostFlickerMs := 0;
+  fBrickWalkTransparency := 0;
   fShowModTestHelp := false;
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
@@ -1207,6 +1212,8 @@ Begin
         Chunk.Data.Read(fModTestMode, sizeof(fModTestMode));
         fGhostFlickerMs := 0;
         Chunk.Data.Read(fGhostFlickerMs, sizeof(fGhostFlickerMs));
+        fBrickWalkTransparency := 0;
+        Chunk.Data.Read(fBrickWalkTransparency, sizeof(fBrickWalkTransparency));
       End;
     miStartGame: Begin
         HandleStartGame();
@@ -1915,6 +1922,18 @@ Begin
   SetShaderTransform(ViewPort);
 End;
 
+Function TGame.BrickWalkVisible: Boolean;
+Var
+  k: Int64;
+Begin
+  (*
+   * Mod durch Blöcke laufen: Der Spieler wird nur in (100 - fBrickWalkTransparency) % der Frames gezeichnet,
+   * gleichmäßig verteilt, dadurch wirkt er durchsichtig (die Grafik Engine kennt keine Teil-Transparenz).
+   *)
+  k := 100 - fBrickWalkTransparency;
+  result := (fRenderFrame * k) Div 100 <> ((fRenderFrame - 1) * k) Div 100;
+End;
+
 Procedure TGame.RenderFieldHeader;
 Var
   x, y, i: Integer;
@@ -1975,7 +1994,8 @@ Begin
       If fPlayer[i].Info.Alive And (Not fPlayer[i].Info.Dying) Then Begin
         s := '';
         If fPlayer[i].Info.TestInvulnTime > 0 Then s := s + format('I%.1f ', [fPlayer[i].Info.TestInvulnTime / 1000]);
-        If fPlayer[i].Info.TestStunTime > 0 Then s := s + format('S%.1f', [fPlayer[i].Info.TestStunTime / 1000]);
+        If fPlayer[i].Info.TestStunTime > 0 Then s := s + format('S%.1f ', [fPlayer[i].Info.TestStunTime / 1000]);
+        If fPlayer[i].Info.TestBrickWalkTime > 0 Then s := s + format('B%.1f', [fPlayer[i].Info.TestBrickWalkTime / 1000]);
         If s <> '' Then Begin
           x := round(fPlayer[i].Info.Position.x * FieldBlockWidth) + FieldxOff - 20;
           y := round((fPlayer[i].Info.Position.y - 2) * FieldBlockHeight) + FieldyOff;
@@ -1993,8 +2013,10 @@ Begin
       AtomicFont.Textout(120, 200, atomic_dialog_Layer + atomic_EPSILON, 'F8  : ' + ModTestCommandToString(mtHurry));
       AtomicFont.Textout(120, 220, atomic_dialog_Layer + atomic_EPSILON, 'F9  : ' + ModTestCommandToString(mtStun));
       AtomicFont.Textout(120, 240, atomic_dialog_Layer + atomic_EPSILON, 'F11 : ' + ModTestCommandToString(mtMaxHitPoints));
-      AtomicFont.Textout(120, 270, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2. player on this pc');
-      AtomicFont.Textout(120, 290, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned (seconds)');
+      AtomicFont.Textout(120, 260, atomic_dialog_Layer + atomic_EPSILON, 'F12 : ' + ModTestCommandToString(mtBrickWalk));
+      AtomicFont.Textout(120, 290, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2. player on this pc');
+      AtomicFont.Textout(120, 310, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned,');
+      AtomicFont.Textout(120, 330, atomic_dialog_Layer + atomic_EPSILON, 'B = walk through bricks (seconds)');
     End;
   End;
   (*
@@ -2726,10 +2748,14 @@ Begin
     gs_Gaming: Begin
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
+        inc(fRenderFrame);
         For i := 0 To high(fPlayer) Do Begin
           If fPlayer[i].Info.Alive Then Begin
-            RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
-            fPlayer[i].edge := false;
+            // Wer durch Blöcke laufen kann, wird durchsichtig gezeichnet (nicht in der Pause und nicht beim Sterben)
+            If fPause Or fPlayer[i].Info.Dying Or (Not fPlayer[i].Info.BrickWalk) Or BrickWalkVisible() Then Begin
+              RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
+              fPlayer[i].edge := false;
+            End;
           End;
           // Geister (Mod) werden klein auf dem Rahmen und flackernd gerendert (nicht in der Pause)
           If fPlayer[i].Info.Ghost Then Begin
