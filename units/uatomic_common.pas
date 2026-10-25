@@ -139,11 +139,11 @@ Const
    *             0.13004 = ADD: speedup startup
    *                       FIX: connect on some linux devices stalled
    *                       FIX: trampolin placing was wrong
-   *                       ADD: optional mods via atomic_server.ini (default off), first mod: thrown bombs landing on a player stun him
+   *                       ADD: optional mods via atomic_server.ini (default off), first mod: thrown bombs landing on a player stun the player
    *                       ADD: invulnerability of players (base for further mods), ends when hurry starts
    *                       ADD: optional positive disease, makes the player invulnerable for some time (not during hurry)
    *                       ADD: optional hit points per player name (handicap) -> need change in ProtocollVersion
-   *                       ADD: mod test mode with keys F3..F11 (without F10) for testing the mods (only master, only if enabled in atomic_server.ini)
+   *                       ADD: mod test mode with keys F1..F12 (without F10) and Ins for testing the mods (only master, only if enabled in atomic_server.ini)
    *                       ADD: optional ghosts, dead players walk around the border and can throw bombs to get back into the game
    *                       ADD: ghosts: max count per round and optional max time until they vanish (flicker faster before)
    *                       ADD: mod settings code shared by server and launcher (defaults, limits, load / save)
@@ -155,7 +155,9 @@ Const
    *                       ADD: optional boxing glove, with the punch item the second action stuns an opponent in front of the player
    *                       ADD: optional disease "white screen", the screen of the player turns white for some time
    *                       ADD: optional white bomb item, the next bomb explodes without flames and turns the screens of all opponents white
-   *                       ADD: optional flamethrower item, hold the second action to fire, opponents in the beam die after some time
+   *                       ADD: optional flamethrower item, hold the second action to fire, opponents staying in the beam are hit after some time
+   *                       ADD: mods manual in English and German (MODS_MANUAL.md, MODS_MANUAL_DE.md)
+   *                       FIX: launcher title showed the version with a locale comma (0,11)
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
