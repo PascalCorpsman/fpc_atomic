@@ -396,6 +396,7 @@ Type
     Position: TVector2; // in Field Coordinaten, können aber auch "Verrückt" sein, wenn die Bombe wild rum fliegt..
     Animation: TBombAnimation; // Die Jeweilige Animation
     AnimationOffset: uint16; // Damit nicht alle "Gleich" aussehen
+    WhiteBomb: Boolean; // Mod weiße Bombe: explodiert ohne Flammen und flasht alle Gegner (zählt nicht zu den Bomben des Spielers), der Client zeichnet sie grau
 {$IFDEF Server}
     FlyStart, FlyTarget: TVector2;
     FlyTime: integer; // Zeit In ms Seit derer die Bombe Fliegt
@@ -411,7 +412,6 @@ Type
     DudTime: integer; // Zähler für die Jeweilige Bombe wie lange sie "Dud" ist
     StunOnLand: Boolean; // True, wenn die Bombe geworfen (nicht gepuncht) wurde, landet sie auf einem Spieler, wird dieser gestunnt (nur wenn Mod aktiv)
     GhostBomb: Boolean; // True, die Bombe wurde von einem Geist geworfen (der Geist bekommt keine Bombe zurück, darf aber nach der Explosion wieder werfen)
-    WhiteBomb: Boolean; // Mod weiße Bombe: explodiert ohne Flammen und flasht alle Gegner (zählt nicht zu den Bomben des Spielers)
 {$ENDIF}
   End;
 

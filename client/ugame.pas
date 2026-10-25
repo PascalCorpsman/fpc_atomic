@@ -1606,6 +1606,7 @@ Begin
     stream.Read(fBombs[i].Position, SizeOf(fBombs[i].Position));
     stream.Read(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Read(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
+    stream.Read(fBombs[i].WhiteBomb, SizeOf(fBombs[i].WhiteBomb));
   End;
 End;
 
@@ -2159,6 +2160,8 @@ Begin
 End;
 
 Procedure TGame.RenderBombs;
+Const
+  Gray: TVector4 = (x: 0.6; y: 0.6; z: 0.6; w: 1.0); // Mod weiße Bombe: grau, damit man sie nicht mit den Bomben des weißen Spielers verwechselt
 Var
   i: Integer;
   ani: TAnimation;
@@ -2176,7 +2179,15 @@ Begin
       LogShow('Error: TGame.RenderBombs: no Animation found.', llFatal);
     End;
     ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
+    If fBombs[i].WhiteBomb Then Begin
+      UseTextureShader(Gray); // Setzt die AlphaThreshold zurück
+      SetShaderAlphaThreshold(0.5);
+    End;
     ani.ani.Render(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth + ani.OffsetX, FieldyOff + fBombs[i].Position.y * FieldBlockHeight + ani.OffsetY, atomic_Bomb_Layer, 0);
+    If fBombs[i].WhiteBomb Then Begin
+      UseTextureShader();
+      SetShaderAlphaThreshold(0.5);
+    End;
   End;
   SetShaderAlphaThreshold(0);
 End;

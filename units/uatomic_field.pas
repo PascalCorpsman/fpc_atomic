@@ -960,6 +960,7 @@ Begin
     stream.Write(fBombs[i].Position, SizeOf(fBombs[i].Position));
     stream.Write(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Write(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
+    stream.Write(fBombs[i].WhiteBomb, SizeOf(fBombs[i].WhiteBomb));
   End;
 {$ENDIF}
 End;
@@ -2762,12 +2763,17 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     End;
 
   Begin
-    // Mod Flammenwerfer: Das Flammen Item bekommt einen roten Rahmen
+    // Mod Flammenwerfer: Das Flammen Item wird rot überdeckt und bekommt einen roten Rahmen
     l := Fieldxoff + x * FieldBlockWidth;
     t := FieldyOff + y * FieldBlockHeight;
     r := l + FieldBlockWidth;
     b := t + FieldBlockHeight;
     UseColorShader;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    SetShaderColor(1, 0, 0, 0.45);
+    Rect(l, t, r, b);
+    glDisable(GL_BLEND);
     SetShaderColor(1, 0, 0);
     Rect(l, t, r, t + w);
     Rect(l, b - w, r, b);

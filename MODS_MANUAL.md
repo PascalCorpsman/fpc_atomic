@@ -116,7 +116,7 @@ A part of the disease items ![](data/res/powdisea.png) turns the screen of the p
 
 ## White bomb
 
-A part of the items below the bricks are **white bombs**. They look like a white extra bomb item. After picking one up, the next placed bomb is white:
+A part of the items below the bricks are **white bombs**. They look like a white extra bomb item. After picking one up, the next placed bomb is a white bomb (drawn in gray, so it is not mixed up with the bombs of the white player):
 
 - It explodes after the normal time, but without flames, so it destroys nothing and kills nobody.
 - It turns the screens of **all opponents** on the whole field white, like the [white screen](#white-screen) disease. Team mates and the player who placed it are not affected.
@@ -133,7 +133,7 @@ A part of the items below the bricks are **white bombs**. They look like a white
 
 ## Flamethrower
 
-A part of the items below the bricks are **flamethrowers**. They look like the flame item ![](data/res/powflame.png) with a red frame. While the player has fuel, **holding the second action** fires a beam in the direction the player looks.
+A part of the items below the bricks are **flamethrowers**. They look like a red flame item ![](data/res/powflame.png) with a red frame. While the player has fuel, **holding the second action** fires a beam in the direction the player looks.
 
 - The beam reaches a set number of tiles. It stops at bricks and solid blocks without destroying them, and it ignites bombs.
 - Items in the beam burn at once, like with a flame. This can be switched off, then the beam goes over them.

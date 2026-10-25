@@ -118,7 +118,7 @@ Ein Teil der Krankheits-Items ![](data/res/powdisea.png) macht den Bildschirm de
 
 ## Weiße Bombe
 
-Ein Teil der Items unter den Steinen sind **weiße Bomben**. Sie sehen aus wie ein weißes Extra-Bomben-Item. Nach dem Aufheben ist die nächste gelegte Bombe weiß:
+Ein Teil der Items unter den Steinen sind **weiße Bomben**. Sie sehen aus wie ein weißes Extra-Bomben-Item. Nach dem Aufheben ist die nächste gelegte Bombe eine weiße Bombe (grau gezeichnet, damit man sie nicht mit den Bomben des weißen Spielers verwechselt):
 
 - Sie explodiert nach der normalen Zeit, aber ohne Flammen. Sie zerstört nichts und tötet niemanden.
 - Sie macht die Bildschirme **aller Gegner** auf dem ganzen Feld weiß, wie die Krankheit [weißer Bildschirm](#weißer-bildschirm). Teamkollegen und der Spieler, der sie gelegt hat, sind nicht betroffen.
@@ -135,7 +135,7 @@ Ein Teil der Items unter den Steinen sind **weiße Bomben**. Sie sehen aus wie e
 
 ## Flammenwerfer
 
-Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie das Flammen-Item ![](data/res/powflame.png) mit rotem Rahmen. Solange der Spieler Tank hat, feuert er mit **gehaltener zweiter Aktion** einen Strahl in Blickrichtung.
+Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie ein rötliches Flammen-Item ![](data/res/powflame.png) mit rotem Rahmen. Solange der Spieler Tank hat, feuert er mit **gehaltener zweiter Aktion** einen Strahl in Blickrichtung.
 
 - Der Strahl reicht eine einstellbare Zahl von Feldern weit. Er stoppt an Steinen und festen Blöcken, ohne sie zu zerstören, und zündet Bomben.
 - Items im Strahl verbrennen sofort, wie bei einer Flamme. Das lässt sich abschalten, dann geht der Strahl über sie hinweg.
