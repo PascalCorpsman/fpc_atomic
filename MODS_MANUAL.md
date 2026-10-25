@@ -10,6 +10,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 - [Ghosts](#ghosts)
 - [Glove at start](#glove-at-start)
 - [Open borders](#open-borders)
+- [Teleporters](#teleporters)
 - [Mod test mode](#mod-test-mode)
 - [Editing atomic_server.ini by hand](#editing-atomic_serverini-by-hand)
 
@@ -152,6 +153,22 @@ Players can walk over the border of the field and come out on the opposite side,
 | Mod on / off | `OpenBorders` | 0 (off) | 0 / 1 |
 | Top <-> bottom | `OpenBordersTopBottom` | 1 (on) | 0 / 1 |
 | Left <-> right | `OpenBordersLeftRight` | 1 (on) | 0 / 1 |
+
+## Teleporters
+
+Teleporters in the middle of the borders bring the player to the teleporter on the opposite border, top <-> bottom and / or left <-> right. They work like the holes of some maps and look like them, with a turquoise ring around.
+
+- The teleporters appear a set time after the start of a round. Before that they are normal tiles.
+- The teleporter tiles and the tiles next to them (towards the middle of the field) stay free of bricks from the start.
+- No bombs can be placed on a teleporter, rolling bombs stop in front of it.
+- During hurry the teleporters are gone.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `Teleporters` | 0 (off) | 0 / 1 |
+| Top <-> bottom | `TeleportersTopBottom` | 1 (on) | 0 / 1 |
+| Left <-> right | `TeleportersLeftRight` | 1 (on) | 0 / 1 |
+| Appear after (s) | `TeleportersActiveSec` | 60 | 0 .. 600, 0 = from the start |
 
 ## Mod test mode
 

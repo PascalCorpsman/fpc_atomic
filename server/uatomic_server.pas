@@ -68,6 +68,7 @@ Type
 
     fSettings: TAtomicSettings;
     fModSettings: TModSettings; // Die Optionalen Mods aus atomic_server.ini
+    fRoundTimeMs: Integer; // Zeit in ms seit Rundenbeginn (für die Teleporter am Rand)
     fFields: Array Of TAtomicField;
     fConnectedClientCount: integer; // Anzahl der Tatsächlich verbundenen Clients, wird bestimmt bei HandleSwitchToPlayerSetup und ist immer <= GetActivePlayerCount()
     fActualField: TAtomicField; // Das Feld, welches für dieses Match Aktiv ist, Wird mittels miUpdateFieldSetup gesetzt
@@ -202,6 +203,8 @@ Begin
     fFields[i].GhostReviveCallback := @HandleGhostRevive;
     fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
     fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
+    fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
+    fFields[i].PortalLeftRight := fModSettings.Teleporters And fModSettings.TeleportersLeftRight;
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
@@ -1140,6 +1143,7 @@ Begin
   End;
 
   fActualField.Initialize(fPLayer, fSettings.Scheme, fSettings.TeamPlay);
+  fRoundTimeMs := 0;
   SendChunk(miStartGame, Nil, 0);
   n := GetTickCount64;
   For i := 0 To high(fPLayer) Do Begin // Egal das das alle sind ..
@@ -2155,6 +2159,9 @@ Var
   OldPosition: TVector2;
 Begin
   HandleStatisticCallback(ssFramesRendered);
+  // Die Teleporter am Rand (Mod) erscheinen erst nach TeleportersActiveSec
+  fRoundTimeMs := min(fRoundTimeMs + FrameRate, high(Integer) - FrameRate);
+  fActualField.UpdatePortals(fRoundTimeMs >= fModSettings.TeleportersActiveSec * 1000);
   If fPlayingTimedesc <> -1000 Then Begin
     fPlayingTimedesc := fPlayingTimedesc - FrameRate;
   End;
@@ -2816,6 +2823,7 @@ Begin
   If fModSettings.Ghosts Then result := result + ', ghosts';
   If fModSettings.GloveAtStart Then result := result + ', glove at start';
   If fModSettings.OpenBorders Then result := result + ', open borders';
+  If fModSettings.Teleporters Then result := result + ', teleporters';
   If fModSettings.ModTestMode Then result := result + ', mod test mode';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));

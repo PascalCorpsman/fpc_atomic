@@ -82,6 +82,8 @@ Type
     fConveyorDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
 
     fHasHoles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
+    fPortalTopBottom: Boolean; // Mod Teleporter am Rand: True, die Teleporter oben / unten sind gerade aktiv (der Client bekommt das mit AppendGamingData)
+    fPortalLeftRight: Boolean; // Mod Teleporter am Rand: True, die Teleporter links / rechts sind gerade aktiv
     fHoles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
 
     fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
@@ -98,6 +100,7 @@ Type
     fSoundFile: String;
     fHash: Uint64; // Wird beim laden der Karte berechnet, dient zur Identifizierung auf "Gleichheit"
     fField: TFieldBricks;
+    Function IsPortal(x, y: integer): Boolean; // True, wenn auf x, y gerade ein aktiver Teleporter am Rand ist (Mod)
 {$IFDEF Client}
     Procedure RenderBlock(x, y: integer; Brick: TBrickData);
     Procedure RenderBlock2(xx, yy, x, y: integer; Brick: TBrickData);
@@ -121,6 +124,9 @@ Type
     GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
     WrapLeftRight: Boolean; // Mod offene Grenzen: Spieler laufen links / rechts über den Rand auf die Gegenseite
     WrapTopBottom: Boolean; // Mod offene Grenzen: Spieler laufen oben / unten über den Rand auf die Gegenseite
+    PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
+    PortalLeftRight: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter links / rechts
+    Procedure UpdatePortals(Active: Boolean); // Wird vom Server jeden Frame aufgerufen, Active = die Zeit bis zum Erscheinen ist um
     Property BombsEnabled: Boolean read fBombsEnabled;
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
     Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
@@ -194,6 +200,7 @@ Uses
   , uvectormath
   , dglOpenGL
   , uopengl_spriteengine
+  , uopengl_shaderprimitives
   , ugraphics
 {$ENDIF}
   ;
@@ -390,6 +397,10 @@ Begin
   GhostReviveCallback := Nil;
   WrapLeftRight := false;
   WrapTopBottom := false;
+  PortalTopBottom := false;
+  PortalLeftRight := false;
+  fPortalTopBottom := false;
+  fPortalLeftRight := false;
   fPlaySoundEffect := PlaySoundEffectCallback;
   fBombCount := 0;
   fBombDetonateFifo := TIntFifo.create(128);
@@ -537,6 +548,13 @@ Begin
   result := true;
 End;
 
+Function TAtomicField.IsPortal(x, y: integer): Boolean;
+Begin
+  // Die Teleporter liegen in der Mitte der Ränder, jeweils paarweise gegenüber
+  result := (fPortalTopBottom And (x = FieldWidth Div 2) And ((y = 0) Or (y = FieldHeight - 1))) Or
+    (fPortalLeftRight And (y = FieldHeight Div 2) And ((x = 0) Or (x = FieldWidth - 1)));
+End;
+
 {$IFDEF Server}
 
 Function TAtomicField.Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: integer;
@@ -621,6 +639,13 @@ Begin
       exit;
     End;
   End;
+End;
+
+Procedure TAtomicField.UpdatePortals(Active: Boolean);
+Begin
+  // Im Hurry sind die Teleporter weg (wie die Löcher)
+  fPortalTopBottom := PortalTopBottom And Active And (fHurryIndex = -1);
+  fPortalLeftRight := PortalLeftRight And Active And (fHurryIndex = -1);
 End;
 
 Function TAtomicField.PlayerWalkable(Const Player: TPlayer; x, y: integer
@@ -766,6 +791,21 @@ Begin
       End;
     End;
   End;
+  // 2.6 Mod Teleporter am Rand: Die Teleporter Felder und je ein Nachbar ins Feld hinein bleiben immer frei (auch vor dem Erscheinen)
+  fPortalTopBottom := false;
+  fPortalLeftRight := false;
+  If PortalTopBottom Then Begin
+    SetBlank(FieldWidth Div 2, 0);
+    SetBlank(FieldWidth Div 2, 1);
+    SetBlank(FieldWidth Div 2, FieldHeight - 1);
+    SetBlank(FieldWidth Div 2, FieldHeight - 2);
+  End;
+  If PortalLeftRight Then Begin
+    SetBlank(0, FieldHeight Div 2);
+    SetBlank(1, FieldHeight Div 2);
+    SetBlank(FieldWidth - 1, FieldHeight Div 2);
+    SetBlank(FieldWidth - 2, FieldHeight Div 2);
+  End;
   // 3. Die PowerUps die Hinter den "Bricks" liegen
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
@@ -814,6 +854,8 @@ Begin
   stream.Write(fField, SizeOf(fField));
   b := fHurryIndex <> -1;
   stream.Write(b, SizeOf(b));
+  stream.Write(fPortalTopBottom, SizeOf(fPortalTopBottom));
+  stream.Write(fPortalLeftRight, SizeOf(fPortalLeftRight));
 
   // Sicherstellen, dass das ExplodingRenderFlag nur als Flanke raus geht (Also genau 1 mal gesetzt ist !)
   For i := 0 To high(fField) Do Begin
@@ -1217,6 +1259,8 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     End;
     // Es darf keine Bombe auf ein Loch gelegt werden !
     If fHasHoles And (fHurryIndex = -1) And fHoles[trunc(ax), trunc(ay)] Then exit;
+    // Und auch nicht auf einen Teleporter am Rand (Mod)
+    If IsPortal(trunc(ax), trunc(ay)) Then exit;
     // Und auch nicht in einen Block (Mod durch Blöcke laufen)
     If fField[trunc(ax), trunc(ay)].BrickData <> bdBlank Then exit;
     fBombs[fBombCount].ColorIndex := player.info.ColorIndex;
@@ -1393,7 +1437,7 @@ Type
       result := fHoles[x, y];
     End
     Else Begin
-      result := false;
+      result := IsPortal(x, y); // Teleporter am Rand (Mod) halten Bomben auf wie Löcher
     End;
   End;
 
@@ -1902,7 +1946,7 @@ Begin
       fField[x, y].PowerUp := puNone;
     End;
     // Die Kollision gegen ein Loch
-    If fHasHoles And (fHurryIndex = -1) And fHoles[x, y] Then Begin
+    If (fHasHoles And (fHurryIndex = -1) And fHoles[x, y]) Or IsPortal(x, y) Then Begin
       If (Not Players[i].IsInHohle) Then Begin // Flanke generieren ;)
         Players[i].IsInHohle := true;
         Players[i].Info.Animation := raTeleport;
@@ -2343,6 +2387,22 @@ Begin
    *)
   x := trunc(Player.Info.Position.x);
   y := trunc(Player.Info.Position.y);
+  // Mod Teleporter am Rand: immer zum gegenüberliegenden Teleporter, dort ist IsInHohle noch gesetzt, er springt also nicht gleich zurück
+  If IsPortal(x, y) Then Begin
+    If (y = 0) And (x = FieldWidth Div 2) Then Begin
+      Player.Info.Position.y := FieldHeight - 0.5;
+    End
+    Else If (y = FieldHeight - 1) And (x = FieldWidth Div 2) Then Begin
+      Player.Info.Position.y := 0.5;
+    End
+    Else If x = 0 Then Begin
+      Player.Info.Position.x := FieldWidth - 0.5;
+    End
+    Else Begin
+      Player.Info.Position.x := 0.5;
+    End;
+    exit;
+  End;
   If x = 2 Then Begin
     If y = 2 Then Begin
       Player.Info.Position.y := 8.5;
@@ -2467,6 +2527,32 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     End;
   End;
 
+  Procedure RenderPortal(x, y: integer);
+  Const
+    Segments = 24;
+  Var
+    k: integer;
+    a, cx, cy: Single;
+  Begin
+    (*
+     * Mod Teleporter am Rand: Sie sehen aus wie die Löcher, haben aber einen türkisen Ring,
+     * die Loch Grafik ist fast schwarz und lässt sich deshalb nicht einfärben.
+     *)
+    RenderAlphaQuad(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_Map_Layer + atomic_EPSILON, fHoleTex);
+    cx := Fieldxoff + (x + 0.5) * FieldBlockWidth;
+    cy := FieldyOff + (y + 0.5) * FieldBlockHeight;
+    UseColorShader;
+    SetShaderColor(0, 0.8, 1);
+    glShaderBegin(GL_TRIANGLE_STRIP);
+    For k := 0 To Segments Do Begin
+      a := 2 * pi * k / Segments;
+      glShaderVertex(cx + cos(a) * 18, cy + sin(a) * 16, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(cx + cos(a) * 15, cy + sin(a) * 13, atomic_Map_Layer + 2 * atomic_EPSILON);
+    End;
+    glShaderEnd();
+    UseTextureShader;
+  End;
+
   Procedure RenderTramp(x, y: integer);
   Begin
     If fField[x, y].Tramp Then Begin
@@ -2533,6 +2619,10 @@ Begin
               If fHasHoles And (Not fHurryMode) Then Begin
                 RenderHohle(i, j);
               End;
+              // Mod Teleporter am Rand
+              If IsPortal(i, j) Then Begin
+                RenderPortal(i, j);
+              End;
               If fHastrampolins And (Not fHurryMode) Then Begin
                 RenderTramp(i, j);
               End;
@@ -2554,6 +2644,8 @@ Begin
    *)
   Stream.Read(fField, sizeof(fField));
   stream.read(fHurryMode, sizeof(fHurryMode));
+  stream.read(fPortalTopBottom, sizeof(fPortalTopBottom));
+  stream.read(fPortalLeftRight, sizeof(fPortalLeftRight));
 
   // GGF Starten einer Brick Explosion Animation
   For i := 0 To FieldWidth - 1 Do Begin

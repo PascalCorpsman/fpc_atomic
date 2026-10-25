@@ -51,6 +51,9 @@ Type
     CheckBox10: TCheckBox;
     CheckBox11: TCheckBox;
     CheckBox12: TCheckBox;
+    CheckBox13: TCheckBox;
+    CheckBox14: TCheckBox;
+    CheckBox15: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -80,6 +83,9 @@ Type
     Label32: TLabel;
     Label33: TLabel;
     Label34: TLabel;
+    Label35: TLabel;
+    Label36: TLabel;
+    Label37: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -96,6 +102,7 @@ Type
     Panel6: TPanel;
     Panel7: TPanel;
     Panel8: TPanel;
+    Panel9: TPanel;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
@@ -106,6 +113,7 @@ Type
     SpinEdit16: TSpinEdit;
     SpinEdit17: TSpinEdit;
     SpinEdit18: TSpinEdit;
+    SpinEdit19: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -123,6 +131,7 @@ Type
     TabSheet6: TTabSheet;
     TabSheet7: TTabSheet;
     TabSheet8: TTabSheet;
+    TabSheet9: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -175,7 +184,7 @@ Begin
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 8);
+  setlength(fModCheckBoxes, 9);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox2;
   fModCheckBoxes[2] := CheckBox9;
@@ -183,8 +192,9 @@ Begin
   fModCheckBoxes[4] := CheckBox4;
   fModCheckBoxes[5] := CheckBox8;
   fModCheckBoxes[6] := CheckBox10;
-  fModCheckBoxes[7] := CheckBox5;
-  setlength(fModPanels, 8);
+  fModCheckBoxes[7] := CheckBox13;
+  fModCheckBoxes[8] := CheckBox5;
+  setlength(fModPanels, 9);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel2;
   fModPanels[2] := Panel7;
@@ -192,7 +202,8 @@ Begin
   fModPanels[4] := Panel4;
   fModPanels[5] := Panel6;
   fModPanels[6] := Panel8;
-  fModPanels[7] := Panel5;
+  fModPanels[7] := Panel9;
+  fModPanels[8] := Panel5;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
@@ -203,6 +214,7 @@ Begin
   SpinEdit16.MaxValue := ModMaxBrickWalkMs;
   SpinEdit17.MaxValue := ModMaxBrickWalkMs;
   SpinEdit18.MaxValue := ModMaxBrickWalkTransparency;
+  SpinEdit19.MaxValue := ModMaxTeleportersActiveSec;
   SpinEdit6.MinValue := FlameTime;
   SpinEdit6.MaxValue := ModMaxInvulnTimeMs;
   SpinEdit7.MinValue := 1;
@@ -344,6 +356,11 @@ Begin
   CheckBox11.Checked := fSettings.OpenBordersTopBottom;
   CheckBox12.Checked := fSettings.OpenBordersLeftRight;
 
+  CheckBox13.Checked := fSettings.Teleporters;
+  CheckBox14.Checked := fSettings.TeleportersTopBottom;
+  CheckBox15.Checked := fSettings.TeleportersLeftRight;
+  SpinEdit19.Value := fSettings.TeleportersActiveSec;
+
   CheckBox5.Checked := fSettings.ModTestMode;
   Edit1.Text := fSettings.StartItems;
   SpinEdit13.Value := fSettings.RoundTimeSec;
@@ -432,6 +449,11 @@ Begin
   fSettings.OpenBorders := CheckBox10.Checked;
   fSettings.OpenBordersTopBottom := CheckBox11.Checked;
   fSettings.OpenBordersLeftRight := CheckBox12.Checked;
+
+  fSettings.Teleporters := CheckBox13.Checked;
+  fSettings.TeleportersTopBottom := CheckBox14.Checked;
+  fSettings.TeleportersLeftRight := CheckBox15.Checked;
+  fSettings.TeleportersActiveSec := SpinEdit19.Value;
 
   fSettings.ModTestMode := CheckBox5.Checked;
   fSettings.StartItems := trim(Edit1.Text);

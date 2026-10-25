@@ -151,6 +151,7 @@ Const
    *                       ADD: optional glove at start, until the first step of a round every player can throw a bomb like with the glove
    *                       ADD: optional disease "walk through bricks", the player is drawn see-through
    *                       ADD: optional open borders, players walk over the border and come out on the opposite side
+   *                       ADD: optional teleporters in the middle of the borders, they bring the player to the opposite border
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -263,6 +264,7 @@ Const
   ModMaxHitPoints = 255; // DefaultHitPoints und [Handicap], untere Grenze 1 (TAtomicInfo.HitPoints ist ein uint8)
   ModMaxRoundTimeSec = 3600;
   ModMaxStartInvulnMs = 600000;
+  ModMaxTeleportersActiveSec = 600;
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -684,6 +686,10 @@ Type
     OpenBorders: Boolean; // True, Spieler können über den Rand laufen und kommen auf der Gegenseite heraus
     OpenBordersTopBottom: Boolean; // Offene Grenzen oben <-> unten
     OpenBordersLeftRight: Boolean; // Offene Grenzen links <-> rechts
+    Teleporters: Boolean; // True, in der Mitte der Ränder gibt es Teleporter, die zum gegenüberliegenden Rand bringen (nicht im Hurry)
+    TeleportersTopBottom: Boolean; // Teleporter oben <-> unten
+    TeleportersLeftRight: Boolean; // Teleporter links <-> rechts
+    TeleportersActiveSec: Integer; // Zeit in s nach Rundenbeginn, ab der die Teleporter erscheinen und wirken
     (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)
@@ -1128,6 +1134,10 @@ Begin
   Settings.OpenBorders := false;
   Settings.OpenBordersTopBottom := true;
   Settings.OpenBordersLeftRight := true;
+  Settings.Teleporters := false;
+  Settings.TeleportersTopBottom := true;
+  Settings.TeleportersLeftRight := true;
+  Settings.TeleportersActiveSec := 60;
   Settings.ModTestMode := false;
   Settings.StartItems := '';
   Settings.RoundTimeSec := 0;
@@ -1187,6 +1197,10 @@ Begin
   WriteB('Mods', 'OpenBorders', Settings.OpenBorders);
   WriteB('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
   WriteB('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
+  WriteB('Mods', 'Teleporters', Settings.Teleporters);
+  WriteB('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
+  WriteB('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
+  WriteI('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
   WriteB('Debug', 'ModTestMode', Settings.ModTestMode);
   WriteS('Debug', 'StartItems', Settings.StartItems);
   WriteI('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1243,6 +1257,10 @@ Begin
     Settings.OpenBorders := ini.ReadBool('Mods', 'OpenBorders', Settings.OpenBorders);
     Settings.OpenBordersTopBottom := ini.ReadBool('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
     Settings.OpenBordersLeftRight := ini.ReadBool('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
+    Settings.Teleporters := ini.ReadBool('Mods', 'Teleporters', Settings.Teleporters);
+    Settings.TeleportersTopBottom := ini.ReadBool('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
+    Settings.TeleportersLeftRight := ini.ReadBool('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
+    Settings.TeleportersActiveSec := ini.ReadInteger('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
     Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
     Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
     Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1281,6 +1299,7 @@ Begin
     Clamp('DefaultHitPoints', Settings.DefaultHitPoints, 1, ModMaxHitPoints);
     Clamp('RoundTimeSec', Settings.RoundTimeSec, 0, ModMaxRoundTimeSec);
     Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
+    Clamp('TeleportersActiveSec', Settings.TeleportersActiveSec, 0, ModMaxTeleportersActiveSec);
     (*
      * Fehlende Schlüssel mit ihren Defaults anlegen, damit man sie in der Datei auch findet
      *)
