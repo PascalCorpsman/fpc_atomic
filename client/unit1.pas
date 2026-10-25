@@ -141,9 +141,7 @@ Uses lazfileutils, LazUTF8, LCLType
   , bass
   //  , unit18 // Der Fortschrittsbalken während des Updates
   , uatomicfont
-{$IFDEF AUTOMODE}
-  , uscreens
-{$ENDIF}
+  , uscreens // sHost für den Parameter -host (und sJoinNetwork im AUTOMODE)
   , usdl_input
   , uopengl_legacychecker
   , uopengl_shaderprimitives
@@ -476,6 +474,7 @@ Procedure TForm1.OnIdle(Sender: TObject; Var Done: Boolean);
 Var
   i, port: Integer;
   msg, ip: String;
+  host, join: Boolean;
 Begin
 {$IFDEF AUTOMODE}
   Case AutomodeData.State Of
@@ -492,7 +491,8 @@ Begin
       End;
   End;
 {$ENDIF}
-  If Not ConnectParamsHandled Then Begin
+  // Erst wenn das Spiel fertig initialisiert ist, vorher würde SwitchToScreen nichts tun bzw. wieder ins Hauptmenü wechseln
+  If (Not ConnectParamsHandled) And GameInitialized Then Begin
     ConnectParamsHandled := true;
     (*
      * Im Falle, dass ein Spieler übers internet beitreten will, geht das typische UDP Suchen nicht
@@ -500,6 +500,8 @@ Begin
      *)
     ip := '';
     port := 0;
+    host := false;
+    join := false;
     For i := 1 To ParamCount Do Begin
       If ParamStr(i) = '-ip' Then Begin
         ip := ParamStr(i + 1);
@@ -507,8 +509,22 @@ Begin
       If ParamStr(i) = '-port' Then Begin
         port := strtointdef(ParamStr(i + 1), 0);
       End;
+      // -host: sofort ein Netzwerkspiel hosten, wie der Menüpunkt "Host" (Launcher: Strg + Launch)
+      If lowercase(ParamStr(i)) = '-host' Then Begin
+        host := true;
+      End;
+      // -join: sofort einem Netzwerkspiel beitreten, wie der Menüpunkt "Join network game" (Launcher: Shift + Launch)
+      If lowercase(ParamStr(i)) = '-join' Then Begin
+        join := true;
+      End;
     End;
-    If (ip <> '') And (port > 0) Then Begin
+    If host Then Begin
+      Game.SwitchToScreen(sHost);
+    End
+    Else If join Then Begin
+      Game.SwitchToScreen(sJoinNetwork);
+    End
+    Else If (ip <> '') And (port > 0) Then Begin
       Game.JoinViaParams(ip, port);
     End;
   End;

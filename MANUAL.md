@@ -102,7 +102,7 @@ Since ver 0.08 the launcher supports command line commands:
 - -port \<port\>:  will prefill the "Port" field with the value given as \<port\>
 - -cti: will check the checkbox "Join through a router"
 
-The button **Game...** in the launcher sets the options of the game (team play, scheme, play time, ...) without starting it.
+In the launcher, **Ctrl + Launch** (or Ctrl+Alt+L) starts the game and hosts a network game directly, without the main menu (the game gets the parameter -host). **Shift + Launch** (or Shift+Alt+L) joins a network game directly (parameter -join): the game searches the local network, if it finds no game it asks for IP and port. The button **Game...** sets the options of the game (team play, scheme, play time, ...) without starting it.
 
 ## Included AI
 The server will automatically load ai.so (or ai.dll on Windows platforms) during startup. You can utilize the [console commands](#console-commands) to unload the ai during gameplay and modify it. This feature is intended to assist in ai development.

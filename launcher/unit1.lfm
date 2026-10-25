@@ -171,6 +171,7 @@ object Form1: TForm1
   end
   object Panel1: TPanel
     Cursor = crHandPoint
+    Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
     Left = 8
     Height = 50
     Top = 308
@@ -187,6 +188,7 @@ object Form1: TForm1
     OnMouseMove = Panel1MouseMove
     object Label7: TLabel
       Cursor = crHandPoint
+      Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
       Left = 0
       Height = 50
       Top = 0

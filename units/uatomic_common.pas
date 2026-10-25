@@ -159,6 +159,8 @@ Const
    *                       ADD: mods manual in English and German (MODS_MANUAL.md, MODS_MANUAL_DE.md)
    *                       FIX: launcher title showed the version with a locale comma (0,11)
    *                       ADD: launcher: dialog for the game options (same options as in the game)
+   *                       ADD: client parameter -host (launcher: Ctrl + Launch) hosts a network game directly, -join (launcher: Shift + Launch) joins one
+   *                       FIX: -ip / -port are evaluated only after the game is initialized
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)

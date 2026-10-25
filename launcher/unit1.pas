@@ -435,7 +435,15 @@ Begin
   p := TProcessUTF8.Create(Nil);
   p.Options := [poDetached];
   p.Executable := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
-  If CheckBox3.Checked Then Begin
+  If GetKeyState(VK_CONTROL) < 0 Then Begin
+    // Strg + Launch: Das Spiel hostet sofort ein Netzwerkspiel, ohne Umweg über das Hauptmenü
+    p.Parameters.Add('-host');
+  End
+  Else If GetKeyState(VK_SHIFT) < 0 Then Begin
+    // Shift + Launch: Das Spiel tritt sofort einem Netzwerkspiel bei (sucht im lokalen Netz, sonst fragt es nach IP und Port)
+    p.Parameters.Add('-join');
+  End
+  Else If CheckBox3.Checked Then Begin
     p.Parameters.Add('-ip');
     p.Parameters.Add(Edit2.Text);
     p.Parameters.Add('-port');
