@@ -51,6 +51,7 @@ Const
    *                   ADD: Links auf MANUAL.md / MODS_MANUAL.md
    *                   ADD: Strg + Launch hostet, Shift + Launch tritt einem Netzwerkspiel direkt bei
    *                   FIX: Versionsnummer im Titel mit Komma (0,11)
+   *                   ADD: Option, nach dem Spiel wieder den Launcher anzeigen
    * Known Bugs :
    *)
   {

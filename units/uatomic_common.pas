@@ -162,6 +162,7 @@ Const
    *                       ADD: client parameter -host (launcher: Ctrl + Launch) hosts a network game directly, -join (launcher: Shift + Launch) joins one
    *                       FIX: -ip / -port are evaluated only after the game is initialized
    *                       ADD: sound effects can be switched off independent of the music (launcher: "Play music" and Game options "Play sound effects")
+   *                       ADD: launcher option to show the launcher again after the game
    *                       ADD: quit question only when leaving a network session (lobby, setup, game), the main menu quits at once
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb

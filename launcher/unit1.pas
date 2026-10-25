@@ -20,7 +20,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  IniFiles, ulauncher;
+  IniFiles, UTF8Process, ulauncher;
 
 Type
 
@@ -39,6 +39,7 @@ Type
     CheckBox3: TCheckBox;
     CheckBox4: TCheckBox;
     CheckBox5: TCheckBox;
+    CheckBox6: TCheckBox;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
@@ -56,6 +57,7 @@ Type
     Label7: TLabel;
     Label8: TLabel;
     Panel1: TPanel;
+    Timer1: TTimer;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
@@ -71,6 +73,7 @@ Type
     Procedure FormCreate(Sender: TObject);
     Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure Panel1MouseEnter(Sender: TObject);
+    Procedure Timer1Timer(Sender: TObject);
     Procedure Panel1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
   private
     ini: TIniFile;
@@ -79,6 +82,7 @@ Type
     Version: Single;
     UpToDate: Boolean; // True, wenn "Updates..." in diesem Lauf nichts mehr zum Herunterladen gefunden hat
     GameDataFound: Boolean; // True, wenn CheckForFiles nichts vermisst, dann ist der Launch Knopf blau
+    GameProcess: TProcessUTF8; // Das laufende Spiel, wenn der Launcher danach wieder erscheinen soll (CheckBox6), sonst Nil
 
     Procedure LoadSettings();
     Procedure UpdateStatus();
@@ -98,7 +102,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
+Uses process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
   , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global
 {$IFDEF Windows}
   , LResources
@@ -450,9 +454,35 @@ Begin
     p.Parameters.Add('-port');
     p.Parameters.Add(Edit3.Text);
   End;
-  p.Execute;
-  p.free;
-  close;
+  If CheckBox6.Checked Then Begin
+    // Der Launcher wartet versteckt, bis das Spiel beendet ist, und erscheint dann wieder (siehe Timer1Timer)
+    p.Options := [];
+    p.Execute;
+    GameProcess := p;
+    Hide;
+    Timer1.Enabled := true;
+  End
+  Else Begin
+    p.Execute;
+    p.free;
+    close;
+  End;
+End;
+
+Procedure TForm1.Timer1Timer(Sender: TObject);
+Begin
+  // Das Spiel wurde beendet -> der Launcher erscheint wieder
+  If assigned(GameProcess) And GameProcess.Running Then exit;
+  Timer1.Enabled := false;
+  GameProcess.free;
+  GameProcess := Nil;
+  // Das Spiel schreibt beim Beenden fpc_atomic.cfg, also neu laden (Name, Optionen, Version)
+  ini.free;
+  ini := TIniFile.Create(GetAtomicConfigFile());
+  LoadSettings();
+  UpdateStatus();
+  Show;
+  BringToFront;
 End;
 
 Procedure TForm1.Button1Click(Sender: TObject);
@@ -573,6 +603,7 @@ Begin
 
   edit2.text := ini.ReadString('Launcher', 'Router_IP', '127.0.0.1');
   edit3.text := ini.ReadString('Launcher', 'Router_Port', '5521');
+  CheckBox6.Checked := ini.ReadBool('Launcher', 'ShowAfterGame', false);
 End;
 
 Procedure TForm1.UpdateStatus;
@@ -618,6 +649,7 @@ Begin
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);
   ini.WriteString('Launcher', 'Router_Port', edit3.text);
+  ini.WriteBool('Launcher', 'ShowAfterGame', CheckBox6.Checked);
 End;
 
 {$IFDEF Windows}
