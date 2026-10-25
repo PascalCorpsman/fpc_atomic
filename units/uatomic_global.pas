@@ -35,6 +35,8 @@ Function GetAtomicConfigFile(): String;
 {$IFDEF Server}
 Function GetAtomicStatsFile(): String;
 Function GetAtomicPlayerStatsFile(): String;
+{$ENDIF}
+{$IF Defined(Server) Or Defined(Launcher)} // Der Launcher bearbeitet die Mods im Mods Dialog
 Function GetAtomicServerIniFile(): String;
 {$ENDIF}
 
@@ -117,6 +119,10 @@ Begin
   result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'Playerstats.csv';
   TearDown;
 End;
+
+{$ENDIF}
+
+{$IF Defined(Server) Or Defined(Launcher)}
 
 Function GetAtomicServerIniFile(): String;
 Begin

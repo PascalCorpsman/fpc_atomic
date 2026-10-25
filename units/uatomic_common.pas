@@ -146,6 +146,7 @@ Const
    *                       ADD: mod test mode with keys F3..F11 (without F10) for testing the mods (only master, only if enabled in atomic_server.ini)
    *                       ADD: optional ghosts, dead players walk around the border and can throw bombs to get back into the game
    *                       ADD: ghosts: max count per round and optional max time until they vanish (flicker faster before)
+   *                       ADD: mod settings code shared by server and launcher (defaults, limits, load / save)
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -238,6 +239,23 @@ Const
    *)
   AtomicStunColorChangeTime = 50; // Zeit in ms, nach derer ein gestunnter Atomic zwischen seiner Farbe und schwarz (bzw. rot) wechselt
   AtomicInvulnColorChangeTime = 150; // Zeit in ms, nach derer ein unverwundbarer Atomic zwischen seiner Farbe und weiß (bzw. rot) wechselt
+
+  (*
+   * Obere Grenzen der Mod Einstellungen aus atomic_server.ini, die untere Grenze ist 0 (Ausnahmen stehen dabei).
+   * Der Server zieht ungültige Werte auf diese Grenzen, der Mods Dialog im Launcher nutzt sie für seine Eingabefelder.
+   *)
+  ModMaxStunMs = 10000; // StunMinMs, StunMaxMs
+  ModMaxPositiveDiseaseChance = 100; // in %
+  ModMaxPositiveMs = 120000; // PositiveMinMs, PositiveMaxMs
+  ModMaxGhostReviveInvulnMs = 60000;
+  ModMaxGhostFlameLen = 99; // untere Grenze 1
+  ModMaxGhostFlickerMs = 5000;
+  ModMaxGhostCount = 99; // GhostMaxCount
+  ModMaxGhostTimeMs = 600000; // GhostMaxTimeMs
+  ModMaxInvulnTimeMs = 60000; // untere Grenze FlameTime, sonst trifft die selbe Flamme den Spieler im nächsten Frame gleich noch mal
+  ModMaxHitPoints = 255; // DefaultHitPoints und [Handicap], untere Grenze 1 (TAtomicInfo.HitPoints ist ein uint8)
+  ModMaxRoundTimeSec = 3600;
+  ModMaxStartInvulnMs = 600000;
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -622,9 +640,9 @@ Type
 {$ENDIF}
   End;
 
-{$IFDEF Server}
   (*
    * Optionale Spiel Mods, werden aus atomic_server.ini geladen, alle Mods sind per Default aus.
+   * Der Server liest sie beim Start, der Launcher bearbeitet sie im Mods Dialog.
    *)
   TModSettings = Record
     StunOnBombLanding: Boolean; // True, Landet eine geworfene Bombe auf einem Spieler, wird dieser gestunnt
@@ -654,7 +672,6 @@ Type
     StartInvulnMs: Integer; // Zeit in ms, so lange sind alle Spieler zu Rundenbeginn unverwundbar
     GhostsKeepRound: Boolean; // True, Geister zählen für das Rundenende als lebendig (damit kann man Geister auch zu zweit testen)
   End;
-{$ENDIF}
 
   TPlayerGetsPowerUpEvent = Procedure(Var Player: TPlayer; PlayerIndex: integer; PowerUp: TPowerUps) Of Object;
 
@@ -727,6 +744,16 @@ Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
 Function ModTestCommandToString(Value: TModTestCommand): String;
 
+(*
+ * Gemeinsamer Code von Server und Launcher für atomic_server.ini, damit beide dieselben Defaults und Grenzen nutzen.
+ * Settings.Handicap wird bei Bedarf erzeugt und muss vom Aufrufer wieder frei gegeben werden.
+ *)
+Procedure ModSettingsDefaults(Var Settings: TModSettings);
+// Liest alle Werte (fehlende = Default), zieht ungültige Werte mit einer Warnung auf ihre Grenzen und legt fehlende Schlüssel in der Datei an
+Procedure LoadModSettingsFromFile(Const Filename: String; Var Settings: TModSettings);
+// Schreibt alle Werte und [Handicap] komplett neu (Kommentare in [Handicap] gehen dabei verloren)
+Function SaveModSettingsToFile(Const Filename: String; Const Settings: TModSettings): Boolean;
+
 {$IFDEF Server}
 Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
 Function FieldToGhostRing(Const Position: TVector2): integer; // Liefert den Index der Rahmenposition, welche am nächsten an Position liegt
@@ -758,7 +785,7 @@ Function GetSDL2VersionByManualDynamicLoading(LibFilename: String): String;
 
 Implementation
 
-Uses math
+Uses math, IniFiles, uatomic_global
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
   , LCLType
   , SDL2, dynlibs
@@ -1048,6 +1075,196 @@ Begin
   End;
 End;
 {$ENDIF}
+
+Procedure ModSettingsDefaults(Var Settings: TModSettings);
+Begin
+  // Alle Mods sind aus
+  Settings.StunOnBombLanding := false;
+  Settings.StunMinMs := 100;
+  Settings.StunMaxMs := 500;
+  Settings.PositiveDisease := false;
+  Settings.PositiveDiseaseChance := 15;
+  Settings.PositiveMinMs := 5000;
+  Settings.PositiveMaxMs := 20000;
+  Settings.Ghosts := false;
+  Settings.GhostReviveInvulnMs := 3000;
+  Settings.GhostFlameLen := 2;
+  Settings.GhostFlickerMs := 200;
+  Settings.GhostMaxCount := 1;
+  Settings.GhostMaxTimeMs := 0;
+  Settings.HitPoints := false;
+  Settings.InvulnTimeMs := 5000;
+  Settings.DefaultHitPoints := 1;
+  Settings.ShowHitPoints := true;
+  If Not assigned(Settings.Handicap) Then Settings.Handicap := TStringList.Create;
+  Settings.Handicap.Clear;
+  Settings.ModTestMode := false;
+  Settings.StartItems := '';
+  Settings.RoundTimeSec := 0;
+  Settings.StartInvulnMs := 0;
+  Settings.GhostsKeepRound := false;
+End;
+
+(*
+ * Schreibt alle Werte außer [Handicap], bei OnlyMissing nur die, die in der Datei noch fehlen.
+ * Damit stehen die Schlüssel für Laden (fehlende anlegen) und Speichern nur an einer Stelle.
+ *)
+
+Procedure WriteModSettings(Const ini: TIniFile; Const Settings: TModSettings; OnlyMissing: Boolean);
+
+  Procedure WriteB(Const Section, Key: String; Value: Boolean);
+  Begin
+    If OnlyMissing And ini.ValueExists(Section, Key) Then exit;
+    ini.WriteBool(Section, Key, Value);
+  End;
+
+  Procedure WriteI(Const Section, Key: String; Value: Integer);
+  Begin
+    If OnlyMissing And ini.ValueExists(Section, Key) Then exit;
+    ini.WriteInteger(Section, Key, Value);
+  End;
+
+  Procedure WriteS(Const Section, Key: String; Value: String);
+  Begin
+    If OnlyMissing And ini.ValueExists(Section, Key) Then exit;
+    ini.WriteString(Section, Key, Value);
+  End;
+
+Begin
+  WriteB('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
+  WriteI('Mods', 'StunMinMs', Settings.StunMinMs);
+  WriteI('Mods', 'StunMaxMs', Settings.StunMaxMs);
+  WriteB('Mods', 'PositiveDisease', Settings.PositiveDisease);
+  WriteI('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
+  WriteI('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
+  WriteI('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
+  WriteB('Mods', 'Ghosts', Settings.Ghosts);
+  WriteI('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
+  WriteI('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
+  WriteI('Mods', 'GhostFlickerMs', Settings.GhostFlickerMs);
+  WriteI('Mods', 'GhostMaxCount', Settings.GhostMaxCount);
+  WriteI('Mods', 'GhostMaxTimeMs', Settings.GhostMaxTimeMs);
+  WriteB('Mods', 'HitPoints', Settings.HitPoints);
+  WriteI('Mods', 'InvulnTimeMs', Settings.InvulnTimeMs);
+  WriteI('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
+  WriteB('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
+  WriteB('Debug', 'ModTestMode', Settings.ModTestMode);
+  WriteS('Debug', 'StartItems', Settings.StartItems);
+  WriteI('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
+  WriteI('Debug', 'StartInvulnMs', Settings.StartInvulnMs);
+  WriteB('Debug', 'GhostsKeepRound', Settings.GhostsKeepRound);
+End;
+
+Procedure LoadModSettingsFromFile(Const Filename: String;
+  Var Settings: TModSettings);
+
+  // Zieht einen ungültigen Wert mit einer Warnung auf MinValue..MaxValue
+  Procedure Clamp(Const Key: String; Var Value: Integer; MinValue, MaxValue: Integer);
+  Begin
+    If (Value < MinValue) Or (Value > MaxValue) Then Begin
+      log(ExtractFileName(Filename) + ': ' + Key + ' not in ' + inttostr(MinValue) + '..' + inttostr(MaxValue) + ', clamping', llWarning);
+      Value := min(MaxValue, max(MinValue, Value));
+    End;
+  End;
+
+Var
+  ini: TIniFile;
+Begin
+  ModSettingsDefaults(Settings);
+  If Not ForceDirectories(ExtractFileDir(Filename)) Then Begin
+    log('Unable to create: ' + Filename, llCritical);
+    exit;
+  End;
+  ini := TIniFile.Create(Filename);
+  Try
+    Settings.StunOnBombLanding := ini.ReadBool('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
+    Settings.StunMinMs := ini.ReadInteger('Mods', 'StunMinMs', Settings.StunMinMs);
+    Settings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', Settings.StunMaxMs);
+    Settings.PositiveDisease := ini.ReadBool('Mods', 'PositiveDisease', Settings.PositiveDisease);
+    Settings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
+    Settings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
+    Settings.PositiveMaxMs := ini.ReadInteger('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
+    Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
+    Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
+    Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
+    Settings.GhostFlickerMs := ini.ReadInteger('Mods', 'GhostFlickerMs', Settings.GhostFlickerMs);
+    Settings.GhostMaxCount := ini.ReadInteger('Mods', 'GhostMaxCount', Settings.GhostMaxCount);
+    Settings.GhostMaxTimeMs := ini.ReadInteger('Mods', 'GhostMaxTimeMs', Settings.GhostMaxTimeMs);
+    Settings.HitPoints := ini.ReadBool('Mods', 'HitPoints', Settings.HitPoints);
+    Settings.InvulnTimeMs := ini.ReadInteger('Mods', 'InvulnTimeMs', Settings.InvulnTimeMs);
+    Settings.DefaultHitPoints := ini.ReadInteger('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
+    Settings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
+    ini.ReadSectionValues('Handicap', Settings.Handicap); // Spielername=Trefferpunkte
+    Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
+    Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
+    Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
+    Settings.StartInvulnMs := ini.ReadInteger('Debug', 'StartInvulnMs', Settings.StartInvulnMs);
+    Settings.GhostsKeepRound := ini.ReadBool('Debug', 'GhostsKeepRound', Settings.GhostsKeepRound);
+    (*
+     * Ungültige Werte auf gültige Grenzen ziehen
+     *)
+    Clamp('StunMinMs', Settings.StunMinMs, 0, ModMaxStunMs);
+    Clamp('StunMaxMs', Settings.StunMaxMs, 0, ModMaxStunMs);
+    If Settings.StunMaxMs < Settings.StunMinMs Then Begin
+      log(ExtractFileName(Filename) + ': StunMaxMs < StunMinMs, using StunMinMs', llWarning);
+      Settings.StunMaxMs := Settings.StunMinMs;
+    End;
+    Clamp('PositiveDiseaseChance', Settings.PositiveDiseaseChance, 0, ModMaxPositiveDiseaseChance);
+    Clamp('PositiveMinMs', Settings.PositiveMinMs, 0, ModMaxPositiveMs);
+    Clamp('PositiveMaxMs', Settings.PositiveMaxMs, 0, ModMaxPositiveMs);
+    If Settings.PositiveMaxMs < Settings.PositiveMinMs Then Begin
+      log(ExtractFileName(Filename) + ': PositiveMaxMs < PositiveMinMs, using PositiveMinMs', llWarning);
+      Settings.PositiveMaxMs := Settings.PositiveMinMs;
+    End;
+    Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
+    Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
+    Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
+    Clamp('GhostMaxCount', Settings.GhostMaxCount, 0, ModMaxGhostCount);
+    Clamp('GhostMaxTimeMs', Settings.GhostMaxTimeMs, 0, ModMaxGhostTimeMs);
+    Clamp('InvulnTimeMs', Settings.InvulnTimeMs, FlameTime, ModMaxInvulnTimeMs);
+    Clamp('DefaultHitPoints', Settings.DefaultHitPoints, 1, ModMaxHitPoints);
+    Clamp('RoundTimeSec', Settings.RoundTimeSec, 0, ModMaxRoundTimeSec);
+    Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
+    (*
+     * Fehlende Schlüssel mit ihren Defaults anlegen, damit man sie in der Datei auch findet
+     *)
+    WriteModSettings(ini, Settings, true);
+  Finally
+    ini.free;
+  End;
+End;
+
+Function SaveModSettingsToFile(Const Filename: String;
+  Const Settings: TModSettings): Boolean;
+Var
+  ini: TIniFile;
+  i: Integer;
+Begin
+  result := false;
+  If Not ForceDirectories(ExtractFileDir(Filename)) Then Begin
+    log('Unable to create: ' + Filename, llError);
+    exit;
+  End;
+  Try
+    ini := TIniFile.Create(Filename);
+    Try
+      ini.CacheUpdates := true;
+      WriteModSettings(ini, Settings, false);
+      ini.EraseSection('Handicap');
+      For i := 0 To Settings.Handicap.Count - 1 Do Begin
+        ini.WriteString('Handicap', Settings.Handicap.Names[i], Settings.Handicap.ValueFromIndex[i]);
+      End;
+      ini.UpdateFile;
+      result := true;
+    Finally
+      ini.free;
+    End;
+  Except
+    On av: Exception Do Begin
+      log('Unable to write: ' + Filename + ' ' + av.Message, llError);
+    End;
+  End;
+End;
 
 Function ModTestCommandToString(Value: TModTestCommand): String;
 Begin
