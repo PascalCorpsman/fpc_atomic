@@ -49,6 +49,7 @@ object Form4: TForm4
     object TabSheet1: TTabSheet
       Caption = 'TabSheet1'
       object CheckBox1: TCheckBox
+        Hint = 'On: a thrown bomb (glove or ghost) that lands on a player stuns everyone on that tile.'
         Left = 8
         Height = 19
         Top = 8
@@ -63,7 +64,7 @@ object Form4: TForm4
         Top = 34
         Width = 312
         AutoSize = False
-        Caption = 'A bomb thrown with the glove that lands on a player stuns the player for a random time between min. and max.'
+        Caption = 'A thrown bomb (glove or ghost) that lands on a player stuns everyone on that tile. Punched bombs do not stun.'
         WordWrap = True
       end
       object Panel1: TPanel
@@ -106,6 +107,7 @@ object Form4: TForm4
     object TabSheet10: TTabSheet
       Caption = 'TabSheet10'
       object CheckBox16: TCheckBox
+        Hint = 'On: with the punch item the second action stuns an opponent standing in front of the player.'
         Left = 8
         Height = 19
         Top = 8
@@ -186,6 +188,7 @@ object Form4: TForm4
     object TabSheet2: TTabSheet
       Caption = 'TabSheet2'
       object CheckBox2: TCheckBox
+        Hint = 'On: some disease items make the player invulnerable for a while instead of sick.'
         Left = 8
         Height = 19
         Top = 8
@@ -257,6 +260,7 @@ object Form4: TForm4
     object TabSheet7: TTabSheet
       Caption = 'TabSheet7'
       object CheckBox9: TCheckBox
+        Hint = 'On: some disease items let the player walk through destructible bricks for a while.'
         Left = 8
         Height = 19
         Top = 8
@@ -351,6 +355,7 @@ object Form4: TForm4
     object TabSheet11: TTabSheet
       Caption = 'TabSheet11'
       object CheckBox17: TCheckBox
+        Hint = 'On: some disease items turn the screen of the player white for a while.'
         Left = 8
         Height = 19
         Top = 8
@@ -445,6 +450,7 @@ object Form4: TForm4
     object TabSheet12: TTabSheet
       Caption = 'TabSheet12'
       object CheckBox18: TCheckBox
+        Hint = 'On: some items below the bricks are white bombs that turn the screens of all opponents white.'
         Left = 8
         Height = 19
         Top = 8
@@ -539,6 +545,7 @@ object Form4: TForm4
     object TabSheet13: TTabSheet
       Caption = 'TabSheet13'
       object CheckBox19: TCheckBox
+        Hint = 'On: some items below the bricks are flamethrowers, hold the second action to fire.'
         Left = 8
         Height = 19
         Top = 8
@@ -640,6 +647,7 @@ object Form4: TForm4
     object TabSheet3: TTabSheet
       Caption = 'TabSheet3'
       object CheckBox3: TCheckBox
+        Hint = 'On: players survive several hits, set per player name in the handicap table.'
         Left = 8
         Height = 19
         Top = 8
@@ -754,6 +762,7 @@ object Form4: TForm4
     object TabSheet4: TTabSheet
       Caption = 'TabSheet4'
       object CheckBox4: TCheckBox
+        Hint = 'On: dead players walk around the field as ghosts and can throw bombs to get back into the game.'
         Left = 8
         Height = 19
         Top = 8
@@ -768,7 +777,7 @@ object Form4: TForm4
         Top = 34
         Width = 312
         AutoSize = False
-        Caption = 'Dead players walk around the field as ghosts until hurry. A ghost bomb that kills an opponent brings the ghost back.'
+        Caption = 'Dead players walk around the field as ghosts until hurry. A ghost bomb that hits an opponent brings the ghost back.'
         WordWrap = True
       end
       object Panel4: TPanel
@@ -862,6 +871,7 @@ object Form4: TForm4
     object TabSheet6: TTabSheet
       Caption = 'TabSheet6'
       object CheckBox8: TCheckBox
+        Hint = 'On: until the first step of a round every player can throw the bomb below the player like with the glove.'
         Left = 8
         Height = 19
         Top = 8
@@ -891,6 +901,7 @@ object Form4: TForm4
     object TabSheet8: TTabSheet
       Caption = 'TabSheet8'
       object CheckBox10: TCheckBox
+        Hint = 'On: players can walk over the border and come out on the opposite side.'
         Left = 8
         Height = 19
         Top = 8
@@ -957,6 +968,7 @@ object Form4: TForm4
     object TabSheet9: TTabSheet
       Caption = 'TabSheet9'
       object CheckBox13: TCheckBox
+        Hint = 'On: teleporters in the middle of the borders bring the player to the opposite border.'
         Left = 8
         Height = 19
         Top = 8
@@ -1023,6 +1035,7 @@ object Form4: TForm4
     object TabSheet5: TTabSheet
       Caption = 'TabSheet5'
       object CheckBox5: TCheckBox
+        Hint = 'On: test keys F1..F12 and Ins for the host and some test settings. Shows a hint to all players.'
         Left = 8
         Height = 19
         Top = 8
@@ -1122,6 +1135,7 @@ object Form4: TForm4
     OnClick = Button1Click
   end
   object Button2: TButton
+    Hint = 'Save the settings to atomic_server.ini. They apply to the next game hosted on this PC.'
     Left = 344
     Height = 25
     Top = 360
@@ -1131,6 +1145,7 @@ object Form4: TForm4
     OnClick = Button2Click
   end
   object Button3: TButton
+    Hint = 'Close without saving.'
     Left = 432
     Height = 25
     Top = 360
