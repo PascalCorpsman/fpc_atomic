@@ -28,11 +28,11 @@ Type
 
   TForm1 = Class(TForm)
     Button1: TButton;
-    Button2: TButton;
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
     Button6: TButton;
+    Button7: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -43,25 +43,41 @@ Type
     Edit3: TEdit;
     GroupBox1: TGroupBox;
     GroupBox2: TGroupBox;
+    GroupBox3: TGroupBox;
+    GroupBox4: TGroupBox;
     Image1: TImage;
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    Panel1: TPanel;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
     Procedure Button6Click(Sender: TObject);
+    Procedure Button7Click(Sender: TObject);
+    Procedure CheckBox3Change(Sender: TObject);
+    Procedure Edit1Change(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
+    Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure Panel1MouseEnter(Sender: TObject);
+    Procedure Panel1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
   private
     ini: TIniFile;
     Atomic_Version: TVersion;
     ProtocollVersion: integer;
     Version: Single;
+    UpToDate: Boolean; // True, wenn "Updates..." in diesem Lauf nichts mehr zum Herunterladen gefunden hat
+    GameDataFound: Boolean; // True, wenn CheckForFiles nichts vermisst, dann ist der Launch Knopf blau
 
     Procedure LoadSettings();
+    Procedure UpdateStatus();
     Procedure StoreSettings();
 
     Procedure LoadSideImage();
@@ -78,7 +94,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3, LCLType, lclintf
+Uses UTF8Process, process, Unit2, Unit3, Unit4, LCLType, lclintf
   , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global
 {$IFDEF Windows}
   , LResources
@@ -123,9 +139,13 @@ End;
 Procedure TForm1.FormCreate(Sender: TObject);
 Var
   i: Integer;
+  fm: TFormatSettings;
 Begin
   InitLogger();
   LoggerSetOnDoLog(@OnDoLog);
+  // Hints erst nach 1 s zeigen (Standard 0,5 s), damit sie nicht stören, dafür länger stehen lassen
+  Application.HintPause := 1000;
+  Application.HintHidePause := 10000;
   ini := TIniFile.Create(GetAtomicConfigFile());
   Constraints.MinHeight := Height;
   Constraints.MaxHeight := Height;
@@ -133,15 +153,21 @@ Begin
   Constraints.MaxWidth := Width;
   SetCurrentDir(ExtractFilePath(ParamStr(0)));
   Atomic_Version := TVersion.Create();
+  UpToDate := false;
   LoadSideImage();
   LoadSettings();
-  caption := format('FPC Atomic, launcher ver. %0.2f', [LauncherVersion / 100]);
+  fm := DefaultFormatSettings;
+  fm.DecimalSeparator := '.';
+  caption := format('FPC Atomic Launcher, ver. %0.2f', [LauncherVersion / 100], fm);
   // Handle Launcher Parameters
   For i := 1 To ParamCount Do Begin
     If ParamStr(i) = '-cti' Then CheckBox3.Checked := true;
     If ParamStr(i) = '-ip' Then edit2.text := ParamStr(i + 1);
     If ParamStr(i) = '-port' Then edit3.text := ParamStr(i + 1);
   End;
+  CheckBox3Change(Nil);
+  Edit1Change(Nil);
+  UpdateStatus();
 End;
 
 Procedure TForm1.Button3Click(Sender: TObject);
@@ -169,6 +195,7 @@ Begin
   p.Options := p.Options + [poWaitOnExit];
   p.Execute;
   p.free;
+  UpdateStatus();
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
@@ -282,6 +309,74 @@ Begin
   OpenURL(s);
 End;
 
+Procedure TForm1.Button7Click(Sender: TObject);
+Begin
+  // Mods, der Dialog liest und schreibt atomic_server.ini selbst
+  form4.ShowModal;
+End;
+
+Procedure TForm1.CheckBox3Change(Sender: TObject);
+Begin
+  // Router IP und Port braucht es nur, wenn über einen Router verbunden wird
+  Label2.Enabled := CheckBox3.Checked;
+  Edit2.Enabled := CheckBox3.Checked;
+  Label3.Enabled := CheckBox3.Checked;
+  Edit3.Enabled := CheckBox3.Checked;
+End;
+
+Procedure TForm1.Edit1Change(Sender: TObject);
+Begin
+  // Den Spielernamen sofort prüfen, die Meldung beim Launch bleibt als Sicherheitsnetz
+  If ValidNodeName(trim(Edit1.Text)) Then Begin
+    Label4.Caption := '✓ valid name';
+    Label4.Font.Color := clGreen;
+  End
+  Else Begin
+    Label4.Caption := '✗ a-z 0-9 _ space, max. 19';
+    Label4.Font.Color := clRed;
+  End;
+End;
+
+Procedure TForm1.FormKeyDown(Sender: TObject; Var Key: Word;
+  Shift: TShiftState);
+Begin
+  // Der Launch "Knopf" ist ein Panel (nur so lässt er sich blau färben), daher Alt+L hier von Hand
+  If (ssAlt In Shift) And (key = VK_L) Then Begin
+    key := 0;
+    Button2Click(Nil);
+  End;
+End;
+
+Procedure TForm1.Panel1MouseEnter(Sender: TObject);
+Var
+  p: TPoint;
+Begin
+  // Gemeinsam für Enter und Leave von Panel1 und Label7, ob die Maus über dem Knopf ist entscheidet die Position
+  p := Panel1.ScreenToClient(Mouse.CursorPos);
+  If GameDataFound Then Begin
+    If (p.x >= 0) And (p.y >= 0) And (p.x < Panel1.Width) And (p.y < Panel1.Height) Then Begin
+      Panel1.Color := $00A85A00; // Dunkleres Blau
+    End
+    Else Begin
+      Panel1.Color := $00C06700;
+    End;
+    Label7.Font.Color := clWhite;
+    Panel1.BevelOuter := bvNone;
+  End
+  Else Begin
+    // Ohne Spieldaten sieht er aus wie ein normaler Knopf, ein Klick zeigt die fehlenden Dateien
+    Panel1.Color := clBtnFace;
+    Label7.Font.Color := clBtnText;
+    Panel1.BevelOuter := bvRaised;
+  End;
+End;
+
+Procedure TForm1.Panel1MouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+Begin
+  Panel1MouseEnter(Sender);
+End;
+
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
   Atomic_Version.free;
@@ -380,6 +475,7 @@ Begin
   log('Local launcher version: ' + format('%0.2f', [LauncherVersion / 100]));
   form3.InitWith(Atomic_Version, Version = -1);
   If form3.GetFilesToDLCount() = 0 Then Begin
+    UpToDate := true;
     showmessage(
       'Your version of fpc_atomic is up to date.'
       //      + LineEnding + LineEnding +
@@ -391,6 +487,7 @@ Begin
   form2.Left := form3.left + form3.Width + 10;
   form3.ShowModal;
   form2.Hide;
+  UpdateStatus();
 End;
 
 Procedure TForm1.LoadSideImage;
@@ -448,6 +545,38 @@ Begin
 
   edit2.text := ini.ReadString('Launcher', 'Router_IP', '127.0.0.1');
   edit3.text := ini.ReadString('Launcher', 'Router_Port', '5521');
+End;
+
+Procedure TForm1.UpdateStatus;
+Var
+  sl: TStringList;
+  fm: TFormatSettings;
+Begin
+  // Links: sind die Spieldaten vollständig, rechts: die installierte Version (ohne Netzwerkzugriff)
+  sl := CheckForFiles();
+  If sl.Count = 0 Then Begin
+    Label5.Caption := '✓ Game data found';
+    Label5.Font.Color := clGreen;
+  End
+  Else Begin
+    Label5.Caption := '✗ Game data missing, run CD extractor';
+    Label5.Font.Color := clRed;
+  End;
+  // Die fehlenden Dateien stehen im Tooltip
+  Label5.Hint := trim(sl.Text);
+  Label5.ShowHint := sl.Count <> 0;
+  GameDataFound := sl.Count = 0;
+  sl.free;
+  Panel1MouseEnter(Nil);
+  If Version = -1 Then Begin
+    Label6.Caption := 'Game ver. unknown';
+  End
+  Else Begin
+    fm := DefaultFormatSettings;
+    fm.DecimalSeparator := '.';
+    Label6.Caption := 'Game ver. ' + format('%0.5f', [Version], fm);
+  End;
+  If UpToDate Then Label6.Caption := Label6.Caption + ', up to date';
 End;
 
 Procedure TForm1.StoreSettings;

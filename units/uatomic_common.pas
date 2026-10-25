@@ -147,6 +147,7 @@ Const
    *                       ADD: optional ghosts, dead players walk around the border and can throw bombs to get back into the game
    *                       ADD: ghosts: max count per round and optional max time until they vanish (flicker faster before)
    *                       ADD: mod settings code shared by server and launcher (defaults, limits, load / save)
+   *                       ADD: launcher: new layout (live name check, game data / version status) and mods dialog for atomic_server.ini
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)

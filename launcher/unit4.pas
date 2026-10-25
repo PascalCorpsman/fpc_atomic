@@ -1,0 +1,412 @@
+(******************************************************************************)
+(*                                                                            *)
+(* Author      : Uwe Schächterle (Corpsman)                                   *)
+(*                                                                            *)
+(* This file is part of FPC_Atomic                                            *)
+(*                                                                            *)
+(*  See the file license.md, located under:                                   *)
+(*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
+(*  for details about the license.                                            *)
+(*                                                                            *)
+(*               It is not allowed to change or remove this text from any     *)
+(*               source file of the project.                                  *)
+(*                                                                            *)
+(******************************************************************************)
+Unit Unit4;
+
+{$MODE objfpc}{$H+}
+
+Interface
+
+Uses
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
+  ComCtrls, CheckLst, Spin, Grids, uatomic_common;
+
+Type
+
+  { TForm4 }
+
+  (*
+   * Der Mods Dialog bearbeitet atomic_server.ini, der Server liest sie beim nächsten Start.
+   *
+   * Links steht jeder Mod als eine Zeile mit Haken, rechts die Seite mit seinen Einstellungen.
+   * Ein neuer Mod braucht: einen Eintrag in CheckListBox1, eine TabSheet mit Checkbox und Panel
+   * und die beiden Einträge in fModCheckBoxes / fModPanels (FormCreate).
+   *)
+  TForm4 = Class(TForm)
+    Button1: TButton;
+    Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
+    Button5: TButton;
+    CheckBox1: TCheckBox;
+    CheckBox2: TCheckBox;
+    CheckBox3: TCheckBox;
+    CheckBox4: TCheckBox;
+    CheckBox5: TCheckBox;
+    CheckBox6: TCheckBox;
+    CheckBox7: TCheckBox;
+    CheckListBox1: TCheckListBox;
+    Edit1: TEdit;
+    Label1: TLabel;
+    Label10: TLabel;
+    Label11: TLabel;
+    Label12: TLabel;
+    Label13: TLabel;
+    Label14: TLabel;
+    Label15: TLabel;
+    Label16: TLabel;
+    Label17: TLabel;
+    Label18: TLabel;
+    Label19: TLabel;
+    Label2: TLabel;
+    Label20: TLabel;
+    Label21: TLabel;
+    Label22: TLabel;
+    Label23: TLabel;
+    Label24: TLabel;
+    Label25: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    PageControl1: TPageControl;
+    Panel1: TPanel;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Panel4: TPanel;
+    Panel5: TPanel;
+    SpinEdit1: TSpinEdit;
+    SpinEdit10: TSpinEdit;
+    SpinEdit11: TSpinEdit;
+    SpinEdit12: TSpinEdit;
+    SpinEdit13: TSpinEdit;
+    SpinEdit14: TSpinEdit;
+    SpinEdit2: TSpinEdit;
+    SpinEdit3: TSpinEdit;
+    SpinEdit4: TSpinEdit;
+    SpinEdit5: TSpinEdit;
+    SpinEdit6: TSpinEdit;
+    SpinEdit7: TSpinEdit;
+    SpinEdit8: TSpinEdit;
+    SpinEdit9: TSpinEdit;
+    StringGrid1: TStringGrid;
+    TabSheet1: TTabSheet;
+    TabSheet2: TTabSheet;
+    TabSheet3: TTabSheet;
+    TabSheet4: TTabSheet;
+    TabSheet5: TTabSheet;
+    Procedure Button1Click(Sender: TObject);
+    Procedure Button2Click(Sender: TObject);
+    Procedure Button4Click(Sender: TObject);
+    Procedure Button5Click(Sender: TObject);
+    Procedure CheckBox1Change(Sender: TObject);
+    Procedure CheckListBox1ClickCheck(Sender: TObject);
+    Procedure CheckListBox1SelectionChange(Sender: TObject; User: boolean);
+    Procedure FormCreate(Sender: TObject);
+    Procedure FormDestroy(Sender: TObject);
+    Procedure FormShow(Sender: TObject);
+    Procedure StringGrid1PrepareCanvas(Sender: TObject; aCol, aRow: Integer;
+      aState: TGridDrawState);
+  private
+    fSettings: TModSettings;
+    fModCheckBoxes: Array Of TCheckBox; // Pro Mod die Checkbox oben auf seiner Seite, Index = Index in CheckListBox1 und PageControl1
+    fModPanels: Array Of TPanel; // Pro Mod seine Einstellungen, die sind nur aktiv wenn die Checkbox an ist
+    Procedure SettingsToControls();
+    Function ControlsToSettings(): Boolean; // False, wenn eine Eingabe ungültig ist (dann wurde schon eine Meldung angezeigt)
+    Procedure UpdateModEnabled();
+    Function ValidHandicapRow(aRow: integer): Boolean;
+    Procedure ShowModPage(Index: integer);
+  public
+
+  End;
+
+Var
+  Form4: TForm4;
+
+Implementation
+
+{$R *.lfm}
+
+Uses uatomic_global;
+
+Function ValidHandicapName(aName: String): Boolean;
+Begin
+  // "Name~2" ist der 2. Spieler an einem PC (siehe TServer.HandleStartRound), ~ kann in einem Spielernamen nicht vorkommen
+  aName := trim(aName);
+  If copy(aName, length(aName) - 1, 2) = '~2' Then Begin
+    aName := copy(aName, 1, length(aName) - 2);
+  End;
+  result := ValidNodeName(aName);
+End;
+
+{ TForm4 }
+
+Procedure TForm4.FormCreate(Sender: TObject);
+Begin
+  caption := 'Mods';
+  fSettings.Handicap := Nil;
+  ModSettingsDefaults(fSettings);
+  setlength(fModCheckBoxes, 5);
+  fModCheckBoxes[0] := CheckBox1;
+  fModCheckBoxes[1] := CheckBox2;
+  fModCheckBoxes[2] := CheckBox3;
+  fModCheckBoxes[3] := CheckBox4;
+  fModCheckBoxes[4] := CheckBox5;
+  setlength(fModPanels, 5);
+  fModPanels[0] := Panel1;
+  fModPanels[1] := Panel2;
+  fModPanels[2] := Panel3;
+  fModPanels[3] := Panel4;
+  fModPanels[4] := Panel5;
+  // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
+  SpinEdit1.MaxValue := ModMaxStunMs;
+  SpinEdit2.MaxValue := ModMaxStunMs;
+  SpinEdit3.MaxValue := ModMaxPositiveDiseaseChance;
+  SpinEdit4.MaxValue := ModMaxPositiveMs;
+  SpinEdit5.MaxValue := ModMaxPositiveMs;
+  SpinEdit6.MinValue := FlameTime;
+  SpinEdit6.MaxValue := ModMaxInvulnTimeMs;
+  SpinEdit7.MinValue := 1;
+  SpinEdit7.MaxValue := ModMaxHitPoints;
+  SpinEdit8.MinValue := 1;
+  SpinEdit8.MaxValue := ModMaxGhostFlameLen;
+  SpinEdit9.MaxValue := ModMaxGhostReviveInvulnMs;
+  SpinEdit10.MaxValue := ModMaxGhostCount;
+  SpinEdit11.MaxValue := ModMaxGhostTimeMs;
+  SpinEdit12.MaxValue := ModMaxGhostFlickerMs;
+  SpinEdit13.MaxValue := ModMaxRoundTimeSec;
+  SpinEdit14.MaxValue := ModMaxStartInvulnMs;
+  StringGrid1.Cells[0, 0] := 'Player name';
+  StringGrid1.Cells[1, 0] := 'Hit points';
+  PageControl1.ActivePageIndex := 0;
+End;
+
+Procedure TForm4.FormDestroy(Sender: TObject);
+Begin
+  fSettings.Handicap.free;
+  fSettings.Handicap := Nil;
+End;
+
+Procedure TForm4.FormShow(Sender: TObject);
+Begin
+  // Immer den aktuellen Stand der Datei zeigen, falls sie von Hand geändert wurde
+  LoadModSettingsFromFile(GetAtomicServerIniFile(), fSettings);
+  SettingsToControls();
+  ShowModPage(PageControl1.ActivePageIndex);
+End;
+
+Procedure TForm4.Button1Click(Sender: TObject);
+Begin
+  // Defaults
+  ModSettingsDefaults(fSettings);
+  SettingsToControls();
+End;
+
+Procedure TForm4.Button2Click(Sender: TObject);
+Begin
+  // OK
+  If Not ControlsToSettings() Then exit;
+  If Not SaveModSettingsToFile(GetAtomicServerIniFile(), fSettings) Then Begin
+    showmessage('Error, could not write:' + LineEnding + GetAtomicServerIniFile());
+    exit;
+  End;
+  ModalResult := mrOK;
+End;
+
+Procedure TForm4.Button4Click(Sender: TObject);
+Begin
+  // Neue Zeile in der Handicap Tabelle, gleich zum Bearbeiten
+  StringGrid1.RowCount := StringGrid1.RowCount + 1;
+  StringGrid1.Row := StringGrid1.RowCount - 1;
+  StringGrid1.Col := 0;
+  StringGrid1.SetFocus;
+  StringGrid1.EditorMode := true;
+End;
+
+Procedure TForm4.Button5Click(Sender: TObject);
+Begin
+  // Markierte Zeile aus der Handicap Tabelle löschen
+  If StringGrid1.Row >= StringGrid1.FixedRows Then Begin
+    StringGrid1.DeleteRow(StringGrid1.Row);
+  End;
+End;
+
+Procedure TForm4.CheckBox1Change(Sender: TObject);
+Begin
+  // Gemeinsam für die Checkboxen CheckBox1..5 oben auf den Seiten
+  UpdateModEnabled();
+End;
+
+Procedure TForm4.CheckListBox1ClickCheck(Sender: TObject);
+Var
+  i: integer;
+Begin
+  // Der Haken in der Liste schaltet den Mod genau so wie die Checkbox auf seiner Seite
+  For i := 0 To high(fModCheckBoxes) Do Begin
+    fModCheckBoxes[i].Checked := CheckListBox1.Checked[i];
+  End;
+End;
+
+Procedure TForm4.CheckListBox1SelectionChange(Sender: TObject; User: boolean);
+Begin
+  If CheckListBox1.ItemIndex >= 0 Then Begin
+    PageControl1.ActivePageIndex := CheckListBox1.ItemIndex;
+  End;
+End;
+
+Procedure TForm4.StringGrid1PrepareCanvas(Sender: TObject; aCol,
+  aRow: Integer; aState: TGridDrawState);
+Begin
+  // Ungültige Handicap Einträge rot, die werden beim OK abgelehnt
+  If (aRow >= StringGrid1.FixedRows) And (Not ValidHandicapRow(aRow)) Then Begin
+    StringGrid1.Canvas.Font.Color := clRed;
+  End;
+End;
+
+Procedure TForm4.SettingsToControls;
+Var
+  i: integer;
+Begin
+  CheckBox1.Checked := fSettings.StunOnBombLanding;
+  SpinEdit1.Value := fSettings.StunMinMs;
+  SpinEdit2.Value := fSettings.StunMaxMs;
+
+  CheckBox2.Checked := fSettings.PositiveDisease;
+  SpinEdit3.Value := fSettings.PositiveDiseaseChance;
+  SpinEdit4.Value := fSettings.PositiveMinMs;
+  SpinEdit5.Value := fSettings.PositiveMaxMs;
+
+  CheckBox3.Checked := fSettings.HitPoints;
+  SpinEdit6.Value := fSettings.InvulnTimeMs;
+  SpinEdit7.Value := fSettings.DefaultHitPoints;
+  CheckBox6.Checked := fSettings.ShowHitPoints;
+  StringGrid1.RowCount := StringGrid1.FixedRows + fSettings.Handicap.Count;
+  For i := 0 To fSettings.Handicap.Count - 1 Do Begin
+    StringGrid1.Cells[0, StringGrid1.FixedRows + i] := fSettings.Handicap.Names[i];
+    StringGrid1.Cells[1, StringGrid1.FixedRows + i] := fSettings.Handicap.ValueFromIndex[i];
+  End;
+
+  CheckBox4.Checked := fSettings.Ghosts;
+  SpinEdit8.Value := fSettings.GhostFlameLen;
+  SpinEdit9.Value := fSettings.GhostReviveInvulnMs;
+  SpinEdit10.Value := fSettings.GhostMaxCount;
+  SpinEdit11.Value := fSettings.GhostMaxTimeMs;
+  SpinEdit12.Value := fSettings.GhostFlickerMs;
+
+  CheckBox5.Checked := fSettings.ModTestMode;
+  Edit1.Text := fSettings.StartItems;
+  SpinEdit13.Value := fSettings.RoundTimeSec;
+  SpinEdit14.Value := fSettings.StartInvulnMs;
+  CheckBox7.Checked := fSettings.GhostsKeepRound;
+  UpdateModEnabled();
+End;
+
+Function TForm4.ControlsToSettings: Boolean;
+Var
+  i, j: integer;
+  n: String;
+Begin
+  result := false;
+  If SpinEdit2.Value < SpinEdit1.Value Then Begin
+    ShowModPage(0);
+    showmessage('Error, max. stun time is smaller than min. stun time.');
+    exit;
+  End;
+  If SpinEdit5.Value < SpinEdit4.Value Then Begin
+    ShowModPage(1);
+    showmessage('Error, max. time is smaller than min. time.');
+    exit;
+  End;
+  // Die Handicap Tabelle, leere Zeilen werden ignoriert
+  For i := StringGrid1.FixedRows To StringGrid1.RowCount - 1 Do Begin
+    If Not ValidHandicapRow(i) Then Begin
+      ShowModPage(2);
+      StringGrid1.Row := i;
+      showmessage('Error, invalid handicap in line ' + inttostr(i) + ':' + LineEnding +
+        'The player name needs to be a valid name (optional with ~2 at the end) and the hit points need to be in 1..' + inttostr(ModMaxHitPoints) + '.');
+      exit;
+    End;
+    n := trim(StringGrid1.Cells[0, i]);
+    For j := StringGrid1.FixedRows To i - 1 Do Begin
+      If (n <> '') And (lowercase(n) = lowercase(trim(StringGrid1.Cells[0, j]))) Then Begin
+        ShowModPage(2);
+        StringGrid1.Row := i;
+        showmessage('Error, the player name "' + n + '" is used twice.');
+        exit;
+      End;
+    End;
+  End;
+
+  fSettings.StunOnBombLanding := CheckBox1.Checked;
+  fSettings.StunMinMs := SpinEdit1.Value;
+  fSettings.StunMaxMs := SpinEdit2.Value;
+
+  fSettings.PositiveDisease := CheckBox2.Checked;
+  fSettings.PositiveDiseaseChance := SpinEdit3.Value;
+  fSettings.PositiveMinMs := SpinEdit4.Value;
+  fSettings.PositiveMaxMs := SpinEdit5.Value;
+
+  fSettings.HitPoints := CheckBox3.Checked;
+  fSettings.InvulnTimeMs := SpinEdit6.Value;
+  fSettings.DefaultHitPoints := SpinEdit7.Value;
+  fSettings.ShowHitPoints := CheckBox6.Checked;
+  fSettings.Handicap.Clear;
+  For i := StringGrid1.FixedRows To StringGrid1.RowCount - 1 Do Begin
+    n := trim(StringGrid1.Cells[0, i]);
+    If n <> '' Then Begin
+      fSettings.Handicap.Add(n + '=' + inttostr(StrToInt(trim(StringGrid1.Cells[1, i]))));
+    End;
+  End;
+
+  fSettings.Ghosts := CheckBox4.Checked;
+  fSettings.GhostFlameLen := SpinEdit8.Value;
+  fSettings.GhostReviveInvulnMs := SpinEdit9.Value;
+  fSettings.GhostMaxCount := SpinEdit10.Value;
+  fSettings.GhostMaxTimeMs := SpinEdit11.Value;
+  fSettings.GhostFlickerMs := SpinEdit12.Value;
+
+  fSettings.ModTestMode := CheckBox5.Checked;
+  fSettings.StartItems := trim(Edit1.Text);
+  fSettings.RoundTimeSec := SpinEdit13.Value;
+  fSettings.StartInvulnMs := SpinEdit14.Value;
+  fSettings.GhostsKeepRound := CheckBox7.Checked;
+  result := true;
+End;
+
+Procedure TForm4.UpdateModEnabled;
+Var
+  i, j: integer;
+Begin
+  // Die Einstellungen eines Mods sind nur aktiv, wenn er an ist, die Liste links zeigt das gleiche wie die Checkboxen
+  For i := 0 To high(fModCheckBoxes) Do Begin
+    CheckListBox1.Checked[i] := fModCheckBoxes[i].Checked;
+    For j := 0 To fModPanels[i].ControlCount - 1 Do Begin
+      fModPanels[i].Controls[j].Enabled := fModCheckBoxes[i].Checked;
+    End;
+  End;
+End;
+
+Function TForm4.ValidHandicapRow(aRow: integer): Boolean;
+Var
+  n, v: String;
+Begin
+  n := trim(StringGrid1.Cells[0, aRow]);
+  v := trim(StringGrid1.Cells[1, aRow]);
+  If (n = '') And (v = '') Then Begin
+    result := true; // Leere Zeile, wird beim Speichern ignoriert
+    exit;
+  End;
+  result := ValidHandicapName(n) And (StrToIntDef(v, 0) >= 1) And (StrToIntDef(v, 0) <= ModMaxHitPoints);
+End;
+
+Procedure TForm4.ShowModPage(Index: integer);
+Begin
+  PageControl1.ActivePageIndex := Index;
+  CheckListBox1.ItemIndex := Index;
+End;
+
+End.
