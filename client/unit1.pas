@@ -577,6 +577,7 @@ Begin
   Game.Settings.PlayTime := IniPropStorage1.ReadInteger('PlayTime', 2 * 60 + 30);
   Game.Settings.LostPlayersRevertToAI := IniPropStorage1.ReadBoolean('LostPlayersRevertToAI', false);
   Game.Settings.PlaySounds := IniPropStorage1.ReadBoolean('PlaySounds', true);
+  Game.Settings.PlaySoundEffects := IniPropStorage1.ReadBoolean('PlaySoundEffects', true);
   Game.Settings.Keys[ks0] := AtomicDefaultKeys(ks0);
   Game.Settings.Keys[ks0].UseSDL2 := IniPropStorage1.ReadBoolean('UseSDL', Game.Settings.Keys[ks0].UseSDL2);
   Game.Settings.Keys[ks0].KeyUp := IniPropStorage1.ReadInteger('KeyUp', Game.Settings.Keys[ks0].KeyUp);
@@ -673,6 +674,7 @@ Begin
   IniPropStorage1.WriteInteger('PlayTime', Game.Settings.PlayTime);
   IniPropStorage1.WriteBoolean('LostPlayersRevertToAI', Game.Settings.LostPlayersRevertToAI);
   IniPropStorage1.WriteBoolean('PlaySounds', Game.Settings.PlaySounds);
+  IniPropStorage1.WriteBoolean('PlaySoundEffects', Game.Settings.PlaySoundEffects);
   IniPropStorage1.WriteInteger('KeyUp', Game.Settings.Keys[ks0].KeyUp);
   IniPropStorage1.WriteInteger('KeyDown', Game.Settings.Keys[ks0].KeyDown);
   IniPropStorage1.WriteInteger('KeyLeft', Game.Settings.Keys[ks0].KeyLeft);

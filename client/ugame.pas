@@ -511,7 +511,8 @@ Var
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TGame.PlaySoundEffect');
-  If Not fSoundManager.PlaySoundEffekt(Filename, EndCallback) Then Begin
+  // Die Soundeffekte lassen sich unabhängig von der Musik (PlaySounds) abschalten, der EndCallback kommt trotzdem
+  If (Not Settings.PlaySoundEffects) Or (Not fSoundManager.PlaySoundEffekt(Filename, EndCallback)) Then Begin
     If assigned(EndCallback) Then Begin
       EndCallback(Nil);
     End;

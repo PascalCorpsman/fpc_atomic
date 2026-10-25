@@ -161,6 +161,7 @@ Const
    *                       ADD: launcher: dialog for the game options (same options as in the game)
    *                       ADD: client parameter -host (launcher: Ctrl + Launch) hosts a network game directly, -join (launcher: Shift + Launch) joins one
    *                       FIX: -ip / -port are evaluated only after the game is initialized
+   *                       ADD: sound effects can be switched off independent of the music (launcher: "Play music" and Game options "Play sound effects")
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)
@@ -793,7 +794,8 @@ Type
     PlayTime: integer; // in [s]
     LostPlayersRevertToAI: Boolean;
 {$IFDEF Client}
-    PlaySounds: Boolean;
+    PlaySounds: Boolean; // Nur die Musik (im Spiel: "Disable music during gameplay")
+    PlaySoundEffects: Boolean; // Die Soundeffekte, unabhängig von der Musik (nur im Launcher einstellbar: Game options)
     Keys: TKeyArray;
     ShowFPS: Boolean;
 {$ENDIF}
