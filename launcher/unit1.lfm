@@ -239,37 +239,47 @@ object Form1: TForm1
       Left = 8
       Height = 25
       Top = 2
-      Width = 103
+      Width = 81
       Caption = '&Mods...'
       TabOrder = 0
       OnClick = Button7Click
     end
-    object Button1: TButton
-      Hint = 'Check online for a new version and download it.'
-      Left = 117
+    object Button8: TButton
+      Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
+      Left = 95
       Height = 25
       Top = 2
-      Width = 103
+      Width = 81
+      Caption = '&Game...'
+      TabOrder = 4
+      OnClick = Button8Click
+    end
+    object Button1: TButton
+      Hint = 'Check online for a new version and download it.'
+      Left = 182
+      Height = 25
+      Top = 2
+      Width = 81
       Caption = '&Updates...'
       TabOrder = 1
       OnClick = Button1Click
     end
     object Button4: TButton
       Hint = 'Extract the game data from the original Atomic Bomberman CD.'
-      Left = 226
+      Left = 269
       Height = 25
       Top = 2
-      Width = 103
+      Width = 81
       Caption = 'CD e&xtractor...'
       TabOrder = 2
       OnClick = Button4Click
     end
     object Button6: TButton
       Hint = 'Open the folder with the settings, the logs and atomic_server.ini.'
-      Left = 335
+      Left = 356
       Height = 25
       Top = 2
-      Width = 103
+      Width = 81
       Caption = '&Config folder'
       TabOrder = 3
       OnClick = Button6Click

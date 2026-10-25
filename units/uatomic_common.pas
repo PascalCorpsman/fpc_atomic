@@ -158,6 +158,7 @@ Const
    *                       ADD: optional flamethrower item, hold the second action to fire, opponents staying in the beam are hit after some time
    *                       ADD: mods manual in English and German (MODS_MANUAL.md, MODS_MANUAL_DE.md)
    *                       FIX: launcher title showed the version with a locale comma (0,11)
+   *                       ADD: launcher: dialog for the game options (same options as in the game)
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *)

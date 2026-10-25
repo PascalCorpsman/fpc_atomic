@@ -1,0 +1,171 @@
+object Form5: TForm5
+  Left = 400
+  Height = 367
+  Top = 150
+  Width = 340
+  BorderStyle = bsDialog
+  Caption = 'Form5'
+  ClientHeight = 367
+  ClientWidth = 340
+  Position = poMainFormCenter
+  ShowHint = True
+  LCLVersion = '4.8.0.0'
+  OnCreate = FormCreate
+  object CheckBox1: TCheckBox
+    Hint = 'Players play in two teams (red and white).'
+    Left = 12
+    Height = 19
+    Top = 12
+    Caption = 'Team play'
+  end
+  object CheckBox2: TCheckBox
+    Hint = 'Players start at random start positions of the scheme.'
+    Left = 12
+    Height = 19
+    Top = 38
+    Caption = 'Random start positions'
+  end
+  object CheckBox3: TCheckBox
+    Hint = 'If a network player loses the connection, an AI takes over.'
+    Left = 12
+    Height = 19
+    Top = 64
+    Caption = 'Lost net players revert to AI'
+  end
+  object Label1: TLabel
+    Left = 12
+    Height = 15
+    Top = 98
+    Caption = 'Scheme'
+  end
+  object ComboBox2: TComboBox
+    Hint = 'The scheme sets the bricks, the start positions and the items (files in data/schemes).'
+    Left = 180
+    Height = 23
+    Top = 94
+    Width = 148
+    ItemHeight = 15
+    Style = csDropDownList
+  end
+  object Label2: TLabel
+    Left = 12
+    Height = 15
+    Top = 130
+    Caption = 'Play time'
+  end
+  object ComboBox3: TComboBox
+    Hint = 'Time of a round. The hurry starts 80 s before the end. Infinity = no time limit and no hurry.'
+    Left = 180
+    Height = 23
+    Top = 126
+    Width = 100
+    ItemHeight = 15
+    Style = csDropDownList
+  end
+  object Label3: TLabel
+    Left = 12
+    Height = 15
+    Top = 162
+    Caption = 'Wins to win the match'
+  end
+  object SpinEdit2: TSpinEdit
+    Hint = 'How many rounds a player or team has to win to win the match.'
+    Left = 180
+    Height = 23
+    Top = 158
+    Width = 80
+    Increment = 1
+    MaxValue = 99
+    MinValue = 1
+  end
+  object Label4: TLabel
+    Left = 12
+    Height = 15
+    Top = 194
+    Caption = 'Conveyor speed'
+  end
+  object ComboBox1: TComboBox
+    Hint = 'Speed of the conveyor belts on maps that have them.'
+    Left = 180
+    Height = 23
+    Top = 190
+    Width = 100
+    ItemHeight = 15
+    Style = csDropDownList
+    Items.Strings = (
+      'Slow'
+      'Middle'
+      'Fast'
+    )
+  end
+  object Label5: TLabel
+    Left = 12
+    Height = 15
+    Top = 226
+    Caption = 'Network port'
+  end
+  object SpinEdit1: TSpinEdit
+    Hint = 'TCP port of the server when hosting a game (default 5521).'
+    Left = 180
+    Height = 23
+    Top = 222
+    Width = 80
+    Increment = 1
+    MaxValue = 65535
+    MinValue = 1
+  end
+  object Label6: TLabel
+    Left = 12
+    Height = 15
+    Top = 258
+    Caption = 'Volume (%)'
+  end
+  object SpinEdit3: TSpinEdit
+    Hint = 'Sound volume, in the game it can also be changed with + and -.'
+    Left = 180
+    Height = 23
+    Top = 254
+    Width = 80
+    Increment = 5
+    MaxValue = 100
+    MinValue = 0
+  end
+  object Label7: TLabel
+    Left = 12
+    Height = 32
+    Top = 288
+    Width = 316
+    AutoSize = False
+    Caption = 'The same settings as in the options of the game. Field and wins can also be changed in the game when hosting.'
+    WordWrap = True
+  end
+  object Button1: TButton
+    Hint = 'Reset the settings to the defaults of the game. Saved only with OK.'
+    Left = 12
+    Height = 25
+    Top = 330
+    Width = 80
+    Caption = '&Defaults'
+    OnClick = Button1Click
+  end
+  object Button2: TButton
+    Hint = 'Save the settings, they apply to the next start of the game.'
+    Left = 160
+    Height = 25
+    Top = 330
+    Width = 80
+    Caption = 'OK'
+    Default = True
+    ModalResult = 1
+  end
+  object Button3: TButton
+    Hint = 'Close without saving.'
+    Left = 248
+    Height = 25
+    Top = 330
+    Width = 80
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+  end
+end

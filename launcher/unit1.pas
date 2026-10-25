@@ -33,6 +33,7 @@ Type
     Button5: TButton;
     Button6: TButton;
     Button7: TButton;
+    Button8: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -62,6 +63,7 @@ Type
     Procedure Button5Click(Sender: TObject);
     Procedure Button6Click(Sender: TObject);
     Procedure Button7Click(Sender: TObject);
+    Procedure Button8Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure CheckBox3Change(Sender: TObject);
     Procedure Edit1Change(Sender: TObject);
@@ -96,7 +98,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses UTF8Process, process, Unit2, Unit3, Unit4, LCLType, lclintf
+Uses UTF8Process, process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
   , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global
 {$IFDEF Windows}
   , LResources
@@ -315,6 +317,16 @@ Procedure TForm1.Button7Click(Sender: TObject);
 Begin
   // Mods, der Dialog liest und schreibt atomic_server.ini selbst
   form4.ShowModal;
+End;
+
+Procedure TForm1.Button8Click(Sender: TObject);
+Begin
+  // Spiel Optionen, die selben Schlüssel wie im Optionen Menü des Spiels
+  form5.LoadFromIni(ini);
+  If form5.ShowModal = mrOK Then Begin
+    form5.SaveToIni(ini);
+    ini.UpdateFile;
+  End;
 End;
 
 Procedure TForm1.Label8Click(Sender: TObject);
