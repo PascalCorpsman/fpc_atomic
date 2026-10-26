@@ -45,7 +45,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="ulanguage.pas"/>
+        <Filename Value="ulocales.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

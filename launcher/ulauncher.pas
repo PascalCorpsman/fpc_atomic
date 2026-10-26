@@ -118,13 +118,14 @@ Function CheckForFiles(): TStringList;
 (*
  * Öffnet ein Handbuch (z.B. MANUAL.md) mit dem dafür eingestellten Programm,
  * liegt es nicht neben dem Launcher, dann online unter ManualUrl.
- * Ist der Launcher auf Deutsch, dann die deutsche Fassung (z.B. MANUAL_DE.md).
+ * Ist der Launcher auf Deutsch, dann die deutsche Fassung (z.B. MANUAL_DE.md),
+ * auf Französisch gibt es keine eigene Fassung, dort bleibt es die englische.
  *)
 Procedure OpenManual(Const Filename: String);
 
 Implementation
 
-Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf, ulanguage;
+Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf, ulocales;
 
 Procedure OpenManual(Const Filename: String);
 Var

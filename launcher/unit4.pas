@@ -219,7 +219,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global, ulanguage;
+Uses uatomic_global, ulocales;
 
 Function ValidHandicapName(aName: String): Boolean;
 Begin

@@ -71,7 +71,7 @@ Var
 
 Implementation
 
-Uses lazfileutils, md5, Zipper, FileUtil, process, UTF8Process, LCLType, Unit1, usynapsedownloader, uatomic_global, ulanguage;
+Uses lazfileutils, md5, Zipper, FileUtil, process, UTF8Process, LCLType, Unit1, usynapsedownloader, uatomic_global, ulocales;
 
 {$R *.lfm}
 

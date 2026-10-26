@@ -56,7 +56,7 @@ Type
     Label6: TLabel;
     Label7: TLabel;
     Label8: TLabel;
-    Label9: TLabel;
+    ComboBox1: TComboBox;
     Panel1: TPanel;
     Timer1: TTimer;
     Procedure Button1Click(Sender: TObject);
@@ -68,7 +68,7 @@ Type
     Procedure Button7Click(Sender: TObject);
     Procedure Button8Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
-    Procedure Label9Click(Sender: TObject);
+    Procedure ComboBox1Change(Sender: TObject);
     Procedure CheckBox3Change(Sender: TObject);
     Procedure Edit1Change(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
@@ -106,7 +106,7 @@ Implementation
 {$R *.lfm}
 
 Uses process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage
+  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulocales
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -344,15 +344,10 @@ Begin
   OpenManual('MANUAL.md');
 End;
 
-Procedure TForm1.Label9Click(Sender: TObject);
+Procedure TForm1.ComboBox1Change(Sender: TObject);
 Begin
-  // Englisch <-> Deutsch, gemerkt in fpc_atomic.cfg
-  If Language = lgGerman Then Begin
-    Language := lgEnglish;
-  End
-  Else Begin
-    Language := lgGerman;
-  End;
+  // Die gewählte Sprache, gemerkt in fpc_atomic.cfg
+  Language := TLanguage(ComboBox1.ItemIndex);
   ini.WriteString('Launcher', 'Language', LanguageCodes[Language]);
   ApplyLanguage();
 End;
@@ -624,12 +619,7 @@ Begin
   edit2.text := ini.ReadString('Launcher', 'Router_IP', '127.0.0.1');
   edit3.text := ini.ReadString('Launcher', 'Router_Port', '5521');
   CheckBox6.Checked := ini.ReadBool('Launcher', 'ShowAfterGame', false);
-  If ini.ReadString('Launcher', 'Language', LanguageCodes[lgEnglish]) = LanguageCodes[lgGerman] Then Begin
-    Language := lgGerman;
-  End
-  Else Begin
-    Language := lgEnglish;
-  End;
+  Language := CodeToLanguage(ini.ReadString('Launcher', 'Language', LanguageCodes[lgEnglish]));
 End;
 
 Procedure TForm1.UpdateStatus;
@@ -668,15 +658,7 @@ Procedure TForm1.ApplyLanguage;
 Begin
   // Die Dialoge werden erst direkt vor dem Anzeigen übersetzt (Button1Click, Button5Click, Button7Click, Button8Click)
   TranslateForm(self);
-  // Der Link zeigt immer die andere Sprache, in dieser Sprache
-  If Language = lgGerman Then Begin
-    Label9.Caption := 'English';
-    Label9.Hint := 'Show the launcher in English.';
-  End
-  Else Begin
-    Label9.Caption := 'Deutsch';
-    Label9.Hint := 'Den Launcher auf Deutsch anzeigen.';
-  End;
+  ComboBox1.ItemIndex := ord(Language);
   // Die Texte, die erst der Code setzt
   Edit1Change(Nil);
   UpdateStatus();
