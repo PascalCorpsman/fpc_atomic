@@ -4,6 +4,8 @@
 
 FPC Atomic hat einige optionale Spiel-Mods, die die Regeln des Originalspiels ändern. Alle Mods sind **standardmäßig aus**. Ohne Änderungen spielt sich das Spiel also genau wie das Original.
 
+Welche Mods zu welcher Spielerrunde passen, beantwortet die [Mods-FAQ](MODS_FAQ_DE.md).
+
 - [Mods einrichten](#mods-einrichten)
 - [Stun bei Bombenlandung](#stun-bei-bombenlandung)
 - [Boxhandschuh](#boxhandschuh)

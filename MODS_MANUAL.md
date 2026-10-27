@@ -4,6 +4,8 @@
 
 FPC Atomic has some optional game mods that change the rules of the original game. All mods are **off by default**, so without changing anything the game plays exactly like the original.
 
+Which mods fit which group of players is answered in the [mods FAQ](MODS_FAQ.md).
+
 - [Setting up the mods](#setting-up-the-mods)
 - [Stun on bomb landing](#stun-on-bomb-landing)
 - [Boxing glove](#boxing-glove)
