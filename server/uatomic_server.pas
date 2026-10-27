@@ -2388,6 +2388,7 @@ Var
   aiInfo: TaiInfo;
   AiCommand: TAiCommand;
   OldCounter: UInt16;
+  WillBeGhost: Boolean;
   Stunned: Boolean;
   StunMoveState: TMoveState;
   OldPosition: TVector2;
@@ -2572,13 +2573,16 @@ Begin
         fActualField.TelePortPlayer(fPLayer[i]);
       End;
       If fPLayer[i].Info.Dying Then Begin
+        // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt)
+        WillBeGhost := fModSettings.Ghosts And (Not fActualField.HurryActive()) And
+          ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount));
+        // Wie der Geist danach (siehe unten) zählt beim Testen der Geister zu zweit schon das Sterben, sonst wären die Bomben für den Rest der Runde aus
+        If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And WillBeGhost Then inc(alive[fPLayer[i].Team]);
         If fPLayer[i].Info.Counter > AtomicDietimeout Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fPLayer[i].Info.Dying := false;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
-          // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt)
-          If fModSettings.Ghosts And (Not fActualField.HurryActive()) And
-            ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount)) Then MakeGhost(i);
+          If WillBeGhost Then MakeGhost(i);
         End;
       End
       Else Begin
