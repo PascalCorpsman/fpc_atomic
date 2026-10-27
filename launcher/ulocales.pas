@@ -66,7 +66,7 @@ Const
    * oder in eine andere Sprache nicht eindeutig. Innerhalb eines Eintrags dürfen
    * Texte gleich sein (z.B. "Po&rt").
    *)
-  Translations: Array[0..257] Of TTranslation = (
+  Translations: Array[0..262] Of TTranslation = (
     // Hauptfenster (unit1)
     (En: 'The language of the launcher.'; De: 'Die Sprache des Launchers.'; Fr: 'La langue du lanceur.'),
     (En: ' Player '; De: ' Spieler ';
@@ -799,6 +799,21 @@ Const
      De: 'Das Schema legt die Steine, die Startpositionen und die Items fest (Dateien in data/schemes).';
      Fr: 'Le schéma définit les briques, les positions de départ et les objets (fichiers ' +
        'dans data/schemes).'),
+    (En: 'Map'; De: 'Karte';
+     Fr: 'Carte'),
+    (En: 'The map of the next game when hosting (files in data/maps).';
+     De: 'Die Karte des nächsten Spiels beim Hosten (Dateien in data/maps).';
+     Fr: 'La carte de la prochaine partie en tant qu''hôte (fichiers dans data/maps).'),
+    (En: 'The map with all bricks of the scheme. In the game some bricks are missing at random, depending ' +
+      'on the brick density of the scheme.';
+     De: 'Die Karte mit allen Steinen des Schemas. Im Spiel fehlen je nach Steindichte des Schemas ' +
+       'zufällig einige Steine.';
+     Fr: 'La carte avec toutes les briques du schéma. Dans le jeu, certaines briques manquent au ' +
+       'hasard, selon la densité de briques du schéma.'),
+    (En: 'Random each game'; De: 'Jedes Spiel zufällig';
+     Fr: 'Aléatoire à chaque partie'),
+    (En: 'No map graphics, extract the CD data first.'; De: 'Keine Kartengrafik, erst die CD-Daten extrahieren.';
+     Fr: 'Pas de graphismes de carte, extrayez d''abord les données du CD.'),
     (En: 'Play time'; De: 'Spielzeit';
      Fr: 'Durée de jeu'),
     (En: 'Time of a round. The hurry starts 80 s before the end. Infinity = no time limit and no hurry.';

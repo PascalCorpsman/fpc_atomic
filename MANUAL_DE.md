@@ -104,7 +104,7 @@ Seit Version 0.08 kennt der Launcher Kommandozeilenparameter:
 - -port \<port\>: füllt das Feld "Port" mit \<port\> vor
 - -cti: hakt "Über einen Router beitreten" an
 
-Im Launcher startet **Strg + Klick auf "FPC Atomic starten"** (oder Strg+Alt+L) das Spiel und hostet direkt ein Netzwerkspiel, ohne Hauptmenü (das Spiel bekommt den Parameter -host). **Shift + Klick** (oder Shift+Alt+L) tritt direkt einem Netzwerkspiel bei (Parameter -join): Das Spiel sucht im lokalen Netz, findet es kein Spiel, fragt es nach IP und Port. Der Knopf **Spiel...** stellt die Optionen des Spiels ein (Teamspiel, Schema, Spielzeit, ...), ohne es zu starten. Dort lassen sich auch die Soundeffekte abschalten, unabhängig von der Musik ("Musik abspielen" im Launcher).
+Im Launcher startet **Strg + Klick auf "FPC Atomic starten"** (oder Strg+Alt+L) das Spiel und hostet direkt ein Netzwerkspiel, ohne Hauptmenü (das Spiel bekommt den Parameter -host). **Shift + Klick** (oder Shift+Alt+L) tritt direkt einem Netzwerkspiel bei (Parameter -join): Das Spiel sucht im lokalen Netz, findet es kein Spiel, fragt es nach IP und Port. Der Knopf **Spiel...** stellt die Optionen des Spiels ein (Teamspiel, Schema, Spielzeit, ...), ohne es zu starten. Dort lässt sich auch die Karte wählen, eine Vorschau zeigt sie mit allen Steinen des Schemas. Dort lassen sich auch die Soundeffekte abschalten, unabhängig von der Musik ("Musik abspielen" im Launcher).
 
 Der Link unten rechts im Launcher schaltet zwischen Englisch und Deutsch um. Auf Deutsch öffnen die Links im Launcher die deutschen Handbücher.
 

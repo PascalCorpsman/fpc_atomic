@@ -104,7 +104,7 @@ Since ver 0.08 the launcher supports command line commands:
 - -port \<port\>:  will prefill the "Port" field with the value given as \<port\>
 - -cti: will check the checkbox "Join through a router"
 
-In the launcher, **Ctrl + Launch** (or Ctrl+Alt+L) starts the game and hosts a network game directly, without the main menu (the game gets the parameter -host). **Shift + Launch** (or Shift+Alt+L) joins a network game directly (parameter -join): the game searches the local network, if it finds no game it asks for IP and port. The button **Game...** sets the options of the game (team play, scheme, play time, ...) without starting it. There the sound effects can also be switched off, independent of the music ("Play music" in the launcher).
+In the launcher, **Ctrl + Launch** (or Ctrl+Alt+L) starts the game and hosts a network game directly, without the main menu (the game gets the parameter -host). **Shift + Launch** (or Shift+Alt+L) joins a network game directly (parameter -join): the game searches the local network, if it finds no game it asks for IP and port. The button **Game...** sets the options of the game (team play, scheme, play time, ...) without starting it. There you can also choose the map, a preview shows it with all bricks of the scheme. There the sound effects can also be switched off, independent of the music ("Play music" in the launcher).
 
 The link at the bottom right of the launcher switches it between English and German. In German the manual links in the launcher open the German manuals.
 
