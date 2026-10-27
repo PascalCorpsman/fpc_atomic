@@ -340,6 +340,7 @@ object Form1: TForm1
       'English'
       'Deutsch'
       'Français'
+      'Español'
     )
     OnChange = ComboBox1Change
     ParentShowHint = False

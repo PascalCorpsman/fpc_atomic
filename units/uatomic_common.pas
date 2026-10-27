@@ -164,7 +164,7 @@ Const
    *                       ADD: sound effects can be switched off independent of the music (launcher: "Play music" and Game options "Play sound effects")
    *                       ADD: launcher option to show the launcher again after the game
    *                       ADD: quit question only when leaving a network session (lobby, setup, game), the main menu quits at once
-   *                       ADD: launcher in English or German (link at the bottom right), in German the manual links open the German manuals
+   *                       ADD: launcher in English, German, French or Spanish (selection at the bottom right), in German the manual links open the German manuals
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
    *                       ADD: flamethrower: igniting bombs can be switched off and delayed, a dud bomb in the beam disappears without explosion
