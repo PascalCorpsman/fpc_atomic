@@ -126,6 +126,7 @@ Type
     fShowModTestHelp: Boolean; // True, die Hilfe des Mod Test Modus (F3) wird angezeigt
     fModTestMessage: String; // Rückmeldung zum zuletzt gesendeten Test Befehl
     fModTestMessageTimeStamp: QWord; // Zeitpunkt, an dem fModTestMessage gesetzt wurde
+    fOpenBordersSince: Array[Boolean] Of QWord; // Mod offene Grenzen: GetTickCount64, seit dem oben / unten (True) bzw. links / rechts (False) offen ist, 0 = zu
 {$IFNDEF DebuggMode}
     fPlayer: TPlayers;
 {$ENDIF}
@@ -1528,6 +1529,8 @@ Var
 Begin
   fHurry.Enabled := false;
   fFlashTimeStamp := 0;
+  fOpenBordersSince[true] := 0; // Die Pfeile der offenen Grenzen stehen in jeder Runde wieder OpenBordersArrowTime
+  fOpenBordersSince[false] := 0;
   For k In TKeySet Do Begin
     fPlayerIndex[k] := -1;
     fLastKeyDown[k][akFirstAction] := 0;
@@ -2026,6 +2029,18 @@ Begin
 End;
 
 Procedure TGame.RenderOpenBorders;
+
+  Function ShowOpen(Open: Boolean; Index: Boolean): Boolean;
+  Var
+    n: QWord;
+  Begin
+    // Nach dem Öffnen stehen die Pfeile nur noch OpenBordersArrowTime, danach stören sie nur in der Grafik
+    n := GetTickCount64;
+    If Not Open Then fOpenBordersSince[Index] := 0;
+    If Open And (fOpenBordersSince[Index] = 0) Then fOpenBordersSince[Index] := n;
+    result := Open And (n - fOpenBordersSince[Index] < OpenBordersArrowTime);
+  End;
+
 Var
   i: Integer;
   tb, lr: Boolean;
@@ -2034,8 +2049,8 @@ Begin
    * Mod offene Grenzen: Pfeile außen auf dem Rahmen zeigen, welche Ränder offen sind.
    * Kurz vor dem Öffnen blinken sie (OpenBordersWarnTime).
    *)
-  tb := fActualField.OpenTopBottom Or (fActualField.OpenWarnTopBottom And ((GetTickCount64 Div 250) Mod 2 = 0));
-  lr := fActualField.OpenLeftRight Or (fActualField.OpenWarnLeftRight And ((GetTickCount64 Div 250) Mod 2 = 0));
+  tb := ShowOpen(fActualField.OpenTopBottom, true) Or (fActualField.OpenWarnTopBottom And ((GetTickCount64 Div 250) Mod 2 = 0));
+  lr := ShowOpen(fActualField.OpenLeftRight, false) Or (fActualField.OpenWarnLeftRight And ((GetTickCount64 Div 250) Mod 2 = 0));
   If Not (tb Or lr) Then exit;
   glBindTexture(GL_TEXTURE_2D, 0);
   AtomicFont.Color := clYellow;

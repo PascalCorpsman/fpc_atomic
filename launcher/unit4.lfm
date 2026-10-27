@@ -979,7 +979,7 @@ object Form4: TForm4
           Top = 104
           Width = 312
           AutoSize = False
-          Caption = 'Arrows on the frame show the open borders, they blink 3 s before the borders open. If the tile on the opposite side is blocked (brick, bomb), the border works like a wall. Only players go over the border.'
+          Caption = 'Arrows on the frame show the open borders, they blink 3 s before the borders open and disappear 10 s after. If the tile on the opposite side is blocked (brick, bomb), the border works like a wall. Only players go over the border.'
           WordWrap = True
         end
       end

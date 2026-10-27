@@ -172,6 +172,7 @@ Const
    *                       FIX: the last played map was forgotten for about half of the maps (hash read back as signed number)
    *                       ADD: launcher: map selection with a preview (map with the bricks of the scheme) in the game options
    *                       FIX: mod test mode with GhostsKeepRound: when a player died with only 2 players, all bombs stayed off for the rest of the round (also after F7)
+   *                       ADD: open borders: the arrows on the frame disappear 10 s after the borders opened
    *)
 
   ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -304,6 +305,7 @@ Const
   GhostThrowDistance = 3; // So viele Felder senkrecht vom Rand ins Feld wirft ein Geist seine Bombe
   GhostScale = 0.5; // Geister werden im Client verkleinert auf dem Rahmen außerhalb des Spielfeldes gerendert
   OpenBordersWarnTime = 3000; // Zeit in ms, so lange vor dem Öffnen blinken die Pfeile der offenen Grenzen
+  OpenBordersArrowTime = 10000; // Zeit in ms, so lange nach dem Öffnen bleiben die Pfeile der offenen Grenzen stehen, danach stören sie nur
 
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..

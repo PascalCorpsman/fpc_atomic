@@ -228,7 +228,7 @@ Manchmal beginnt eine Runde in einer kleinen Nische zwischen Steinen, und eine v
 Spieler können über den Rand des Spielfelds laufen und kommen auf der Gegenseite heraus, oben <-> unten und / oder links <-> rechts.
 
 - Die Grenzen öffnen sich eine einstellbare Zeit nach Rundenbeginn. So kann niemand sofort aus seiner Startecke fliehen.
-- Gelbe Pfeile auf dem Rahmen um das Feld zeigen, welche Grenzen offen sind. In den letzten 3 s vor dem Öffnen blinken sie.
+- Gelbe Pfeile auf dem Rahmen um das Feld zeigen, welche Grenzen offen sind. In den letzten 3 s vor dem Öffnen blinken sie, 10 s nach dem Öffnen verschwinden sie wieder, damit sie nicht stören (die Grenzen bleiben offen).
 - Wer auf der Mitte einer Randkachel steht und weiter nach außen läuft, steht sofort auf der Gegenseite und läuft dort weiter.
 - Ist das Feld gegenüber belegt (Stein, fester Block, Bombe), wirkt der Rand wie eine Wand.
 - Nur Spieler gehen über den Rand. Gekickte Bomben und Flammen bleiben wie gewohnt am Rand stehen.

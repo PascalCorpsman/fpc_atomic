@@ -893,20 +893,18 @@ Const
        'personne ne fuie aussitôt le coin de départ. 0 = dès le début.';
      Es: 'Segundos desde el inicio de una ronda hasta que se abren los bordes, para que nadie huya ' +
        'enseguida de la esquina de salida. 0 = desde el inicio.'),
-    (En: 'Arrows on the frame show the open borders, they blink 3 s before the borders open. If the tile on ' +
-
-      'the opposite side is blocked (brick, bomb), the border works like a wall. Only players go over the ' +
-
-      'border.';
-     De: 'Pfeile am Rahmen zeigen die offenen Ränder, 3 s vor dem Öffnen blinken sie. Ist das Feld auf der ' +
-
-       'Gegenseite belegt (Stein, Bombe), wirkt der Rand wie eine Wand. Nur Spieler gehen über den Rand.';
+    (En: 'Arrows on the frame show the open borders, they blink 3 s before the borders open and disappear ' +
+      '10 s after. If the tile on the opposite side is blocked (brick, bomb), the border works like a wall. ' +
+      'Only players go over the border.';
+     De: 'Pfeile am Rahmen zeigen die offenen Ränder, 3 s vor dem Öffnen blinken sie, 10 s danach verschwinden ' +
+       'sie. Ist das Feld auf der Gegenseite belegt (Stein, Bombe), wirkt der Rand wie eine Wand. Nur Spieler ' +
+       'gehen über den Rand.';
      Fr: 'Des flèches sur le cadre montrent les bords ouverts, elles clignotent 3 s avant ' +
-       'l''ouverture. Si la case du côté opposé est occupée (brique, bombe), le bord ' +
-       'agit comme un mur. Seuls les joueurs passent le bord.';
-     Es: 'Las flechas en el marco muestran los bordes abiertos, parpadean 3 s antes de que se abran. Si la ' +
-       'casilla del lado opuesto está bloqueada (ladrillo, bomba), el borde funciona como una pared. Solo ' +
-       'los jugadores cruzan el borde.'),
+       'l''ouverture et disparaissent 10 s après. Si la case du côté opposé est occupée (brique, ' +
+       'bombe), le bord agit comme un mur. Seuls les joueurs passent le bord.';
+     Es: 'Las flechas en el marco muestran los bordes abiertos, parpadean 3 s antes de que se abran y ' +
+       'desaparecen 10 s después. Si la casilla del lado opuesto está bloqueada (ladrillo, bomba), el borde ' +
+       'funciona como una pared. Solo los jugadores cruzan el borde.'),
     (En: 'On: teleporters in the middle of the borders bring the player to the opposite border.';
      De: 'An: Teleporter in der Mitte der Ränder bringen den Spieler zum gegenüberliegenden Rand.';
      Fr: 'Activé : des téléporteurs au milieu des bords amènent le joueur au bord opposé.';
