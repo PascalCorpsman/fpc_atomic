@@ -213,6 +213,8 @@ Begin
     If fModSettings.FlameThrower Then fFields[i].FlameThrowerChance := fModSettings.FlameThrowerChance;
     fFields[i].FlameThrowerFuelMs := fModSettings.FlameThrowerFuelMs;
     fFields[i].FlameThrowerBurnItems := fModSettings.FlameThrowerBurnItems;
+    fFields[i].FlameThrowerIgniteBombs := fModSettings.FlameThrowerIgniteBombs;
+    fFields[i].FlameThrowerIgniteMs := fModSettings.FlameThrowerIgniteMs;
     fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
     fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
     fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
@@ -1585,6 +1587,7 @@ Begin
   (*
    * Mod Flammenwerfer: So lange die zweite Aktion gedrückt ist, feuert der Spieler in Blickrichtung und verbraucht dabei Tank.
    * Ein Gegner, der FlameThrowerKillMs am Stück in einem Strahl steht, wird getroffen (wie von einer Flamme).
+   * Teamkollegen nur mit FlameThrowerFriendlyFire, den Werfer selbst trifft der eigene Strahl nie.
    *)
   For i := 0 To high(fPLayer) Do Begin
     InBeam[i] := -1;
@@ -1610,7 +1613,7 @@ Begin
     For j := 0 To high(fPLayer) Do Begin
       // Wie bei den Flammen: Fliegende und Teleportierende werden nicht getroffen
       If (j = i) Or (Not fPLayer[j].Info.Alive) Or fPLayer[j].Info.Dying Or fPLayer[j].Flying Or (fPLayer[j].Info.Animation = raTeleport) Then Continue;
-      If fSettings.TeamPlay And (fPLayer[j].Team = fPLayer[i].Team) Then Continue;
+      If fSettings.TeamPlay And (Not fModSettings.FlameThrowerFriendlyFire) And (fPLayer[j].Team = fPLayer[i].Team) Then Continue;
       For k := 1 To len Do Begin
         If (trunc(fPLayer[j].Info.Position.x) = x + k * dx) And (trunc(fPLayer[j].Info.Position.y) = y + k * dy) Then Begin
           InBeam[j] := i;
@@ -1628,9 +1631,14 @@ Begin
     If fPLayer[j].FlameThrowerExposure >= fModSettings.FlameThrowerKillMs Then Begin
       fPLayer[j].FlameThrowerExposure := 0;
       If HandlePlayerHit(j) Then Continue; // Trefferpunkte Mod
-      // Wie der Kill durch eine Flamme (TAtomicField.HandlePlayerVsMap), der Werfer ist immer ein Gegner
+      // Wie der Kill durch eine Flamme (TAtomicField.HandlePlayerVsMap), ein Teamkollege (Friendly Fire) zählt in der Statistik als Friendly Fire
       fPLayer[InBeam[j]].Kills := fPLayer[InBeam[j]].Kills + 1;
-      fPlayerStatistics.UpdatePlayerID(InBeam[j], pssKills);
+      If (Not fSettings.TeamPlay) Or (fPLayer[InBeam[j]].Team <> fPLayer[j].Team) Then Begin
+        fPlayerStatistics.UpdatePlayerID(InBeam[j], pssKills);
+      End
+      Else Begin
+        fPlayerStatistics.UpdatePlayerID(j, pssFriendlyFireKills);
+      End;
       HandlePlaySoundEffect(j, seAtomicDie);
       HandlePlaySoundEffect(j, seOtherPlayerDied);
       HandleStatisticCallback(ssPlayerDeaths);

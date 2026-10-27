@@ -167,6 +167,8 @@ Const
    *                       ADD: launcher in English or German (link at the bottom right), in German the manual links open the German manuals
    *                       FIX: disease "super slow" was never chosen
    *                       FIX: respawned powerups could be placed below a bomb
+   *                       ADD: flamethrower: igniting bombs can be switched off and delayed, a dud bomb in the beam disappears without explosion
+   *                       ADD: flamethrower: optional friendly fire, longer default times (kill 2000 ms, ignite 1000 ms)
    *)
 
   ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -287,6 +289,7 @@ Const
   ModMaxFlameThrowerFuelMs = 60000; // Zeit in ms, FlameThrowerFuelMs
   ModMaxFlameThrowerRange = FieldWidth - 1; // untere Grenze 1
   ModMaxFlameThrowerKillMs = 10000; // Zeit in ms, FlameThrowerKillMs
+  ModMaxFlameThrowerIgniteMs = 10000; // Zeit in ms, FlameThrowerIgniteMs
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -419,6 +422,9 @@ Type
     Jelly: Boolean;
     MoveDir: TBombMoveDir;
     DudTime: integer; // Zähler für die Jeweilige Bombe wie lange sie "Dud" ist
+    FlameThrowerHit: Boolean; // Mod Flammenwerfer: True, ein Strahl endet in diesem Frame an der Bombe (setzt FlameThrowerBeam, HandleBombs wertet aus)
+    FlameThrowerExposure: integer; // Mod Flammenwerfer: Zeit in ms, so lange liegt die Bombe schon am Stück in einem Strahl
+    Fizzled: Boolean; // Mod Flammenwerfer: True, ein Blindgänger wurde vom Strahl gelöscht, er verschwindet ohne Explosion
     StunOnLand: Boolean; // True, wenn die Bombe geworfen (nicht gepuncht) wurde, landet sie auf einem Spieler, wird dieser gestunnt (nur wenn Mod aktiv)
     GhostBomb: Boolean; // True, die Bombe wurde von einem Geist geworfen (der Geist bekommt keine Bombe zurück, darf aber nach der Explosion wieder werfen)
 {$ENDIF}
@@ -728,6 +734,9 @@ Type
     FlameThrowerRange: Integer; // Reichweite des Strahls in Kacheln
     FlameThrowerKillMs: Integer; // Zeit in ms, so lange muss ein Gegner am Stück im Strahl stehen, bis er getroffen ist
     FlameThrowerBurnItems: Boolean; // True, Items im Strahl verbrennen sofort (wie bei einer Flamme), sonst geht der Strahl darüber hinweg
+    FlameThrowerIgniteBombs: Boolean; // True, Bomben im Strahl werden gezündet (ein Blindgänger verschwindet), sonst endet der Strahl nur an ihnen
+    FlameThrowerIgniteMs: Integer; // Zeit in ms, so lange muss eine Bombe am Stück im Strahl liegen, bis sie gezündet wird (0 = sofort)
+    FlameThrowerFriendlyFire: Boolean; // True, im Teamspiel verletzt der Strahl auch Teamkollegen
     Ghosts: Boolean; // True, Tote laufen bis zum Hurry als Geist am Rand und können mit einem Treffer eines Gegners zurück ins Spiel
     GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
     GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
@@ -1195,8 +1204,11 @@ Begin
   Settings.FlameThrowerChance := 5;
   Settings.FlameThrowerFuelMs := 5000;
   Settings.FlameThrowerRange := 3;
-  Settings.FlameThrowerKillMs := 1000;
+  Settings.FlameThrowerKillMs := 2000;
   Settings.FlameThrowerBurnItems := true;
+  Settings.FlameThrowerIgniteBombs := true;
+  Settings.FlameThrowerIgniteMs := 1000;
+  Settings.FlameThrowerFriendlyFire := false;
   Settings.Ghosts := false;
   Settings.GhostReviveInvulnMs := 3000;
   Settings.GhostFlameLen := 2;
@@ -1283,6 +1295,9 @@ Begin
   WriteI('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
   WriteI('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
   WriteB('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
+  WriteB('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
+  WriteI('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
+  WriteB('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
   WriteB('Mods', 'Ghosts', Settings.Ghosts);
   WriteI('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
   WriteI('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1363,6 +1378,9 @@ Begin
     Settings.FlameThrowerRange := ini.ReadInteger('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
     Settings.FlameThrowerKillMs := ini.ReadInteger('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
     Settings.FlameThrowerBurnItems := ini.ReadBool('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
+    Settings.FlameThrowerIgniteBombs := ini.ReadBool('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
+    Settings.FlameThrowerIgniteMs := ini.ReadInteger('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
+    Settings.FlameThrowerFriendlyFire := ini.ReadBool('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
     Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
     Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
     Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
@@ -1431,6 +1449,7 @@ Begin
     Clamp('FlameThrowerFuelMs', Settings.FlameThrowerFuelMs, 0, ModMaxFlameThrowerFuelMs);
     Clamp('FlameThrowerRange', Settings.FlameThrowerRange, 1, ModMaxFlameThrowerRange);
     Clamp('FlameThrowerKillMs', Settings.FlameThrowerKillMs, 0, ModMaxFlameThrowerKillMs);
+    Clamp('FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs, 0, ModMaxFlameThrowerIgniteMs);
     Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
     Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
     Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);

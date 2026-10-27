@@ -59,6 +59,8 @@ Type
     CheckBox18: TCheckBox;
     CheckBox19: TCheckBox;
     CheckBox20: TCheckBox;
+    CheckBox21: TCheckBox;
+    CheckBox22: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -114,8 +116,8 @@ Type
     Label58: TLabel;
     Label59: TLabel;
     Label60: TLabel;
-    Label61: TLabel;
     Label62: TLabel;
+    Label63: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -164,6 +166,7 @@ Type
     SpinEdit33: TSpinEdit;
     SpinEdit34: TSpinEdit;
     SpinEdit35: TSpinEdit;
+    SpinEdit36: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -293,6 +296,7 @@ Begin
   SpinEdit34.MinValue := 1;
   SpinEdit34.MaxValue := ModMaxFlameThrowerRange;
   SpinEdit35.MaxValue := ModMaxFlameThrowerKillMs;
+  SpinEdit36.MaxValue := ModMaxFlameThrowerIgniteMs;
   SpinEdit19.MaxValue := ModMaxTeleportersActiveSec;
   SpinEdit20.MaxValue := ModMaxOpenBordersActiveSec;
   SpinEdit6.MinValue := FlameTime;
@@ -441,6 +445,9 @@ Begin
   SpinEdit34.Value := fSettings.FlameThrowerRange;
   SpinEdit35.Value := fSettings.FlameThrowerKillMs;
   CheckBox20.Checked := fSettings.FlameThrowerBurnItems;
+  CheckBox21.Checked := fSettings.FlameThrowerIgniteBombs;
+  SpinEdit36.Value := fSettings.FlameThrowerIgniteMs;
+  CheckBox22.Checked := fSettings.FlameThrowerFriendlyFire;
 
   CheckBox3.Checked := fSettings.HitPoints;
   SpinEdit6.Value := fSettings.InvulnTimeMs;
@@ -563,6 +570,9 @@ Begin
   fSettings.FlameThrowerRange := SpinEdit34.Value;
   fSettings.FlameThrowerKillMs := SpinEdit35.Value;
   fSettings.FlameThrowerBurnItems := CheckBox20.Checked;
+  fSettings.FlameThrowerIgniteBombs := CheckBox21.Checked;
+  fSettings.FlameThrowerIgniteMs := SpinEdit36.Value;
+  fSettings.FlameThrowerFriendlyFire := CheckBox22.Checked;
 
   fSettings.HitPoints := CheckBox3.Checked;
   fSettings.InvulnTimeMs := SpinEdit6.Value;

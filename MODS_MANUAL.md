@@ -135,9 +135,10 @@ A part of the items below the bricks are **white bombs**. They look like a white
 
 A part of the items below the bricks are **flamethrowers**. They look like a red flame item ![](data/res/powflame.png) with a red frame. While the player has fuel, **holding the second action** fires a beam in the direction the player looks.
 
-- The beam reaches a set number of tiles. It stops at bricks and solid blocks without destroying them, and it ignites bombs.
+- The beam reaches a set number of tiles. It stops at bricks and solid blocks without destroying them, and at bombs.
+- A bomb that stays in the beam for a set time without a break is ignited (default: 1 second). Trigger bombs too, a dud bomb does not explode but just disappears, and its owner gets the bomb back. The kill goes to the owner of the bomb. Igniting can be switched off, then a bomb is a shield against the beam.
 - Items in the beam burn at once, like with a flame. This can be switched off, then the beam goes over them.
-- An opponent who stays in the beam for a set time without a break is hit like by a flame. Leaving the beam resets the time. Team mates are not hurt.
+- An opponent who stays in the beam for a set time without a break is hit like by a flame. Leaving the beam resets the time. Team mates are only hurt with friendly fire switched on, the beam never hurts the player firing it.
 - The fuel is only used up while firing. When it is empty, the flamethrower is gone. More flamethrower items add fuel.
 - While the player has fuel, the second action does not trigger or punch bombs.
 - The player can walk normally while firing, the beam turns with the player.
@@ -150,8 +151,11 @@ A part of the items below the bricks are **flamethrowers**. They look like a red
 | Share of the items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
 | Fuel per item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
 | Range (tiles) | `FlameThrowerRange` | 3 | 1 .. 14 |
-| Time to kill (ms) | `FlameThrowerKillMs` | 1000 | 0 .. 10000 |
+| Time to kill (ms) | `FlameThrowerKillMs` | 2000 | 0 .. 10000 |
+| Hurt team mates (friendly fire) | `FlameThrowerFriendlyFire` | 0 (off) | 0 / 1 |
 | Burn items in the beam | `FlameThrowerBurnItems` | 1 (on) | 0 / 1 |
+| Ignite bombs in the beam | `FlameThrowerIgniteBombs` | 1 (on) | 0 / 1 |
+| Time to ignite (ms) | `FlameThrowerIgniteMs` | 1000 | 0 .. 10000 (0 = at once) |
 
 ## Hit points (handicap)
 

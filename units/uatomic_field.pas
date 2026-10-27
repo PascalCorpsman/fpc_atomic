@@ -136,13 +136,15 @@ Type
     FlameThrowerChance: Integer; // Mod Flammenwerfer: in %, so viele der Items unter den Steinen werden zum Flammenwerfer, 0 = Mod aus
     FlameThrowerFuelMs: Integer; // Mod Flammenwerfer: so viel Zeit zum Feuern bringt ein Item
     FlameThrowerBurnItems: Boolean; // Mod Flammenwerfer: True, Items im Strahl verbrennen sofort
+    FlameThrowerIgniteBombs: Boolean; // Mod Flammenwerfer: True, Bomben im Strahl werden gezündet (ein Blindgänger verschwindet)
+    FlameThrowerIgniteMs: Integer; // Mod Flammenwerfer: so lange muss eine Bombe am Stück im Strahl liegen, 0 = sofort
     WrapLeftRight: Boolean; // Mod offene Grenzen: Die Karte ist links / rechts offen, sobald UpdateOpenBorders sie öffnet
     WrapTopBottom: Boolean; // Mod offene Grenzen: Die Karte ist oben / unten offen, sobald UpdateOpenBorders sie öffnet
     PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
     PortalLeftRight: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter links / rechts
     Procedure UpdatePortals(Active: Boolean); // Wird vom Server jeden Frame aufgerufen, Active = die Zeit bis zum Erscheinen ist um
     Procedure UpdateOpenBorders(Active, Warning: Boolean); // Wird vom Server jeden Frame aufgerufen, Warning = die Grenzen öffnen in Kürze
-    Function FlameThrowerBeam(x, y, dx, dy, Range: integer): integer; // Mod Flammenwerfer: Länge des Strahls ab x, y in Richtung dx, dy, zündet eine Bombe am Ende
+    Function FlameThrowerBeam(x, y, dx, dy, Range: integer): integer; // Mod Flammenwerfer: Länge des Strahls ab x, y in Richtung dx, dy, markiert eine Bombe am Ende
     Property BombsEnabled: Boolean read fBombsEnabled;
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
     Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
@@ -422,6 +424,8 @@ Begin
   FlameThrowerChance := 0;
   FlameThrowerFuelMs := 0;
   FlameThrowerBurnItems := false;
+  FlameThrowerIgniteBombs := false;
+  FlameThrowerIgniteMs := 0;
   WrapLeftRight := false;
   WrapTopBottom := false;
   PortalTopBottom := false;
@@ -677,7 +681,7 @@ Var
 Begin
   (*
    * Mod Flammenwerfer: Der Strahl beginnt auf dem Feld vor x, y und stoppt an Steinen und festen Blöcken (ohne sie zu zerstören).
-   * Liegt eine Bombe im Strahl, wird sie gezündet und der Strahl endet dort.
+   * Liegt eine Bombe im Strahl, endet der Strahl dort. Ob sie gezündet wird, entscheidet HandleBombs (FlameThrowerHit).
    *)
   result := 0;
   For i := 1 To Range Do Begin
@@ -694,9 +698,8 @@ Begin
     End;
     For j := 0 To fBombCount - 1 Do Begin
       If (trunc(fBombs[j].Position.x) = x) And (trunc(fBombs[j].Position.y) = y) And (fBombs[j].MoveDir <> bmFly) Then Begin
-        // Wie beim Zünden der Trigger Bomben
-        fBombs[j].Animation := baNormal;
-        fBombs[j].Lifetime := max(fBombs[j].Lifetime, AtomicBombDetonateTime);
+        // Auch wenn mehrere Strahlen die Bombe treffen, zählt das nur einmal pro Frame
+        fBombs[j].FlameThrowerHit := true;
         exit;
       End;
     End;
@@ -1393,6 +1396,8 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     fBombs[fBombCount].Jelly := false; // Das wird vom "Kickenden" Spieler übernommen
     fBombs[fBombCount].MoveDir := bmNone;
     fBombs[fBombCount].StunOnLand := false;
+    fBombs[fBombCount].FlameThrowerHit := false;
+    fBombs[fBombCount].FlameThrowerExposure := 0;
     fBombs[fBombCount].GhostBomb := false;
     fBombs[fBombCount].WhiteBomb := player.WhiteBombs > 0;
     fBombs[fBombCount].Speed := player.Powers.Speed;
@@ -1643,6 +1648,31 @@ Begin
     rSpeed := fBombs[i].Speed / FrameRate; // So Umrechnen dass Speed = Kachel Pro Sekunde ist.
     fBombs[i].Lifetime := fBombs[i].Lifetime + FrameRate; // Countdown bis zur Detonation
     fBombs[i].detonated := false;
+    (*
+     * Mod Flammenwerfer: Liegt die Bombe FlameThrowerIgniteMs am Stück in einem Strahl, wird sie gezündet (wie beim Zünden der Trigger Bomben).
+     * Ein Blindgänger explodiert nicht, er verschwindet einfach und der Spieler bekommt seine Bombe zurück.
+     *)
+    fBombs[i].Fizzled := false;
+    If fBombs[i].FlameThrowerHit And FlameThrowerIgniteBombs Then Begin
+      fBombs[i].FlameThrowerHit := false;
+      fBombs[i].FlameThrowerExposure := fBombs[i].FlameThrowerExposure + FrameRate;
+      If fBombs[i].FlameThrowerExposure >= FlameThrowerIgniteMs Then Begin
+        fBombs[i].FlameThrowerExposure := 0;
+        If fBombs[i].Animation = baDud Then Begin
+          Players[fBombs[i].PlayerIndex].Powers.AvailableBombs := Players[fBombs[i].PlayerIndex].Powers.AvailableBombs + 1;
+          fBombs[i].Fizzled := true;
+          fBombs[i].Detonated := true; // So wird sie unten entfernt, ohne Explosion und ohne Sound, und hält auch keine Flammen auf
+          Continue;
+        End;
+        fBombs[i].Animation := baNormal;
+        fBombs[i].Lifetime := max(fBombs[i].Lifetime, AtomicBombDetonateTime);
+      End;
+    End
+    Else Begin
+      // Wer den Strahl verlässt, fängt wieder bei 0 an
+      fBombs[i].FlameThrowerHit := false;
+      fBombs[i].FlameThrowerExposure := 0;
+    End;
     // Die Bombe bewegt
     If fHasArrows And (fBombs[i].MoveDir In [bmDown, bmLeft, bmUp, bmRight]) Then Begin
       x := trunc(fBombs[i].Position.x);
@@ -1998,7 +2028,7 @@ Begin
   End;
   For i := fBombCount - 1 Downto 0 Do Begin
     If fBombs[i].Detonated Then Begin
-      BombExplodeSound[fBombs[i].PlayerIndex] := true;
+      If Not fBombs[i].Fizzled Then BombExplodeSound[fBombs[i].PlayerIndex] := true;
       For j := i To fBombCount - 2 Do Begin
         fBombs[j] := fBombs[j + 1];
       End;
@@ -2422,6 +2452,8 @@ Begin
   fBombs[fBombCount].FlyTime := 0;
   fBombs[fBombCount].FlyFinTime := AtomicBombBigFlyTime;
   fBombs[fBombCount].StunOnLand := true;
+  fBombs[fBombCount].FlameThrowerHit := false;
+  fBombs[fBombCount].FlameThrowerExposure := 0;
   fBombs[fBombCount].GhostBomb := true;
   fBombs[fBombCount].WhiteBomb := false;
   inc(fBombCount);

@@ -137,9 +137,10 @@ Ein Teil der Items unter den Steinen sind **weiße Bomben**. Sie sehen aus wie e
 
 Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie ein rötliches Flammen-Item ![](data/res/powflame.png) mit rotem Rahmen. Solange der Spieler Tank hat, feuert er mit **gehaltener zweiter Aktion** einen Strahl in Blickrichtung.
 
-- Der Strahl reicht eine einstellbare Zahl von Feldern weit. Er stoppt an Steinen und festen Blöcken, ohne sie zu zerstören, und zündet Bomben.
+- Der Strahl reicht eine einstellbare Zahl von Feldern weit. Er stoppt an Steinen und festen Blöcken, ohne sie zu zerstören, und an Bomben.
+- Eine Bombe, die eine einstellbare Zeit am Stück im Strahl liegt, wird gezündet (Default: 1 Sekunde). Das gilt auch für Trigger-Bomben. Ein Blindgänger explodiert nicht, er verschwindet einfach, und sein Besitzer bekommt die Bombe zurück. Der Kill zählt für den Besitzer der Bombe. Das Zünden lässt sich abschalten, dann ist eine Bombe ein Schutzschild gegen den Strahl.
 - Items im Strahl verbrennen sofort, wie bei einer Flamme. Das lässt sich abschalten, dann geht der Strahl über sie hinweg.
-- Ein Gegner, der eine einstellbare Zeit am Stück im Strahl steht, wird getroffen wie von einer Flamme. Wer den Strahl verlässt, fängt wieder bei 0 an. Teamkollegen werden nicht verletzt.
+- Ein Gegner, der eine einstellbare Zeit am Stück im Strahl steht, wird getroffen wie von einer Flamme. Wer den Strahl verlässt, fängt wieder bei 0 an. Teamkollegen werden nur mit eingeschaltetem Friendly Fire verletzt, den Schützen selbst trifft der Strahl nie.
 - Der Tank leert sich nur beim Feuern. Ist er leer, ist der Flammenwerfer weg. Weitere Flammenwerfer-Items füllen den Tank auf.
 - Solange der Spieler Tank hat, zündet und boxt die zweite Aktion keine Bomben.
 - Beim Feuern läuft man normal schnell, der Strahl dreht sich mit.
@@ -152,8 +153,11 @@ Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie e
 | Anteil der Items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
 | Treibstoff pro Item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
 | Reichweite (Felder) | `FlameThrowerRange` | 3 | 1 .. 14 |
-| Zeit bis zum Treffer (ms) | `FlameThrowerKillMs` | 1000 | 0 .. 10000 |
+| Zeit bis zum Treffer (ms) | `FlameThrowerKillMs` | 2000 | 0 .. 10000 |
+| Teamkollegen verletzen (Friendly Fire) | `FlameThrowerFriendlyFire` | 0 (aus) | 0 / 1 |
 | Items im Strahl verbrennen | `FlameThrowerBurnItems` | 1 (an) | 0 / 1 |
+| Bomben im Strahl zünden | `FlameThrowerIgniteBombs` | 1 (an) | 0 / 1 |
+| Zeit bis zur Zündung (ms) | `FlameThrowerIgniteMs` | 1000 | 0 .. 10000 (0 = sofort) |
 
 ## Trefferpunkte (Handicap)
 

@@ -66,7 +66,7 @@ Const
    * oder in eine andere Sprache nicht eindeutig. Innerhalb eines Eintrags dürfen
    * Texte gleich sein (z.B. "Po&rt").
    *)
-  Translations: Array[0..252] Of TTranslation = (
+  Translations: Array[0..257] Of TTranslation = (
     // Hauptfenster (unit1)
     (En: 'The language of the launcher.'; De: 'Die Sprache des Launchers.'; Fr: 'La langue du lanceur.'),
     (En: ' Player '; De: ' Spieler ';
@@ -479,10 +479,10 @@ Const
      De: 'An: Manche Items unter den Steinen sind Flammenwerfer, zum Feuern die zweite Aktion gedrückt halten.';
      Fr: 'Activé : certains objets sous les briques sont des lance-flammes, maintenir la ' +
        'deuxième action pour tirer.'),
-    (En: 'A flamethrower item: hold the second action to fire in the direction you look.';
-     De: 'Flammenwerfer: Die zweite Aktion gedrückt halten, um in Blickrichtung zu feuern.';
-     Fr: 'Lance-flammes : maintenez la deuxième action pour tirer dans la direction du ' +
-       'regard.'),
+    (En: 'Hold the second action to fire in the direction you look. With fuel it does not trigger or punch bombs.';
+     De: 'Zweite Aktion halten zum Feuern. Mit Treibstoff zündet oder boxt sie keine Bomben.';
+     Fr: 'Maintenez la 2e action pour tirer. Avec du carburant, elle ne déclenche ni ne ' +
+       'frappe les bombes.'),
     (En: 'Share of the items below the bricks that become a flamethrower at the start of a round.';
      De: 'Anteil der Items unter den Steinen, die zu Rundenbeginn ein Flammenwerfer werden.';
      Fr: 'Part des objets sous les briques qui deviennent un lance-flammes au début d''une ' +
@@ -497,9 +497,10 @@ Const
        'en tirant, d''autres objets ajoutent du carburant.'),
     (En: 'Range (tiles)'; De: 'Reichweite (Felder)';
      Fr: 'Portée (cases)'),
-    (En: 'How far the beam reaches. It stops at bricks and solid blocks.';
-     De: 'Wie weit der Strahl reicht. Er endet an Steinen und festen Blöcken.';
-     Fr: 'Distance atteinte par le jet. Il s''arrête aux briques et aux blocs solides.'),
+    (En: 'How far the beam reaches. It stops at bricks, solid blocks and bombs.';
+     De: 'Wie weit der Strahl reicht. Er endet an Steinen, festen Blöcken und Bomben.';
+     Fr: 'Distance atteinte par le jet. Il s''arrête aux briques, aux blocs solides et ' +
+       'aux bombes.'),
     (En: 'Time to kill (ms)'; De: 'Zeit bis zum Treffer (ms)';
      Fr: 'Temps avant d''être touché (ms)'),
     (En: 'How long an opponent has to stay in the beam without a break until being hit.';
@@ -512,15 +513,25 @@ Const
        'Désactivé : le jet passe au-dessus.'),
     (En: 'Burn items in the beam'; De: 'Items im Strahl verbrennen';
      Fr: 'Brûler les objets dans le jet'),
-    (En: 'The beam stops at bricks and ignites bombs. Team mates are not hurt. While the player has fuel, the ' +
-
-      'second action does not trigger or punch bombs.';
-     De: 'Der Strahl endet an Steinen und zündet Bomben. Teamkollegen werden nicht verletzt. Solange der ' +
-
-       'Spieler Treibstoff hat, zündet oder boxt die zweite Aktion keine Bomben.';
-     Fr: 'Le jet s''arrête aux briques et allume les bombes. Les coéquipiers ne sont pas ' +
-       'blessés. Tant que le joueur a du carburant, la deuxième action ne déclenche ni ' +
-       'ne frappe les bombes.'),
+    (En: 'On: bombs in the beam are ignited, a dud bomb just disappears. Off: the beam only stops at them.';
+     De: 'An: Bomben im Strahl werden gezündet, ein Blindgänger verschwindet einfach. Aus: Der Strahl endet nur ' +
+       'an ihnen.';
+     Fr: 'Activé : les bombes dans le jet sont allumées, une bombe défectueuse disparaît ' +
+       'simplement. Désactivé : le jet s''arrête seulement devant elles.'),
+    (En: 'Ignite bombs in the beam'; De: 'Bomben im Strahl zünden';
+     Fr: 'Allumer les bombes dans le jet'),
+    (En: 'Time to ignite (ms)'; De: 'Zeit bis zur Zündung (ms)';
+     Fr: 'Temps avant l''allumage (ms)'),
+    (En: 'How long a bomb has to stay in the beam without a break until it is ignited. 0 = at once.';
+     De: 'Wie lange eine Bombe ohne Unterbrechung im Strahl liegen muss, bis sie gezündet wird. 0 = sofort.';
+     Fr: 'Durée pendant laquelle une bombe doit rester dans le jet sans interruption ' +
+       'avant d''être allumée. 0 = immédiatement.'),
+    (En: 'Hurt team mates (friendly fire)'; De: 'Teamkollegen verletzen (Friendly Fire)';
+     Fr: 'Blesser les coéquipiers (tir ami)'),
+    (En: 'On: in team play the beam also hurts team mates. Off: team mates are not hurt.';
+     De: 'An: Im Teamspiel verletzt der Strahl auch Teamkollegen. Aus: Teamkollegen werden nicht verletzt.';
+     Fr: 'Activé : en jeu par équipes, le jet blesse aussi les coéquipiers. Désactivé : ' +
+       'les coéquipiers ne sont pas blessés.'),
     (En: 'On: players survive several hits, set per player name in the handicap table.';
      De: 'An: Spieler überleben mehrere Treffer, einstellbar pro Spielername in der Handicap-Tabelle.';
      Fr: 'Activé : les joueurs survivent à plusieurs coups, réglable par nom de joueur ' +

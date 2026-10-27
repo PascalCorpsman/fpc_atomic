@@ -560,7 +560,7 @@ object Form4: TForm4
         Top = 34
         Width = 312
         AutoSize = False
-        Caption = 'A flamethrower item: hold the second action to fire in the direction you look.'
+        Caption = 'Hold the second action to fire in the direction you look. With fuel it does not trigger or punch bombs.'
         WordWrap = True
       end
       object Panel13: TPanel
@@ -607,7 +607,7 @@ object Form4: TForm4
         object SpinEdit34: TSpinEdit
           Left = 220
           Height = 23
-          Hint = 'How far the beam reaches. It stops at bricks and solid blocks.'
+          Hint = 'How far the beam reaches. It stops at bricks, solid blocks and bombs.'
           Top = 68
           Width = 96
           Increment = 1
@@ -626,21 +626,40 @@ object Form4: TForm4
           Width = 96
           Increment = 100
         end
+        object CheckBox22: TCheckBox
+          Left = 8
+          Height = 19
+          Hint = 'On: in team play the beam also hurts team mates. Off: team mates are not hurt.'
+          Top = 128
+          Caption = 'Hurt team mates (friendly fire)'
+        end
         object CheckBox20: TCheckBox
           Left = 8
           Height = 19
           Hint = 'On: items in the beam burn at once, like with a flame. Off: the beam goes over them.'
-          Top = 130
+          Top = 152
           Caption = 'Burn items in the beam'
         end
-        object Label61: TLabel
+        object CheckBox21: TCheckBox
           Left = 8
-          Height = 80
-          Top = 158
-          Width = 312
-          AutoSize = False
-          Caption = 'The beam stops at bricks and ignites bombs. Team mates are not hurt. While the player has fuel, the second action does not trigger or punch bombs.'
-          WordWrap = True
+          Height = 19
+          Hint = 'On: bombs in the beam are ignited, a dud bomb just disappears. Off: the beam only stops at them.'
+          Top = 176
+          Caption = 'Ignite bombs in the beam'
+        end
+        object Label63: TLabel
+          Left = 8
+          Height = 15
+          Top = 204
+          Caption = 'Time to ignite (ms)'
+        end
+        object SpinEdit36: TSpinEdit
+          Left = 220
+          Height = 23
+          Hint = 'How long a bomb has to stay in the beam without a break until it is ignited. 0 = at once.'
+          Top = 200
+          Width = 96
+          Increment = 100
         end
       end
     end
