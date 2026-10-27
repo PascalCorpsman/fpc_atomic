@@ -6,7 +6,9 @@ Source   : https://github.com/PascalCorpsman/fpc_atomic
 Wiki     : https://en.wikipedia.org/wiki/Atomic_Bomberman
 
 ## Description
-FPC Atomic is a complete reimplementation of the original Atomic Bomberman game (from 1997). This repository hosts only the source code, as the graphics and sounds are copyrighted by Interplay Productions. To play the game, you need to extract the original graphics from the game disc and provide them as requested by the game.
+FPC Atomic is an open-source multiplayer recreation inspired by the gameplay and netplay feeling of Atomic Bomberman (1997). This project features a completely modern TCP/IP network stack (replacing the original IPX protocol) and focuses exclusively on multiplayer matches.
+
+This repository hosts only the custom source code. To protect the intellectual property of the original creators, this project contains absolutely no graphics, music, or sound effects. To play, users must extract and convert the assets from their own, legally purchased Atomic Bomberman game disc as detailed in the setup guide below.
 
 
 ## Preview:
@@ -110,6 +112,5 @@ Read the manual section [Console commands](MANUAL.md#console-commands) to load a
 ## Contributors
 Idea : Interplay Productions  
 Implementation : Uwe Schächterle  
-Graphics : Interplay Productions  
-Leveldesign : Interplay Productions  
+Graphics & Leveldesign: Original assets copyrighted by Interplay Productions (must be provided by the user via CD extraction)<br>
 Testing : Uwe Schächterle
