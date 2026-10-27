@@ -627,7 +627,7 @@ Begin
   Game.Settings.ShowFPS := IniPropStorage1.ReadBoolean('ShowFPS', false);
   Game.Settings.CheckForUpdates := IniPropStorage1.ReadBoolean('CheckForUpdates', true);
   Game.Settings.LastPlayedField := IniPropStorage1.ReadString('LastPlayedField', '');
-  Game.Settings.LastPlayedFieldHash := StrToInt64Def(IniPropStorage1.ReadString('LastPlayedFieldHash', ''), 0);
+  Game.Settings.LastPlayedFieldHash := StrToQWordDef(IniPropStorage1.ReadString('LastPlayedFieldHash', ''), 0); // Wird vorzeichenlos gespeichert, StrToInt64Def lieferte für die Hälfte der Karten 0
   Game.Settings.LastWinsToWinMatch := IniPropStorage1.ReadInteger('LastWinsToWinMatch', 3);
 
   Game.Settings.Port := IniPropStorage1.ReadInteger('Port', TCPDefaultPort);

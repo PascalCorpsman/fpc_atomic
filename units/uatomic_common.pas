@@ -169,6 +169,7 @@ Const
    *                       FIX: respawned powerups could be placed below a bomb
    *                       ADD: flamethrower: igniting bombs can be switched off and delayed, a dud bomb in the beam disappears without explosion
    *                       ADD: flamethrower: optional friendly fire, longer default times (kill 2000 ms, ignite 1000 ms)
+   *                       FIX: the last played map was forgotten for about half of the maps (hash read back as signed number)
    *)
 
   ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
