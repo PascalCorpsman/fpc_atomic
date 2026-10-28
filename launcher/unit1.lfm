@@ -1,13 +1,13 @@
 object Form1: TForm1
   Left = 347
-  Height = 505
+  Height = 551
   Top = 107
-  Width = 464
-  Caption = 'Form1'
-  ClientHeight = 505
-  ClientWidth = 464
+  Width = 467
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
+  Caption = 'Form1'
+  ClientHeight = 551
+  ClientWidth = 467
   KeyPreview = True
   Position = poScreenCenter
   ShowHint = True
@@ -18,31 +18,31 @@ object Form1: TForm1
   object Image1: TImage
     Left = 8
     Height = 288
-    Top = 8
+    Top = 24
     Width = 192
     Center = True
     Stretch = True
   end
   object GroupBox1: TGroupBox
     Left = 208
-    Height = 104
+    Height = 112
     Top = 8
     Width = 248
     Caption = ' Player '
-    ClientHeight = 86
+    ClientHeight = 94
     ClientWidth = 246
     TabOrder = 0
     object Label1: TLabel
       Left = 8
-      Height = 15
+      Height = 16
       Top = 8
-      Width = 66
+      Width = 71
       Caption = '&Player name'
       FocusControl = Edit1
     end
     object Edit1: TEdit
       Left = 88
-      Height = 23
+      Height = 30
       Top = 4
       Width = 150
       TabOrder = 0
@@ -52,7 +52,7 @@ object Form1: TForm1
     object Label4: TLabel
       Left = 88
       Height = 15
-      Top = 30
+      Top = 32
       Width = 150
       AutoSize = False
       Caption = 'Label4'
@@ -62,7 +62,7 @@ object Form1: TForm1
       Left = 8
       Height = 25
       Hint = 'Choose the keys or a gamepad for the 1st and 2nd player on this PC.'
-      Top = 52
+      Top = 56
       Width = 230
       Caption = '&Key assignment...'
       TabOrder = 1
@@ -72,7 +72,7 @@ object Form1: TForm1
   object GroupBox3: TGroupBox
     Left = 208
     Height = 72
-    Top = 118
+    Top = 128
     Width = 248
     Caption = ' Display && sound '
     ClientHeight = 54
@@ -80,7 +80,7 @@ object Form1: TForm1
     TabOrder = 1
     object CheckBox2: TCheckBox
       Left = 8
-      Height = 19
+      Height = 21
       Hint = 'Start the game in fullscreen mode.'
       Top = 4
       Width = 88
@@ -89,25 +89,25 @@ object Form1: TForm1
     end
     object CheckBox4: TCheckBox
       Left = 124
-      Height = 19
+      Height = 21
       Hint = 'Play the music. The sound effects can be switched off in Game...'
       Top = 4
-      Width = 100
+      Width = 91
       Caption = 'Play mu&sic'
       TabOrder = 1
     end
     object CheckBox5: TCheckBox
       Left = 8
-      Height = 19
+      Height = 21
       Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
       Top = 28
-      Width = 88
+      Width = 94
       Caption = 'Fill &window'
       TabOrder = 2
     end
     object CheckBox1: TCheckBox
       Left = 124
-      Height = 19
+      Height = 21
       Hint = 'Show the frames per second in the game.'
       Top = 28
       Width = 86
@@ -117,34 +117,34 @@ object Form1: TForm1
   end
   object GroupBox2: TGroupBox
     Left = 208
-    Height = 104
-    Top = 196
+    Height = 120
+    Top = 208
     Width = 248
     Caption = ' Internet game (optional) '
-    ClientHeight = 86
+    ClientHeight = 102
     ClientWidth = 246
     TabOrder = 2
     object CheckBox3: TCheckBox
       Left = 8
-      Height = 19
+      Height = 21
       Hint = 'Join a game over the internet: the game connects to the router IP and port below. Not needed in the local network.'
       Top = 2
-      Width = 160
+      Width = 158
       Caption = '&Join through a router'
       TabOrder = 0
       OnChange = CheckBox3Change
     end
     object Label2: TLabel
       Left = 8
-      Height = 15
-      Top = 32
-      Width = 50
+      Height = 16
+      Top = 28
+      Width = 54
       Caption = 'Router &IP'
       FocusControl = Edit2
     end
     object Edit2: TEdit
       Left = 88
-      Height = 23
+      Height = 30
       Hint = 'IP address of the router of the player who hosts the game.'
       Top = 28
       Width = 150
@@ -153,17 +153,17 @@ object Form1: TForm1
     end
     object Label3: TLabel
       Left = 8
-      Height = 15
-      Top = 60
-      Width = 22
+      Height = 16
+      Top = 64
+      Width = 26
       Caption = 'Po&rt'
       FocusControl = Edit3
     end
     object Edit3: TEdit
       Left = 88
-      Height = 23
+      Height = 30
       Hint = 'Port the router forwards to the server of the host (default 5521).'
-      Top = 56
+      Top = 64
       Width = 150
       TabOrder = 2
       Text = 'Edit3'
@@ -174,7 +174,7 @@ object Form1: TForm1
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 308
+    Top = 344
     Width = 448
     BevelOuter = bvNone
     ClientHeight = 50
@@ -202,17 +202,16 @@ object Form1: TForm1
       Font.Style = [fsBold]
       Layout = tlCenter
       ParentFont = False
-      Transparent = True
       OnClick = Button2Click
       OnMouseEnter = Panel1MouseEnter
       OnMouseLeave = Panel1MouseEnter
-    OnMouseMove = Panel1MouseMove
+      OnMouseMove = Panel1MouseMove
     end
   end
   object Label5: TLabel
     Left = 10
     Height = 15
-    Top = 362
+    Top = 400
     Width = 220
     AutoSize = False
     Caption = 'Label5'
@@ -222,7 +221,7 @@ object Form1: TForm1
     Left = 234
     Height = 15
     Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
-    Top = 362
+    Top = 400
     Width = 220
     Alignment = taRightJustify
     AutoSize = False
@@ -230,24 +229,17 @@ object Form1: TForm1
   end
   object CheckBox6: TCheckBox
     Left = 10
-    Height = 19
+    Height = 21
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 382
-    Width = 260
+    Top = 424
+    Width = 268
     Caption = 'Show the launcher again &after the game'
-    TabOrder = 6
-  end
-  object Timer1: TTimer
-    Enabled = False
-    Interval = 500
-    OnTimer = Timer1Timer
-    Left = 400
-    Top = 16
+    TabOrder = 7
   end
   object GroupBox4: TGroupBox
     Left = 8
     Height = 54
-    Top = 406
+    Top = 448
     Width = 448
     Caption = ' Tools '
     ClientHeight = 36
@@ -307,9 +299,10 @@ object Form1: TForm1
   object Label8: TLabel
     Cursor = crHandPoint
     Left = 10
-    Height = 15
+    Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 475
+    Top = 520
+    Width = 42
     Caption = 'Manual'
     Font.Color = clBlue
     Font.Style = [fsUnderline]
@@ -318,8 +311,8 @@ object Form1: TForm1
   end
   object Button3: TButton
     Left = 366
-    Height = 25
-    Top = 470
+    Height = 30
+    Top = 512
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
@@ -329,23 +322,30 @@ object Form1: TForm1
   object ComboBox1: TComboBox
     AnchorSideRight.Control = Button3
     Left = 246
-    Height = 23
+    Height = 30
     Hint = 'The language of the launcher.'
-    Top = 471
+    Top = 512
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10
-    ItemHeight = 15
+    ItemHeight = 0
     Items.Strings = (
       'English'
       'Deutsch'
       'Français'
       'Español'
     )
-    OnChange = ComboBox1Change
     ParentShowHint = False
     ShowHint = True
     Style = csDropDownList
     TabOrder = 6
+    OnChange = ComboBox1Change
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = Timer1Timer
+    Left = 400
+    Top = 16
   end
 end

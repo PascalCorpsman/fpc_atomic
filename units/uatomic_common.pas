@@ -173,10 +173,11 @@ Const
    *                       ADD: launcher: map selection with a preview (map with the bricks of the scheme) in the game options
    *                       FIX: mod test mode with GhostsKeepRound: when a player died with only 2 players, all bombs stayed off for the rest of the round (also after F7)
    *                       ADD: open borders: the arrows on the frame disappear 10 s after the borders opened
+   *             0.14000 =
    *)
 
   ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.13004';
+  Version = '0.14000';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
