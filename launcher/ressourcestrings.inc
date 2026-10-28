@@ -11,10 +11,12 @@ Resourcestring
   R_RenameFailed = 'Error, could not rename.';
   R_UpToDate = 'Your version of fpc_atomic is up to date.';
   R_GameDataFound = '✓ Game data found';
-  R_GameDataMissing = '✗ Game data missing, run CD extractor';
+  R_GameDataMissing = '✗ Game data missing';
   R_GameVersionUnknown = 'Game ver. unknown';
   R_GameVersion = 'Game ver. ';
   R_VersionUpToDate = ', up to date';
+  R_Mods = '&Mods...';
+  RF_ModsCount = '&Mods... (%d)';
   R_NothingSelected = 'Nothing for download selected.';
   R_ConfirmZipMerge = 'Zip files are merged without checks, do you really want to continue ?';
   RF_ConfirmDownload = 'Need to download %s continue?';

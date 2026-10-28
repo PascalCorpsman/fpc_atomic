@@ -21,7 +21,7 @@ In the original game a strong player wins almost every round against beginners. 
 - Keep **Show hit points above the players** on, so everyone sees who still has extra lives.
 - Adjust the table after a few rounds: if a beginner wins too often, take one hit point away.
 
-In the hurry every hit is lethal. With a longer play time or infinite time (launcher: **Game...**) the hit points matter for a larger part of the round, with infinite time there is no hurry at all.
+In the hurry every hit is lethal. With a longer play time or infinite time (launcher: **Game options...**) the hit points matter for a larger part of the round, with infinite time there is no hurry at all.
 
 #### Glove at start
 
@@ -58,7 +58,7 @@ These mods reward precise timing and aiming, so strong players profit more from 
 
 ### Outside the mods
 
-Some options of the game (launcher: **Game...**) help as well:
+Some options of the game (launcher: **Game options...**) help as well:
 
 - **Team play:** put a beginner and a strong player in one team. Together with the handicap this works very well.
 - **Fewer wins to win the match:** the fewer wins are needed, the more a lucky round counts.

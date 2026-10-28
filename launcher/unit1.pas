@@ -31,7 +31,6 @@ Type
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
-    Button6: TButton;
     Button7: TButton;
     Button8: TButton;
     CheckBox1: TCheckBox;
@@ -56,6 +55,7 @@ Type
     Label6: TLabel;
     Label7: TLabel;
     Label8: TLabel;
+    Label9: TLabel;
     ComboBox1: TComboBox;
     Panel1: TPanel;
     Timer1: TTimer;
@@ -64,10 +64,10 @@ Type
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
-    Procedure Button6Click(Sender: TObject);
     Procedure Button7Click(Sender: TObject);
     Procedure Button8Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
+    Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
     Procedure CheckBox3Change(Sender: TObject);
     Procedure Edit1Change(Sender: TObject);
@@ -91,6 +91,7 @@ Type
     Procedure LoadLanguages();
     Procedure LoadSettings();
     Procedure UpdateStatus();
+    Procedure UpdateModsCaption();
     Procedure StoreSettings();
     Procedure ApplyLanguage();
 
@@ -315,20 +316,11 @@ Begin
   dialog.free;
 End;
 
-Procedure TForm1.Button6Click(Sender: TObject);
-Var
-  s: String;
-Begin
-  // Open Config folder
-  s := GetAtomicConfigFile();
-  s := ExtractFileDir(s);
-  OpenURL(s);
-End;
-
 Procedure TForm1.Button7Click(Sender: TObject);
 Begin
   // Mods, der Dialog liest und schreibt atomic_mods.ini selbst
   form4.ShowModal;
+  UpdateModsCaption();
 End;
 
 Procedure TForm1.Button8Click(Sender: TObject);
@@ -349,6 +341,16 @@ Begin
   Else Begin
     OpenManual('MANUAL.md');
   End;
+End;
+
+Procedure TForm1.Label9Click(Sender: TObject);
+Var
+  s: String;
+Begin
+  // Open Config folder
+  s := GetAtomicConfigFile();
+  s := ExtractFileDir(s);
+  OpenURL(s);
 End;
 
 Procedure TForm1.CheckBox3Change(Sender: TObject);
@@ -686,6 +688,13 @@ Begin
     Label5.Caption := R_GameDataMissing;
     Label5.Font.Color := clRed;
   End;
+  // Der Knopf daneben, der das Problem löst, wird fett
+  If sl.Count = 0 Then Begin
+    Button4.Font.Style := [];
+  End
+  Else Begin
+    Button4.Font.Style := [fsBold];
+  End;
   // Die fehlenden Dateien stehen im Tooltip
   Label5.Hint := trim(sl.Text);
   Label5.ShowHint := sl.Count <> 0;
@@ -701,6 +710,35 @@ Begin
     Label6.Caption := R_GameVersion + format('%0.5f', [Version], fm);
   End;
   If UpToDate Then Label6.Caption := Label6.Caption + R_VersionUpToDate;
+  // Ohne bekannte Version ist das Spiel noch nicht (vollständig) installiert, das macht "Updates..."
+  If Version = -1 Then Begin
+    Button1.Font.Style := [fsBold];
+  End
+  Else Begin
+    Button1.Font.Style := [];
+  End;
+End;
+
+Procedure TForm1.UpdateModsCaption;
+Var
+  Settings: TModSettings;
+  Count: integer;
+Begin
+  // Die Anzahl der aktiven Mods steht im Knopf, damit man nicht vergisst, dass welche an sind
+  Settings.Handicap := Nil;
+  LoadModSettingsFromFile(GetAtomicModsIniFile(), Settings);
+  Count := ord(Settings.StunOnBombLanding) + ord(Settings.PunchStun) + ord(Settings.PositiveDisease) +
+    ord(Settings.BrickWalk) + ord(Settings.FlashDisease) + ord(Settings.WhiteBomb) +
+    ord(Settings.FlameThrower) + ord(Settings.HitPoints) + ord(Settings.Ghosts) +
+    ord(Settings.GloveAtStart) + ord(Settings.OpenBorders) + ord(Settings.Teleporters) +
+    ord(Settings.ModTestMode);
+  Settings.Handicap.free;
+  If Count = 0 Then Begin
+    Button7.Caption := R_Mods;
+  End
+  Else Begin
+    Button7.Caption := format(RF_ModsCount, [Count]);
+  End;
 End;
 
 Procedure TForm1.FormShow(Sender: TObject);
@@ -716,6 +754,7 @@ Begin
     End;
   End;
   Language.AddIgnoredIdentifier('Form1.Caption');
+  Language.AddIgnoredIdentifier('Form1.Button7.Caption'); // Setzt UpdateModsCaption
   Language.AddIgnoredIdentifier('Form1.Label4.Caption');
   Language.AddIgnoredIdentifier('Form1.Label5.Caption');
   Language.AddIgnoredIdentifier('Form1.Label5.Hint');
@@ -767,6 +806,7 @@ Begin
   Edit1Change(Nil);
   UpdateStatus();
   Form3.CheckListBox1Click(Nil);
+  UpdateModsCaption();
 End;
 
 Procedure TForm1.StoreSettings;

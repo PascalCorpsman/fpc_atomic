@@ -21,7 +21,7 @@ Mit [Trefferpunkten (Handicap)](MODS_MANUAL_DE.md#trefferpunkte-handicap) übers
 - **Trefferpunkte über den Spielern anzeigen** anlassen, damit alle sehen, wer noch Extraleben hat.
 - Die Tabelle nach ein paar Runden anpassen: Gewinnt ein Anfänger zu oft, einen Trefferpunkt wegnehmen.
 
-Im Hurry ist jeder Treffer tödlich. Mit längerer Spielzeit oder unbegrenzter Zeit (Launcher: **Spiel...**) zählen die Trefferpunkte über einen größeren Teil der Runde, mit unbegrenzter Zeit gibt es gar keinen Hurry.
+Im Hurry ist jeder Treffer tödlich. Mit längerer Spielzeit oder unbegrenzter Zeit (Launcher: **Spieloptionen...**) zählen die Trefferpunkte über einen größeren Teil der Runde, mit unbegrenzter Zeit gibt es gar keinen Hurry.
 
 #### Handschuh beim Start
 
@@ -58,7 +58,7 @@ Diese Mods belohnen genaues Timing und Zielen, davon profitieren starke Spieler 
 
 ### Außerhalb der Mods
 
-Auch einige Optionen des Spiels (Launcher: **Spiel...**) helfen:
+Auch einige Optionen des Spiels (Launcher: **Spieloptionen...**) helfen:
 
 - **Teamspiel:** Einen Anfänger und einen starken Spieler in ein Team stecken. Zusammen mit dem Handicap funktioniert das sehr gut.
 - **Weniger Siege bis zum Matchgewinn:** Je weniger Siege nötig sind, desto mehr zählt eine Glücksrunde.

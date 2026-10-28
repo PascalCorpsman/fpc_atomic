@@ -1,12 +1,12 @@
 object Form1: TForm1
   Left = 347
-  Height = 551
+  Height = 581
   Top = 107
   Width = 467
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Form1'
-  ClientHeight = 551
+  ClientHeight = 581
   ClientWidth = 467
   KeyPreview = True
   Position = poScreenCenter
@@ -19,7 +19,7 @@ object Form1: TForm1
   object Image1: TImage
     Left = 8
     Height = 288
-    Top = 24
+    Top = 40
     Width = 192
     Center = True
     Stretch = True
@@ -72,11 +72,11 @@ object Form1: TForm1
   end
   object GroupBox3: TGroupBox
     Left = 208
-    Height = 72
+    Height = 104
     Top = 128
     Width = 248
-    Caption = ' Display && sound '
-    ClientHeight = 54
+    Caption = ' Game settings '
+    ClientHeight = 86
     ClientWidth = 246
     TabOrder = 1
     object CheckBox2: TCheckBox
@@ -91,7 +91,7 @@ object Form1: TForm1
     object CheckBox4: TCheckBox
       Left = 124
       Height = 21
-      Hint = 'Play the music. The sound effects can be switched off in Game...'
+      Hint = 'Play the music. The sound effects can be switched off in Game options...'
       Top = 4
       Width = 91
       Caption = 'Play mu&sic'
@@ -115,11 +115,31 @@ object Form1: TForm1
       Caption = 'S&how FPS'
       TabOrder = 3
     end
+    object Button8: TButton
+      Left = 8
+      Height = 25
+      Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
+      Top = 56
+      Width = 138
+      Caption = '&Game options...'
+      TabOrder = 4
+      OnClick = Button8Click
+    end
+    object Button7: TButton
+      Left = 152
+      Height = 25
+      Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
+      Top = 56
+      Width = 86
+      Caption = '&Mods...'
+      TabOrder = 5
+      OnClick = Button7Click
+    end
   end
   object GroupBox2: TGroupBox
     Left = 208
     Height = 120
-    Top = 208
+    Top = 240
     Width = 248
     Caption = ' Internet game (optional) '
     ClientHeight = 102
@@ -170,19 +190,76 @@ object Form1: TForm1
       Text = 'Edit3'
     end
   end
+  object GroupBox4: TGroupBox
+    Left = 8
+    Height = 80
+    Top = 368
+    Width = 448
+    Caption = ' Installation '
+    ClientHeight = 62
+    ClientWidth = 446
+    TabOrder = 3
+    object Label5: TLabel
+      Left = 8
+      Height = 15
+      Top = 7
+      Width = 292
+      AutoSize = False
+      Caption = 'Label5'
+      ParentFont = False
+    end
+    object Button4: TButton
+      Left = 308
+      Height = 25
+      Hint = 'Extract the game data from the original Atomic Bomberman CD.'
+      Top = 2
+      Width = 130
+      Caption = 'CD e&xtractor...'
+      TabOrder = 0
+      OnClick = Button4Click
+    end
+    object Label6: TLabel
+      Left = 8
+      Height = 15
+      Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
+      Top = 36
+      Width = 292
+      AutoSize = False
+      Caption = 'Label6'
+    end
+    object Button1: TButton
+      Left = 308
+      Height = 25
+      Hint = 'Check online for a new version and download it.'
+      Top = 31
+      Width = 130
+      Caption = '&Updates...'
+      TabOrder = 1
+      OnClick = Button1Click
+    end
+  end
+  object CheckBox6: TCheckBox
+    Left = 10
+    Height = 21
+    Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
+    Top = 456
+    Width = 268
+    Caption = 'Show the launcher again &after the game'
+    TabOrder = 4
+  end
   object Panel1: TPanel
     Cursor = crHandPoint
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 344
+    Top = 482
     Width = 448
     BevelOuter = bvNone
     ClientHeight = 50
     ClientWidth = 448
     ParentBackground = False
     ParentColor = False
-    TabOrder = 3
+    TabOrder = 5
     TabStop = True
     OnClick = Button2Click
     OnMouseEnter = Panel1MouseEnter
@@ -209,100 +286,12 @@ object Form1: TForm1
       OnMouseMove = Panel1MouseMove
     end
   end
-  object Label5: TLabel
-    Left = 10
-    Height = 15
-    Top = 400
-    Width = 220
-    AutoSize = False
-    Caption = 'Label5'
-    ParentFont = False
-  end
-  object Label6: TLabel
-    Left = 234
-    Height = 15
-    Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
-    Top = 400
-    Width = 220
-    Alignment = taRightJustify
-    AutoSize = False
-    Caption = 'Label6'
-  end
-  object CheckBox6: TCheckBox
-    Left = 10
-    Height = 21
-    Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 424
-    Width = 268
-    Caption = 'Show the launcher again &after the game'
-    TabOrder = 7
-  end
-  object GroupBox4: TGroupBox
-    Left = 8
-    Height = 54
-    Top = 448
-    Width = 448
-    Caption = ' Tools '
-    ClientHeight = 36
-    ClientWidth = 446
-    TabOrder = 4
-    object Button7: TButton
-      Left = 8
-      Height = 25
-      Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
-      Top = 2
-      Width = 81
-      Caption = '&Mods...'
-      TabOrder = 0
-      OnClick = Button7Click
-    end
-    object Button8: TButton
-      Left = 95
-      Height = 25
-      Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
-      Top = 2
-      Width = 81
-      Caption = '&Game...'
-      TabOrder = 4
-      OnClick = Button8Click
-    end
-    object Button1: TButton
-      Left = 182
-      Height = 25
-      Hint = 'Check online for a new version and download it.'
-      Top = 2
-      Width = 81
-      Caption = '&Updates...'
-      TabOrder = 1
-      OnClick = Button1Click
-    end
-    object Button4: TButton
-      Left = 269
-      Height = 25
-      Hint = 'Extract the game data from the original Atomic Bomberman CD.'
-      Top = 2
-      Width = 81
-      Caption = 'CD e&xtractor...'
-      TabOrder = 2
-      OnClick = Button4Click
-    end
-    object Button6: TButton
-      Left = 356
-      Height = 25
-      Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
-      Top = 2
-      Width = 81
-      Caption = '&Config folder'
-      TabOrder = 3
-      OnClick = Button6Click
-    end
-  end
   object Label8: TLabel
     Cursor = crHandPoint
     Left = 10
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 520
+    Top = 549
     Width = 42
     Caption = 'Manual'
     Font.Color = clBlue
@@ -310,14 +299,31 @@ object Form1: TForm1
     ParentFont = False
     OnClick = Label8Click
   end
+  object Label9: TLabel
+    AnchorSideLeft.Control = Label8
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = Label8
+    Cursor = crHandPoint
+    Left = 68
+    Height = 16
+    Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
+    Top = 549
+    Width = 80
+    BorderSpacing.Left = 16
+    Caption = 'Config folder'
+    Font.Color = clBlue
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = Label9Click
+  end
   object Button3: TButton
     Left = 366
     Height = 30
-    Top = 512
+    Top = 542
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
-    TabOrder = 5
+    TabOrder = 7
     OnClick = Button3Click
   end
   object ComboBox1: TComboBox
@@ -325,7 +331,7 @@ object Form1: TForm1
     Left = 246
     Height = 30
     Hint = 'The language of the launcher.'
-    Top = 512
+    Top = 542
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10
