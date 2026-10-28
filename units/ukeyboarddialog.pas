@@ -86,7 +86,29 @@ Type
 
 Implementation
 
-Uses SDL2, Dialogs, usdlwizzard;
+Uses SDL2, Dialogs, usdlwizzard
+{$IFDEF Launcher}
+  , ulanguage
+{$ENDIF}
+  ;
+
+{$IFNDEF Launcher}
+Const
+  R_KeyboardSettings = 'Keyboard settings';
+  R_Keyboard0 = 'Keyboard 0';
+  R_Keyboard1 = 'Keyboard 1';
+  R_KeyUp = 'Key Up:';
+  R_KeyDown = 'Key Down:';
+  R_KeyLeft = 'Key Left:';
+  R_KeyRight = 'Key Right:';
+  R_KeyPrimary = 'Key Primary:';
+  R_KeySecondary = 'Key Secondary:';
+  R_Grab = 'Grab';
+  R_UseJoystick = 'Use joystick';
+  R_UseKeyboard = 'Use keyboard';
+  R_Default = 'default';
+  R_Cancel = 'Cancel';
+{$ENDIF}
 
 { TKeyboardDialog }
 
@@ -126,11 +148,11 @@ Procedure TKeyboardDialog.OnSetKeyBoardEvent(Sender: TObject);
 Begin
   If Sender = Button5 Then Begin
     fkeys[ks0].UseSDL2 := false;
-    label25.caption := 'Keyboard 0';
+    label25.caption := R_Keyboard0;
   End
   Else Begin
     fkeys[ks1].UseSDL2 := false;
-    label26.caption := 'Keyboard 1';
+    label26.caption := R_Keyboard1;
   End;
 End;
 
@@ -217,7 +239,7 @@ Constructor TKeyboardDialog.CreateNew(AOwner: TComponent; Num: Integer);
   Procedure CreateKeyGrabber(Var kg: TButton; aName: String; aTop, aLeft, aTag: integer);
   Begin
     kg := TButton.Create(self);
-    kg.Caption := 'Grab';
+    kg.Caption := R_Grab;
     kg.Name := aName;
     kg.Parent := self;
     kg.Top := aTop;
@@ -244,15 +266,15 @@ Begin
   BorderStyle := bsDialog;
   FormStyle := fsNormal;
   Position := poScreenCenter;
-  Caption := 'Keyboard settings';
+  Caption := R_KeyboardSettings;
 
-  CreateLabel(label25, 'Label25', 'Keyboard 0', 0, 10);
-  CreateLabel(label1, 'Label1', 'Key Up:', 20, 10);
-  CreateLabel(label2, 'Label2', 'Key Down:', 50, 10);
-  CreateLabel(label3, 'Label3', 'Key Left:', 80, 10);
-  CreateLabel(label4, 'Label4', 'Key Right:', 110, 10);
-  CreateLabel(label5, 'Label5', 'Key Primary:', 140, 10);
-  CreateLabel(label6, 'Label6', 'Key Secondary:', 170, 10);
+  CreateLabel(label25, 'Label25', R_Keyboard0, 0, 10);
+  CreateLabel(label1, 'Label1', R_KeyUp, 20, 10);
+  CreateLabel(label2, 'Label2', R_KeyDown, 50, 10);
+  CreateLabel(label3, 'Label3', R_KeyLeft, 80, 10);
+  CreateLabel(label4, 'Label4', R_KeyRight, 110, 10);
+  CreateLabel(label5, 'Label5', R_KeyPrimary, 140, 10);
+  CreateLabel(label6, 'Label6', R_KeySecondary, 170, 10);
   CreateLabel(label7, 'Label7', '?', 20, 110);
   CreateLabel(label8, 'Label8', '?', 50, 110);
   CreateLabel(label9, 'Label9', '?', 80, 110);
@@ -265,18 +287,18 @@ Begin
   CreateKeyGrabber(KeyGrabber4, 'KeyGrabber4', 110, 200, 4);
   CreateKeyGrabber(KeyGrabber5, 'KeyGrabber5', 140, 200, 5);
   CreateKeyGrabber(KeyGrabber6, 'KeyGrabber6', 170, 200, 6);
-  CreateButton(Button4, 'Button4', 'Use joystick', 200, 10, mrNone);
+  CreateButton(Button4, 'Button4', R_UseJoystick, 200, 10, mrNone);
   button4.Width := 110;
-  CreateButton(Button5, 'Button5', 'Use keyboard', 200, 165, mrNone);
+  CreateButton(Button5, 'Button5', R_UseKeyboard, 200, 165, mrNone);
   button5.Width := 110;
 
-  CreateLabel(label26, 'Label26', 'Keyboard 1', 0, 310);
-  CreateLabel(label13, 'Label13', 'Key Up:', 20, 310);
-  CreateLabel(label14, 'Label14', 'Key Down:', 50, 310);
-  CreateLabel(label15, 'Label15', 'Key Left:', 80, 310);
-  CreateLabel(label16, 'Label16', 'Key Right:', 110, 310);
-  CreateLabel(label17, 'Label17', 'Key Primary:', 140, 310);
-  CreateLabel(label18, 'Label18', 'Key Secondary:', 170, 310);
+  CreateLabel(label26, 'Label26', R_Keyboard1, 0, 310);
+  CreateLabel(label13, 'Label13', R_KeyUp, 20, 310);
+  CreateLabel(label14, 'Label14', R_KeyDown, 50, 310);
+  CreateLabel(label15, 'Label15', R_KeyLeft, 80, 310);
+  CreateLabel(label16, 'Label16', R_KeyRight, 110, 310);
+  CreateLabel(label17, 'Label17', R_KeyPrimary, 140, 310);
+  CreateLabel(label18, 'Label18', R_KeySecondary, 170, 310);
   CreateLabel(label19, 'Label19', '?', 20, 410);
   CreateLabel(label20, 'Label20', '?', 50, 410);
   CreateLabel(label21, 'Label21', '?', 80, 410);
@@ -289,14 +311,14 @@ Begin
   CreateKeyGrabber(KeyGrabber10, 'KeyGrabber10', 110, 500, 10);
   CreateKeyGrabber(KeyGrabber11, 'KeyGrabber11', 140, 500, 11);
   CreateKeyGrabber(KeyGrabber12, 'KeyGrabber12', 170, 500, 12);
-  CreateButton(Button6, 'Button6', 'Use joystick', 200, 310, mrNone);
+  CreateButton(Button6, 'Button6', R_UseJoystick, 200, 310, mrNone);
   button6.Width := 110;
-  CreateButton(Button7, 'Button7', 'Use keyboard', 200, 465, mrNone);
+  CreateButton(Button7, 'Button7', R_UseKeyboard, 200, 465, mrNone);
   button7.Width := 110;
 
   CreateButton(Button1, 'Button1', 'OK', 240, 505, mrOK);
-  CreateButton(Button2, 'Button2', 'Cancel', 240, 420, mrCancel);
-  CreateButton(Button3, 'Button3', 'default', 240, 10, mrNone);
+  CreateButton(Button2, 'Button2', R_Cancel, 240, 420, mrCancel);
+  CreateButton(Button3, 'Button3', R_Default, 240, 10, mrNone);
 
   button3.OnClick := @OnSetDefaultEvent;
   button4.OnClick := @OnSetSDLKeyEvent;
@@ -310,16 +332,16 @@ Begin
   fkeys[ks0] := Keys0;
   fkeys[ks1] := Keys1;
   If fkeys[ks0].UseSDL2 Then Begin
-    label25.caption := 'Keyboard 0(' + keys0.Name + ')';
+    label25.caption := R_Keyboard0 + '(' + keys0.Name + ')';
   End
   Else Begin
-    label25.caption := 'Keyboard 0';
+    label25.caption := R_Keyboard0;
   End;
   If fkeys[ks1].UseSDL2 Then Begin
-    label26.caption := 'Keyboard 1(' + keys1.Name + ')';
+    label26.caption := R_Keyboard1 + '(' + keys1.Name + ')';
   End
   Else Begin
-    label26.caption := 'Keyboard 1';
+    label26.caption := R_Keyboard1;
   End;
   label7.Caption := VkKeyToString(fkeys[ks0].KeyUp);
   label8.Caption := VkKeyToString(fkeys[ks0].KeyDown);

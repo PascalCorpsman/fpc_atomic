@@ -222,7 +222,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global, ulocales;
+Uses uatomic_global, ulanguage;
 
 Function ValidHandicapName(aName: String): Boolean;
 Begin
@@ -311,8 +311,8 @@ Begin
   SpinEdit12.MaxValue := ModMaxGhostFlickerMs;
   SpinEdit13.MaxValue := ModMaxRoundTimeSec;
   SpinEdit14.MaxValue := ModMaxStartInvulnMs;
-  StringGrid1.Cells[0, 0] := 'Player name';
-  StringGrid1.Cells[1, 0] := 'Hit points';
+  StringGrid1.Cells[0, 0] := R_PlayerName;
+  StringGrid1.Cells[1, 0] := R_HitPoints;
   PageControl1.ActivePageIndex := 0;
 End;
 
@@ -342,7 +342,7 @@ Begin
   // OK
   If Not ControlsToSettings() Then exit;
   If Not SaveModSettingsToFile(GetAtomicServerIniFile(), fSettings) Then Begin
-    showmessage(Tr('Error, could not write:') + LineEnding + GetAtomicServerIniFile());
+    showmessage(R_WriteFailed + LineEnding + GetAtomicServerIniFile());
     exit;
   End;
   ModalResult := mrOK;
@@ -368,7 +368,12 @@ End;
 
 Procedure TForm4.Label62Click(Sender: TObject);
 Begin
-  OpenManual('MODS_MANUAL.md');
+  If SameText(ExtractFileExt(Language.CurrentLanguage), '.de') Then Begin
+    OpenManual('MODS_MANUAL_DE.md');
+  End
+  Else Begin
+    OpenManual('MODS_MANUAL.md');
+  End;
 End;
 
 Procedure TForm4.CheckBox1Change(Sender: TObject);
@@ -407,6 +412,8 @@ Procedure TForm4.SettingsToControls;
 Var
   i: integer;
 Begin
+  StringGrid1.Cells[0, 0] := R_PlayerName;
+  StringGrid1.Cells[1, 0] := R_HitPoints;
   CheckBox1.Checked := fSettings.StunOnBombLanding;
   SpinEdit1.Value := fSettings.StunMinMs;
   SpinEdit2.Value := fSettings.StunMaxMs;
@@ -494,22 +501,22 @@ Begin
   result := false;
   If SpinEdit2.Value < SpinEdit1.Value Then Begin
     ShowModPage(TabSheet1);
-    showmessage(Tr('Error, max. stun time is smaller than min. stun time.'));
+    showmessage(R_InvalidStunTime);
     exit;
   End;
   If SpinEdit22.Value < SpinEdit21.Value Then Begin
     ShowModPage(TabSheet10);
-    showmessage(Tr('Error, max. stun time is smaller than min. stun time.'));
+    showmessage(R_InvalidStunTime);
     exit;
   End;
   If SpinEdit5.Value < SpinEdit4.Value Then Begin
     ShowModPage(TabSheet2);
-    showmessage(Tr('Error, max. time is smaller than min. time.'));
+    showmessage(R_InvalidTime);
     exit;
   End;
   If SpinEdit17.Value < SpinEdit16.Value Then Begin
     ShowModPage(TabSheet7);
-    showmessage(Tr('Error, max. time is smaller than min. time.'));
+    showmessage(R_InvalidTime);
     exit;
   End;
   // Die Handicap Tabelle, leere Zeilen werden ignoriert
@@ -517,8 +524,8 @@ Begin
     If Not ValidHandicapRow(i) Then Begin
       ShowModPage(TabSheet3);
       StringGrid1.Row := i;
-      showmessage(format(Tr('Error, invalid handicap in line %d:'), [i]) + LineEnding +
-        format(Tr('The player name needs to be a valid name (optional with ~2 at the end) and the hit points need to be in 1..%d.'), [ModMaxHitPoints]));
+      showmessage(format(RF_InvalidHandicap, [i]) + LineEnding +
+        format(RF_HandicapRequirements, [ModMaxHitPoints]));
       exit;
     End;
     n := trim(StringGrid1.Cells[0, i]);
@@ -526,7 +533,7 @@ Begin
       If (n <> '') And (lowercase(n) = lowercase(trim(StringGrid1.Cells[0, j]))) Then Begin
         ShowModPage(TabSheet3);
         StringGrid1.Row := i;
-        showmessage(format(Tr('Error, the player name "%s" is used twice.'), [n]));
+        showmessage(format(RF_DuplicatePlayerName, [n]));
         exit;
       End;
     End;

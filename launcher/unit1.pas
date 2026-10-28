@@ -73,6 +73,7 @@ Type
     Procedure Edit1Change(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
+    Procedure FormShow(Sender: TObject);
     Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure Panel1MouseEnter(Sender: TObject);
     Procedure Timer1Timer(Sender: TObject);
@@ -85,7 +86,9 @@ Type
     UpToDate: Boolean; // True, wenn "Updates..." in diesem Lauf nichts mehr zum Herunterladen gefunden hat
     GameDataFound: Boolean; // True, wenn CheckForFiles nichts vermisst, dann ist der Launch Knopf blau
     GameProcess: TProcessUTF8; // Das laufende Spiel, wenn der Launcher danach wieder erscheinen soll (CheckBox6), sonst Nil
+    fLanguageCodes: Array Of String;
 
+    Procedure LoadLanguages();
     Procedure LoadSettings();
     Procedure UpdateStatus();
     Procedure StoreSettings();
@@ -106,12 +109,15 @@ Implementation
 {$R *.lfm}
 
 Uses process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulocales
+  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
 {$ENDIF}
   ;
+
+Const
+  LauncherLanguageCodes: Array[0..3] Of String = ('en', 'de', 'fr', 'es');
 
 {$IFDEF Windows}
 
@@ -166,6 +172,7 @@ Begin
   Atomic_Version := TVersion.Create();
   UpToDate := false;
   LoadSideImage();
+  LoadLanguages();
   LoadSettings();
   fm := DefaultFormatSettings;
   fm.DecimalSeparator := '.';
@@ -177,8 +184,6 @@ Begin
     If ParamStr(i) = '-port' Then edit3.text := ParamStr(i + 1);
   End;
   CheckBox3Change(Nil);
-  // Die Texte in der eingestellten Sprache, das setzt auch die Namensprüfung und den Status
-  ApplyLanguage();
 End;
 
 Procedure TForm1.Button3Click(Sender: TObject);
@@ -197,7 +202,7 @@ Begin
   // Short Prechecks
   If (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
     (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage(Tr('Error, installation not complete, please run "Check for updates"'));
+    showmessage(R_InstallationIncomplete);
     exit;
   End;
   // Run the App ;)
@@ -263,7 +268,6 @@ Begin
     Keys[ks1].AchsisDirection[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
   End;
   Dialog.LoadKeys(Keys[ks0], Keys[ks1]);
-  TranslateForm(Dialog);
   If Dialog.Execute() Then Begin
     Keys[ks0] := Dialog.GetKeys(ks0);
     Keys[ks1] := Dialog.GetKeys(ks1);
@@ -324,14 +328,12 @@ End;
 Procedure TForm1.Button7Click(Sender: TObject);
 Begin
   // Mods, der Dialog liest und schreibt atomic_server.ini selbst
-  TranslateForm(form4);
   form4.ShowModal;
 End;
 
 Procedure TForm1.Button8Click(Sender: TObject);
 Begin
   // Spiel Optionen, die selben Schlüssel wie im Optionen Menü des Spiels
-  TranslateForm(form5);
   form5.LoadFromIni(ini);
   If form5.ShowModal = mrOK Then Begin
     form5.SaveToIni(ini);
@@ -341,15 +343,12 @@ End;
 
 Procedure TForm1.Label8Click(Sender: TObject);
 Begin
-  OpenManual('MANUAL.md');
-End;
-
-Procedure TForm1.ComboBox1Change(Sender: TObject);
-Begin
-  // Die gewählte Sprache, gemerkt in fpc_atomic.cfg
-  Language := TLanguage(ComboBox1.ItemIndex);
-  ini.WriteString('Launcher', 'Language', LanguageCodes[Language]);
-  ApplyLanguage();
+  If SameText(ExtractFileExt(Language.CurrentLanguage), '.de') Then Begin
+    OpenManual('MANUAL_DE.md');
+  End
+  Else Begin
+    OpenManual('MANUAL.md');
+  End;
 End;
 
 Procedure TForm1.CheckBox3Change(Sender: TObject);
@@ -365,11 +364,11 @@ Procedure TForm1.Edit1Change(Sender: TObject);
 Begin
   // Den Spielernamen sofort prüfen, die Meldung beim Launch bleibt als Sicherheitsnetz
   If ValidNodeName(trim(Edit1.Text)) Then Begin
-    Label4.Caption := Tr('✓ valid name');
+    Label4.Caption := R_ValidName;
     Label4.Font.Color := clGreen;
   End
   Else Begin
-    Label4.Caption := Tr('✗ a-z 0-9 _ space, max. 19');
+    Label4.Caption := R_InvalidNameHint;
     Label4.Font.Color := clRed;
   End;
 End;
@@ -429,7 +428,7 @@ Var
   sl: TStringList;
 Begin
   If Not ValidNodeName(trim(Edit1.text)) Then Begin
-    showmessage(Edit1.text + LineEnding + Tr('is not a valid nodename, (need to be less than 20 chars and no spezial chars!'));
+    showmessage(Edit1.text + LineEnding + R_InvalidNodeName);
     exit;
   End;
   // Launch
@@ -437,9 +436,9 @@ Begin
   ini.UpdateFile;
   sl := CheckForFiles();
   If sl.count <> 0 Then Begin
-    showmessage(Tr('Error, the following files are missing:') + LineEnding +
+    showmessage(R_MissingFiles + LineEnding +
       sl.Text + LineEnding +
-      Tr('Please re run cd_data_extractor'));
+      R_RunExtractorAgain);
     sl.free;
     exit;
   End;
@@ -447,7 +446,7 @@ Begin
   // Short Prechecks
   If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
     (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage(Tr('Error, installation not complete, please run "Check for updates"'));
+    showmessage(R_InstallationIncomplete);
     exit;
   End;
   // Run the App ;)
@@ -506,10 +505,10 @@ Var
 Begin
 {$IFDEF Linux}
   If DirectoryExists('cd_data_extractor') Then Begin
-    If id_yes = Application.MessageBox(pchar(Tr('In the launcher location there is a folder named "cd_data_extractor", this will crash the update process') + LineEnding +
-      Tr('Do you want to rename that folder ?')), pchar(Tr('Warning')), MB_YESNO) Then Begin
+    If id_yes = Application.MessageBox(pchar(R_ExtractorFolderConflict + LineEnding +
+      R_RenameFolder), pchar(R_Warning), MB_YESNO) Then Begin
       If Not RenameFile('cd_data_extractor' + PathDelim, 'cd_data_extractor_' + PathDelim) Then Begin
-        showmessage(Tr('Error, could not rename.'));
+        showmessage(R_RenameFailed);
         exit;
       End;
     End
@@ -545,12 +544,11 @@ Begin
   End;
   log('Online launcher version: ' + format('%0.2f', [Atomic_Version.LauncherVersion / 100]));
   log('Local launcher version: ' + format('%0.2f', [LauncherVersion / 100]));
-  TranslateForm(form3);
   form3.InitWith(Atomic_Version, Version = -1);
   If form3.GetFilesToDLCount() = 0 Then Begin
     UpToDate := true;
     showmessage(
-      Tr('Your version of fpc_atomic is up to date.')
+      R_UpToDate
       //      + LineEnding + LineEnding +
       //      'But the additional *.zip files are not checked.' + LineEnding + LineEnding +
       //      'If you want, you can check these files now manually and update them.'
@@ -601,9 +599,53 @@ Begin
   Version := NewVersion;
 End;
 
+Procedure TForm1.LoadLanguages;
+Var
+  Search: TSearchRec;
+  Codes: TStringList;
+  LanguageCode: String;
+  Index, FileIndex: Integer;
+Begin
+  setlength(fLanguageCodes, length(LauncherLanguageCodes));
+  Codes := TStringList.Create;
+  Try
+    Codes.Sorted := true;
+    Codes.Duplicates := dupIgnore;
+    If FindFirst(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'launcher_lang.*', faAnyFile, Search) = 0 Then Begin
+      Try
+        Repeat
+          If (Search.Attr And faDirectory) <> 0 Then Continue;
+          If ChangeFileExt(Search.Name, '') <> 'launcher_lang' Then Continue;
+          LanguageCode := copy(ExtractFileExt(Search.Name), 2, MaxInt);
+          If LanguageCode <> '' Then Codes.Add(LanguageCode);
+        Until FindNext(Search) <> 0;
+      Finally
+        FindClose(Search);
+      End;
+    End;
+    For Index := low(LauncherLanguageCodes) To high(LauncherLanguageCodes) Do Begin
+      fLanguageCodes[Index] := LauncherLanguageCodes[Index];
+      FileIndex := Codes.IndexOf(fLanguageCodes[Index]);
+      If FileIndex >= 0 Then Begin
+        fLanguageCodes[Index] := Codes[FileIndex];
+        Codes.Delete(FileIndex);
+      End;
+    End;
+    For Index := 0 To Codes.Count - 1 Do Begin
+      setlength(fLanguageCodes, length(fLanguageCodes) + 1);
+      fLanguageCodes[high(fLanguageCodes)] := Codes[Index];
+      ComboBox1.Items.Add(Codes[Index]);
+    End;
+  Finally
+    Codes.Free;
+  End;
+End;
+
 Procedure TForm1.LoadSettings;
 Var
   fm: TFormatSettings;
+  Index: Integer;
+  LanguageCode: String;
 Begin
   fm := DefaultFormatSettings;
   fm.DecimalSeparator := '.';
@@ -619,7 +661,14 @@ Begin
   edit2.text := ini.ReadString('Launcher', 'Router_IP', '127.0.0.1');
   edit3.text := ini.ReadString('Launcher', 'Router_Port', '5521');
   CheckBox6.Checked := ini.ReadBool('Launcher', 'ShowAfterGame', false);
-  Language := CodeToLanguage(ini.ReadString('Launcher', 'Language', LanguageCodes[lgEnglish]));
+  LanguageCode := ini.ReadString('Launcher', 'Language', 'en');
+  ComboBox1.ItemIndex := 0;
+  For Index := low(fLanguageCodes) To high(fLanguageCodes) Do Begin
+    If SameText(LanguageCode, fLanguageCodes[Index]) Then Begin
+      ComboBox1.ItemIndex := Index;
+      break;
+    End;
+  End;
 End;
 
 Procedure TForm1.UpdateStatus;
@@ -630,11 +679,11 @@ Begin
   // Links: sind die Spieldaten vollständig, rechts: die installierte Version (ohne Netzwerkzugriff)
   sl := CheckForFiles();
   If sl.Count = 0 Then Begin
-    Label5.Caption := Tr('✓ Game data found');
+    Label5.Caption := R_GameDataFound;
     Label5.Font.Color := clGreen;
   End
   Else Begin
-    Label5.Caption := Tr('✗ Game data missing, run CD extractor');
+    Label5.Caption := R_GameDataMissing;
     Label5.Font.Color := clRed;
   End;
   // Die fehlenden Dateien stehen im Tooltip
@@ -644,24 +693,80 @@ Begin
   sl.free;
   Panel1MouseEnter(Nil);
   If Version = -1 Then Begin
-    Label6.Caption := Tr('Game ver. unknown');
+    Label6.Caption := R_GameVersionUnknown;
   End
   Else Begin
     fm := DefaultFormatSettings;
     fm.DecimalSeparator := '.';
-    Label6.Caption := Tr('Game ver. ') + format('%0.5f', [Version], fm);
+    Label6.Caption := R_GameVersion + format('%0.5f', [Version], fm);
   End;
-  If UpToDate Then Label6.Caption := Label6.Caption + Tr(', up to date');
+  If UpToDate Then Label6.Caption := Label6.Caption + R_VersionUpToDate;
+End;
+
+Procedure TForm1.FormShow(Sender: TObject);
+Var
+  i: Integer;
+Begin
+  If Language.CurrentLanguage <> '' Then exit;
+  For i := 1 To ParamCount Do Begin
+    If SameText(ParamStr(i), '-lazarus-ide') Then Begin
+      Language.AskNameChanges := true;
+      ComboBox1.ItemIndex := 0; // Force to en!
+      break;
+    End;
+  End;
+  Language.AddIgnoredIdentifier('Form1.Caption');
+  Language.AddIgnoredIdentifier('Form1.Label4.Caption');
+  Language.AddIgnoredIdentifier('Form1.Label5.Caption');
+  Language.AddIgnoredIdentifier('Form1.Label5.Hint');
+  Language.AddIgnoredIdentifier('Form1.Label6.Caption');
+  Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
+  Language.AddIgnoredComponent(Form3.CheckListBox1);
+  Language.AddIgnoredComponent(Form3.CheckListBox2);
+  Language.AddIgnoredIdentifier('Form3.Label3.Caption');
+  Language.AddIgnoredIdentifier('Form3.Label5.Caption');
+  Language.AddIgnoredComponent(Form4.StringGrid1);
+  Language.AddIgnoredIdentifier('Form5.ComboBox2.Items');
+  Language.AddIgnoredIdentifier('Form5.ComboBox4.Items');
+  ApplyLanguage();
+End;
+
+Procedure TForm1.ComboBox1Change(Sender: TObject);
+Begin
+  If Language.CurrentLanguage = '' Then exit;
+  Language.AskNameChanges := false;
+  ApplyLanguage();
+  ini.UpdateFile;
 End;
 
 Procedure TForm1.ApplyLanguage;
+Var
+  Checked: Array Of Boolean;
+  ItemIndex, ConveyorIndex, PlayTimeIndex, Index: Integer;
 Begin
-  // Die Dialoge werden erst direkt vor dem Anzeigen übersetzt (Button1Click, Button5Click, Button7Click, Button8Click)
-  TranslateForm(self);
-  ComboBox1.ItemIndex := ord(Language);
-  // Die Texte, die erst der Code setzt
+  Checked := Nil;
+  setlength(Checked, Form4.CheckListBox1.Count);
+  For Index := 0 To high(Checked) Do Begin
+    Checked[Index] := Form4.CheckListBox1.Checked[Index];
+  End;
+  ItemIndex := Form4.CheckListBox1.ItemIndex;
+  ConveyorIndex := Form5.ComboBox1.ItemIndex;
+  PlayTimeIndex := Form5.ComboBox3.ItemIndex;
+  Try
+    Language.CurrentLanguage := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
+      'launcher_lang.' + fLanguageCodes[ComboBox1.ItemIndex];
+  Finally
+    For Index := 0 To high(Checked) Do Begin
+      Form4.CheckListBox1.Checked[Index] := Checked[Index];
+    End;
+    Form4.CheckListBox1.ItemIndex := ItemIndex;
+    Form5.ComboBox1.ItemIndex := ConveyorIndex;
+    Form5.ComboBox3.ItemIndex := PlayTimeIndex;
+  End;
+  ini.WriteString('Launcher', 'Language', fLanguageCodes[ComboBox1.ItemIndex]);
   Edit1Change(Nil);
   UpdateStatus();
+  Form3.CheckListBox1Click(Nil);
 End;
 
 Procedure TForm1.StoreSettings;

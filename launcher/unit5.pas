@@ -79,10 +79,9 @@ Implementation
 
 {$R *.lfm}
 
-Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulocales;
+Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage;
 
 Const
-  RandomMapName = 'Random each game'; // Die Zufallskarte des Spiels, gespeichert als Name '' und Hash 0
   MapFiles: Array[0..5] Of String = ('brick.png', 'field.png', 'info.txt', 'solid.png', 'sound.wav', 'xbrick.ani'); // In der Reihenfolge, in der TAtomicField.Create sie hasht
   PreviewScale = 2; // Die Vorschau ist halb so groß wie das Spiel (640 x 480)
 
@@ -237,7 +236,7 @@ Begin
     fMapDirs.Add(dir);
   End;
   sl.free;
-  ComboBox4.Items.Add(Tr(RandomMapName));
+  ComboBox4.Items.Add(R_RandomMap);
   fMapDirs.Add('');
 End;
 
@@ -340,10 +339,10 @@ Begin
       End;
     End;
     If dir = '' Then Begin
-      Info := Tr(RandomMapName);
+      Info := R_RandomMap;
     End
     Else Begin
-      Info := Tr('No map graphics, extract the CD data first.');
+      Info := R_NoMapGraphics;
     End;
     bmp.Canvas.Brush.Style := bsClear;
     bmp.Canvas.Font.Color := clWhite;

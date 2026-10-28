@@ -15,6 +15,7 @@ object Form1: TForm1
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnKeyDown = FormKeyDown
+  OnShow = FormShow
   object Image1: TImage
     Left = 8
     Height = 288
@@ -329,6 +330,7 @@ object Form1: TForm1
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10
     ItemHeight = 0
+    ItemIndex = 0
     Items.Strings = (
       'English'
       'Deutsch'
@@ -339,6 +341,7 @@ object Form1: TForm1
     ShowHint = True
     Style = csDropDownList
     TabOrder = 6
+    Text = 'English'
     OnChange = ComboBox1Change
   end
   object Timer1: TTimer

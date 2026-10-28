@@ -20,7 +20,17 @@
       <UseFileFilters Value="True"/>
     </PublishOptions>
     <RunParams>
+      <local>
+        <CommandLineParams Value="-lazarus-ide"/>
+      </local>
       <FormatVersion Value="2"/>
+      <Modes>
+        <Mode Name="default">
+          <local>
+            <CommandLineParams Value="-lazarus-ide"/>
+          </local>
+        </Mode>
+      </Modes>
     </RunParams>
     <RequiredPackages>
       <Item>
@@ -45,7 +55,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="ulocales.pas"/>
+        <Filename Value="ressourcestrings.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -120,6 +130,10 @@
         <Filename Value="../units/uatomic_global.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../Sample/DatenSteuerung/ulanguage.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -128,7 +142,7 @@
       <Filename Value="../atomic_launcher"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
+      <IncludeFiles Value="$(ProjOutDir);$(ProjPath)"/>
       <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src;../../Sample/SDL2/library;../../Sample/SDL2;../../Sample/TCP_IP"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
