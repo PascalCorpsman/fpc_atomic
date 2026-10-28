@@ -327,7 +327,7 @@ End;
 
 Procedure TForm1.Button7Click(Sender: TObject);
 Begin
-  // Mods, der Dialog liest und schreibt atomic_server.ini selbst
+  // Mods, der Dialog liest und schreibt atomic_mods.ini selbst
   form4.ShowModal;
 End;
 

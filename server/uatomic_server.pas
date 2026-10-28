@@ -67,7 +67,7 @@ Type
     fLastClientUpdateTimestamp: int64; // Zeitpunkt an dem zuletzt alle Clients Aktualisiert wurden
 
     fSettings: TAtomicSettings;
-    fModSettings: TModSettings; // Die Optionalen Mods aus atomic_server.ini
+    fModSettings: TModSettings; // Die Optionalen Mods, kommen vom Master (miUpdateModSettings), ohne sind alle aus
     fRoundTimeMs: Integer; // Zeit in ms seit Rundenbeginn (für Teleporter und offene Grenzen)
     fFields: Array Of TAtomicField;
     fConnectedClientCount: integer; // Anzahl der Tatsächlich verbundenen Clients, wird bestimmt bei HandleSwitchToPlayerSetup und ist immer <= GetActivePlayerCount()
@@ -143,7 +143,9 @@ Type
 
     Procedure LoadAi();
     Procedure HurryHandling;
-    Procedure LoadModSettings();
+    Procedure HandleUpdateModSettings(Const Stream: TStream; UID: integer);
+    Procedure ApplyModSettingsToFields();
+    Procedure SendModInfo(UID: integer);
     Function ActiveModsText(): String; // Leer, wenn kein Mod aktiv ist
     Procedure ApplyStartItems(Var Powers: TAtomicPowers; Items: String);
     Procedure HandleDebugCommand(Const Stream: TStream; UID: integer);
@@ -193,7 +195,6 @@ Begin
   fTCPPort := Port;
 
   fPlayerStatistics := TPlayerStatisticEngine.create; // Muss vor den Feldern gemacht werden weils ja rein gereicht wird ;)
-  LoadModSettings();
 
   // Laden aller Felder
   sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
@@ -207,18 +208,6 @@ Begin
     fFields[i].GhostReviveCallback := @HandleGhostRevive;
     fFields[i].PlayerPunchCallback := @HandlePlayerPunch;
     fFields[i].WhiteBombCallback := @HandleWhiteBomb;
-    fFields[i].WhiteBombChance := 0;
-    If fModSettings.WhiteBomb Then fFields[i].WhiteBombChance := fModSettings.WhiteBombChance;
-    fFields[i].FlameThrowerChance := 0;
-    If fModSettings.FlameThrower Then fFields[i].FlameThrowerChance := fModSettings.FlameThrowerChance;
-    fFields[i].FlameThrowerFuelMs := fModSettings.FlameThrowerFuelMs;
-    fFields[i].FlameThrowerBurnItems := fModSettings.FlameThrowerBurnItems;
-    fFields[i].FlameThrowerIgniteBombs := fModSettings.FlameThrowerIgniteBombs;
-    fFields[i].FlameThrowerIgniteMs := fModSettings.FlameThrowerIgniteMs;
-    fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
-    fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
-    fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
-    fFields[i].PortalLeftRight := fModSettings.Teleporters And fModSettings.TeleportersLeftRight;
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
@@ -226,6 +215,7 @@ Begin
   sl.free;
   setlength(fFields, high(fFields) + 2);
   fFields[high(fFields)] := TAtomicRandomField.Create();
+  ApplyModSettingsToFields(); // Bis der Master seine Mods schickt sind alle aus (siehe HandleSwitchToWaitForPlayersToConnect)
   LoadAi();
   If Not fUDP.Listen(UDPPingPort) Then Begin
     log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
@@ -425,6 +415,9 @@ Begin
       End;
     miUpdateSettings: Begin
         HandleLoadSettings(Chunk.Data);
+      End;
+    miUpdateModSettings: Begin
+        HandleUpdateModSettings(Chunk.Data, Chunk.UID);
       End;
     miChangePlayerKey: Begin
         i := -1;
@@ -673,12 +666,7 @@ Begin
   i := fSettings.MasterUid;
   m.Write(i, sizeof(i));
   SendChunk(miRequestLoginResult, m, UID);
-  // Dem neuen Spieler mitteilen ob der Mod Test Modus an ist (nur der Master darf Test Befehle ausführen), wie Geister flackern und wie durchsichtig "durch Blöcke laufen" ist
-  m := TMemoryStream.Create;
-  m.Write(fModSettings.ModTestMode, sizeof(fModSettings.ModTestMode));
-  m.Write(fModSettings.GhostFlickerMs, sizeof(fModSettings.GhostFlickerMs));
-  m.Write(fModSettings.BrickWalkTransparency, sizeof(fModSettings.BrickWalkTransparency));
-  SendChunk(miModInfo, m, UID);
+  SendModInfo(UID); // Beim Master sind das noch die Defaults, seine Mods schickt er erst als Antwort auf miRequestLoginResult
   // Allen Mitteilen das wir nen neuen Spieler haben
   RefreshAllPlayerStats(0); // Allen Anwesenden Mitteilen Welche Spieler es so gibt
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
@@ -1982,6 +1970,9 @@ Begin
   fSettings.MasterUid := -1;
   fActualField := Nil;
   fSettings.LastWinsToWinMatch := 3; // Default der Clients
+  // Die Mods gehören zum Master, der nächste Master schickt seine eigenen
+  ModSettingsDefaults(fModSettings);
+  ApplyModSettingsToFields();
   LogLeave(EnterID);
 End;
 
@@ -3055,17 +3046,57 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.LoadModSettings;
+Procedure TServer.HandleUpdateModSettings(Const Stream: TStream; UID: integer);
 Var
   EnterID: Integer;
   s: String;
 Begin
-  EnterID := LogEnter('TServer.LoadModSettings');
-  // Defaults, Grenzen und das Anlegen fehlender Schlüssel teilen sich Server und Launcher (siehe uatomic_common)
-  LoadModSettingsFromFile(GetAtomicServerIniFile(), fModSettings);
+  EnterID := LogEnter('TServer.HandleUpdateModSettings');
+  // Nur der Master bestimmt die Mods, und auch nur so lange das Match noch nicht läuft
+  If (UID <> fSettings.MasterUid) Or (Not (fGameState In [gsWaitForPlayersToConnect, gsPlayerSetup, gsMapSetup])) Then Begin
+    log('Ignored mod settings from ' + inttostr(UID), llWarning);
+    LogLeave(EnterID);
+    exit;
+  End;
+  // Defaults und Grenzen teilen sich Server, Client und Launcher (siehe uatomic_common)
+  ModSettingsFromString(Stream.ReadAnsiString, fModSettings);
+  ApplyModSettingsToFields();
   s := ActiveModsText();
   If s <> '' Then log(s, llInfo);
+  SendModInfo(0); // Alle bereits angemeldeten Spieler brauchen die neuen Werte
   LogLeave(EnterID);
+End;
+
+Procedure TServer.ApplyModSettingsToFields;
+Var
+  i: Integer;
+Begin
+  For i := 0 To high(fFields) Do Begin
+    fFields[i].WhiteBombChance := 0;
+    If fModSettings.WhiteBomb Then fFields[i].WhiteBombChance := fModSettings.WhiteBombChance;
+    fFields[i].FlameThrowerChance := 0;
+    If fModSettings.FlameThrower Then fFields[i].FlameThrowerChance := fModSettings.FlameThrowerChance;
+    fFields[i].FlameThrowerFuelMs := fModSettings.FlameThrowerFuelMs;
+    fFields[i].FlameThrowerBurnItems := fModSettings.FlameThrowerBurnItems;
+    fFields[i].FlameThrowerIgniteBombs := fModSettings.FlameThrowerIgniteBombs;
+    fFields[i].FlameThrowerIgniteMs := fModSettings.FlameThrowerIgniteMs;
+    fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
+    fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
+    fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
+    fFields[i].PortalLeftRight := fModSettings.Teleporters And fModSettings.TeleportersLeftRight;
+  End;
+End;
+
+Procedure TServer.SendModInfo(UID: integer);
+Var
+  m: TMemoryStream;
+Begin
+  // Ob der Mod Test Modus an ist (nur der Master darf Test Befehle ausführen), wie Geister flackern und wie durchsichtig "durch Blöcke laufen" ist
+  m := TMemoryStream.Create;
+  m.Write(fModSettings.ModTestMode, sizeof(fModSettings.ModTestMode));
+  m.Write(fModSettings.GhostFlickerMs, sizeof(fModSettings.GhostFlickerMs));
+  m.Write(fModSettings.BrickWalkTransparency, sizeof(fModSettings.BrickWalkTransparency));
+  SendChunk(miModInfo, m, UID);
 End;
 
 Function TServer.ActiveModsText: String;
@@ -3136,7 +3167,7 @@ Begin
       'jelly': Powers.JellyBombs := true;
       'trigger': Powers.TriggerBomb := Powers.OverAllBombs;
     Else Begin
-        log('atomic_server.ini: unknown StartItem "' + item + '"', llWarning);
+        log('Mod settings: unknown StartItem "' + item + '"', llWarning);
       End;
     End;
   End;

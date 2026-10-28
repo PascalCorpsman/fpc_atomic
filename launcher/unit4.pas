@@ -27,7 +27,7 @@ Type
   { TForm4 }
 
   (*
-   * Der Mods Dialog bearbeitet atomic_server.ini, der Server liest sie beim nächsten Start.
+   * Der Mods Dialog bearbeitet atomic_mods.ini, der Client schickt sie als Master beim nächsten Spiel an den Server.
    *
    * Links steht jeder Mod als eine Zeile mit Haken, rechts die Seite mit seinen Einstellungen.
    * Ein neuer Mod braucht: einen Eintrag in CheckListBox1, eine TabSheet mit Checkbox und Panel
@@ -325,7 +325,7 @@ End;
 Procedure TForm4.FormShow(Sender: TObject);
 Begin
   // Immer den aktuellen Stand der Datei zeigen, falls sie von Hand geändert wurde
-  LoadModSettingsFromFile(GetAtomicServerIniFile(), fSettings);
+  LoadModSettingsFromFile(GetAtomicModsIniFile(), fSettings);
   SettingsToControls();
   ShowModPage(PageControl1.ActivePage);
 End;
@@ -341,8 +341,8 @@ Procedure TForm4.Button2Click(Sender: TObject);
 Begin
   // OK
   If Not ControlsToSettings() Then exit;
-  If Not SaveModSettingsToFile(GetAtomicServerIniFile(), fSettings) Then Begin
-    showmessage(R_WriteFailed + LineEnding + GetAtomicServerIniFile());
+  If Not SaveModSettingsToFile(GetAtomicModsIniFile(), fSettings) Then Begin
+    showmessage(R_WriteFailed + LineEnding + GetAtomicModsIniFile());
     exit;
   End;
   ModalResult := mrOK;

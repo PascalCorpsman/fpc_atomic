@@ -20,15 +20,17 @@ Which mods fit which group of players is answered in the [mods FAQ](MODS_FAQ.md)
 - [Open borders](#open-borders)
 - [Teleporters](#teleporters)
 - [Mod test mode](#mod-test-mode)
-- [Editing atomic_server.ini by hand](#editing-atomic_serverini-by-hand)
+- [Editing atomic_mods.ini by hand](#editing-atomic_modsini-by-hand)
 
 ## Setting up the mods
 
-The mods are a setting of the **server**, so only the PC that hosts the game needs them. All other players get the rules from the server, they do not need to change anything.
+The mods are a setting of the **host**, the first player who joins the game. When this player joins, the game sends the mods to the server, also to a [dedicated server](MANUAL.md#server-control-commands) on another PC. All other players get the rules from the server, they do not need to change anything. Their own mod settings are not used.
 
-The easiest way is the launcher: click **Mods...**, check the mods you want on the left and adjust their values on the right. Click **OK** to save. The settings apply to the **next game that is hosted on this PC** (the server reads them when it starts).
+The easiest way is the launcher: click **Mods...**, check the mods you want on the left and adjust their values on the right. Click **OK** to save. The settings apply to the **next game this PC joins as first player**.
 
-The settings are stored in `atomic_server.ini` in the config folder (launcher: **Config folder**), see [Editing atomic_server.ini by hand](#editing-atomic_serverini-by-hand).
+The settings are stored in `atomic_mods.ini` in the config folder (launcher: **Config folder**), see [Editing atomic_mods.ini by hand](#editing-atomic_modsini-by-hand).
+
+When all players have left the server (or the match is over), the server switches all mods off again. The next host brings their own mods.
 
 ### Common rules
 
@@ -296,12 +298,14 @@ These settings only work while the mod test mode is on:
 - **Round time:** the hurry starts at 80 s remaining, so `90` starts the hurry after 10 s.
 - **Ghosts count as alive:** the round does not end while ghosts are left, so ghosts can be tested with only 2 players.
 
-## Editing atomic_server.ini by hand
+## Editing atomic_mods.ini by hand
 
 The file is in the config folder of FPC Atomic:
 
-- Windows: `%LOCALAPPDATA%\fpc_atomic\atomic_server.ini`
-- Linux: `~/.config/fpc_atomic/atomic_server.ini`
+- Windows: `%LOCALAPPDATA%\fpc_atomic\atomic_mods.ini`
+- Linux: `~/.config/fpc_atomic/atomic_mods.ini`
+
+Older versions stored the mods in `atomic_server.ini` and the server read them from there. If `atomic_mods.ini` does not exist yet, the game and the launcher take over this file once, after that `atomic_server.ini` is no longer used.
 
 Example:
 
@@ -327,7 +331,7 @@ Please note:
 - **No comments behind values.** A comment must be in its own line starting with `;`. `HitPoints=0 ; off` is read as "on", numbers with a comment behind fall back to their default.
 - `1` means on, `0` means off.
 - If a key is listed twice, the first one counts.
-- Missing keys are added with their default value when the server starts, so all keys can be found in the file.
-- Invalid values are set to the nearest valid value. The server log (config folder, `log/server.log`) shows a warning for each of them.
-- The server reads the file only when it starts. Changes apply to the next hosted game.
+- Missing keys are added with their default value when the game or the launcher reads the file, so all keys can be found in the file.
+- Invalid values are set to the nearest valid value. The game log (config folder, `log/client.log`) shows a warning for each of them. The server checks the received values again.
+- The game reads the file each time it joins a server as first player. Changes apply to the next game, a restart is not needed.
 - The **Mods...** dialog of the launcher writes the section `[Handicap]` completely new. Comments in this section get lost, comments in all other sections are kept.

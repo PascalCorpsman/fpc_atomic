@@ -82,7 +82,7 @@ or
 
 
 ## Server Control Commands
-Normally it is not necessary to take care of the server. The server is automatically started by fpc_atomic when a game is hosted. If desired the server can also be used in dedicated mode. The first client that connects to a dedicated server is treated as host.
+Normally it is not necessary to take care of the server. The server is automatically started by fpc_atomic when a game is hosted. If desired the server can also be used in dedicated mode. The first client that connects to a dedicated server is treated as host, the server then plays with the [mods](MODS_MANUAL.md) of this client.
 
 To start the server in dedicated mode, use the following command line parameters:
 - -h: online help for server (see to get more informations)

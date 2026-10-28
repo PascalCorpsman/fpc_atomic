@@ -82,7 +82,7 @@ oder
 
 
 ## Server-Befehle
-Normalerweise muss man sich nicht um den Server kümmern. fpc_atomic startet ihn automatisch, wenn ein Spiel gehostet wird. Auf Wunsch lässt sich der Server auch im dedizierten Modus nutzen. Der erste Client, der sich mit einem dedizierten Server verbindet, ist der Host.
+Normalerweise muss man sich nicht um den Server kümmern. fpc_atomic startet ihn automatisch, wenn ein Spiel gehostet wird. Auf Wunsch lässt sich der Server auch im dedizierten Modus nutzen. Der erste Client, der sich mit einem dedizierten Server verbindet, ist der Host, der Server spielt dann mit den [Mods](MODS_MANUAL_DE.md) dieses Clients.
 
 Für den dedizierten Modus den Server mit diesen Kommandozeilenparametern starten:
 - -h: Online-Hilfe des Servers (zeigt weitere Informationen)

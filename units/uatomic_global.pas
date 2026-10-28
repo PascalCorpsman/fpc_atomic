@@ -36,7 +36,11 @@ Function GetAtomicConfigFile(): String;
 Function GetAtomicStatsFile(): String;
 Function GetAtomicPlayerStatsFile(): String;
 {$ENDIF}
-Function GetAtomicServerIniFile(): String; // Server und Launcher (Mods Dialog)
+(*
+ * Die Mod Einstellungen, Client (schickt sie als Master an den Server) und Launcher (Mods Dialog).
+ * Gibt es die Datei noch nicht, wird einmalig eine vorhandene atomic_server.ini übernommen (dort standen die Mods früher).
+ *)
+Function GetAtomicModsIniFile(): String;
 
 (*
  * Returns a Log file separated by application, or raises an exception, if the corresponding define is not set
@@ -120,11 +124,31 @@ End;
 
 {$ENDIF}
 
-Function GetAtomicServerIniFile(): String;
+Function GetAtomicModsIniFile(): String;
+Var
+  OldFile: String;
+  sl: TStringList;
 Begin
   Setup;
-  result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'atomic_server.ini';
+  result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'atomic_mods.ini';
+  OldFile := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'atomic_server.ini';
   TearDown;
+  If (Not FileExists(result)) And FileExists(OldFile) Then Begin
+    sl := TStringList.Create;
+    Try
+      Try
+        sl.LoadFromFile(OldFile);
+        sl.SaveToFile(result);
+        log('Took over the mods from ' + OldFile, llInfo);
+      Except
+        On av: Exception Do Begin
+          log('Unable to take over the mods from ' + OldFile + ': ' + av.Message, llWarning);
+        End;
+      End;
+    Finally
+      sl.free;
+    End;
+  End;
 End;
 
 Function GetAtomicAppLogFile: String;
