@@ -338,8 +338,8 @@ Procedure RenderBillboard(Position: TVector3; Dimension: TVector2; Texture: inte
 Function CompileShader(Src: PChar; ShaderType: GLenum): GLuint;
 
 {$ENDIF}
-
-Function FRect(Top, Left, Bottom, Right: Single): TFRect;
+Function fRect(Left, Top, Right, Bottom: Single): TFRect;
+Function Frect_old(Top, Left, Bottom, Right: Single): TFRect; Deprecated 'ACHTUNG diese funktion hat merkwürdige Übergabeparameter nicht wie üblich, bitte auf fRect umstellen !';
 
 (*
 Erstellt einen Screenshot aus dem Aktuellen Framebuffer,
@@ -367,7 +367,15 @@ Var
   // LUT for sin / cos in 0.1° steps
   Sin_discrete, Cos_discrete: Array[0..3599] Of Single;
 
-Function FRect(Top, Left, Bottom, Right: Single): TFRect;
+Function fRect(Left, Top, Right, Bottom: Single): TFRect;
+Begin
+  result.Left := Left;
+  result.Top := Top;
+  result.Right := Right;
+  result.Bottom := Bottom;
+End;
+
+Function Frect_old(Top, Left, Bottom, Right: Single): TFRect;
 Begin
   result.Top := Top;
   result.Left := Left;
@@ -2739,6 +2747,7 @@ Var
   CurColor: TFPColor;
   c, j, i: Integer;
   fi, fj, uu, vv, u, v: Single;
+  a0, a1: Integer;
   xi, yi: integer;
 {$IFDEF LEGACYMODE}
   bool: {$IFDEF USE_GL}Byte{$ELSE}Boolean{$ENDIF};
@@ -2821,42 +2830,64 @@ Begin
             //{
             If assigned(AlphaMask) Then Begin
               If Stretch = smStretch Then Begin
-                Raise exception.Create('TOpenGL_GraphikEngine.LoadAlphaGraphikItem: missing implementation for Bilinear');
-              End;
-              tmp := Nil;
-              setlength(tmp, nw, nh);
-              // Die Formeln sehen heftig aus, aber sind genau dass was raus
-              // Kommt wenn man die ugraphic.pas variante "auspackt"
-              For i := 0 To nw - 1 Do Begin
-                u := i / (nw - 1);
-                uu := u * b.Width;
-                xi := trunc(uu);
-                fi := uu - xi;
-                For j := 0 To nh - 1 Do Begin
-                  v := j / (nh - 1);
-                  vv := v * b.Height;
-                  yi := trunc(vv);
-                  fj := vv - yi;
-                  If fi <= 0.5 Then Begin
-                    If fj <= 0.5 Then Begin
-                      tmp[i, j] := AlphaMask[min(xi, high(AlphaMask)), min(yi, high(AlphaMask[0]))];
+                tmp := Nil;
+                setlength(tmp, nw, nh);
+                For i := 0 To nw - 1 Do Begin
+                  u := i / (nw - 1);
+                  uu := u * b.Width;
+                  xi := trunc(uu);
+                  fi := uu - xi;
+                  For j := 0 To nh - 1 Do Begin
+                    v := j / (nh - 1);
+                    vv := v * b.Height;
+                    yi := trunc(vv);
+                    fj := vv - yi;
+                    a0 := Round(AlphaMask[min(xi, high(AlphaMask)), min(yi, high(AlphaMask[0]))] * (1 - fj) +
+                      AlphaMask[min(xi, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))] * fj);
+                    a1 := Round(AlphaMask[min(xi + 1, high(AlphaMask)), min(yi, high(AlphaMask[0]))] * (1 - fj) +
+                      AlphaMask[min(xi + 1, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))] * fj);
+                    tmp[i, j] := Round(a0 * (1 - fi) + a1 * fi);
+                  End;
+                End;
+                SetLength(AlphaMask, 0, 0);
+                AlphaMask := tmp;
+              End
+              Else Begin
+                tmp := Nil;
+                setlength(tmp, nw, nh);
+                // Die Formeln sehen heftig aus, aber sind genau dass was raus
+                // Kommt wenn man die ugraphic.pas variante "auspackt"
+                For i := 0 To nw - 1 Do Begin
+                  u := i / (nw - 1);
+                  uu := u * b.Width;
+                  xi := trunc(uu);
+                  fi := uu - xi;
+                  For j := 0 To nh - 1 Do Begin
+                    v := j / (nh - 1);
+                    vv := v * b.Height;
+                    yi := trunc(vv);
+                    fj := vv - yi;
+                    If fi <= 0.5 Then Begin
+                      If fj <= 0.5 Then Begin
+                        tmp[i, j] := AlphaMask[min(xi, high(AlphaMask)), min(yi, high(AlphaMask[0]))];
+                      End
+                      Else Begin
+                        tmp[i, j] := AlphaMask[min(xi, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))];
+                      End;
                     End
                     Else Begin
-                      tmp[i, j] := AlphaMask[min(xi, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))];
-                    End;
-                  End
-                  Else Begin
-                    If fj <= 0.5 Then Begin
-                      tmp[i, j] := AlphaMask[min(xi + 1, high(AlphaMask)), min(yi, high(AlphaMask[0]))];
-                    End
-                    Else Begin
-                      tmp[i, j] := AlphaMask[min(xi + 1, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))];
+                      If fj <= 0.5 Then Begin
+                        tmp[i, j] := AlphaMask[min(xi + 1, high(AlphaMask)), min(yi, high(AlphaMask[0]))];
+                      End
+                      Else Begin
+                        tmp[i, j] := AlphaMask[min(xi + 1, high(AlphaMask)), min(yi + 1, high(AlphaMask[0]))];
+                      End;
                     End;
                   End;
                 End;
+                SetLength(AlphaMask, 0, 0);
+                AlphaMask := tmp;
               End;
-              SetLength(AlphaMask, 0, 0);
-              AlphaMask := tmp;
             End; //}
             b.free;
             b := b2;
