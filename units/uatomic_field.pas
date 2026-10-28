@@ -40,6 +40,11 @@ Type
   TIntFifo = specialize TBufferedFifo < Integer > ;
   TPointFifo = specialize TBufferedFifo < Tpoint > ;
   TPlaySoundEffectCallback = Procedure(PlayerIndex: integer; Effect: TSoundEffect) Of Object;
+  TBombLandedCallback = Procedure(x, y: integer) Of Object; // Wird aufgerufen, wenn eine geworfene Bombe (StunOnLand) auf der Kachel x, y liegen bleibt
+  TPlayerHitCallback = Function(PlayerIndex: integer): Boolean Of Object; // Wird bei einem Treffer durch eine Flamme aufgerufen, True = der Spieler überlebt den Treffer
+  TGhostReviveCallback = Procedure(GhostIndex: integer) Of Object; // Wird aufgerufen, wenn die Flamme eines Geistes einen Gegner getroffen hat -> der Geist darf zurück ins Spiel
+  TPlayerPunchCallback = Function(PlayerIndex, x, y: integer): Boolean Of Object; // Wird aufgerufen, wenn ein Spieler mit Punch Item auf das Feld x, y schlägt, True = ein Gegner wurde gestunnt
+  TWhiteBombCallback = Procedure(PlayerIndex: integer) Of Object; // Wird aufgerufen, wenn eine weiße Bombe von PlayerIndex explodiert -> alle Gegner flashen
 {$ENDIF}
 
 {$IFDEF Client}
@@ -58,6 +63,7 @@ Type
     fBombs: Array[0..FieldWidth * FieldHeight - 1] Of TBombInfo; // Das Array ist eigentlich hoch Dynamisch, aber so allokieren wir nicht andauernd neuen Speicher
     fBombCount: Integer;
     fBombDetonateFifo: TIntFifo;
+    fDetonateGhost: Boolean; // Mod Geister: True, die gerade explodierende Bombe ist eine Geisterbombe (für FlameGhost in Detonate)
     fPowerUpClearFifo: TPointFifo;
     fPlaySoundEffect: TPlaySoundEffectCallback;
     fHurryIndex: integer; // Der Index in der HurryCoords Konstante, wenn Hurry Aktiv ist. -1 = deaktiviert
@@ -79,6 +85,12 @@ Type
     fConveyorDirs: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of integer; // Die Richtungen der "Pfeile"  -1 = Aus, 0, 90, 180, 270 = Winkel
 
     fHasHoles: Boolean; // Wenn True, dann hat die Karte die 4 Löcher, welche den Atomic im Gegenuhrzeigersinn hin und her beamen
+    fPortalTopBottom: Boolean; // Mod Teleporter am Rand: True, die Teleporter oben / unten sind gerade aktiv (der Client bekommt das mit AppendGamingData)
+    fPortalLeftRight: Boolean; // Mod Teleporter am Rand: True, die Teleporter links / rechts sind gerade aktiv
+    fWrapTopBottom: Boolean; // Mod offene Grenzen: True, oben / unten ist gerade offen (der Client bekommt das mit AppendGamingData)
+    fWrapLeftRight: Boolean; // Mod offene Grenzen: True, links / rechts ist gerade offen
+    fWrapWarnTopBottom: Boolean; // Mod offene Grenzen: True, oben / unten öffnet in Kürze (die Pfeile blinken)
+    fWrapWarnLeftRight: Boolean; // Mod offene Grenzen: True, links / rechts öffnet in Kürze
     fHoles: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of boolean; // True, an dieser Stelle wird ein "Loch" gezeichnet
 
     fHastrampolins: Boolean; // Wenn True, dann hat die Karte "trampoline"
@@ -95,6 +107,7 @@ Type
     fSoundFile: String;
     fHash: Uint64; // Wird beim laden der Karte berechnet, dient zur Identifizierung auf "Gleichheit"
     fField: TFieldBricks;
+    Function IsPortal(x, y: integer): Boolean; // True, wenn auf x, y gerade ein aktiver Teleporter am Rand ist (Mod)
 {$IFDEF Client}
     Procedure RenderBlock(x, y: integer; Brick: TBrickData);
     Procedure RenderBlock2(xx, yy, x, y: integer; Brick: TBrickData);
@@ -106,15 +119,43 @@ Type
      *)
     Function Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: integer; Flame: TFlame): Boolean;
     Function FielWalkable(x, y: integer; AlsoCheckPowerUps: Boolean): Boolean;
+    Function PlayerWalkable(Const Player: TPlayer; x, y: integer): Boolean; // Wie FielWalkable, aber mit "durch Blöcke laufen" (Mod)
+    Function IsPortalCell(x, y: integer): Boolean; // True, wenn auf x, y ein Teleporter am Rand liegt, auch wenn er (noch) nicht aktiv ist (Mod)
 {$ENDIF}
   public
     Name: String;
     Available: Boolean; // Wenn True, dann kann die Karte verwendet werden und Alle Spieler haben sie.
 {$IFDEF Server}
     StatisticCallback: TStatisticCallback;
+    BombLandedCallback: TBombLandedCallback; // Optional, wird vom Server gesetzt (Stun Mod)
+    PlayerHitCallback: TPlayerHitCallback; // Optional, wird vom Server gesetzt (Trefferpunkte Mod)
+    GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
+    PlayerPunchCallback: TPlayerPunchCallback; // Optional, wird vom Server gesetzt (Boxhandschuh Mod)
+    WhiteBombCallback: TWhiteBombCallback; // Optional, wird vom Server gesetzt (Weiße Bombe Mod)
+    WhiteBombChance: Integer; // Mod weiße Bombe: in %, so viele der Items unter den Steinen werden zur weißen Bombe, 0 = Mod aus
+    FlameThrowerChance: Integer; // Mod Flammenwerfer: in %, so viele der Items unter den Steinen werden zum Flammenwerfer, 0 = Mod aus
+    FlameThrowerFuelMs: Integer; // Mod Flammenwerfer: so viel Zeit zum Feuern bringt ein Item
+    FlameThrowerBurnItems: Boolean; // Mod Flammenwerfer: True, Items im Strahl verbrennen sofort
+    FlameThrowerIgniteBombs: Boolean; // Mod Flammenwerfer: True, Bomben im Strahl werden gezündet (ein Blindgänger verschwindet)
+    FlameThrowerIgniteMs: Integer; // Mod Flammenwerfer: so lange muss eine Bombe am Stück im Strahl liegen, 0 = sofort
+    WrapLeftRight: Boolean; // Mod offene Grenzen: Die Karte ist links / rechts offen, sobald UpdateOpenBorders sie öffnet
+    WrapTopBottom: Boolean; // Mod offene Grenzen: Die Karte ist oben / unten offen, sobald UpdateOpenBorders sie öffnet
+    PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
+    PortalLeftRight: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter links / rechts
+    Procedure UpdatePortals(Active: Boolean); // Wird vom Server jeden Frame aufgerufen, Active = die Zeit bis zum Erscheinen ist um
+    Procedure UpdateOpenBorders(Active, Warning: Boolean); // Wird vom Server jeden Frame aufgerufen, Warning = die Grenzen öffnen in Kürze
+    Function FlameThrowerBeam(x, y, dx, dy, Range: integer): integer; // Mod Flammenwerfer: Länge des Strahls ab x, y in Richtung dx, dy, markiert eine Bombe am Ende
     Property BombsEnabled: Boolean read fBombsEnabled;
+    Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
+    Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
+    Function FindFreeField(x, y: integer): TPoint; // Liefert das zu x, y nächste Feld ohne Stein, Bombe, Flamme und Loch
+    Function SpawnTestItem(Const Players: TPlayers; PowerUp: TPowerUps; WhiteBomb, FlameThrower: Boolean): Boolean; // Mod Test Modus: Item auf ein zufälliges freies Feld legen
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
+    Property OpenTopBottom: Boolean read fWrapTopBottom; // Mod offene Grenzen, für die Pfeile im Client
+    Property OpenLeftRight: Boolean read fWrapLeftRight;
+    Property OpenWarnTopBottom: Boolean read fWrapWarnTopBottom;
+    Property OpenWarnLeftRight: Boolean read fWrapWarnLeftRight;
     Property Sound: String read fSoundFile;
     Constructor Create(
 {$IFDEF Server}
@@ -182,6 +223,7 @@ Uses
   , uvectormath
   , dglOpenGL
   , uopengl_spriteengine
+  , uopengl_shaderprimitives
   , ugraphics
 {$ENDIF}
   ;
@@ -373,6 +415,23 @@ Begin
   fHash := 0;
 {$IFDEF Server}
   StatisticCallback := sStatisticCallback;
+  BombLandedCallback := Nil;
+  PlayerHitCallback := Nil;
+  GhostReviveCallback := Nil;
+  PlayerPunchCallback := Nil;
+  WhiteBombCallback := Nil;
+  WhiteBombChance := 0;
+  FlameThrowerChance := 0;
+  FlameThrowerFuelMs := 0;
+  FlameThrowerBurnItems := false;
+  FlameThrowerIgniteBombs := false;
+  FlameThrowerIgniteMs := 0;
+  WrapLeftRight := false;
+  WrapTopBottom := false;
+  PortalTopBottom := false;
+  PortalLeftRight := false;
+  fPortalTopBottom := false;
+  fPortalLeftRight := false;
   fPlaySoundEffect := PlaySoundEffectCallback;
   fBombCount := 0;
   fBombDetonateFifo := TIntFifo.create(128);
@@ -520,6 +579,13 @@ Begin
   result := true;
 End;
 
+Function TAtomicField.IsPortal(x, y: integer): Boolean;
+Begin
+  // Die Teleporter liegen in der Mitte der Ränder, jeweils paarweise gegenüber
+  result := (fPortalTopBottom And (x = FieldWidth Div 2) And ((y = 0) Or (y = FieldHeight - 1))) Or
+    (fPortalLeftRight And (y = FieldHeight Div 2) And ((x = 0) Or (x = FieldWidth - 1)));
+End;
+
 {$IFDEF Server}
 
 Function TAtomicField.Detonate(x, y: integer; TriggerPlayerindex, ColorIndex: integer;
@@ -538,6 +604,7 @@ Begin
   Case fField[x, y].BrickData Of
     bdBlank: Begin
         fField[x, y].FlamePlayer := TriggerPlayerindex;
+        fField[x, y].FlameGhost := fDetonateGhost;
         If fField[x, y].PowerUp = puNone Then Begin
           fField[x, y].FlameColor := ColorIndex;
           If Not (fCross In fField[x, y].Flame) Then Begin // Sonst sieht es komisch aus ..
@@ -558,6 +625,8 @@ Begin
         End;
         fField[x, y].Exploding := true;
         fField[x, y].ExplodingRenderFlag := true;
+        fField[x, y].FlamePlayer := TriggerPlayerindex; // Damit ein Spieler, der im Block steht (Mod durch Blöcke laufen), einen Verursacher hat
+        fField[x, y].FlameGhost := fDetonateGhost;
         // fField[x, y].BrickData := bdBlank; // der darf nicht Gleich weg genommen werden, da sonst  2 Bomben auch 2 Steine auf einmal wegsprengen !
         fField[x, y].Counter := 0;
         result := False;
@@ -605,6 +674,93 @@ Begin
   End;
 End;
 
+Function TAtomicField.FlameThrowerBeam(x, y, dx, dy, Range: integer
+  ): integer;
+Var
+  i, j: integer;
+Begin
+  (*
+   * Mod Flammenwerfer: Der Strahl beginnt auf dem Feld vor x, y und stoppt an Steinen und festen Blöcken (ohne sie zu zerstören).
+   * Liegt eine Bombe im Strahl, endet der Strahl dort. Ob sie gezündet wird, entscheidet HandleBombs (FlameThrowerHit).
+   *)
+  result := 0;
+  For i := 1 To Range Do Begin
+    x := x + dx;
+    y := y + dy;
+    If (x < 0) Or (x > FieldWidth - 1) Or (y < 0) Or (y > FieldHeight - 1) Then exit;
+    If fField[x, y].BrickData <> bdBlank Then exit;
+    result := i;
+    If FlameThrowerBurnItems And (fField[x, y].PowerUp <> puNone) Then Begin
+      // Items im Strahl verbrennen sofort (sonst geht der Strahl darüber hinweg), direkt, denn HandleBombs leert fPowerUpClearFifo zu Beginn
+      fField[x, y].PowerUp := puNone;
+      fField[x, y].WhiteBomb := false;
+      fField[x, y].FlameThrowerItem := false;
+    End;
+    For j := 0 To fBombCount - 1 Do Begin
+      If (trunc(fBombs[j].Position.x) = x) And (trunc(fBombs[j].Position.y) = y) And (fBombs[j].MoveDir <> bmFly) Then Begin
+        // Auch wenn mehrere Strahlen die Bombe treffen, zählt das nur einmal pro Frame
+        fBombs[j].FlameThrowerHit := true;
+        exit;
+      End;
+    End;
+  End;
+End;
+
+Function TAtomicField.IsPortalCell(x, y: integer): Boolean;
+Begin
+  // Mod Teleporter am Rand: Hier liegt ein Teleporter, egal ob er gerade aktiv ist (für das Freihalten und den Sprung)
+  result := (PortalTopBottom And (x = FieldWidth Div 2) And ((y = 0) Or (y = FieldHeight - 1))) Or
+    (PortalLeftRight And (y = FieldHeight Div 2) And ((x = 0) Or (x = FieldWidth - 1)));
+End;
+
+Procedure TAtomicField.UpdatePortals(Active: Boolean);
+Begin
+  // Im Hurry sind die Teleporter weg (wie die Löcher)
+  fPortalTopBottom := PortalTopBottom And Active And (fHurryIndex = -1);
+  fPortalLeftRight := PortalLeftRight And Active And (fHurryIndex = -1);
+End;
+
+Procedure TAtomicField.UpdateOpenBorders(Active, Warning: Boolean);
+Begin
+  // Mit dem Hurry schließen die Grenzen (der Hurry füllt den Rand ohnehin mit festen Steinen)
+  fWrapTopBottom := WrapTopBottom And Active And (fHurryIndex = -1);
+  fWrapLeftRight := WrapLeftRight And Active And (fHurryIndex = -1);
+  fWrapWarnTopBottom := WrapTopBottom And Warning And (Not Active) And (fHurryIndex = -1);
+  fWrapWarnLeftRight := WrapLeftRight And Warning And (Not Active) And (fHurryIndex = -1);
+End;
+
+Function TAtomicField.PlayerWalkable(Const Player: TPlayer; x, y: integer
+  ): Boolean;
+Var
+  i, px, py: Integer;
+Begin
+  // Mod offene Grenzen: das Nachbarfeld hinter dem Rand ist das Feld auf der Gegenseite
+  If fWrapLeftRight Then x := (x + FieldWidth) Mod FieldWidth;
+  If fWrapTopBottom Then y := (y + FieldHeight) Mod FieldHeight;
+  result := FielWalkable(x, y, false);
+  If result Then exit;
+  (*
+   * Mod durch Blöcke laufen: zerstörbare Blöcke sind begehbar, aber nur wenn dort keine Bombe liegt.
+   *)
+  If (x < 0) Or (x > FieldWidth - 1) Or (y < 0) Or (y > FieldHeight - 1) Then exit;
+  If fField[x, y].BrickData <> bdBrick Then exit;
+  For i := 0 To fBombCount - 1 Do Begin
+    If (x = trunc(fBombs[i].Position.x)) And (y = trunc(fBombs[i].Position.y)) And (fBombs[i].MoveDir <> bmFly) Then exit;
+  End;
+  If Player.BrickWalkTimer <= 0 Then Begin
+    (*
+     * Die Zeit ist abgelaufen: Steht der Spieler noch in einem Block und ist rundherum kein freies Feld,
+     * darf er weiter durch Blöcke laufen, bis er eines erreicht. Sonst geht es nur noch auf freie Felder.
+     *)
+    px := trunc(Player.Info.Position.x);
+    py := trunc(Player.Info.Position.y);
+    If fField[px, py].BrickData <> bdBrick Then exit;
+    If FielWalkable(px - 1, py, false) Or FielWalkable(px + 1, py, false) Or
+      FielWalkable(px, py - 1, false) Or FielWalkable(px, py + 1, false) Then exit;
+  End;
+  result := true;
+End;
+
 Procedure TAtomicField.Initialize(Const Players: TPlayers; Const Scheme: TScheme;
   aTeamPlay: Boolean);
   Function SetBlank(x, y: integer): Boolean;
@@ -642,9 +798,12 @@ Begin
       fField[i, j].ExplodingRenderFlag := false;
       fField[i, j].Counter := 0;
       fField[i, j].PowerUp := puNone;
+      fField[i, j].WhiteBomb := false;
+      fField[i, j].FlameThrowerItem := false;
       fField[i, j].Flame := [];
       fField[i, j].FlameColor := 0;
       fField[i, j].FlamePlayer := -1;
+      fField[i, j].FlameGhost := false;
       fField[i, j].Tramp := false;
       fField[i, j].TrampRunning := false;
       fField[i, j].TrampOffset := random(256);
@@ -716,6 +875,26 @@ Begin
       End;
     End;
   End;
+  // 2.6 Mod Teleporter am Rand: Die Teleporter Felder und je ein Nachbar ins Feld hinein bleiben immer frei (auch vor dem Erscheinen)
+  fPortalTopBottom := false;
+  fPortalLeftRight := false;
+  fWrapTopBottom := false;
+  fWrapLeftRight := false;
+  fWrapWarnTopBottom := false;
+  fWrapWarnLeftRight := false;
+  // Der Nachbar verliert nur einen zerstörbaren Stein, feste Blöcke (die Säulen der Karte) bleiben
+  For i := 0 To FieldWidth - 1 Do Begin
+    For j := 0 To FieldHeight - 1 Do Begin
+      If IsPortalCell(i, j) Then Begin
+        SetBlank(i, j);
+        fField[i, j].Tramp := false;
+      End;
+      If (IsPortalCell(i - 1, j) Or IsPortalCell(i + 1, j) Or IsPortalCell(i, j - 1) Or IsPortalCell(i, j + 1)) And
+        (fField[i, j].BrickData = bdBrick) Then Begin
+        SetBlank(i, j);
+      End;
+    End;
+  End;
   // 3. Die PowerUps die Hinter den "Bricks" liegen
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
@@ -748,6 +927,16 @@ Begin
         If fField[i, j].PowerUp <> puNone Then Begin
           If Scheme.PowerUps[fField[i, j].PowerUp].Forbidden Then fField[i, j].PowerUp := puNone;
         End;
+        // Mod weiße Bombe: Ein Teil der Items wird zur weißen Bombe (sie sieht aus wie ein weißes Bomben Item)
+        If (fField[i, j].PowerUp <> puNone) And (WhiteBombChance > 0) And (random(100) < WhiteBombChance) Then Begin
+          fField[i, j].PowerUp := puExtraBomb;
+          fField[i, j].WhiteBomb := true;
+        End;
+        // Mod Flammenwerfer: ebenso ein Teil der Items (sieht aus wie ein Flammen Item mit rotem Rahmen)
+        If (fField[i, j].PowerUp <> puNone) And (Not fField[i, j].WhiteBomb) And (FlameThrowerChance > 0) And (random(100) < FlameThrowerChance) Then Begin
+          fField[i, j].PowerUp := puLongerFlameLength;
+          fField[i, j].FlameThrowerItem := true;
+        End;
       End;
     End;
   End;
@@ -764,6 +953,12 @@ Begin
   stream.Write(fField, SizeOf(fField));
   b := fHurryIndex <> -1;
   stream.Write(b, SizeOf(b));
+  stream.Write(fPortalTopBottom, SizeOf(fPortalTopBottom));
+  stream.Write(fPortalLeftRight, SizeOf(fPortalLeftRight));
+  stream.Write(fWrapTopBottom, SizeOf(fWrapTopBottom));
+  stream.Write(fWrapLeftRight, SizeOf(fWrapLeftRight));
+  stream.Write(fWrapWarnTopBottom, SizeOf(fWrapWarnTopBottom));
+  stream.Write(fWrapWarnLeftRight, SizeOf(fWrapWarnLeftRight));
 
   // Sicherstellen, dass das ExplodingRenderFlag nur als Flanke raus geht (Also genau 1 mal gesetzt ist !)
   For i := 0 To high(fField) Do Begin
@@ -781,6 +976,7 @@ Begin
     stream.Write(fBombs[i].Position, SizeOf(fBombs[i].Position));
     stream.Write(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Write(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
+    stream.Write(fBombs[i].WhiteBomb, SizeOf(fBombs[i].WhiteBomb));
   End;
 {$ENDIF}
 End;
@@ -886,6 +1082,37 @@ Begin
   cSpeed := 0;
   rSpeed := Players[PlayerIndex].Powers.Speed / FrameRate; // So Umrechnen dass Speed = Kachel Pro Sekunde ist.
 
+  (*
+   * Mod offene Grenzen: Wer auf der Mitte einer Randkachel steht und weiter nach außen läuft, steht sofort auf der Gegenseite,
+   * wenn das Feld dort begehbar ist (sonst wirkt der Rand wie eine Wand). Danach läuft er dort ganz normal weiter.
+   *)
+  If fWrapLeftRight Or fWrapTopBottom Then Begin
+    x := trunc(Players[PlayerIndex].Info.Position.x);
+    y := trunc(Players[PlayerIndex].Info.Position.y);
+    Case Players[PlayerIndex].MoveState Of
+      msRight: Begin
+          If fWrapLeftRight And (Players[PlayerIndex].Info.Position.x >= FieldWidth - 0.5) And PlayerWalkable(Players[PlayerIndex], x + 1, y) Then Begin
+            Players[PlayerIndex].Info.Position := v2(0.5, y + 0.5);
+          End;
+        End;
+      msLeft: Begin
+          If fWrapLeftRight And (Players[PlayerIndex].Info.Position.x <= 0.5) And PlayerWalkable(Players[PlayerIndex], x - 1, y) Then Begin
+            Players[PlayerIndex].Info.Position := v2(FieldWidth - 0.5, y + 0.5);
+          End;
+        End;
+      msUp: Begin
+          If fWrapTopBottom And (Players[PlayerIndex].Info.Position.y <= 0.5) And PlayerWalkable(Players[PlayerIndex], x, y - 1) Then Begin
+            Players[PlayerIndex].Info.Position := v2(x + 0.5, FieldHeight - 0.5);
+          End;
+        End;
+      msDown: Begin
+          If fWrapTopBottom And (Players[PlayerIndex].Info.Position.y >= FieldHeight - 0.5) And PlayerWalkable(Players[PlayerIndex], x, y + 1) Then Begin
+            Players[PlayerIndex].Info.Position := v2(x + 0.5, 0.5);
+          End;
+        End;
+    End;
+  End;
+
   // Das Bewegen der Spielfigur anhand seiner Daten
   Case Players[PlayerIndex].MoveState Of
     msStill: Players[PlayerIndex].Info.Animation := raStandStill;
@@ -905,7 +1132,7 @@ Begin
           If commaparty > 0.5 + Epsilon Then Begin
             y := y + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -958,7 +1185,7 @@ Begin
           If commaparty > 0.5 + Epsilon Then Begin
             y := y + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -1011,7 +1238,7 @@ Begin
           If commapartx > 0.5 + Epsilon Then Begin
             x := x + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -1064,7 +1291,7 @@ Begin
           If commapartx > 0.5 + Epsilon Then Begin
             x := x + 1;
           End;
-          If Not FielWalkable(x, y, false) Then Begin
+          If Not PlayerWalkable(Players[PlayerIndex], x, y) Then Begin
             index := GetBombIndex(x, y);
             // Kann der Spieler Bomben Kicken ? und liegt da ne Bombe
             If (Players[PlayerIndex].Powers.CanKickBombs) And (index <> -1) Then Begin
@@ -1105,15 +1332,17 @@ Begin
   // evtl. ist der Spieler ja "eingesperrt"
   x := trunc(Players[PlayerIndex].Info.Position.x);
   y := trunc(Players[PlayerIndex].info.Position.y);
-  If (Not FielWalkable(x - 1, y, false)) And
-    (Not FielWalkable(x + 1, y, false)) And
-    (Not FielWalkable(x, y - 1, false)) And
-    (Not FielWalkable(x, y + 1, false)) And
+  If (Not PlayerWalkable(Players[PlayerIndex], x - 1, y)) And
+    (Not PlayerWalkable(Players[PlayerIndex], x + 1, y)) And
+    (Not PlayerWalkable(Players[PlayerIndex], x, y - 1)) And
+    (Not PlayerWalkable(Players[PlayerIndex], x, y + 1)) And
     (Players[PlayerIndex].info.Animation <> raLockedIn) Then Begin
     Players[PlayerIndex].info.Animation := raLockedIn;
     Players[PlayerIndex].info.Value := random(65536);
     Players[PlayerIndex].info.Counter := 0;
   End;
+  // Mod durch Blöcke laufen: Der Client zeichnet den Spieler durchsichtig, so lange er Blöcke betreten kann oder noch in einem steht
+  Players[PlayerIndex].Info.BrickWalk := (Players[PlayerIndex].BrickWalkTimer > 0) Or (fField[x, y].BrickData = bdBrick);
   result := fField[x, y].BrickData = bdSolid;
 End;
 
@@ -1125,8 +1354,8 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     i: Integer;
   Begin
     result := false;
-    // Darf der Spieler überhaupt noch Bomben legen =
-    If player.Powers.AvailableBombs <= 0 Then exit;
+    // Darf der Spieler überhaupt noch Bomben legen = (eine weiße Bombe (Mod) geht immer, sie zählt nicht zu seinen Bomben)
+    If (player.Powers.AvailableBombs <= 0) And (player.WhiteBombs <= 0) Then exit;
     // Liegt auf dem Feld schon eine Bombe ?
     For i := 0 To fBombCount - 1 Do Begin
       If (trunc(fBombs[i].Position.x) = trunc(ax)) And
@@ -1134,10 +1363,19 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     End;
     // Es darf keine Bombe auf ein Loch gelegt werden !
     If fHasHoles And (fHurryIndex = -1) And fHoles[trunc(ax), trunc(ay)] Then exit;
+    // Und auch nicht auf einen Teleporter am Rand (Mod)
+    If IsPortal(trunc(ax), trunc(ay)) Then exit;
+    // Und auch nicht in einen Block (Mod durch Blöcke laufen)
+    If fField[trunc(ax), trunc(ay)].BrickData <> bdBlank Then exit;
     fBombs[fBombCount].ColorIndex := player.info.ColorIndex;
     fBombs[fBombCount].Position.x := trunc(ax) + 0.5;
     fBombs[fBombCount].Position.y := trunc(ay) + 0.5;
-    If player.Powers.TriggerBomb > 0 Then Begin
+    If player.WhiteBombs > 0 Then Begin
+      // Mod weiße Bombe: immer eine normale Bombe (kein Trigger, kein Dud), die der Client weiß zeichnet
+      fBombs[fBombCount].Animation := baNormal;
+      fBombs[fBombCount].ColorIndex := WhiteColorIndex;
+    End
+    Else If player.Powers.TriggerBomb > 0 Then Begin
       fBombs[fBombCount].Animation := baTimeTriggered;
       player.Powers.TriggerBomb := player.Powers.TriggerBomb - 1;
     End
@@ -1157,9 +1395,19 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     fBombs[fBombCount].FireLen := player.Powers.FlameLen;
     fBombs[fBombCount].Jelly := false; // Das wird vom "Kickenden" Spieler übernommen
     fBombs[fBombCount].MoveDir := bmNone;
+    fBombs[fBombCount].StunOnLand := false;
+    fBombs[fBombCount].FlameThrowerHit := false;
+    fBombs[fBombCount].FlameThrowerExposure := 0;
+    fBombs[fBombCount].GhostBomb := false;
+    fBombs[fBombCount].WhiteBomb := player.WhiteBombs > 0;
     fBombs[fBombCount].Speed := player.Powers.Speed;
     inc(fBombCount);
-    player.Powers.AvailableBombs := player.Powers.AvailableBombs - 1;
+    If player.WhiteBombs > 0 Then Begin
+      player.WhiteBombs := player.WhiteBombs - 1;
+    End
+    Else Begin
+      player.Powers.AvailableBombs := player.Powers.AvailableBombs - 1;
+    End;
     result := true;
     If fBombCount > high(fBombs) Then Begin
       log('TAtomicField.HandleActionPlayer: bomb overflow', llfatal);
@@ -1205,7 +1453,8 @@ Begin
             End;
           End;
         End;
-        If Player.Powers.CanGrabBombs Then Begin
+        // Mod Handschuh beim Start: bis zum ersten Schritt wie mit Handschuh (Spooger und Handschuh schließen sich aus)
+        If Player.Powers.CanGrabBombs Or (Player.StartGlove And (Not Player.Powers.CanSpooger)) Then Begin
           // Gibt es eine Bombe zum Graben ?
           x := trunc(player.Info.Position.x);
           y := trunc(player.Info.Position.y);
@@ -1227,6 +1476,7 @@ Begin
               fBombs[i].MoveDir := bmFly;
               fBombs[i].FlyTime := 0;
               fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
+              fBombs[i].StunOnLand := true; // Nur geworfene Bomben stunnen, gepunchte nicht
               fPlaySoundEffect(PlayerIndex, seBombGrab);
               fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssThrownBombs);
               Player.Info.Animation := raPup;
@@ -1244,9 +1494,31 @@ Begin
         End;
       End;
     aaSecond: Begin
+        // Mod Flammenwerfer: So lange er gefüllt ist, ist die zweite Aktion der Flammenwerfer (kein Zünden, kein Boxen)
+        If (Player.FlameThrowerFuel > 0) And (Player.UID <> AIPlayer) Then exit;
         handled := false; // This flag allows to trigger bombs while walking = more responsive ;)
+        (*
+         * Mod Boxhandschuh: Steht ein Gegner auf dem Feld vor dem Spieler, wird er gestunnt (auch im Stehen).
+         * Eine Bombe auf dem selben Feld bleibt dann liegen. Ob der Schlag trifft (Mod an, Abklingzeit, Gegner), entscheidet der Server.
+         *)
+        If Player.Powers.CanPunchBombs And assigned(PlayerPunchCallback) Then Begin
+          dx := 0;
+          dy := 0;
+          Case (trunc(player.info.Direction) Div 90) Of
+            0: dx := 1;
+            1: dy := -1;
+            2: dx := -1;
+            3: dy := 1;
+          End;
+          If PlayerPunchCallback(PlayerIndex, trunc(player.Info.Position.x) + dx, trunc(player.Info.Position.y) + dy) Then Begin
+            fPlaySoundEffect(PlayerIndex, seBombPunch);
+            Player.Info.Animation := raPunch;
+            Player.Info.Counter := 0;
+            handled := true;
+          End;
+        End;
         // Punch = Laufen gegen eine Bombe und dann Second Key ;)
-        If Player.Powers.CanPunchBombs And (Player.MoveState <> msStill) Then Begin
+        If Player.Powers.CanPunchBombs And (Player.MoveState <> msStill) And (Not handled) Then Begin
           x := trunc(player.Info.Position.x);
           y := trunc(player.Info.Position.y);
           dx := 0;
@@ -1268,6 +1540,7 @@ Begin
               fBombs[i].FlyTime := 0;
               fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
               fBombs[i].Lifetime := 0; // Reset Bomb timer when punch
+              fBombs[i].StunOnLand := false;
               fPlaySoundEffect(PlayerIndex, seBombPunch);
               fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssPushedBombs);
               Player.Info.Animation := raPunch;
@@ -1305,6 +1578,7 @@ Type
     Else Begin
       result := false;
     End;
+    result := result Or IsPortal(x, y); // Teleporter am Rand (Mod) halten Bomben auf wie Löcher
   End;
 
   Function BlockedByTramp(x, y: integer): Boolean; // Gillt nur für Bomben, wenn diese sich bewegen, deswegen extra
@@ -1352,6 +1626,7 @@ Type
      *)
     //If fField[x, y].Flame = [] Then Begin
     fField[x, y].FlamePlayer := TriggerPlayerindex;
+    fField[x, y].FlameGhost := fDetonateGhost;
     //End;
     fField[x, y].Flame := fField[x, y].Flame + [fend];
   End;
@@ -1373,6 +1648,31 @@ Begin
     rSpeed := fBombs[i].Speed / FrameRate; // So Umrechnen dass Speed = Kachel Pro Sekunde ist.
     fBombs[i].Lifetime := fBombs[i].Lifetime + FrameRate; // Countdown bis zur Detonation
     fBombs[i].detonated := false;
+    (*
+     * Mod Flammenwerfer: Liegt die Bombe FlameThrowerIgniteMs am Stück in einem Strahl, wird sie gezündet (wie beim Zünden der Trigger Bomben).
+     * Ein Blindgänger explodiert nicht, er verschwindet einfach und der Spieler bekommt seine Bombe zurück.
+     *)
+    fBombs[i].Fizzled := false;
+    If fBombs[i].FlameThrowerHit And FlameThrowerIgniteBombs Then Begin
+      fBombs[i].FlameThrowerHit := false;
+      fBombs[i].FlameThrowerExposure := fBombs[i].FlameThrowerExposure + FrameRate;
+      If fBombs[i].FlameThrowerExposure >= FlameThrowerIgniteMs Then Begin
+        fBombs[i].FlameThrowerExposure := 0;
+        If fBombs[i].Animation = baDud Then Begin
+          Players[fBombs[i].PlayerIndex].Powers.AvailableBombs := Players[fBombs[i].PlayerIndex].Powers.AvailableBombs + 1;
+          fBombs[i].Fizzled := true;
+          fBombs[i].Detonated := true; // So wird sie unten entfernt, ohne Explosion und ohne Sound, und hält auch keine Flammen auf
+          Continue;
+        End;
+        fBombs[i].Animation := baNormal;
+        fBombs[i].Lifetime := max(fBombs[i].Lifetime, AtomicBombDetonateTime);
+      End;
+    End
+    Else Begin
+      // Wer den Strahl verlässt, fängt wieder bei 0 an
+      fBombs[i].FlameThrowerHit := false;
+      fBombs[i].FlameThrowerExposure := 0;
+    End;
     // Die Bombe bewegt
     If fHasArrows And (fBombs[i].MoveDir In [bmDown, bmLeft, bmUp, bmRight]) Then Begin
       x := trunc(fBombs[i].Position.x);
@@ -1473,6 +1773,11 @@ Begin
             If FielWalkable(x, y, true) And (Not BlockedByHole(x, y)) And (Not BlockedBytramp(x, y)) Then Begin
               // 1. Das Feld darf belegt werden -> Fertig
               fBombs[i].MoveDir := bmNone;
+              // Eine geworfene Bombe kann auf einem Spieler landen, ob und wen das stunnt entscheidet der Server
+              If fBombs[i].StunOnLand And assigned(BombLandedCallback) Then Begin
+                BombLandedCallback(x, y);
+              End;
+              fBombs[i].StunOnLand := false;
             End
             Else Begin
               // 2. Das Feld ist belegt, wir starten ein Bouncing
@@ -1650,10 +1955,22 @@ Begin
     fBombs[index].Detonated := true;
     (*
      * Die Bombe wurde gezündet, der Spieler darf wieder eine Neue Legen
+     * (eine Geisterbombe zählt nicht zu den Bomben des Spielers, der Geist darf danach wieder werfen)
      *)
-    Players[fBombs[index].PlayerIndex].Powers.AvailableBombs := Players[fBombs[index].PlayerIndex].Powers.AvailableBombs + 1;
+    If fBombs[index].GhostBomb Then Begin
+      Players[fBombs[index].PlayerIndex].GhostBombActive := false;
+    End
+    Else If fBombs[index].WhiteBomb Then Begin
+      // Mod weiße Bombe: kein Strahl und kein Schaden, sie flasht nur die Gegner (und gibt dem Spieler keine Bombe zurück)
+      If assigned(WhiteBombCallback) Then WhiteBombCallback(fBombs[index].PlayerIndex);
+      Continue;
+    End
+    Else Begin
+      Players[fBombs[index].PlayerIndex].Powers.AvailableBombs := Players[fBombs[index].PlayerIndex].Powers.AvailableBombs + 1;
+    End;
     x := trunc(fBombs[index].Position.x);
     y := trunc(fBombs[index].Position.y);
+    fDetonateGhost := fBombs[index].GhostBomb;
     If fField[x, y].BrickData = bdSolid Then continue; // Die Bombe Explodiert auf einem Festen Brick -> dann richtet sie keinen Schaden an
     If fField[x, y].BrickData = bdBrick Then Begin // Die Bombe explodiert auf einem Brick, den macht sie kaputt, aber nichts weiter ..
       Detonate(x, y, fBombs[index].TriggerPlayerindex, fBombs[index].ColorIndex, fCross);
@@ -1711,7 +2028,7 @@ Begin
   End;
   For i := fBombCount - 1 Downto 0 Do Begin
     If fBombs[i].Detonated Then Begin
-      BombExplodeSound[fBombs[i].PlayerIndex] := true;
+      If Not fBombs[i].Fizzled Then BombExplodeSound[fBombs[i].PlayerIndex] := true;
       For j := i To fBombCount - 2 Do Begin
         fBombs[j] := fBombs[j + 1];
       End;
@@ -1735,6 +2052,8 @@ Begin
       StatisticCallback(ssPowerUpDestroyed);
     End;
     fField[p.x, p.y].PowerUp := puNone;
+    fField[p.x, p.y].WhiteBomb := false;
+    fField[p.x, p.y].FlameThrowerItem := false;
   End;
 End;
 
@@ -1751,7 +2070,7 @@ Const
   SpawnEmptyRange = 2;
 Var
   nx, ny, x, y, xx, yy, i, j: integer;
-  b: Boolean;
+  b, GhostFlame: Boolean;
 Begin
   If fHasSpawningBricks And (Not fPause) Then Begin
     If GetTickCount64() > fNextBrickSpawnTime Then Begin // https://bomberman.fandom.com/wiki/Haunted_House
@@ -1767,7 +2086,8 @@ Begin
         yy := random(FieldHeight);
         If (fField[x, yy].BrickData = bdBlank) And
           (fField[x, yy].Flame = []) And
-          (fField[x, yy].PowerUp = puNone) Then Begin
+          (fField[x, yy].PowerUp = puNone) And
+          (Not IsPortalCell(x, yy)) Then Begin // Mod Teleporter am Rand
           // Prüfung Kein Spieler auf dem Feld
           b := true;
           For i := 0 To high(Players) Do Begin
@@ -1795,13 +2115,27 @@ Begin
     If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
     x := trunc(Players[i].Info.Position.x);
     y := trunc(Players[i].Info.Position.y);
-    // Die Kollision Spieler gegen PowerUp
-    If fField[x, y].PowerUp <> puNone Then Begin
-      PlayerGetsPowerUp(Players[i], i, fField[x, y].PowerUp);
+    // Die Kollision Spieler gegen PowerUp (die PowerUps unter einem Block gibt es erst, wenn er weg ist, Mod durch Blöcke laufen)
+    If (fField[x, y].PowerUp <> puNone) And (fField[x, y].BrickData = bdBlank) Then Begin
+      If fField[x, y].WhiteBomb Then Begin
+        // Mod weiße Bombe: die nächste gelegte Bombe ist weiß
+        Players[i].WhiteBombs := Players[i].WhiteBombs + 1;
+        fPlaySoundEffect(i, seGetGoodPowerUp);
+        fField[x, y].WhiteBomb := false;
+      End
+      Else If fField[x, y].FlameThrowerItem Then Begin
+        // Mod Flammenwerfer: füllt den Tank auf
+        Players[i].FlameThrowerFuel := Players[i].FlameThrowerFuel + FlameThrowerFuelMs;
+        fPlaySoundEffect(i, seGetGoodPowerUp);
+        fField[x, y].FlameThrowerItem := false;
+      End
+      Else Begin
+        PlayerGetsPowerUp(Players[i], i, fField[x, y].PowerUp);
+      End;
       fField[x, y].PowerUp := puNone;
     End;
     // Die Kollision gegen ein Loch
-    If fHasHoles And (fHurryIndex = -1) And fHoles[x, y] Then Begin
+    If (fHasHoles And (fHurryIndex = -1) And fHoles[x, y]) Or IsPortal(x, y) Then Begin
       If (Not Players[i].IsInHohle) Then Begin // Flanke generieren ;)
         Players[i].IsInHohle := true;
         Players[i].Info.Animation := raTeleport;
@@ -1845,13 +2179,30 @@ Begin
       Players[i].FlyTarget := v2(nx + 0.5, ny + 0.5);
     End;
     // Die Kollision Spieler gegen eine Flamme -> Spieler i stirbt und wird von Spieler "fField[x, y].FlamePlayer" gekillt
-    If fField[x, y].Flame <> [] Then Begin
+    // Mod durch Blöcke laufen: Wer in einem Block steht, wird von dessen Explosion getroffen wie von einer Flamme
+    If (fField[x, y].Flame <> []) Or
+      ((fField[x, y].BrickData = bdBrick) And fField[x, y].Exploding) Then Begin
       // TODO: Während eines Teleport vorgangs ist der Spieler unsterblich -> Klären ob das wirklich gewollt ist..
-      If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) Then Begin
+      // Ein unverwundbarer Spieler ignoriert die Flammen (der Hurry Tod passiert in HandleMovePlayer und ist davon nicht betroffen)
+      If (Not Players[i].Info.Dying) And (Players[i].Info.Animation <> raTeleport) And (Players[i].InvulnTimer <= 0) Then Begin
+        (*
+         * Geister Mod: Trifft die Flamme eines Geistes einen Gegner, darf der Geist zurück ins Spiel.
+         * Der Geist bekommt für diesen Treffer keinen Kill.
+         *)
+        GhostFlame := fField[x, y].FlameGhost; // Entscheidend ist die Bombe, nicht ob der Werfer gerade (noch) ein Geist ist
+        If GhostFlame And (fField[x, y].FlamePlayer <> i) And ((Not fTeamPlay) Or (Players[fField[x, y].FlamePlayer].Team <> Players[i].Team)) Then Begin
+          If assigned(GhostReviveCallback) Then GhostReviveCallback(fField[x, y].FlamePlayer);
+        End;
+        // Überlebt der Spieler den Treffer (Trefferpunkte Mod), gibt es weder Kill noch Tod
+        If assigned(PlayerHitCallback) Then Begin
+          If PlayerHitCallback(i) Then Continue;
+        End;
         If i = fField[x, y].FlamePlayer Then Begin
           // Selfkill
           Players[fField[x, y].FlamePlayer].Kills := Players[fField[x, y].FlamePlayer].Kills - 1;
           fPlayerStatistics.UpdatePlayerID(i, pssFriendlyFireKills);
+        End
+        Else If GhostFlame Then Begin // Getötet durch eine Geisterbombe -> kein Kill für den Geist
         End
         Else Begin
           // Echter Kill ;)
@@ -1930,6 +2281,10 @@ Begin
     result.PlayerInfos[i].Team := Players[i].Team;
     result.PlayerInfos[i].Position.x := Players[i].Info.Position.x;
     result.PlayerInfos[i].Position.y := Players[i].Info.Position.y;
+    If Players[i].Info.Ghost Then Begin // Geister stehen außerhalb des Feldes, das soll die Ai nicht durcheinander bringen
+      result.PlayerInfos[i].Position.x := min(FieldWidth - 0.5, max(0.5, Players[i].Info.Position.x));
+      result.PlayerInfos[i].Position.y := min(FieldHeight - 0.5, max(0.5, Players[i].Info.Position.y));
+    End;
     result.PlayerInfos[i].Alive := Players[i].Info.Alive And (Not Players[i].Info.Dying);
     result.PlayerInfos[i].Flying := Players[i].Flying;
     result.PlayerInfos[i].FlameLength := Players[i].Powers.FlameLen;
@@ -2068,6 +2423,108 @@ Begin
   fField[p.x, p.y].Counter := 0;
 End;
 
+Function TAtomicField.HurryActive: Boolean;
+Begin
+  result := fHurryIndex <> -1;
+End;
+
+Function TAtomicField.AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer;
+  Start, Target: TPoint): Boolean;
+Begin
+  result := false;
+  If fBombCount > high(fBombs) Then exit;
+  fBombs[fBombCount].ColorIndex := ColorIndex;
+  fBombs[fBombCount].Position := v2(Start.x + 0.5, Start.y + 0.5);
+  fBombs[fBombCount].Animation := baNormal;
+  fBombs[fBombCount].AnimationOffset := random(65536);
+  fBombs[fBombCount].PlayerIndex := PlayerIndex;
+  fBombs[fBombCount].TriggerPlayerindex := -1; // Force a exception, should be set during triggering !
+  fBombs[fBombCount].Lifetime := 0;
+  fBombs[fBombCount].FireLen := FlameLen;
+  fBombs[fBombCount].Jelly := false;
+  fBombs[fBombCount].Speed := AtomicDefaultSpeed;
+  fBombs[fBombCount].DudTime := 0;
+  fBombs[fBombCount].Detonated := false;
+  // Die Bombe wird wie beim Grab geworfen und kann deshalb auch stunnen
+  fBombs[fBombCount].FlyStart := fBombs[fBombCount].Position;
+  fBombs[fBombCount].FlyTarget := v2(Target.x + 0.5, Target.y + 0.5);
+  fBombs[fBombCount].MoveDir := bmFly;
+  fBombs[fBombCount].FlyTime := 0;
+  fBombs[fBombCount].FlyFinTime := AtomicBombBigFlyTime;
+  fBombs[fBombCount].StunOnLand := true;
+  fBombs[fBombCount].FlameThrowerHit := false;
+  fBombs[fBombCount].FlameThrowerExposure := 0;
+  fBombs[fBombCount].GhostBomb := true;
+  fBombs[fBombCount].WhiteBomb := false;
+  inc(fBombCount);
+  fPlaySoundEffect(PlayerIndex, seBombGrab);
+  result := true;
+End;
+
+Function TAtomicField.SpawnTestItem(Const Players: TPlayers;
+  PowerUp: TPowerUps; WhiteBomb, FlameThrower: Boolean): Boolean;
+Var
+  i, j, x, y: integer;
+  b: Boolean;
+Begin
+  (*
+   * Mod Test Modus: Das Item kommt auf ein zufälliges freies Feld (kein Stein, Item, Bombe, Flamme, Loch, Teleporter und kein Spieler)
+   *)
+  result := false;
+  For i := 0 To 500 Do Begin
+    x := random(FieldWidth);
+    y := random(FieldHeight);
+    If (fField[x, y].BrickData <> bdBlank) Or (fField[x, y].PowerUp <> puNone) Or (fField[x, y].Flame <> []) Then Continue;
+    If (fHasHoles And (fHurryIndex = -1) And fHoles[x, y]) Or IsPortal(x, y) Then Continue;
+    b := true;
+    For j := 0 To fBombCount - 1 Do Begin
+      If (trunc(fBombs[j].Position.x) = x) And (trunc(fBombs[j].Position.y) = y) Then b := false;
+    End;
+    For j := 0 To high(Players) Do Begin
+      If Players[j].Info.Alive And (trunc(Players[j].Info.Position.x) = x) And (trunc(Players[j].Info.Position.y) = y) Then b := false;
+    End;
+    If Not b Then Continue;
+    fField[x, y].PowerUp := PowerUp;
+    fField[x, y].WhiteBomb := WhiteBomb;
+    fField[x, y].FlameThrowerItem := FlameThrower;
+    result := true;
+    exit;
+  End;
+End;
+
+Function TAtomicField.FindFreeField(x, y: integer): TPoint;
+Var
+  r, i, j, k: integer;
+  b: Boolean;
+Begin
+  (*
+   * Ringförmig um x, y suchen, das erste freie Feld gewinnt
+   *)
+  result := point(x, y);
+  For r := 0 To max(FieldWidth, FieldHeight) Do Begin
+    For i := x - r To x + r Do Begin
+      For j := y - r To y + r Do Begin
+        If (abs(i - x) <> r) And (abs(j - y) <> r) Then Continue; // Nur der Rand des Quadrates, das Innere wurde schon geprüft
+        If (i < 0) Or (i >= FieldWidth) Or (j < 0) Or (j >= FieldHeight) Then Continue;
+        If fField[i, j].BrickData <> bdBlank Then Continue;
+        If fField[i, j].Flame <> [] Then Continue;
+        If fHasHoles And (fHurryIndex = -1) And fHoles[i, j] Then Continue;
+        b := true;
+        For k := 0 To fBombCount - 1 Do Begin
+          If (trunc(fBombs[k].Position.x) = i) And (trunc(fBombs[k].Position.y) = j) Then Begin
+            b := false;
+            break;
+          End;
+        End;
+        If b Then Begin
+          result := point(i, j);
+          exit;
+        End;
+      End;
+    End;
+  End;
+End;
+
 Procedure TAtomicField.KillPlayer(Var Players: TPlayers; Index: integer);
 Begin
   Players[Index].MoveState := msStill; // Zum Sterben halten wir an ;)
@@ -2107,6 +2564,7 @@ Begin
         If fHasHoles And (fHurryIndex = -1) Then Begin // Auf Löchern dürfen keine PowerUps erzeugt werden
           If fHoles[x, y] Then noHole := false;
         End;
+        If IsPortalCell(x, y) Then noHole := false; // Mod Teleporter am Rand, die gelten hier auch als Loch
         If (fField[x, y].BrickData = bdBlank) And (fField[x, y].Flame = []) And (fField[x, y].PowerUp = puNone) And noHole Then Begin
           b := true;
           // Verhindern dass ein Powerup da generiert wird wo ein Spieler Steht.
@@ -2124,7 +2582,7 @@ Begin
             For j := 0 To fBombCount - 1 Do Begin
               If fBombs[j].MoveDir = bmFly Then Continue;
               If (x = trunc(fBombs[j].Position.x)) And
-                (x = trunc(fBombs[j].Position.x)) Then Begin
+                (y = trunc(fBombs[j].Position.y)) Then Begin
                 b := false;
                 break;
               End;
@@ -2152,6 +2610,23 @@ Begin
    *)
   x := trunc(Player.Info.Position.x);
   y := trunc(Player.Info.Position.y);
+  // Mod Teleporter am Rand: immer zum gegenüberliegenden Teleporter, dort ist IsInHohle noch gesetzt, er springt also nicht gleich zurück
+  // (IsPortalCell statt IsPortal, beginnt der Hurry während der Animation, ist der Teleporter schon aus)
+  If IsPortalCell(x, y) Then Begin
+    If (y = 0) And (x = FieldWidth Div 2) Then Begin
+      Player.Info.Position.y := FieldHeight - 0.5;
+    End
+    Else If (y = FieldHeight - 1) And (x = FieldWidth Div 2) Then Begin
+      Player.Info.Position.y := 0.5;
+    End
+    Else If x = 0 Then Begin
+      Player.Info.Position.x := FieldWidth - 0.5;
+    End
+    Else Begin
+      Player.Info.Position.x := 0.5;
+    End;
+    exit;
+  End;
   If x = 2 Then Begin
     If y = 2 Then Begin
       Player.Info.Position.y := 8.5;
@@ -2276,6 +2751,87 @@ Procedure TAtomicField.Render(Const Atomics: TAtomics; PowerTexs: TPowerTexArray
     End;
   End;
 
+  Procedure RenderPortal(x, y: integer);
+  Const
+    Segments = 24;
+  Var
+    k: integer;
+    a, cx, cy: Single;
+  Begin
+    (*
+     * Mod Teleporter am Rand: Sie sehen aus wie die Löcher, haben aber einen türkisen Ring,
+     * die Loch Grafik ist fast schwarz und lässt sich deshalb nicht einfärben.
+     *)
+    RenderAlphaQuad(Fieldxoff + x * FieldBlockWidth + 00, FieldyOff + y * FieldBlockHeight + 00, atomic_Map_Layer + atomic_EPSILON, fHoleTex);
+    cx := Fieldxoff + (x + 0.5) * FieldBlockWidth;
+    cy := FieldyOff + (y + 0.5) * FieldBlockHeight;
+    UseColorShader;
+    SetShaderColor(0, 0.8, 1);
+    glShaderBegin(GL_TRIANGLE_STRIP);
+    For k := 0 To Segments Do Begin
+      a := 2 * pi * k / Segments;
+      glShaderVertex(cx + cos(a) * 18, cy + sin(a) * 16, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(cx + cos(a) * 15, cy + sin(a) * 13, atomic_Map_Layer + 2 * atomic_EPSILON);
+    End;
+    glShaderEnd();
+    UseTextureShader;
+  End;
+
+  Procedure RenderWhiteBombItem(x, y: integer);
+  Begin
+    (*
+     * Mod weiße Bombe: Das Bomben Item wird mit Weiß überdeckt (die Grafiken lassen sich nur abdunkeln, nicht aufhellen)
+     *)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    UseColorShader;
+    SetShaderColor(1, 1, 1, 0.6);
+    glShaderBegin(GL_TRIANGLE_FAN);
+    glShaderVertex(Fieldxoff + x * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderVertex(Fieldxoff + (x + 1) * FieldBlockWidth, FieldyOff + y * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderVertex(Fieldxoff + (x + 1) * FieldBlockWidth, FieldyOff + (y + 1) * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderVertex(Fieldxoff + x * FieldBlockWidth, FieldyOff + (y + 1) * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON);
+    glShaderEnd();
+    UseTextureShader;
+    glDisable(GL_BLEND);
+  End;
+
+  Procedure RenderFlameThrowerItem(x, y: integer);
+  Const
+    BorderWidth = 3; // Breite des Rahmens in Pixeln
+  Var
+    l, t, r, b: Single;
+
+    Procedure Rect(x1, y1, x2, y2: Single);
+    Begin
+      glShaderBegin(GL_TRIANGLE_FAN);
+      glShaderVertex(x1, y1, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(x2, y1, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(x2, y2, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderVertex(x1, y2, atomic_Map_Layer + 2 * atomic_EPSILON);
+      glShaderEnd();
+    End;
+
+  Begin
+    // Mod Flammenwerfer: Das Flammen Item wird rot überdeckt und bekommt einen roten Rahmen
+    l := Fieldxoff + x * FieldBlockWidth;
+    t := FieldyOff + y * FieldBlockHeight;
+    r := l + FieldBlockWidth;
+    b := t + FieldBlockHeight;
+    UseColorShader;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    SetShaderColor(1, 0, 0, 0.45);
+    Rect(l, t, r, b);
+    glDisable(GL_BLEND);
+    SetShaderColor(1, 0, 0);
+    Rect(l, t, r, t + BorderWidth);
+    Rect(l, b - BorderWidth, r, b);
+    Rect(l, t, l + BorderWidth, b);
+    Rect(r - BorderWidth, t, r, b);
+    UseTextureShader;
+  End;
+
   Procedure RenderTramp(x, y: integer);
   Begin
     If fField[x, y].Tramp Then Begin
@@ -2330,6 +2886,8 @@ Begin
             // Render der Powerups
             If fField[i, j].PowerUp <> puNone Then Begin
               RenderQuad(Fieldxoff + i * FieldBlockWidth, FieldyOff + j * FieldBlockHeight, atomic_Map_Layer + atomic_EPSILON, PowerTexs[fField[i, j].PowerUp]);
+              If fField[i, j].WhiteBomb Then RenderWhiteBombItem(i, j);
+              If fField[i, j].FlameThrowerItem Then RenderFlameThrowerItem(i, j);
             End
             Else Begin
               // Es ist einfach nichts auf der Kachel, ggf ist dann ja ein Pfeil oder ein Laufband zu sehen ..
@@ -2341,6 +2899,10 @@ Begin
               End;
               If fHasHoles And (Not fHurryMode) Then Begin
                 RenderHohle(i, j);
+              End;
+              // Mod Teleporter am Rand
+              If IsPortal(i, j) Then Begin
+                RenderPortal(i, j);
               End;
               If fHastrampolins And (Not fHurryMode) Then Begin
                 RenderTramp(i, j);
@@ -2363,6 +2925,12 @@ Begin
    *)
   Stream.Read(fField, sizeof(fField));
   stream.read(fHurryMode, sizeof(fHurryMode));
+  stream.read(fPortalTopBottom, sizeof(fPortalTopBottom));
+  stream.read(fPortalLeftRight, sizeof(fPortalLeftRight));
+  stream.read(fWrapTopBottom, sizeof(fWrapTopBottom));
+  stream.read(fWrapLeftRight, sizeof(fWrapLeftRight));
+  stream.read(fWrapWarnTopBottom, sizeof(fWrapWarnTopBottom));
+  stream.read(fWrapWarnLeftRight, sizeof(fWrapWarnLeftRight));
 
   // GGF Starten einer Brick Explosion Animation
   For i := 0 To FieldWidth - 1 Do Begin

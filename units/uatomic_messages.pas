@@ -45,6 +45,7 @@ Const
   miChangePlayerKey = 135;
   miUpdateFieldSetup = 137;
   miClientKeyEvent = 138;
+  miDebugCommand = 139; // Der Client will einen Befehl des Mod Test Modus ausführen (nur Master und nur wenn der Server ihn erlaubt)
 
   (*
    * Nachrichten vom Server an den Client
@@ -61,6 +62,8 @@ Const
   miPlaySoundEffekt = 233;
   miUpdateMasterID = 234; // Der Master Spieler hat sich geändert (nur Relevant, wenn während eines Matches der Master Raus fliegt)
   miShowHurry = 235;
+  miModInfo = 236; // Der Server teilt beim Login die Mod Einstellungen mit, die der Client braucht (Mod Test Modus, Geister Flackern)
+  miFlash = 237; // Mod weißer Bildschirm: Der Bildschirm dieses Clients wird kurz weiß (Stärke, Dauer, Übergang)
 
 Function MessageIdentifierToString(value: integer): String;
 Inline;
@@ -87,6 +90,7 @@ Begin
     miChangePlayerKey: result := 'ChangePlayerKey';
     miUpdateFieldSetup: result := 'UpdateFieldSetup';
     miClientKeyEvent: result := 'ClientKeyEvent';
+    miDebugCommand: result := 'DebugCommand';
 
     miRequestLoginResult: result := 'RequestLoginResult';
     miSplashHint: result := 'SplashHint';
@@ -100,6 +104,8 @@ Begin
     miPlaySoundEffekt: result := 'PlaySoundEffekt';
     miUpdateMasterID: result := 'UpdateMasterID';
     miShowHurry: result := 'ShowHurry';
+    miModInfo: result := 'ModInfo';
+    miFlash: result := 'Flash';
   End;
 End;
 

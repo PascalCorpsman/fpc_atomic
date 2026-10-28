@@ -25,6 +25,7 @@ Const
   VersionInfoUrl = 'https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/bin/fpc_atomic.version'; // URL zum DL der Versionsinfo .JSON
   JSON_ROOT = 'fpc_atomic';
   FPC_AtomicIniSection = 'FPC_Atomic'; // Section in FPC_atomic.cfg
+  ManualUrl = 'https://github.com/PascalCorpsman/fpc_atomic/blob/main/'; // Dort liegen die Handbücher online, falls sie nicht neben dem Launcher liegen
 
   (*
    * Historie : 0.01 = Initial version
@@ -44,6 +45,14 @@ Const
    * -Released- 0.09 = - No changes
    * -Released- 0.10 = ADD: switch to ulogger.pas in uatomic_global.pas
    *            0.11 = ADD: Button zum öffnen des config Verzeichnisses
+   *                   ADD: Neues Layout (Namensprüfung, Status der Spieldaten und Version, Kürzel, Hints)
+   *                   ADD: Mods Dialog für atomic_server.ini
+   *                   ADD: Dialog für die Spiel Optionen, Musik und Soundeffekte getrennt
+   *                   ADD: Links auf MANUAL.md / MODS_MANUAL.md
+   *                   ADD: Strg + Launch hostet, Shift + Launch tritt einem Netzwerkspiel direkt bei
+   *                   FIX: Versionsnummer im Titel mit Komma (0,11)
+   *                   ADD: Option, nach dem Spiel wieder den Launcher anzeigen
+   *                   ADD: Launcher auf Englisch oder Deutsch (Link unten rechts), auf Deutsch öffnen die Links die deutschen Handbücher
    * Known Bugs :
    *)
   {
@@ -106,9 +115,34 @@ Function Change_DLL_To_lib_so(Const filename: String): String;
 
 Function CheckForFiles(): TStringList;
 
+(*
+ * Öffnet ein Handbuch (z.B. MANUAL.md) mit dem dafür eingestellten Programm,
+ * liegt es nicht neben dem Launcher, dann online unter ManualUrl.
+ * Ist der Launcher auf Deutsch, dann die deutsche Fassung (z.B. MANUAL_DE.md),
+ * auf Französisch gibt es keine eigene Fassung, dort bleibt es die englische.
+ *)
+Procedure OpenManual(Const Filename: String);
+
 Implementation
 
-Uses uJSON, LazFileUtils, ucdextractor, uatomic_global;
+Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf, ulocales;
+
+Procedure OpenManual(Const Filename: String);
+Var
+  s, f: String;
+Begin
+  f := Filename;
+  If Language = lgGerman Then Begin
+    f := ChangeFileExt(f, '') + '_DE' + ExtractFileExt(f);
+  End;
+  s := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + f;
+  If FileExists(s) Then Begin
+    OpenDocument(s);
+  End
+  Else Begin
+    OpenURL(ManualUrl + f);
+  End;
+End;
 
 Function FileSizeToString(Value: Int64): String;
 Var

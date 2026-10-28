@@ -115,6 +115,18 @@ Type
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
     fFields: Array Of TAtomicField;
     fScheme: TScheme;
+    fModTestMode: Boolean; // True, wenn der Server den Mod Test Modus erlaubt (miModInfo), nur dann reagieren die F-Tasten
+    fGhostFlickerMs: Integer; // Zeit in ms eines Flacker Taktes der Geister (miModInfo), 0 = kein Flackern
+    fBrickWalkTransparency: Integer; // in %, so durchsichtig werden Spieler gezeichnet, die durch Blöcke laufen (miModInfo)
+    fRenderFrame: Int64; // Zähler der gerenderten Spiel Frames, für die Durchsichtigkeit (BrickWalkVisible)
+    fFlashTimeStamp: QWord; // Mod weißer Bildschirm: Beginn des Flashs, 0 = kein Flash
+    fFlashIntensity: Integer; // in %
+    fFlashMs: Integer; // Dauer in ms
+    fFlashFadeMs: Integer; // Übergang zurück in ms
+    fShowModTestHelp: Boolean; // True, die Hilfe des Mod Test Modus (F3) wird angezeigt
+    fModTestMessage: String; // Rückmeldung zum zuletzt gesendeten Test Befehl
+    fModTestMessageTimeStamp: QWord; // Zeitpunkt, an dem fModTestMessage gesetzt wurde
+    fOpenBordersSince: Array[Boolean] Of QWord; // Mod offene Grenzen: GetTickCount64, seit dem oben / unten (True) bzw. links / rechts (False) offen ist, 0 = zu
 {$IFNDEF DebuggMode}
     fPlayer: TPlayers;
 {$ENDIF}
@@ -149,12 +161,18 @@ Type
     Function KeyboardkeyToAtomicKey(key: word; Const aKeyset: TKeySet): TAtomicKey;
     Procedure CheckKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
     Procedure CheckKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
+    Procedure CheckModTestKey(Key: Word; Shift: TShiftState);
     Procedure ConvertKeyToControl(aKey: TAtomicKey; Const Event: TKeyEvent);
 
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
 
     Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
+    Procedure RenderGhost(Const Info: TAtomicInfo);
+    Function BrickWalkVisible(): Boolean;
+    Procedure RenderOpenBorders();
+    Procedure RenderFlash();
+    Procedure RenderFlameThrowers();
     Procedure RenderFieldHeader();
     Procedure RenderBombs();
 
@@ -494,7 +512,8 @@ Var
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TGame.PlaySoundEffect');
-  If Not fSoundManager.PlaySoundEffekt(Filename, EndCallback) Then Begin
+  // Die Soundeffekte lassen sich unabhängig von der Musik (PlaySounds) abschalten, der EndCallback kommt trotzdem
+  If (Not Settings.PlaySoundEffects) Or (Not fSoundManager.PlaySoundEffekt(Filename, EndCallback)) Then Begin
     If assigned(EndCallback) Then Begin
       EndCallback(Nil);
     End;
@@ -648,6 +667,7 @@ Begin
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
           End;
+          If fModTestMode Then CheckModTestKey(Key, Shift);
           For k In TKeySet Do Begin
             If fPlayerIndex[k] <> -1 Then CheckKeyDown(KeyboardkeyToAtomicKey(key, k), k);
           End;
@@ -657,6 +677,48 @@ Begin
   If assigned(FOnKeyDownCapture) Then Begin
     FOnKeyDownCapture(sender, key, shift);
   End;
+End;
+
+Procedure TGame.CheckModTestKey(Key: Word; Shift: TShiftState);
+Var
+  m: TMemoryStream;
+  Command: TModTestCommand;
+  k: TKeySet;
+Begin
+  Case Key Of
+    VK_F3: Begin
+        fShowModTestHelp := Not fShowModTestHelp;
+        exit;
+      End;
+    VK_F5: Command := mtPositiveDisease;
+    VK_F6: Command := mtHitMe;
+    VK_F7: Command := mtGhost;
+    VK_F8: Command := mtHurry;
+    VK_F9: Command := mtStun;
+    VK_F4: Command := mtAllItems; // F10 ist unter Windows die Menü Taste
+    VK_F11: Command := mtMaxHitPoints;
+    VK_F12: Command := mtBrickWalk;
+    VK_F2: Command := mtFlash;
+    VK_F1: Command := mtWhiteBomb;
+    VK_INSERT: Command := mtSpawnItems;
+  Else
+    exit;
+  End;
+  // Mit Shift wirkt der Test Befehl auf den 2. Spieler an diesem PC, spielt hier nur einer auf Tastatur 2, dann immer auf ihn
+  k := ks0;
+  If ((ssShift In Shift) Or (fPlayerIndex[ks0] = -1)) And (fPlayerIndex[ks1] <> -1) Then k := ks1;
+  If fPlayerIndex[k] = -1 Then exit;
+  If fUserID <> fMasterUserID Then Begin
+    fModTestMessage := 'Mod test mode: only the master player';
+    fModTestMessageTimeStamp := GetTickCount64;
+    exit;
+  End;
+  m := TMemoryStream.Create;
+  m.Write(Command, sizeof(Command));
+  m.Write(fPlayerIndex[k], sizeof(fPlayerIndex[k]));
+  SendChunk(miDebugCommand, m);
+  fModTestMessage := 'Test: ' + ModTestCommandToString(Command);
+  fModTestMessageTimeStamp := GetTickCount64;
 End;
 
 Procedure TGame.CheckKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
@@ -711,6 +773,19 @@ Begin
     1: ak := akRight;
     2: ak := akUp;
     3: ak := akDown;
+    5: Begin
+        // Mod Flammenwerfer: Der Server muss wissen, wann die zweite Aktion los gelassen wird (nur dafür, die Bewegung bleibt)
+        m := TMemoryStream.Create;
+        b := false;
+        db := false;
+        ak := akSecondAction;
+        m.Write(fPlayerIndex[aKeyset], SizeOf(fPlayerIndex[aKeyset]));
+        m.Write(b, sizeof(b));
+        m.Write(ak, SizeOf(ak));
+        m.Write(db, sizeof(db));
+        SendChunk(miClientKeyEvent, m);
+        exit;
+      End;
   Else Begin
       // Unknown, or unused key ..
       exit;
@@ -962,6 +1037,10 @@ Begin
   fWaitingForLocalServer := false;
 
   fChunkManager.SetNoDelay(true);
+  fModTestMode := false; // Wird vom Server ggf. mittels miModInfo aktiviert
+  fGhostFlickerMs := 0;
+  fBrickWalkTransparency := 0;
+  fShowModTestHelp := false;
   m := TMemoryStream.Create;
   m.Write(ProtocollVersion, sizeof(ProtocollVersion));
 {$IFDEF Release}
@@ -1152,6 +1231,23 @@ Begin
       End;
     miShowHurry: Begin
         HandleHurryUp();
+      End;
+    miFlash: Begin
+        Chunk.Data.Read(fFlashIntensity, sizeof(fFlashIntensity));
+        Chunk.Data.Read(fFlashMs, sizeof(fFlashMs));
+        Chunk.Data.Read(fFlashFadeMs, sizeof(fFlashFadeMs));
+        // Spielen 2 an diesem PC, teilen sie sich den Bildschirm, dann gibt es keinen Flash
+        If (fPlayerIndex[ks0] = -1) Or (fPlayerIndex[ks1] = -1) Then Begin
+          fFlashTimeStamp := GetTickCount64;
+        End;
+      End;
+    miModInfo: Begin
+        fModTestMode := false;
+        Chunk.Data.Read(fModTestMode, sizeof(fModTestMode));
+        fGhostFlickerMs := 0;
+        Chunk.Data.Read(fGhostFlickerMs, sizeof(fGhostFlickerMs));
+        fBrickWalkTransparency := 0;
+        Chunk.Data.Read(fBrickWalkTransparency, sizeof(fBrickWalkTransparency));
       End;
     miStartGame: Begin
         HandleStartGame();
@@ -1432,6 +1528,9 @@ Var
   k: TKeySet;
 Begin
   fHurry.Enabled := false;
+  fFlashTimeStamp := 0;
+  fOpenBordersSince[true] := 0; // Die Pfeile der offenen Grenzen stehen in jeder Runde wieder OpenBordersArrowTime
+  fOpenBordersSince[false] := 0;
   For k In TKeySet Do Begin
     fPlayerIndex[k] := -1;
     fLastKeyDown[k][akFirstAction] := 0;
@@ -1493,8 +1592,9 @@ Begin
     End;
     (*
      * Wenn die Alte Animation eine einmal ablaufen Animation ist.
+     * Ein Geist (Mod) beginnt ohne die Todesanimation, sonst würde diese hier nochmal abgespielt.
      *)
-    If OldAnim In OneTimeAnimations Then Begin
+    If (OldAnim In OneTimeAnimations) And (Not fPlayer[i].Info.Ghost) Then Begin
       If fPlayer[i].Info.Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
         fPlayer[i].Info.Animation := OldAnim;
         fPlayer[i].Info.Value := OldValue;
@@ -1510,6 +1610,7 @@ Begin
     stream.Read(fBombs[i].Position, SizeOf(fBombs[i].Position));
     stream.Read(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Read(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
+    stream.Read(fBombs[i].WhiteBomb, SizeOf(fBombs[i].WhiteBomb));
   End;
 End;
 
@@ -1831,6 +1932,155 @@ Begin
   fAtomics[info.ColorIndex].Render(Info, Edge);
 End;
 
+Procedure TGame.RenderGhost(Const Info: TAtomicInfo);
+Var
+  px, py, ox, oy: Single;
+  ViewPort, m: TMatrix4x4;
+Begin
+  // Die selbe Transformation wie in TGame.Render
+  ViewPort := IdentityMatrix4x4;
+  ViewPort := TranslateMatrix4x4(ViewPort, fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
+  ViewPort := ScaleMatrix4x4(ViewPort, fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
+  (*
+   * Der Geist steht auf dem Rahmen eine Kachel außerhalb des Feldes, so viel Platz ist aber nicht
+   * (links / rechts 20 Pixel, unten 18 Pixel), deshalb wird er um GhostScale verkleinert und
+   * stufenlos näher an das Feld heran geschoben (ox, oy), damit er nicht aus dem Bild ragt.
+   *)
+  px := Info.Position.x * FieldBlockWidth + FieldxOff; // Der Punkt um den TAtomic.Render die Figur zeichnet
+  py := (Info.Position.y + 0.25) * FieldBlockHeight + FieldyOff;
+  ox := 0.25 * FieldBlockWidth * min(1, max(0, 0.5 - Info.Position.x))
+    - 0.25 * FieldBlockWidth * min(1, max(0, Info.Position.x - (FieldWidth - 0.5)));
+  oy := 0.1 * FieldBlockHeight * min(1, max(0, 0.5 - Info.Position.y))
+    - 0.5 * FieldBlockHeight * min(1, max(0, Info.Position.y - (FieldHeight - 0.5)));
+  m := TranslateMatrix4x4(ViewPort, px + ox, py + oy, 0);
+  m := ScaleMatrix4x4(m, GhostScale, GhostScale, 1);
+  m := TranslateMatrix4x4(m, -px, -py, 0);
+  SetShaderTransform(m);
+  fAtomics[info.ColorIndex].Render(Info, false);
+  SetShaderTransform(ViewPort);
+End;
+
+Procedure TGame.RenderFlameThrowers;
+Var
+  i, k, dx, dy, x, y: integer;
+  ani: TOpenGL_Animation;
+Begin
+  // Mod Flammenwerfer: Der Strahl wird mit den Flammen der Explosion gezeichnet (Mitte und Ende in Blickrichtung)
+  For i := 0 To high(fPlayer) Do Begin
+    If (Not fPlayer[i].Info.Alive) Or fPlayer[i].Info.Dying Or (fPlayer[i].Info.FlameThrowerLen = 0) Then Continue;
+    dx := 0;
+    dy := 0;
+    Case (trunc(fPlayer[i].Info.Direction) Div 90) Of
+      0: dx := 1;
+      1: dy := -1;
+      2: dx := -1;
+      3: dy := 1;
+    End;
+    x := trunc(fPlayer[i].Info.Position.x);
+    y := trunc(fPlayer[i].Info.Position.y);
+    For k := 1 To fPlayer[i].Info.FlameThrowerLen Do Begin
+      If k = fPlayer[i].Info.FlameThrowerLen Then Begin
+        ani := fAtomics[fPlayer[i].Info.FlameThrowerColor].FlameEnd;
+      End
+      Else Begin
+        ani := fAtomics[fPlayer[i].Info.FlameThrowerColor].FlameMiddle;
+      End;
+      ani.Render(FieldxOff + (x + k * dx) * FieldBlockWidth, FieldyOff + (y + k * dy) * FieldBlockHeight, atomic_Map_Layer + 2 * atomic_EPSILON, (trunc(fPlayer[i].Info.Direction) Div 90) * 90);
+    End;
+  End;
+End;
+
+Procedure TGame.RenderFlash;
+Var
+  t: QWord;
+  a: Single;
+Begin
+  (*
+   * Mod weißer Bildschirm: Erst fFlashMs lang mit voller Stärke, dann über fFlashFadeMs zurück.
+   * Normales Alpha Blending, damit die Stärke stufenlos geht (die Texturen der Engine nutzen ein invertiertes Alpha).
+   *)
+  If fFlashTimeStamp = 0 Then exit;
+  t := GetTickCount64 - fFlashTimeStamp;
+  If t < fFlashMs Then Begin
+    a := fFlashIntensity / 100;
+  End
+  Else If t < fFlashMs + fFlashFadeMs Then Begin
+    a := fFlashIntensity / 100 * (1 - (t - fFlashMs) / fFlashFadeMs);
+  End
+  Else Begin
+    fFlashTimeStamp := 0;
+    exit;
+  End;
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  UseColorShader;
+  SetShaderColor(1, 1, 1, a);
+  glShaderBegin(GL_TRIANGLE_FAN);
+  glShaderVertex(0, 0, atomic_dialog_Layer);
+  glShaderVertex(GameWidth, 0, atomic_dialog_Layer);
+  glShaderVertex(GameWidth, GameHeight, atomic_dialog_Layer);
+  glShaderVertex(0, GameHeight, atomic_dialog_Layer);
+  glShaderEnd();
+  UseTextureShader;
+  glDisable(GL_BLEND);
+  glEnable(GL_DEPTH_TEST);
+End;
+
+Procedure TGame.RenderOpenBorders;
+
+  Function ShowOpen(Open: Boolean; Index: Boolean): Boolean;
+  Var
+    n: QWord;
+  Begin
+    // Nach dem Öffnen stehen die Pfeile nur noch OpenBordersArrowTime, danach stören sie nur in der Grafik
+    n := GetTickCount64;
+    If Not Open Then fOpenBordersSince[Index] := 0;
+    If Open And (fOpenBordersSince[Index] = 0) Then fOpenBordersSince[Index] := n;
+    result := Open And (n - fOpenBordersSince[Index] < OpenBordersArrowTime);
+  End;
+
+Var
+  i: Integer;
+  tb, lr: Boolean;
+Begin
+  (*
+   * Mod offene Grenzen: Pfeile außen auf dem Rahmen zeigen, welche Ränder offen sind.
+   * Kurz vor dem Öffnen blinken sie (OpenBordersWarnTime).
+   *)
+  tb := ShowOpen(fActualField.OpenTopBottom, true) Or (fActualField.OpenWarnTopBottom And ((GetTickCount64 Div 250) Mod 2 = 0));
+  lr := ShowOpen(fActualField.OpenLeftRight, false) Or (fActualField.OpenWarnLeftRight And ((GetTickCount64 Div 250) Mod 2 = 0));
+  If Not (tb Or lr) Then exit;
+  glBindTexture(GL_TEXTURE_2D, 0);
+  AtomicFont.Color := clYellow;
+  AtomicFont.BackColor := clBlack;
+  If lr Then Begin
+    For i := 0 To FieldHeight - 1 Do Begin
+      AtomicFont.Textout(5, FieldyOff + i * FieldBlockHeight + 11, atomic_Layer - atomic_EPSILON, '<');
+      AtomicFont.Textout(FieldxOff + FieldWidth * FieldBlockWidth + 5, FieldyOff + i * FieldBlockHeight + 11, atomic_Layer - atomic_EPSILON, '>');
+    End;
+  End;
+  If tb Then Begin
+    For i := 0 To FieldWidth - 1 Do Begin
+      AtomicFont.Textout(FieldxOff + i * FieldBlockWidth + 15, FieldyOff - 16, atomic_Layer - atomic_EPSILON, '^');
+      AtomicFont.Textout(FieldxOff + i * FieldBlockWidth + 15, FieldyOff + FieldHeight * FieldBlockHeight + 2, atomic_Layer - atomic_EPSILON, 'v');
+    End;
+  End;
+End;
+
+Function TGame.BrickWalkVisible: Boolean;
+Var
+  k: Int64;
+Begin
+  (*
+   * Mod durch Blöcke laufen: Der Spieler wird nur in (100 - fBrickWalkTransparency) % der Frames gezeichnet,
+   * gleichmäßig verteilt, dadurch wirkt er durchsichtig (die Grafik Engine kennt keine Teil-Transparenz).
+   *)
+  k := 100 - fBrickWalkTransparency;
+  result := (fRenderFrame * k) Div 100 <> ((fRenderFrame - 1) * k) Div 100;
+End;
+
 Procedure TGame.RenderFieldHeader;
 Var
   x, y, i: Integer;
@@ -1853,7 +2103,7 @@ Begin
       y := (i Mod 2) * 16 + 10;
       glBindTexture(GL_TEXTURE_2D, 0);
       AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, s);
-      If Not fPlayer[i].Info.Alive Then Begin
+      If (Not fPlayer[i].Info.Alive) And (Not fPlayer[i].Info.Ghost) Then Begin // Ein Geist ist noch nicht ganz raus
         SetShaderAlphaThreshold(0.5);
         RenderAlphaQuad(x - 4, y - 4, atomic_dialog_Layer + atomic_EPSILON + atomic_EPSILON, fPlayerdeadTex);
         SetShaderAlphaThreshold(0);
@@ -1862,12 +2112,72 @@ Begin
   End;
   AtomicFont.BackColor := clBlack; // Auf Jeden Fall die BackColor wieder Resetten
   (*
+   * Trefferpunkte Mod: Über dem Kopf des Spielers steht wie viele Treffer er noch aushält,
+   * aber nur wenn es mehr als einer ist (sonst ist es ja wie im Original).
+   *)
+  AtomicFont.Color := clWhite;
+  For i := 0 To high(fPlayer) Do Begin
+    If fPlayer[i].Info.Alive And (Not fPlayer[i].Info.Dying) And (fPlayer[i].Info.HitPoints > 1) Then Begin
+      x := round(fPlayer[i].Info.Position.x * FieldBlockWidth) + FieldxOff - 5;
+      y := round((fPlayer[i].Info.Position.y - 1.5) * FieldBlockHeight) + FieldyOff;
+      AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, inttostr(fPlayer[i].Info.HitPoints));
+    End;
+  End;
+  If fModTestMode Then Begin
+    (*
+     * Damit nie unbemerkt im Mod Test Modus gespielt wird, steht das immer unten im Bild
+     *)
+    AtomicFont.Color := clYellow;
+    AtomicFont.Textout(10, GameHeight - 16, atomic_dialog_Layer + atomic_EPSILON, 'MOD TEST MODE - F3: HELP');
+    // Rückmeldung zum letzten Test Befehl
+    If (fModTestMessage <> '') And (GetTickCount64 - fModTestMessageTimeStamp < 2000) Then Begin
+      AtomicFont.Textout(330, GameHeight - 16, atomic_dialog_Layer + atomic_EPSILON, fModTestMessage);
+    End;
+    (*
+     * Zustandsanzeige je Spieler: Restzeiten von Unverwundbarkeit und Stun über dem Kopf
+     *)
+    AtomicFont.Color := clYellow;
+    For i := 0 To high(fPlayer) Do Begin
+      If fPlayer[i].Info.Alive And (Not fPlayer[i].Info.Dying) Then Begin
+        s := '';
+        If fPlayer[i].Info.TestInvulnTime > 0 Then s := s + format('I%.1f ', [fPlayer[i].Info.TestInvulnTime / 10]);
+        If fPlayer[i].Info.TestStunTime > 0 Then s := s + format('S%.1f ', [fPlayer[i].Info.TestStunTime / 10]);
+        If fPlayer[i].Info.TestBrickWalkTime > 0 Then s := s + format('B%.1f', [fPlayer[i].Info.TestBrickWalkTime / 10]);
+        If s <> '' Then Begin
+          x := round(fPlayer[i].Info.Position.x * FieldBlockWidth) + FieldxOff - 20;
+          y := round((fPlayer[i].Info.Position.y - 2) * FieldBlockHeight) + FieldyOff;
+          AtomicFont.Textout(x, y, atomic_dialog_Layer + atomic_EPSILON, trim(s));
+        End;
+      End;
+    End;
+    If fShowModTestHelp Then Begin
+      AtomicFont.Color := clWhite;
+      AtomicFont.Textout(120, 60, atomic_dialog_Layer + atomic_EPSILON, 'F1  : ' + ModTestCommandToString(mtWhiteBomb));
+      AtomicFont.Textout(120, 80, atomic_dialog_Layer + atomic_EPSILON, 'F2  : ' + ModTestCommandToString(mtFlash));
+      AtomicFont.Textout(120, 100, atomic_dialog_Layer + atomic_EPSILON, 'F3  : hide this help');
+      AtomicFont.Textout(120, 120, atomic_dialog_Layer + atomic_EPSILON, 'F4  : ' + ModTestCommandToString(mtAllItems));
+      AtomicFont.Textout(120, 140, atomic_dialog_Layer + atomic_EPSILON, 'F5  : ' + ModTestCommandToString(mtPositiveDisease));
+      AtomicFont.Textout(120, 160, atomic_dialog_Layer + atomic_EPSILON, 'F6  : ' + ModTestCommandToString(mtHitMe));
+      AtomicFont.Textout(120, 180, atomic_dialog_Layer + atomic_EPSILON, 'F7  : ' + ModTestCommandToString(mtGhost));
+      AtomicFont.Textout(120, 200, atomic_dialog_Layer + atomic_EPSILON, 'F8  : ' + ModTestCommandToString(mtHurry));
+      AtomicFont.Textout(120, 220, atomic_dialog_Layer + atomic_EPSILON, 'F9  : ' + ModTestCommandToString(mtStun));
+      AtomicFont.Textout(120, 240, atomic_dialog_Layer + atomic_EPSILON, 'F11 : ' + ModTestCommandToString(mtMaxHitPoints));
+      AtomicFont.Textout(120, 260, atomic_dialog_Layer + atomic_EPSILON, 'F12 : ' + ModTestCommandToString(mtBrickWalk));
+      AtomicFont.Textout(120, 280, atomic_dialog_Layer + atomic_EPSILON, 'Ins : ' + ModTestCommandToString(mtSpawnItems));
+      AtomicFont.Textout(120, 310, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2nd player on this PC');
+      AtomicFont.Textout(120, 330, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned,');
+      AtomicFont.Textout(120, 350, atomic_dialog_Layer + atomic_EPSILON, 'B = walk through bricks (seconds)');
+    End;
+  End;
+  (*
    * Die Verbleibende Spielzeit
    *)
   AtomicBigFont.Textout(500, 10, atomic_dialog_Layer + atomic_EPSILON, fPlayingTime_s);
 End;
 
 Procedure TGame.RenderBombs;
+Const
+  Gray: TVector4 = (x: 0.6; y: 0.6; z: 0.6; w: 1.0); // Mod weiße Bombe: grau, damit man sie nicht mit den Bomben des weißen Spielers verwechselt
 Var
   i: Integer;
   ani: TAnimation;
@@ -1885,7 +2195,15 @@ Begin
       LogShow('Error: TGame.RenderBombs: no Animation found.', llFatal);
     End;
     ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
+    If fBombs[i].WhiteBomb Then Begin
+      UseTextureShader(Gray); // Setzt die AlphaThreshold zurück
+      SetShaderAlphaThreshold(0.5);
+    End;
     ani.ani.Render(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth + ani.OffsetX, FieldyOff + fBombs[i].Position.y * FieldBlockHeight + ani.OffsetY, atomic_Bomb_Layer, 0);
+    If fBombs[i].WhiteBomb Then Begin
+      UseTextureShader();
+      SetShaderAlphaThreshold(0.5);
+    End;
   End;
   SetShaderAlphaThreshold(0);
 End;
@@ -2562,7 +2880,7 @@ End;
 
 Procedure TGame.Render;
 Var
-  i: Integer;
+  i, t: Integer;
   n: QWORD;
   m: TMatrix4x4;
 Begin
@@ -2590,9 +2908,28 @@ Begin
     gs_Gaming: Begin
         fActualField.render(fAtomics, fPowerUpsTex);
         RenderBombs;
+        RenderOpenBorders(); // Vor den Spielern, damit die Pfeile unter ihnen (und unter den Geistern auf dem Rahmen) liegen
+        RenderFlameThrowers();
+        inc(fRenderFrame);
         For i := 0 To high(fPlayer) Do Begin
           If fPlayer[i].Info.Alive Then Begin
-            RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
+            // Wer durch Blöcke laufen kann, wird durchsichtig gezeichnet (nicht in der Pause, nicht beim Sterben und nie auf dem Frame mit der Flanke einer einmaligen Animation)
+            If fPause Or fPlayer[i].Info.Dying Or fPlayer[i].Edge Or (Not fPlayer[i].Info.BrickWalk) Or BrickWalkVisible() Then Begin
+              RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
+              fPlayer[i].edge := false;
+            End;
+          End;
+          // Geister (Mod) werden klein auf dem Rahmen und flackernd gerendert (nicht in der Pause)
+          If fPlayer[i].Info.Ghost Then Begin
+            // Kurz bevor der Geist verschwindet (GhostMaxTimeMs), flackert er doppelt so schnell
+            t := fGhostFlickerMs;
+            If (fPlayer[i].Info.GhostTime > 0) And (fPlayer[i].Info.GhostTime <= GhostWarnTime) Then Begin
+              If t = 0 Then t := 200;
+              t := max(1, t Div 2);
+            End;
+            If fPause Or (t = 0) Or ((GetTickCount64 Div t) Mod 4 <> 3) Then Begin
+              RenderGhost(fPlayer[i].Info);
+            End;
             fPlayer[i].edge := false;
           End;
         End;
@@ -2613,6 +2950,7 @@ Begin
           End;
           If n > 5 Then fHurry.Enabled := false;
         End;
+        RenderFlash();
       End;
   End;
   fSoundInfo.Render;

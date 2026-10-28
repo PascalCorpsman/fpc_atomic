@@ -67,6 +67,8 @@ Type
     fLastClientUpdateTimestamp: int64; // Zeitpunkt an dem zuletzt alle Clients Aktualisiert wurden
 
     fSettings: TAtomicSettings;
+    fModSettings: TModSettings; // Die Optionalen Mods aus atomic_server.ini
+    fRoundTimeMs: Integer; // Zeit in ms seit Rundenbeginn (für Teleporter und offene Grenzen)
     fFields: Array Of TAtomicField;
     fConnectedClientCount: integer; // Anzahl der Tatsächlich verbundenen Clients, wird bestimmt bei HandleSwitchToPlayerSetup und ist immer <= GetActivePlayerCount()
     fActualField: TAtomicField; // Das Feld, welches für dieses Match Aktiv ist, Wird mittels miUpdateFieldSetup gesetzt
@@ -101,6 +103,7 @@ Type
     Procedure HandleSwitchToPlayerSetup;
     Procedure HandleSwitchToMapProperties(UID: Integer);
     Procedure HandleStartGame();
+    Function PowersFromScheme(Const Scheme: TScheme): TAtomicPowers; // Die Fähigkeiten, mit denen ein Spieler laut Scheme startet
     Procedure HandleStartRound();
     Procedure HandleTogglePause();
     Procedure HandleShowVictory();
@@ -108,6 +111,15 @@ Type
       PowerUp: TPowerUps);
     Procedure HandlePlaySoundEffect(PlayerIndex: integer; Effect: TSoundEffect);
     Procedure HandleStatisticCallback(StatSelector: TStatSelector; Value: uint64 = 1);
+    Procedure HandleBombLanded(x, y: integer);
+    Function HandlePlayerHit(PlayerIndex: integer): Boolean;
+    Function HandlePlayerPunch(PlayerIndex, x, y: integer): Boolean;
+    Procedure HandleGhostRevive(GhostIndex: integer);
+    Procedure MakeGhost(PlayerIndex: integer);
+    Procedure SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
+    Procedure HandleWhiteBomb(PlayerIndex: integer);
+    Procedure HandleFlameThrowers();
+    Procedure HandleGhosts();
 
     Procedure HandleLoadSettings(Const Stream: TStream);
     Procedure HandleChangePlayerKey(PlayerIndex, Direction: Integer; PlayerName: String; UID: Integer);
@@ -131,6 +143,10 @@ Type
 
     Procedure LoadAi();
     Procedure HurryHandling;
+    Procedure LoadModSettings();
+    Function ActiveModsText(): String; // Leer, wenn kein Mod aktiv ist
+    Procedure ApplyStartItems(Var Powers: TAtomicPowers; Items: String);
+    Procedure HandleDebugCommand(Const Stream: TStream; UID: integer);
   public
     Constructor Create(Port, AutoTimeOut: Integer);
     Destructor Destroy(); override;
@@ -177,6 +193,7 @@ Begin
   fTCPPort := Port;
 
   fPlayerStatistics := TPlayerStatisticEngine.create; // Muss vor den Feldern gemacht werden weils ja rein gereicht wird ;)
+  LoadModSettings();
 
   // Laden aller Felder
   sl := FindAllDirectories(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'maps', false);
@@ -185,6 +202,23 @@ Begin
   setlength(fFields, sl.Count);
   For i := 0 To sl.Count - 1 Do Begin
     fFields[i] := TAtomicField.Create(@HandlePlaySoundEffect, @HandleStatisticCallback, fPlayerStatistics);
+    fFields[i].BombLandedCallback := @HandleBombLanded;
+    fFields[i].PlayerHitCallback := @HandlePlayerHit;
+    fFields[i].GhostReviveCallback := @HandleGhostRevive;
+    fFields[i].PlayerPunchCallback := @HandlePlayerPunch;
+    fFields[i].WhiteBombCallback := @HandleWhiteBomb;
+    fFields[i].WhiteBombChance := 0;
+    If fModSettings.WhiteBomb Then fFields[i].WhiteBombChance := fModSettings.WhiteBombChance;
+    fFields[i].FlameThrowerChance := 0;
+    If fModSettings.FlameThrower Then fFields[i].FlameThrowerChance := fModSettings.FlameThrowerChance;
+    fFields[i].FlameThrowerFuelMs := fModSettings.FlameThrowerFuelMs;
+    fFields[i].FlameThrowerBurnItems := fModSettings.FlameThrowerBurnItems;
+    fFields[i].FlameThrowerIgniteBombs := fModSettings.FlameThrowerIgniteBombs;
+    fFields[i].FlameThrowerIgniteMs := fModSettings.FlameThrowerIgniteMs;
+    fFields[i].WrapLeftRight := fModSettings.OpenBorders And fModSettings.OpenBordersLeftRight;
+    fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
+    fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
+    fFields[i].PortalLeftRight := fModSettings.Teleporters And fModSettings.TeleportersLeftRight;
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
@@ -235,6 +269,7 @@ Begin
   setlength(fFields, 0);
   UnLoadAiLib(); // da ist das AiDeInit mit drin ;)
   fPlayerStatistics.free;
+  fModSettings.Handicap.free;
   LogLeave(EnterID);
 End;
 
@@ -404,6 +439,9 @@ Begin
       End;
     miUpdateFieldSetup: Begin
         HandleUpdateFieldSetup(Chunk.Data, Chunk.UID);
+      End;
+    miDebugCommand: Begin
+        HandleDebugCommand(Chunk.Data, Chunk.UID);
       End;
     miStartGame: Begin
         If fGameState = gsShowHighscore Then Begin
@@ -635,6 +673,12 @@ Begin
   i := fSettings.MasterUid;
   m.Write(i, sizeof(i));
   SendChunk(miRequestLoginResult, m, UID);
+  // Dem neuen Spieler mitteilen ob der Mod Test Modus an ist (nur der Master darf Test Befehle ausführen), wie Geister flackern und wie durchsichtig "durch Blöcke laufen" ist
+  m := TMemoryStream.Create;
+  m.Write(fModSettings.ModTestMode, sizeof(fModSettings.ModTestMode));
+  m.Write(fModSettings.GhostFlickerMs, sizeof(fModSettings.GhostFlickerMs));
+  m.Write(fModSettings.BrickWalkTransparency, sizeof(fModSettings.BrickWalkTransparency));
+  SendChunk(miModInfo, m, UID);
   // Allen Mitteilen das wir nen neuen Spieler haben
   RefreshAllPlayerStats(0); // Allen Anwesenden Mitteilen Welche Spieler es so gibt
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
@@ -960,63 +1004,64 @@ Begin
   LogLeave(EnterID);
 End;
 
-Procedure TServer.HandleStartRound;
-  Function PowersFromScheme(Const Scheme: TScheme): TAtomicPowers;
-  Begin
-    result.Speed := AtomicDefaultSpeed;
-    result.AvailableBombs := 1;
-    // result.OverAllBombs := 1; -- Egal weil es unten "Hart" noch mal gesetzt wird
-    result.FlameLen := 1;
-    result.CanKickBombs := false;
-    result.CanPunchBombs := false;
-    result.CanGrabBombs := false;
-    result.CanSpooger := false;
-    result.TriggerBomb := 0;
-    result.JellyBombs := false;
-    If Scheme.PowerUps[puExtraBomb].Bornwith <> 0 Then Begin
-      result.AvailableBombs := max(1, Scheme.PowerUps[puExtraBomb].BornWith);
-    End;
-    result.OverAllBombs := result.AvailableBombs;
-    If Scheme.PowerUps[puLongerFlameLength].Bornwith > 1 Then Begin
-      result.FlameLen := Scheme.PowerUps[puLongerFlameLength].Bornwith;
-    End;
-    If Scheme.PowerUps[puExtraSpeed].Bornwith > 0 Then Begin
-      result.Speed := min(AtomicDefaultSpeed * power(AtomicSpeedChange, max(0, Scheme.PowerUps[puExtraSpeed].Bornwith)), AtomicMaxSpeed);
-    End;
-    // Manche Powerups schließen sich gegenseitig aus, dass muss hier und in HandlePlayerGetsPowerUp berücksichtigt werden
-    // Die Reihenfolge hier gibt dabei die Prio mit an, im Spiel nachher löscht das neueste immer die alten
-
-    If Scheme.PowerUps[puCanCick].Bornwith > 0 Then Begin
-      result.CanKickBombs := true;
-    End;
-    If Scheme.PowerUps[puCanPunch].Bornwith > 0 Then Begin
-      result.CanPunchBombs := true;
-    End;
-    If Scheme.PowerUps[puCanSpooger].Bornwith > 0 Then Begin
-      result.CanSpooger := true;
-      result.CanGrabBombs := false;
-    End;
-    If Scheme.PowerUps[puCanGrab].Bornwith > 0 Then Begin
-      result.CanGrabBombs := true;
-      result.CanSpooger := false;
-    End;
-    If Scheme.PowerUps[puGoldFlame].Bornwith > 0 Then Begin
-      result.FlameLen := 99; // Egal hauptsache mehr als 15 !
-    End;
-    If Scheme.PowerUps[puTrigger].Bornwith > 0 Then Begin
-      result.TriggerBomb := result.OverAllBombs;
-    End;
-    If Scheme.PowerUps[puCanJelly].Bornwith > 0 Then Begin
-      result.JellyBombs := true;
-    End;
+Function TServer.PowersFromScheme(Const Scheme: TScheme): TAtomicPowers;
+Begin
+  result.Speed := AtomicDefaultSpeed;
+  result.AvailableBombs := 1;
+  // result.OverAllBombs := 1; -- Egal weil es unten "Hart" noch mal gesetzt wird
+  result.FlameLen := 1;
+  result.CanKickBombs := false;
+  result.CanPunchBombs := false;
+  result.CanGrabBombs := false;
+  result.CanSpooger := false;
+  result.TriggerBomb := 0;
+  result.JellyBombs := false;
+  If Scheme.PowerUps[puExtraBomb].Bornwith <> 0 Then Begin
+    result.AvailableBombs := max(1, Scheme.PowerUps[puExtraBomb].BornWith);
   End;
+  result.OverAllBombs := result.AvailableBombs;
+  If Scheme.PowerUps[puLongerFlameLength].Bornwith > 1 Then Begin
+    result.FlameLen := Scheme.PowerUps[puLongerFlameLength].Bornwith;
+  End;
+  If Scheme.PowerUps[puExtraSpeed].Bornwith > 0 Then Begin
+    result.Speed := min(AtomicDefaultSpeed * power(AtomicSpeedChange, max(0, Scheme.PowerUps[puExtraSpeed].Bornwith)), AtomicMaxSpeed);
+  End;
+  // Manche Powerups schließen sich gegenseitig aus, dass muss hier und in HandlePlayerGetsPowerUp berücksichtigt werden
+  // Die Reihenfolge hier gibt dabei die Prio mit an, im Spiel nachher löscht das neueste immer die alten
 
+  If Scheme.PowerUps[puCanCick].Bornwith > 0 Then Begin
+    result.CanKickBombs := true;
+  End;
+  If Scheme.PowerUps[puCanPunch].Bornwith > 0 Then Begin
+    result.CanPunchBombs := true;
+  End;
+  If Scheme.PowerUps[puCanSpooger].Bornwith > 0 Then Begin
+    result.CanSpooger := true;
+    result.CanGrabBombs := false;
+  End;
+  If Scheme.PowerUps[puCanGrab].Bornwith > 0 Then Begin
+    result.CanGrabBombs := true;
+    result.CanSpooger := false;
+  End;
+  If Scheme.PowerUps[puGoldFlame].Bornwith > 0 Then Begin
+    result.FlameLen := 99; // Egal hauptsache mehr als 15 !
+  End;
+  If Scheme.PowerUps[puTrigger].Bornwith > 0 Then Begin
+    result.TriggerBomb := result.OverAllBombs;
+  End;
+  If Scheme.PowerUps[puCanJelly].Bornwith > 0 Then Begin
+    result.JellyBombs := true;
+  End;
+End;
+
+Procedure TServer.HandleStartRound;
 Var
-  a, b, c, i, EnterID: Integer;
+  a, b, c, i, j, EnterID: Integer;
   n: QWord;
   m: TMemoryStream;
   Startindex: Array[0..length(PlayerColors) - 1] Of Integer;
   pu: TPowerUps;
+  s: String;
 Begin
   EnterID := LogEnter('TServer.HandleStartRound');
   HandleStatisticCallback(ssGamesStarted);
@@ -1026,6 +1071,9 @@ Begin
   End
   Else Begin
     fPlayingTimedesc := fSettings.PlayTime * 1000;
+  End;
+  If fModSettings.ModTestMode And (fModSettings.RoundTimeSec > 0) Then Begin
+    fPlayingTimedesc := fModSettings.RoundTimeSec * 1000; // Zum Testen des Hurry, gilt auch im Infinity Mode
   End;
   fPlayingTimeasc := 0;
   For i := 0 To high(Startindex) Do Begin
@@ -1057,10 +1105,47 @@ Begin
     fPLayer[i].IsInHohle := false;
     fPLayer[i].Disease := [];
     fPLayer[i].DiseaseCounter := 0;
+    fPLayer[i].StunTimer := 0;
+    fPLayer[i].InvulnTimer := 0;
+    If fModSettings.ModTestMode Then fPLayer[i].InvulnTimer := fModSettings.StartInvulnMs;
+    fPLayer[i].BrickWalkTimer := 0;
+    fPLayer[i].Info.BrickWalk := false;
+    fPLayer[i].PunchStunCooldown := 0;
+    fPLayer[i].WhiteBombs := 0;
+    fPLayer[i].FlameThrowerFuel := 0;
+    fPLayer[i].FlameThrowerFiring := false;
+    fPLayer[i].FlameThrowerExposure := 0;
+    fPLayer[i].Info.FlameThrowerLen := 0;
+    // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
+    fPLayer[i].MaxHitPoints := 0;
+    If fModSettings.HitPoints Then Begin
+      (*
+       * Spielen 2 Spieler an einem PC, haben beide den selben Namen, der 2. (Keyboard 1) wird deshalb als "Name~2" gesucht (~ ist in Spielernamen nicht erlaubt, siehe ValidNodeName)
+       *)
+      s := fPLayer[i].UserName;
+      If (fPLayer[i].UID > 0) And (fPLayer[i].Keyboard = ks1) Then Begin
+        For j := 0 To high(fPLayer) Do Begin
+          If (j <> i) And (fPLayer[j].UID = fPLayer[i].UID) And (fPLayer[j].Keyboard = ks0) Then Begin
+            s := s + '~2';
+            break;
+          End;
+        End;
+      End;
+      fPLayer[i].MaxHitPoints := min(ModMaxHitPoints, max(1, StrToIntDef(fModSettings.Handicap.Values[s], fModSettings.DefaultHitPoints)));
+    End;
+    fPLayer[i].HitPoints := fPLayer[i].MaxHitPoints;
+    fPLayer[i].Info.HitPoints := 0;
+    If fModSettings.ShowHitPoints Then fPLayer[i].Info.HitPoints := fPLayer[i].HitPoints;
     fPLayer[i].IdleTimer := 0;
     fPLayer[i].Info.Dying := false; // Wir Sind alle wieder am Leben ;)
+    fPLayer[i].Info.Ghost := false;
+    fPLayer[i].GhostBombActive := false;
+    fPLayer[i].GhostCount := 0;
+    fPLayer[i].StartPosition := fPLayer[i].Info.Position;
+    fPLayer[i].StartGlove := fModSettings.GloveAtStart;
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
+    If fModSettings.ModTestMode Then ApplyStartItems(fPLayer[i].Powers, fModSettings.StartItems);
     For pu In TPowerUps Do Begin
       fPLayer[i].PowerUpCounter[pu] := 0;
     End;
@@ -1085,6 +1170,7 @@ Begin
   End;
 
   fActualField.Initialize(fPLayer, fSettings.Scheme, fSettings.TeamPlay);
+  fRoundTimeMs := 0;
   SendChunk(miStartGame, Nil, 0);
   n := GetTickCount64;
   For i := 0 To high(fPLayer) Do Begin // Egal das das alle sind ..
@@ -1119,6 +1205,7 @@ Begin
     For i := 0 To high(fPLayer) Do Begin
       fPLayer[i].MoveState := msStill;
       fPLayer[i].Action := aaNone;
+      fPLayer[i].FlameThrowerFiring := false; // Das Loslassen der zweiten Aktion während der Pause käme sonst nie an
     End;
   End;
   m := TMemoryStream.Create;
@@ -1173,9 +1260,34 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
       End;
     puDisease: Begin
+        (*
+         * Positive Krankheit (Mod): Statt krank wird der Spieler für eine zufällige Zeit unverwundbar.
+         * Das ist keine TDisease, damit sie weder ansteckt noch die Krankheitsstatistik zählt.
+         * Im Hurry gibt es keinen Schutz mehr, dann wird es immer eine normale Krankheit.
+         *)
+        If fModSettings.PositiveDisease And (Not fActualField.HurryActive()) And (random(100) < fModSettings.PositiveDiseaseChance) Then Begin
+          HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+          Player.InvulnTimer := max(Player.InvulnTimer, fModSettings.PositiveMinMs + random(fModSettings.PositiveMaxMs - fModSettings.PositiveMinMs + 1));
+          LogLeave(EnterID);
+          exit;
+        End;
+        // Durch Blöcke laufen (Mod), wird erst nach der positiven Krankheit gewürfelt
+        If fModSettings.BrickWalk And (Not fActualField.HurryActive()) And (random(100) < fModSettings.BrickWalkChance) Then Begin
+          HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+          Player.BrickWalkTimer := max(Player.BrickWalkTimer, fModSettings.BrickWalkMinMs + random(fModSettings.BrickWalkMaxMs - fModSettings.BrickWalkMinMs + 1));
+          LogLeave(EnterID);
+          exit;
+        End;
+        // Weißer Bildschirm (Mod), wird nach den positiven Effekten gewürfelt
+        If fModSettings.FlashDisease And (random(100) < fModSettings.FlashDiseaseChance) Then Begin
+          HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
+          SendFlash(PlayerIndex, fModSettings.FlashDiseaseIntensity, fModSettings.FlashDiseaseMs, fModSettings.FlashDiseaseFadeMs);
+          LogLeave(EnterID);
+          exit;
+        End;
         fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
-        Case random(3) Of
+        Case random(4) Of
           0: Player.Disease := Player.Disease + [dInvertedKeyboard];
           1: Begin
               Player.Disease := Player.Disease + [dNoBombs];
@@ -1351,6 +1463,504 @@ Begin
   fStatistik.LastRun[StatSelector] := fStatistik.LastRun[StatSelector] + Value;
 End;
 
+Procedure TServer.HandleBombLanded(x, y: integer);
+Var
+  i, EnterID: integer;
+Begin
+  EnterID := LogEnter('TServer.HandleBombLanded');
+  If Not fModSettings.StunOnBombLanding Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  (*
+   * Jeder Spieler auf der Kachel wird gestunnt, egal ob Gegner, Team Kollege oder der Werfer selbst (Unverwundbare sind immun).
+   * Bei mehrfachem Treffen gilt die längere Zeit, es wird nicht addiert.
+   *)
+  For i := 0 To high(fPLayer) Do Begin
+    If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) And (Not fPLayer[i].Flying) And (fPLayer[i].InvulnTimer <= 0) And
+      (trunc(fPLayer[i].Info.Position.x) = x) And (trunc(fPLayer[i].Info.Position.y) = y) Then Begin
+      fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
+    End;
+  End;
+  LogLeave(EnterID);
+End;
+
+Function TServer.HandlePlayerPunch(PlayerIndex, x, y: integer): Boolean;
+Var
+  i, EnterID: integer;
+Begin
+  EnterID := LogEnter('TServer.HandlePlayerPunch');
+  result := false;
+  (*
+   * Boxhandschuh Mod: Alle Gegner auf dem Feld x, y werden gestunnt (Unverwundbare sind immun, wie beim Stun durch eine Bombe).
+   * Danach kann der Schläger PunchStunCooldownMs lang nicht erneut schlagen.
+   *)
+  If Not fModSettings.PunchStun Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fPLayer[PlayerIndex].PunchStunCooldown > 0 Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  For i := 0 To high(fPLayer) Do Begin
+    If i = PlayerIndex Then Continue;
+    If fSettings.TeamPlay And (fPLayer[i].Team = fPLayer[PlayerIndex].Team) Then Continue;
+    If (Not fPLayer[i].Info.Alive) Or fPLayer[i].Info.Dying Or fPLayer[i].Flying Or (fPLayer[i].InvulnTimer > 0) Then Continue;
+    If (trunc(fPLayer[i].Info.Position.x) = x) And (trunc(fPLayer[i].Info.Position.y) = y) Then Begin
+      fPLayer[i].StunTimer := max(fPLayer[i].StunTimer, fModSettings.PunchStunMinMs + random(fModSettings.PunchStunMaxMs - fModSettings.PunchStunMinMs + 1));
+      result := true;
+    End;
+  End;
+  If result Then Begin
+    fPLayer[PlayerIndex].PunchStunCooldown := fModSettings.PunchStunCooldownMs;
+  End;
+  LogLeave(EnterID);
+End;
+
+Function TServer.HandlePlayerHit(PlayerIndex: integer): Boolean;
+Var
+  EnterID: integer;
+Begin
+  EnterID := LogEnter('TServer.HandlePlayerHit');
+  result := false;
+  (*
+   * Trefferpunkte Mod: So lange der Spieler noch mehr als einen Trefferpunkt hat, kostet ein Treffer nur einen Punkt
+   * (auch bei der eigenen Bombe) und er ist danach kurz unverwundbar. Im Hurry ist jeder Treffer tödlich.
+   *)
+  If Not fModSettings.HitPoints Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fActualField.HurryActive() Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fPLayer[PlayerIndex].HitPoints <= 1 Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].HitPoints - 1;
+  If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
+  fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.InvulnTimeMs);
+  HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
+  result := true;
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
+Var
+  m: TMemoryStream;
+Begin
+  (*
+   * Mod weißer Bildschirm: Nur ein Mensch hat einen Bildschirm, KI Spieler bleiben unberührt.
+   * Spielen 2 Spieler an dem PC, zeigt der Client den Flash nicht an (beide teilen sich den Bildschirm).
+   *)
+  If fPLayer[PlayerIndex].UID <= 0 Then exit;
+  m := TMemoryStream.Create;
+  m.Write(Intensity, sizeof(Intensity));
+  m.Write(DurationMs, sizeof(DurationMs));
+  m.Write(FadeMs, sizeof(FadeMs));
+  SendChunk(miFlash, m, fPLayer[PlayerIndex].UID);
+End;
+
+Procedure TServer.HandleWhiteBomb(PlayerIndex: integer);
+Var
+  i, EnterID: integer;
+Begin
+  EnterID := LogEnter('TServer.HandleWhiteBomb');
+  // Mod weiße Bombe: Alle Gegner auf dem ganzen Feld werden geflasht, nicht der Leger und nicht seine Teamkollegen
+  For i := 0 To high(fPLayer) Do Begin
+    If i = PlayerIndex Then Continue;
+    If fSettings.TeamPlay And (fPLayer[i].Team = fPLayer[PlayerIndex].Team) Then Continue;
+    If (Not fPLayer[i].Info.Alive) And (Not fPLayer[i].Info.Ghost) Then Continue; // Zuschauer (tot) nicht
+    SendFlash(i, fModSettings.WhiteBombIntensity, fModSettings.WhiteBombMs, fModSettings.WhiteBombFadeMs);
+  End;
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.HandleFlameThrowers;
+Var
+  i, j, k, len, dx, dy, x, y: integer;
+  InBeam: Array[0..length(PlayerColors) - 1] Of integer; // Index des Werfers, in dessen Strahl der Spieler steht, -1 = in keinem
+Begin
+  (*
+   * Mod Flammenwerfer: So lange die zweite Aktion gedrückt ist, feuert der Spieler in Blickrichtung und verbraucht dabei Tank.
+   * Ein Gegner, der FlameThrowerKillMs am Stück in einem Strahl steht, wird getroffen (wie von einer Flamme).
+   * Teamkollegen nur mit FlameThrowerFriendlyFire, den Werfer selbst trifft der eigene Strahl nie.
+   *)
+  For i := 0 To high(fPLayer) Do Begin
+    InBeam[i] := -1;
+  End;
+  For i := 0 To high(fPLayer) Do Begin
+    fPLayer[i].Info.FlameThrowerLen := 0;
+    If (Not fPLayer[i].Info.Alive) Or fPLayer[i].Info.Dying Or fPLayer[i].Flying Then Continue;
+    If (fPLayer[i].FlameThrowerFuel <= 0) Or (Not fPLayer[i].FlameThrowerFiring) Or (fPLayer[i].StunTimer > 0) Then Continue;
+    fPLayer[i].FlameThrowerFuel := max(0, fPLayer[i].FlameThrowerFuel - FrameRate);
+    dx := 0;
+    dy := 0;
+    Case (trunc(fPLayer[i].Info.Direction) Div 90) Of
+      0: dx := 1;
+      1: dy := -1;
+      2: dx := -1;
+      3: dy := 1;
+    End;
+    x := trunc(fPLayer[i].Info.Position.x);
+    y := trunc(fPLayer[i].Info.Position.y);
+    len := fActualField.FlameThrowerBeam(x, y, dx, dy, fModSettings.FlameThrowerRange);
+    fPLayer[i].Info.FlameThrowerLen := len;
+    fPLayer[i].Info.FlameThrowerColor := fPLayer[i].Info.ColorIndex;
+    For j := 0 To high(fPLayer) Do Begin
+      // Wie bei den Flammen: Fliegende und Teleportierende werden nicht getroffen
+      If (j = i) Or (Not fPLayer[j].Info.Alive) Or fPLayer[j].Info.Dying Or fPLayer[j].Flying Or (fPLayer[j].Info.Animation = raTeleport) Then Continue;
+      If fSettings.TeamPlay And (Not fModSettings.FlameThrowerFriendlyFire) And (fPLayer[j].Team = fPLayer[i].Team) Then Continue;
+      For k := 1 To len Do Begin
+        If (trunc(fPLayer[j].Info.Position.x) = x + k * dx) And (trunc(fPLayer[j].Info.Position.y) = y + k * dy) Then Begin
+          InBeam[j] := i;
+        End;
+      End;
+    End;
+  End;
+  For j := 0 To high(fPLayer) Do Begin
+    // Wer den Strahl verlässt (oder unverwundbar ist), fängt wieder bei 0 an
+    If (InBeam[j] = -1) Or (fPLayer[j].InvulnTimer > 0) Then Begin
+      fPLayer[j].FlameThrowerExposure := 0;
+      Continue;
+    End;
+    fPLayer[j].FlameThrowerExposure := fPLayer[j].FlameThrowerExposure + FrameRate;
+    If fPLayer[j].FlameThrowerExposure >= fModSettings.FlameThrowerKillMs Then Begin
+      fPLayer[j].FlameThrowerExposure := 0;
+      If HandlePlayerHit(j) Then Continue; // Trefferpunkte Mod
+      // Wie der Kill durch eine Flamme (TAtomicField.HandlePlayerVsMap), ein Teamkollege (Friendly Fire) zählt in der Statistik als Friendly Fire
+      fPLayer[InBeam[j]].Kills := fPLayer[InBeam[j]].Kills + 1;
+      If (Not fSettings.TeamPlay) Or (fPLayer[InBeam[j]].Team <> fPLayer[j].Team) Then Begin
+        fPlayerStatistics.UpdatePlayerID(InBeam[j], pssKills);
+      End
+      Else Begin
+        fPlayerStatistics.UpdatePlayerID(j, pssFriendlyFireKills);
+      End;
+      HandlePlaySoundEffect(j, seAtomicDie);
+      HandlePlaySoundEffect(j, seOtherPlayerDied);
+      HandleStatisticCallback(ssPlayerDeaths);
+      fPlayerStatistics.UpdatePlayerID(j, pssDeaths);
+      fActualField.KillPlayer(fPLayer, j);
+    End;
+  End;
+End;
+
+Procedure TServer.MakeGhost(PlayerIndex: integer);
+Var
+  EnterID: integer;
+Begin
+  EnterID := LogEnter('TServer.MakeGhost');
+  (*
+   * Geister Mod: Der Tote läuft ab jetzt auf dem nächsten Randfeld als Geist weiter (Alive bleibt false!)
+   *)
+  fPLayer[PlayerIndex].Info.Ghost := true;
+  fPLayer[PlayerIndex].Info.Dying := false;
+  fPLayer[PlayerIndex].GhostRingPos := FieldToGhostRing(fPLayer[PlayerIndex].Info.Position);
+  fPLayer[PlayerIndex].Info.Position := GhostRingToPosition(fPLayer[PlayerIndex].GhostRingPos);
+  fPLayer[PlayerIndex].GhostDir := 0;
+  fPLayer[PlayerIndex].GhostCount := fPLayer[PlayerIndex].GhostCount + 1;
+  fPLayer[PlayerIndex].GhostTimer := fModSettings.GhostMaxTimeMs;
+  fPLayer[PlayerIndex].Info.GhostTime := min(high(uint16), fPLayer[PlayerIndex].GhostTimer);
+  fPLayer[PlayerIndex].Info.Animation := raStandStill;
+  fPLayer[PlayerIndex].Info.Counter := 0;
+  fPLayer[PlayerIndex].GhostBombActive := false;
+  fPLayer[PlayerIndex].Disease := [];
+  fPLayer[PlayerIndex].StunTimer := 0;
+  fPLayer[PlayerIndex].InvulnTimer := 0;
+  fPLayer[PlayerIndex].BrickWalkTimer := 0;
+  fPLayer[PlayerIndex].Info.BrickWalk := false;
+  fPLayer[PlayerIndex].StartGlove := false;
+  fPLayer[PlayerIndex].Action := aaNone;
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.HandleGhostRevive(GhostIndex: integer);
+Var
+  p: TPoint;
+  pu: TPowerUps;
+  EnterID: integer;
+Begin
+  EnterID := LogEnter('TServer.HandleGhostRevive');
+  If Not fPLayer[GhostIndex].Info.Ghost Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  (*
+   * Der Geist kommt an seiner Startposition (bzw. dem nächsten freien Feld) zurück,
+   * und zwar wie zu Rundenbeginn, seine Items wurden ja beim Sterben verteilt.
+   *)
+  p := fActualField.FindFreeField(trunc(fPLayer[GhostIndex].StartPosition.x), trunc(fPLayer[GhostIndex].StartPosition.y));
+  fPLayer[GhostIndex].Info.Ghost := false;
+  fPLayer[GhostIndex].Info.GhostTime := 0;
+  fPLayer[GhostIndex].Info.Alive := true;
+  fPLayer[GhostIndex].Info.Dying := false;
+  fPLayer[GhostIndex].Info.Position := v2(p.x + 0.5, p.y + 0.5);
+  fPLayer[GhostIndex].Info.Animation := raStandStill;
+  fPLayer[GhostIndex].Info.Counter := 0;
+  fPLayer[GhostIndex].Flying := false;
+  fPLayer[GhostIndex].IsInHohle := false;
+  fPLayer[GhostIndex].Disease := [];
+  fPLayer[GhostIndex].DiseaseCounter := 0;
+  fPLayer[GhostIndex].StunTimer := 0;
+  fPLayer[GhostIndex].BrickWalkTimer := 0;
+  fPLayer[GhostIndex].WhiteBombs := 0;
+  fPLayer[GhostIndex].FlameThrowerFuel := 0;
+  fPLayer[GhostIndex].Info.BrickWalk := false;
+  fPLayer[GhostIndex].InvulnTimer := fModSettings.GhostReviveInvulnMs;
+  fPLayer[GhostIndex].Powers := PowersFromScheme(fSettings.Scheme);
+  For pu In TPowerUps Do Begin
+    fPLayer[GhostIndex].PowerUpCounter[pu] := 0;
+  End;
+  fPLayer[GhostIndex].HitPoints := fPLayer[GhostIndex].MaxHitPoints;
+  If fModSettings.ShowHitPoints Then fPLayer[GhostIndex].Info.HitPoints := fPLayer[GhostIndex].HitPoints;
+  HandlePlaySoundEffect(GhostIndex, seGetGoodPowerUp);
+  log('Ghost revived: ' + fPLayer[GhostIndex].UserName, llInfo);
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.HandleGhosts;
+Var
+  i, dx, dy, n, d, cur: integer;
+  p, np, e, t: TPoint;
+  target: Single;
+Begin
+  For i := 0 To high(fPLayer) Do Begin
+    If Not fPLayer[i].Info.Ghost Then Continue;
+    // Mit Beginn des Hurry sind alle Geister weg, es gibt dann kein Zurück mehr
+    If fActualField.HurryActive() Then Begin
+      fPLayer[i].Info.Ghost := false;
+      Continue;
+    End;
+    (*
+     * Trifft ein Geist innerhalb von GhostMaxTimeMs keinen Gegner, verschwindet er endgültig.
+     * Eine schon geworfene Geisterbombe explodiert noch, belebt aber nicht mehr (siehe HandlePlayerVsMap).
+     *)
+    If fModSettings.GhostMaxTimeMs > 0 Then Begin
+      fPLayer[i].GhostTimer := fPLayer[i].GhostTimer - FrameRate;
+      If fPLayer[i].GhostTimer <= 0 Then Begin
+        fPLayer[i].Info.Ghost := false;
+        fPLayer[i].Info.GhostTime := 0;
+        log('Ghost vanished: ' + fPLayer[i].UserName, llInfo);
+        Continue;
+      End;
+      fPLayer[i].Info.GhostTime := min(high(uint16), fPLayer[i].GhostTimer);
+    End;
+    // Die Rahmenposition, auf der der Geist gerade (am ehesten) steht
+    cur := round(fPLayer[i].GhostRingPos) Mod GhostRingLength;
+    p := GhostRingToField(cur);
+    (*
+     * Bewegen: Der Geist läuft fließend zur benachbarten Rahmenposition, die in der gewünschten Richtung liegt
+     * (um die Ecke herum zählt auch die Nachbarposition, die nur in einer der beiden Richtungen passt)
+     *)
+    dx := 0;
+    dy := 0;
+    Case fPLayer[i].MoveState Of
+      msLeft: dx := -1;
+      msRight: dx := 1;
+      msUp: dy := -1;
+      msDown: dy := 1;
+    End;
+    If (dx <> 0) Or (dy <> 0) Then Begin
+      fPLayer[i].Info.Animation := raWalk;
+      If dx = 1 Then fPLayer[i].Info.Direction := 0;
+      If dy = -1 Then fPLayer[i].Info.Direction := 90;
+      If dx = -1 Then fPLayer[i].Info.Direction := 180;
+      If dy = 1 Then fPLayer[i].Info.Direction := 270;
+    End;
+    d := 0;
+    If (dx <> 0) Or (dy <> 0) Then Begin
+      For n := -1 To 1 Do Begin
+        If n = 0 Then Continue;
+        np := GhostRingToField(cur + n);
+        If ((dx <> 0) And (sign(np.x - p.x) = dx)) Or ((dy <> 0) And (sign(np.y - p.y) = dy)) Then Begin
+          d := n;
+          break;
+        End;
+      End;
+    End;
+    If d <> 0 Then Begin
+      fPLayer[i].GhostDir := d;
+      fPLayer[i].GhostRingPos := fPLayer[i].GhostRingPos + d * GhostSpeed * FrameRate / 1000;
+    End
+    Else If (abs(fPLayer[i].GhostRingPos - round(fPLayer[i].GhostRingPos)) > 0.001) And (fPLayer[i].GhostDir <> 0) Then Begin
+      (*
+       * Ein Geist bleibt nie zwischen zwei Rahmenpositionen stehen,
+       * er läuft in seiner bisherigen Richtung bis zur nächsten weiter und bleibt dort stehen.
+       *)
+      If fPLayer[i].GhostDir > 0 Then Begin
+        target := trunc(fPLayer[i].GhostRingPos) + 1;
+        fPLayer[i].GhostRingPos := min(target, fPLayer[i].GhostRingPos + GhostSpeed * FrameRate / 1000);
+      End
+      Else Begin
+        target := trunc(fPLayer[i].GhostRingPos);
+        fPLayer[i].GhostRingPos := max(target, fPLayer[i].GhostRingPos - GhostSpeed * FrameRate / 1000);
+      End;
+    End
+    Else Begin
+      fPLayer[i].GhostRingPos := round(fPLayer[i].GhostRingPos);
+      fPLayer[i].GhostDir := 0;
+      fPLayer[i].Info.Animation := raStandStill;
+      // Im Stehen schaut der Geist immer ins Feld
+      p := GhostRingToField(round(fPLayer[i].GhostRingPos) Mod GhostRingLength);
+      If p.y = -1 Then fPLayer[i].Info.Direction := 270;
+      If p.y = FieldHeight Then fPLayer[i].Info.Direction := 90;
+      If p.x = -1 Then fPLayer[i].Info.Direction := 0;
+      If p.x = FieldWidth Then fPLayer[i].Info.Direction := 180;
+    End;
+    If fPLayer[i].GhostRingPos < 0 Then fPLayer[i].GhostRingPos := fPLayer[i].GhostRingPos + GhostRingLength;
+    If fPLayer[i].GhostRingPos >= GhostRingLength Then fPLayer[i].GhostRingPos := fPLayer[i].GhostRingPos - GhostRingLength;
+    cur := round(fPLayer[i].GhostRingPos) Mod GhostRingLength;
+    p := GhostRingToField(cur);
+    fPLayer[i].Info.Position := GhostRingToPosition(fPLayer[i].GhostRingPos);
+    (*
+     * Werfen: Von der Rahmenposition p senkrecht ins Feld, immer nur eine Bombe gleichzeitig.
+     * Die Bombe startet auf dem ersten Feld (e) und landet GhostThrowDistance Felder weiter.
+     *)
+    If (fPLayer[i].Action In [aaFirst, aaFirstDouble]) And (Not fPLayer[i].GhostBombActive) And fActualField.BombsEnabled Then Begin
+      dx := 0;
+      dy := 0;
+      If p.y = -1 Then dy := 1;
+      If p.y = FieldHeight Then dy := -1;
+      If p.x = -1 Then dx := 1;
+      If p.x = FieldWidth Then dx := -1;
+      e := point(p.x + dx, p.y + dy);
+      t := point(e.x + GhostThrowDistance * dx, e.y + GhostThrowDistance * dy);
+      If fActualField.AddGhostBomb(i, fPLayer[i].Info.ColorIndex, fModSettings.GhostFlameLen, e, t) Then Begin
+        fPLayer[i].GhostBombActive := true;
+      End;
+    End;
+    fPLayer[i].Action := aaNone;
+  End;
+End;
+
+Procedure TServer.HandleDebugCommand(Const Stream: TStream; UID: integer);
+Var
+  PlayerIndex, EnterID, i: integer;
+  Command: TModTestCommand;
+  s: String;
+Begin
+  EnterID := LogEnter('TServer.HandleDebugCommand');
+  PlayerIndex := -1;
+  Command := mtHurry;
+  Stream.Read(Command, sizeof(Command));
+  Stream.Read(PlayerIndex, sizeof(PlayerIndex));
+  (*
+   * Test Befehle nur, wenn der Server den Mod Test Modus erlaubt und nur vom Master, alles andere wird verworfen
+   *)
+  If Not fModSettings.ModTestMode Then Begin
+    log('Mod test command rejected, mod test mode is disabled (uid: ' + inttostr(UID) + ')', llWarning);
+    LogLeave(EnterID);
+    exit;
+  End;
+  If UID <> fSettings.MasterUid Then Begin
+    log('Mod test command rejected, only the master is allowed (uid: ' + inttostr(UID) + ')', llWarning);
+    LogLeave(EnterID);
+    exit;
+  End;
+  If fpausing Then Begin
+    log('Mod test command rejected, the game is paused', llWarning);
+    LogLeave(EnterID);
+    exit;
+  End;
+  If (fGameState <> gsPlaying) Or (PlayerIndex < 0) Or (PlayerIndex > high(fPLayer)) Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  // Nur der Geist Befehl darf auch auf einen Geist angewendet werden (zurück ins Spiel holen)
+  If ((Not fPLayer[PlayerIndex].Info.Alive) Or (fPLayer[PlayerIndex].Info.Dying)) And
+    (Not ((Command = mtGhost) And fPLayer[PlayerIndex].Info.Ghost)) Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
+  (*
+   * Die Test Befehle prüfen bewusst nicht auf HurryActive o.ä. damit man Randfälle gezielt erzeugen kann
+   *)
+  s := '';
+  Case Command Of
+    mtPositiveDisease: Begin
+        fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.PositiveMinMs + random(fModSettings.PositiveMaxMs - fModSettings.PositiveMinMs + 1));
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'positive disease';
+      End;
+    mtHitMe: Begin
+        If HandlePlayerHit(PlayerIndex) Then Begin
+          s := 'hit, ' + inttostr(fPLayer[PlayerIndex].HitPoints) + ' hit points left';
+        End
+        Else Begin
+          HandlePlaySoundEffect(PlayerIndex, seAtomicDie);
+          fActualField.KillPlayer(fPLayer, PlayerIndex);
+          s := 'hit, player died';
+        End;
+      End;
+    mtGhost: Begin
+        If fPLayer[PlayerIndex].Info.Ghost Then Begin
+          HandleGhostRevive(PlayerIndex);
+          s := 'ghost revived';
+        End
+        Else Begin
+          // Wie ein normaler Tod, nur ohne Todesanimation
+          fPLayer[PlayerIndex].Info.Alive := false;
+          fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, PlayerIndex);
+          MakeGhost(PlayerIndex);
+          s := 'ghost';
+        End;
+      End;
+    mtHurry: Begin
+        If (fPlayingTimedesc = -1000) Or (fPlayingTimedesc > 80000) Then Begin
+          fPlayingTimedesc := 80000; // Ab hier beginnt HurryHandling die Steine zu setzen
+          SendChunk(miShowHurry, Nil, 0);
+        End;
+        s := 'hurry started';
+      End;
+    mtStun: Begin
+        fPLayer[PlayerIndex].StunTimer := max(fPLayer[PlayerIndex].StunTimer, fModSettings.StunMinMs + random(fModSettings.StunMaxMs - fModSettings.StunMinMs + 1));
+        s := 'stun';
+      End;
+    mtAllItems: Begin
+        ApplyStartItems(fPLayer[PlayerIndex].Powers, 'kick,punch,grab,bomb*3,flame*3');
+        If fModSettings.FlameThrower Then fPLayer[PlayerIndex].FlameThrowerFuel := fPLayer[PlayerIndex].FlameThrowerFuel + fModSettings.FlameThrowerFuelMs;
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'all items';
+      End;
+    mtMaxHitPoints: Begin
+        fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].MaxHitPoints;
+        If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
+        s := 'hit points: ' + inttostr(fPLayer[PlayerIndex].HitPoints);
+      End;
+    mtBrickWalk: Begin
+        fPLayer[PlayerIndex].BrickWalkTimer := max(fPLayer[PlayerIndex].BrickWalkTimer, fModSettings.BrickWalkMinMs + random(fModSettings.BrickWalkMaxMs - fModSettings.BrickWalkMinMs + 1));
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'walk through bricks';
+      End;
+    mtFlash: Begin
+        SendFlash(PlayerIndex, fModSettings.FlashDiseaseIntensity, fModSettings.FlashDiseaseMs, fModSettings.FlashDiseaseFadeMs);
+        s := 'white screen';
+      End;
+    mtSpawnItems: Begin
+        (*
+         * Je 2 Items der neuen Mods: weiße Bombe, Flammenwerfer, Box Item (Boxhandschuh) und Krankheit (positive Krankheit, durch Steine laufen, weißer Bildschirm)
+         *)
+        For i := 1 To 2 Do Begin
+          fActualField.SpawnTestItem(fPLayer, puExtraBomb, true, false);
+          fActualField.SpawnTestItem(fPLayer, puLongerFlameLength, false, true);
+          fActualField.SpawnTestItem(fPLayer, puCanPunch, false, false);
+          fActualField.SpawnTestItem(fPLayer, puDisease, false, false);
+        End;
+        s := 'mod items spawned';
+      End;
+    mtWhiteBomb: Begin
+        fPLayer[PlayerIndex].WhiteBombs := fPLayer[PlayerIndex].WhiteBombs + 1;
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'white bomb';
+      End;
+  End;
+  log('Mod test command for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
+  LogLeave(EnterID);
+End;
+
 Procedure TServer.HandleSwitchToWaitForPlayersToConnect;
 Var
   cnt, i, EnterID: Integer;
@@ -1466,6 +2076,7 @@ Begin
           End;
         End;
       akSecondAction: Begin
+          fPLayer[Player].FlameThrowerFiring := true; // Mod Flammenwerfer, so lange bis die Taste los gelassen wird
           If (Not (dNoBombs In fPLayer[Player].Disease)) Then Begin
             If Double Then Begin
               fPLayer[Player].Action := aaSecondDouble;
@@ -1478,8 +2089,14 @@ Begin
     End;
   End
   Else Begin
-    // Nur die "Cursor" werden false gemacht -> immer Stillstand
-    fPLayer[Player].MoveState := msStill;
+    If key = akSecondAction Then Begin
+      // Mod Flammenwerfer: Der Client meldet das Loslassen der zweiten Aktion, das darf die Bewegung nicht stoppen
+      fPLayer[Player].FlameThrowerFiring := false;
+    End
+    Else Begin
+      // Nur die "Cursor" werden false gemacht -> immer Stillstand
+      fPLayer[Player].MoveState := msStill;
+    End;
   End;
 End;
 
@@ -1535,6 +2152,7 @@ Begin
         End;
       End;
       fPLayer[i].UserName := '';
+      fPLayer[i].FlameThrowerFiring := false; // Mod Flammenwerfer, das Loslassen der Taste kommt nicht mehr
       If fPLayer[i].Info.Alive Then Begin // Sollte der Spieler noch am Leben sein -> stirbt er evtl jetzt
         fPLayer[i].Info.Alive := fPLayer[i].UID <> NoPlayer;
       End;
@@ -1542,6 +2160,7 @@ Begin
         fPLayer[i].Kills := 0;
         fPLayer[i].Score := 0;
       End;
+      If fPLayer[i].UID = NoPlayer Then fPLayer[i].Info.Ghost := false; // Ein Geist ohne Spieler verschwindet
       // TODO: Alles andere des Spielers auch noch löschen ?
     End;
     // Zählen der Noch aktiven Spieler
@@ -1769,8 +2388,18 @@ Var
   aiInfo: TaiInfo;
   AiCommand: TAiCommand;
   OldCounter: UInt16;
+  WillBeGhost: Boolean;
+  Stunned: Boolean;
+  StunMoveState: TMoveState;
+  OldPosition: TVector2;
 Begin
   HandleStatisticCallback(ssFramesRendered);
+  // Die Teleporter am Rand (Mod) erscheinen erst nach TeleportersActiveSec
+  fRoundTimeMs := min(fRoundTimeMs + FrameRate, high(Integer) - FrameRate);
+  fActualField.UpdatePortals(fRoundTimeMs >= fModSettings.TeleportersActiveSec * 1000);
+  // Die offenen Grenzen (Mod) öffnen erst nach OpenBordersActiveSec, damit keiner gleich aus seiner Startecke flieht
+  fActualField.UpdateOpenBorders(fRoundTimeMs >= fModSettings.OpenBordersActiveSec * 1000,
+    fRoundTimeMs >= fModSettings.OpenBordersActiveSec * 1000 - OpenBordersWarnTime);
   If fPlayingTimedesc <> -1000 Then Begin
     fPlayingTimedesc := fPlayingTimedesc - FrameRate;
   End;
@@ -1822,10 +2451,40 @@ Begin
           End;
         End;
       End;
+      (*
+       * Ein gestunnter Spieler steht still, sein MoveState wird aber gemerkt,
+       * damit er nach dem Stun ohne erneuten Tastendruck weiter laufen kann.
+       *)
+      Stunned := fPLayer[i].StunTimer > 0;
+      If Stunned Then Begin
+        fPLayer[i].StunTimer := max(0, fPLayer[i].StunTimer - FrameRate);
+        StunMoveState := fPLayer[i].MoveState;
+        fPLayer[i].MoveState := msStill;
+      End;
+      OldPosition := fPLayer[i].Info.Position;
       If fActualField.HandleMovePlayer(fPLayer, i, fSettings.ConveyorSpeed) Then Begin
         // im Hurry mode kann der Spieler sterben, wenn ein Solid Brick an seiner Koordinate "entsteht"
         fActualField.KillPlayer(fPLayer, i);
       End;
+      // Handschuh beim Start: Mit dem ersten Schritt ist er weg, gegen eine Wand drücken dreht nur (damit kann man zielen)
+      If (fPLayer[i].Info.Position.x <> OldPosition.x) Or (fPLayer[i].Info.Position.y <> OldPosition.y) Then Begin
+        fPLayer[i].StartGlove := false;
+      End;
+      If Stunned Then Begin
+        fPLayer[i].MoveState := StunMoveState;
+      End;
+      (*
+       * Die Unverwundbarkeit läuft ab, mit Beginn des Hurry ist sie sofort vorbei
+       *)
+      If fActualField.HurryActive() Then Begin
+        fPLayer[i].InvulnTimer := 0;
+        fPLayer[i].BrickWalkTimer := 0; // Wer noch in einem Block steht, kann ihn noch verlassen
+      End
+      Else Begin
+        fPLayer[i].InvulnTimer := max(0, fPLayer[i].InvulnTimer - FrameRate);
+        fPLayer[i].BrickWalkTimer := max(0, fPLayer[i].BrickWalkTimer - FrameRate);
+      End;
+      fPLayer[i].PunchStunCooldown := max(0, fPLayer[i].PunchStunCooldown - FrameRate); // Auch im Hurry
 
       (*
        * Das "Krank" sein ;)
@@ -1841,6 +2500,18 @@ Begin
             If fPLayer[j].Disease = [] Then Begin // Ist Spieler j aber auch schon krank dann zählt es nicht, denn dann weis keiner so genau wer hier wen ansteckt..
               fPlayerStatistics.UpdatePlayerID(i, pssDiseaseSpread);
               fPlayerStatistics.UpdatePlayerID(j, pssDiseased);
+            End;
+            (*
+             * Wer dSuperSlow neu bekommt, wird wie beim Aufnehmen verlangsamt, sonst wäre BeforeSlowDiseaseSpeed
+             * nicht gesetzt und der Spieler nach dem Heilen mit Geschwindigkeit 0 eingefroren.
+             *)
+            If (dSuperSlow In fPLayer[i].Disease) And (Not (dSuperSlow In fPLayer[j].Disease)) Then Begin
+              fPLayer[j].BeforeSlowDiseaseSpeed := fPLayer[j].Powers.Speed;
+              fPLayer[j].Powers.Speed := AtomicSlowSpeed / (AtomicSpeedChange * AtomicSpeedChange);
+            End;
+            If (dSuperSlow In fPLayer[j].Disease) And (Not (dSuperSlow In fPLayer[i].Disease)) Then Begin
+              fPLayer[i].BeforeSlowDiseaseSpeed := fPLayer[i].Powers.Speed;
+              fPLayer[i].Powers.Speed := AtomicSlowSpeed / (AtomicSpeedChange * AtomicSpeedChange);
             End;
             // Die Krankheiten vereinen sich zu was auch immer beide haben -> j
             fPLayer[j].Disease := fPLayer[i].Disease + fPLayer[j].Disease;
@@ -1867,12 +2538,15 @@ Begin
     If fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) Then Begin
       If dEbola In fPLayer[i].Disease Then fPLayer[i].Action := aaFirst; // Wenn der Spieler "Ebola" hat, legt er wann immer möglich eine Bombe
       // TODO: Feature oder Bug, wenn der Spieler Ebola hat und dNoBombs wird er hier verschont ...
+      If fPLayer[i].StunTimer > 0 Then fPLayer[i].Action := aaNone; // Gestunnt -> keine Aktionen, auch kein Ebola
       If (fPLayer[i].Action <> aaNone) And (Not (dNoBombs In fPLayer[i].Disease)) Then Begin
         fActualField.HandleActionPlayer(fPLayer[i], i);
         fPLayer[i].Action := aaNone;
       End;
     End;
   End;
+  HandleFlameThrowers();
+  HandleGhosts();
   // Bomben Handeln
   // TODO: Magic Numbers -> entfernen klären ...
   fActualField.HandleBombs(fPLayer, (fPlayingTimedesc <= 80000) And (fPlayingTimedesc <> -1000), fSettings.ConveyorSpeed);
@@ -1899,10 +2573,16 @@ Begin
         fActualField.TelePortPlayer(fPLayer[i]);
       End;
       If fPLayer[i].Info.Dying Then Begin
+        // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt)
+        WillBeGhost := fModSettings.Ghosts And (Not fActualField.HurryActive()) And
+          ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount));
+        // Wie der Geist danach (siehe unten) zählt beim Testen der Geister zu zweit schon das Sterben, sonst wären die Bomben für den Rest der Runde aus
+        If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And WillBeGhost Then inc(alive[fPLayer[i].Team]);
         If fPLayer[i].Info.Counter > AtomicDietimeout Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fPLayer[i].Info.Dying := false;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
+          If WillBeGhost Then MakeGhost(i);
         End;
       End
       Else Begin
@@ -1911,6 +2591,7 @@ Begin
     End
     Else Begin
       fPLayer[i].Info.Dying := false;
+      If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And fPLayer[i].Info.Ghost Then inc(alive[fPLayer[i].Team]); // siehe EndGameCheck
     End;
   End;
   If fSettings.TeamPlay Then Begin
@@ -1941,6 +2622,15 @@ Begin
   m.write(i, sizeof(i));
   // 1. Alles was die Spieler angeht
   For i := 0 To high(fplayer) Do Begin
+    // Die Restzeiten werden nur für die Zustandsanzeige im Mod Test Modus übertragen
+    fPLayer[i].Info.TestInvulnTime := 0;
+    fPLayer[i].Info.TestStunTime := 0;
+    fPLayer[i].Info.TestBrickWalkTime := 0;
+    If fModSettings.ModTestMode Then Begin
+      fPLayer[i].Info.TestInvulnTime := min(high(uint16), fPLayer[i].InvulnTimer Div 100);
+      fPLayer[i].Info.TestStunTime := min(high(uint16), fPLayer[i].StunTimer Div 100);
+      fPLayer[i].Info.TestBrickWalkTime := min(high(uint16), fPLayer[i].BrickWalkTimer Div 100);
+    End;
     (*
      * Der Spieler langweilt sich und wird nicht zufällig gerade gegrillt
      *)
@@ -1952,9 +2642,34 @@ Begin
       If fPLayer[i].UID > 0 Then HandlePlaySoundEffect(i, seZen); // Nur "echte" spieler kriegen den Ton
     End;
     (*
+     * Ein gestunnter Spieler blinkt schnell zwischen seiner Farbe und schwarz (bzw. rot, wenn er selbst schwarz ist)
+     * Ein unverwundbarer Spieler blinkt langsamer zwischen seiner Farbe und weiß (bzw. rot, wenn er selbst weiß ist)
+     * beides hat Vorrang vor dem Blinken der Krankheit.
+     *)
+    If (fPLayer[i].StunTimer > 0) And (Not fPLayer[i].Info.Dying) And ((fPLayer[i].StunTimer Div AtomicStunColorChangeTime) Mod 2 = 0) Then Begin
+      DiseasedInfo := fPLayer[i].Info;
+      If DiseasedInfo.ColorIndex = BlackColorIndex Then Begin
+        DiseasedInfo.ColorIndex := RedColorIndex;
+      End
+      Else Begin
+        DiseasedInfo.ColorIndex := BlackColorIndex;
+      End;
+      m.Write(DiseasedInfo, sizeof(DiseasedInfo));
+    End
+    Else If (fPLayer[i].InvulnTimer > 0) And (Not fPLayer[i].Info.Dying) And ((fPLayer[i].InvulnTimer Div AtomicInvulnColorChangeTime) Mod 2 = 0) Then Begin
+      DiseasedInfo := fPLayer[i].Info;
+      If DiseasedInfo.ColorIndex = WhiteColorIndex Then Begin
+        DiseasedInfo.ColorIndex := RedColorIndex;
+      End
+      Else Begin
+        DiseasedInfo.ColorIndex := WhiteColorIndex;
+      End;
+      m.Write(DiseasedInfo, sizeof(DiseasedInfo));
+    End
+    (*
      * Wenn der Spieler eine Krankheit hat, dann wechselt seine Farbe alle AtomicDiseaseColorChangeTime
      *)
-    If (fPLayer[i].Disease <> []) And ((fPLayer[i].DiseaseCounter Mod AtomicDiseaseColorChangePeriodTime) < AtomicDiseaseColorChangePeriodTime - AtomicDiseaseColorChangePeriodRelaxTime) Then Begin
+    Else If (fPLayer[i].Disease <> []) And ((fPLayer[i].DiseaseCounter Mod AtomicDiseaseColorChangePeriodTime) < AtomicDiseaseColorChangePeriodTime - AtomicDiseaseColorChangePeriodRelaxTime) Then Begin
       DiseasedInfo := fPLayer[i].Info;
       DiseasedInfo.ColorIndex := (fPLayer[i].DiseaseCounter Div AtomicDiseaseColorChangeTime) Mod length(PlayerColors);
       m.Write(DiseasedInfo, sizeof(DiseasedInfo));
@@ -2024,7 +2739,8 @@ Begin
   cntindex := -1;
   SoundSends := Nil;
   For i := 0 To high(fPLayer) Do Begin
-    If fPLayer[i].Info.Alive Then Begin
+    // Zum Testen der Geister zu zweit (Debug) zählen Geister als lebendig, sonst wäre die Runde sofort vorbei
+    If fPLayer[i].Info.Alive Or (fModSettings.ModTestMode And fModSettings.GhostsKeepRound And fPLayer[i].Info.Ghost) Then Begin
       inc(cnt);
       cntindex := i;
       If fPLayer[i].Team = TeamIndexWhite Then Begin
@@ -2336,6 +3052,95 @@ Begin
    *)
   FillChar(fStatistik.LastRun, sizeof(fStatistik.LastRun), 0);
   ini.free;
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.LoadModSettings;
+Var
+  EnterID: Integer;
+  s: String;
+Begin
+  EnterID := LogEnter('TServer.LoadModSettings');
+  // Defaults, Grenzen und das Anlegen fehlender Schlüssel teilen sich Server und Launcher (siehe uatomic_common)
+  LoadModSettingsFromFile(GetAtomicServerIniFile(), fModSettings);
+  s := ActiveModsText();
+  If s <> '' Then log(s, llInfo);
+  LogLeave(EnterID);
+End;
+
+Function TServer.ActiveModsText: String;
+Begin
+  result := '';
+  If fModSettings.StunOnBombLanding Then result := result + ', stun on bomb landing';
+  If fModSettings.PunchStun Then result := result + ', boxing glove';
+  If fModSettings.PositiveDisease Then result := result + ', positive disease';
+  If fModSettings.BrickWalk Then result := result + ', walk through bricks';
+  If fModSettings.FlashDisease Then result := result + ', white screen';
+  If fModSettings.WhiteBomb Then result := result + ', white bomb';
+  If fModSettings.FlameThrower Then result := result + ', flamethrower';
+  If fModSettings.HitPoints Then result := result + ', hit points';
+  If fModSettings.Ghosts Then result := result + ', ghosts';
+  If fModSettings.GloveAtStart Then result := result + ', glove at start';
+  If fModSettings.OpenBorders Then result := result + ', open borders';
+  If fModSettings.Teleporters Then result := result + ', teleporters';
+  If fModSettings.ModTestMode Then result := result + ', mod test mode';
+  If result <> '' Then Begin
+    result := 'Active mods: ' + copy(result, 3, length(result));
+  End;
+End;
+
+Procedure TServer.ApplyStartItems(Var Powers: TAtomicPowers; Items: String);
+Var
+  sl: TStringList;
+  i, j, cnt: integer;
+  item: String;
+  EnterID: integer;
+Begin
+  EnterID := LogEnter('TServer.ApplyStartItems');
+  (*
+   * Format: "kick,punch,grab,bomb*3" -> optional mit *n wie oft das Item genommen wird.
+   * "trigger" bezieht sich auf die bis dahin vorhandenen Bomben, sollte also hinter "bomb" stehen.
+   *)
+  sl := TStringList.Create;
+  sl.Delimiter := ',';
+  sl.StrictDelimiter := true;
+  sl.DelimitedText := Items;
+  For i := 0 To sl.Count - 1 Do Begin
+    item := lowercase(trim(sl[i]));
+    cnt := 1;
+    j := pos('*', item);
+    If j > 0 Then Begin
+      cnt := max(0, StrToIntDef(trim(copy(item, j + 1, length(item))), 1));
+      item := trim(copy(item, 1, j - 1));
+    End;
+    Case item Of
+      '': Begin // Nix zu tun
+        End;
+      'bomb': Begin
+          Powers.AvailableBombs := Powers.AvailableBombs + cnt;
+          Powers.OverAllBombs := Powers.OverAllBombs + cnt;
+        End;
+      'flame': Powers.FlameLen := min(99, Powers.FlameLen + cnt);
+      'goldflame': Powers.FlameLen := 99;
+      'speed': Powers.Speed := min(Powers.Speed * power(AtomicSpeedChange, cnt), AtomicMaxSpeed);
+      'kick': Powers.CanKickBombs := true;
+      'punch': Powers.CanPunchBombs := true;
+      'grab': Begin
+          Powers.CanGrabBombs := true;
+          Powers.CanSpooger := false;
+        End;
+      'spooger': Begin
+          Powers.CanSpooger := true;
+          Powers.CanGrabBombs := false;
+        End;
+      'jelly': Powers.JellyBombs := true;
+      'trigger': Powers.TriggerBomb := Powers.OverAllBombs;
+    Else Begin
+        log('atomic_server.ini: unknown StartItem "' + item + '"', llWarning);
+      End;
+    End;
+  End;
+  sl.free;
   LogLeave(EnterID);
 End;
 

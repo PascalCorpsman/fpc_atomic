@@ -45,6 +45,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="ulocales.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="unit2.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Form2"/>
@@ -59,6 +63,22 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit3"/>
+      </Unit>
+      <Unit>
+        <Filename Value="unit4.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form4"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="Unit4"/>
+      </Unit>
+      <Unit>
+        <Filename Value="unit5.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form5"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="Unit5"/>
       </Unit>
       <Unit>
         <Filename Value="../../Sample/DatenSteuerung/uJSON.pas"/>

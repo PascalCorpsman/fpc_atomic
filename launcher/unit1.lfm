@@ -1,180 +1,351 @@
 object Form1: TForm1
   Left = 347
-  Height = 492
+  Height = 505
   Top = 107
   Width = 464
   Caption = 'Form1'
-  ClientHeight = 492
+  ClientHeight = 505
   ClientWidth = 464
+  BorderIcons = [biSystemMenu, biMinimize]
+  BorderStyle = bsSingle
+  KeyPreview = True
   Position = poScreenCenter
+  ShowHint = True
   LCLVersion = '5.99.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
+  OnKeyDown = FormKeyDown
   object Image1: TImage
     Left = 8
     Height = 288
-    Top = 64
+    Top = 8
     Width = 192
     Center = True
     Stretch = True
   end
-  object Button1: TButton
-    Left = 208
-    Height = 25
-    Top = 8
-    Width = 248
-    Caption = 'Check for updates'
-    TabOrder = 0
-    OnClick = Button1Click
-  end
   object GroupBox1: TGroupBox
     Left = 208
-    Height = 160
-    Top = 73
+    Height = 104
+    Top = 8
     Width = 248
-    Caption = ' Quicksetup '
-    ClientHeight = 142
+    Caption = ' Player '
+    ClientHeight = 86
     ClientWidth = 246
-    TabOrder = 1
-    object CheckBox1: TCheckBox
-      Left = 8
-      Height = 21
-      Top = 6
-      Width = 86
-      Caption = 'Show FPS'
-      TabOrder = 0
-    end
-    object CheckBox2: TCheckBox
-      Left = 8
-      Height = 21
-      Top = 30
-      Width = 88
-      Caption = 'Fullscreen'
-      TabOrder = 1
-    end
+    TabOrder = 0
     object Label1: TLabel
       Left = 8
-      Height = 16
-      Top = 87
+      Height = 15
+      Top = 8
       Width = 66
-      Caption = 'NodeName'
+      Caption = '&Player name'
+      FocusControl = Edit1
     end
     object Edit1: TEdit
-      Left = 136
-      Height = 30
-      Top = 78
-      Width = 104
-      TabOrder = 2
+      Left = 88
+      Height = 23
+      Top = 4
+      Width = 150
+      TabOrder = 0
       Text = 'Edit1'
+      OnChange = Edit1Change
     end
-    object CheckBox4: TCheckBox
-      Left = 8
-      Height = 21
-      Top = 54
-      Width = 100
-      Caption = 'Play sounds'
-      TabOrder = 3
+    object Label4: TLabel
+      Left = 88
+      Height = 15
+      Top = 30
+      Width = 150
+      AutoSize = False
+      Caption = 'Label4'
+      ParentFont = False
     end
     object Button5: TButton
       Left = 8
       Height = 25
-      Top = 109
-      Width = 232
-      Caption = 'Key assignment'
-      TabOrder = 4
+      Hint = 'Choose the keys or a gamepad for the 1st and 2nd player on this PC.'
+      Top = 52
+      Width = 230
+      Caption = '&Key assignment...'
+      TabOrder = 1
       OnClick = Button5Click
     end
-    object CheckBox5: TCheckBox
-      Left = 136
-      Height = 21
-      Top = 30
-      Width = 71
-      Caption = 'Stretch'
-      TabOrder = 5
+  end
+  object GroupBox3: TGroupBox
+    Left = 208
+    Height = 72
+    Top = 118
+    Width = 248
+    Caption = ' Display && sound '
+    ClientHeight = 54
+    ClientWidth = 246
+    TabOrder = 1
+    object CheckBox2: TCheckBox
+      Left = 8
+      Height = 19
+      Hint = 'Start the game in fullscreen mode.'
+      Top = 4
+      Width = 88
+      Caption = '&Fullscreen'
+      TabOrder = 0
     end
-  end
-  object Button2: TButton
-    Left = 8
-    Height = 50
-    Top = 360
-    Width = 448
-    Caption = 'Launch FPC Atomic'
-    TabOrder = 2
-    OnClick = Button2Click
-  end
-  object Button3: TButton
-    Left = 8
-    Height = 25
-    Top = 456
-    Width = 448
-    Caption = 'Close'
-    TabOrder = 3
-    OnClick = Button3Click
+    object CheckBox4: TCheckBox
+      Left = 124
+      Height = 19
+      Hint = 'Play the music. The sound effects can be switched off in Game...'
+      Top = 4
+      Width = 100
+      Caption = 'Play mu&sic'
+      TabOrder = 1
+    end
+    object CheckBox5: TCheckBox
+      Left = 8
+      Height = 19
+      Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
+      Top = 28
+      Width = 88
+      Caption = 'Fill &window'
+      TabOrder = 2
+    end
+    object CheckBox1: TCheckBox
+      Left = 124
+      Height = 19
+      Hint = 'Show the frames per second in the game.'
+      Top = 28
+      Width = 86
+      Caption = 'S&how FPS'
+      TabOrder = 3
+    end
   end
   object GroupBox2: TGroupBox
     Left = 208
-    Height = 112
-    Top = 240
+    Height = 104
+    Top = 196
     Width = 248
-    Caption = ' WAN '
-    ClientHeight = 94
+    Caption = ' Internet game (optional) '
+    ClientHeight = 86
     ClientWidth = 246
-    TabOrder = 4
+    TabOrder = 2
     object CheckBox3: TCheckBox
       Left = 8
-      Height = 21
+      Height = 19
+      Hint = 'Join a game over the internet: the game connects to the router IP and port below. Not needed in the local network.'
       Top = 2
-      Width = 180
-      Caption = 'connect through internet'
+      Width = 160
+      Caption = '&Join through a router'
       TabOrder = 0
-    end
-    object Edit2: TEdit
-      Left = 136
-      Height = 30
-      Top = 26
-      Width = 104
-      TabOrder = 1
-      Text = 'Edit2'
-    end
-    object Edit3: TEdit
-      Left = 136
-      Height = 30
-      Top = 58
-      Width = 104
-      TabOrder = 2
-      Text = 'Edit3'
+      OnChange = CheckBox3Change
     end
     object Label2: TLabel
       Left = 8
-      Height = 16
-      Top = 36
-      Width = 57
-      Caption = 'Router IP:'
+      Height = 15
+      Top = 32
+      Width = 50
+      Caption = 'Router &IP'
+      FocusControl = Edit2
+    end
+    object Edit2: TEdit
+      Left = 88
+      Height = 23
+      Hint = 'IP address of the router of the player who hosts the game.'
+      Top = 28
+      Width = 150
+      TabOrder = 1
+      Text = 'Edit2'
     end
     object Label3: TLabel
       Left = 8
-      Height = 16
-      Top = 68
-      Width = 69
-      Caption = 'Router Port'
+      Height = 15
+      Top = 60
+      Width = 22
+      Caption = 'Po&rt'
+      FocusControl = Edit3
+    end
+    object Edit3: TEdit
+      Left = 88
+      Height = 23
+      Hint = 'Port the router forwards to the server of the host (default 5521).'
+      Top = 56
+      Width = 150
+      TabOrder = 2
+      Text = 'Edit3'
     end
   end
-  object Button4: TButton
-    Left = 208
-    Height = 25
-    Top = 40
-    Width = 248
-    Caption = 'Run cd data extractor'
-    TabOrder = 5
-    OnClick = Button4Click
+  object Panel1: TPanel
+    Cursor = crHandPoint
+    Left = 8
+    Height = 50
+    Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
+    Top = 308
+    Width = 448
+    BevelOuter = bvNone
+    ClientHeight = 50
+    ClientWidth = 448
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 3
+    TabStop = True
+    OnClick = Button2Click
+    OnMouseEnter = Panel1MouseEnter
+    OnMouseLeave = Panel1MouseEnter
+    OnMouseMove = Panel1MouseMove
+    object Label7: TLabel
+      Cursor = crHandPoint
+      Left = 0
+      Height = 50
+      Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
+      Top = 0
+      Width = 448
+      Align = alClient
+      Alignment = taCenter
+      AutoSize = False
+      Caption = '&Launch FPC Atomic'
+      Font.Height = -16
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentFont = False
+      Transparent = True
+      OnClick = Button2Click
+      OnMouseEnter = Panel1MouseEnter
+      OnMouseLeave = Panel1MouseEnter
+    OnMouseMove = Panel1MouseMove
+    end
   end
-  object Button6: TButton
-    Left = 208
-    Height = 25
-    Top = 416
-    Width = 248
-    Caption = 'Open config folder'
+  object Label5: TLabel
+    Left = 10
+    Height = 15
+    Top = 362
+    Width = 220
+    AutoSize = False
+    Caption = 'Label5'
+    ParentFont = False
+  end
+  object Label6: TLabel
+    Left = 234
+    Height = 15
+    Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
+    Top = 362
+    Width = 220
+    Alignment = taRightJustify
+    AutoSize = False
+    Caption = 'Label6'
+  end
+  object CheckBox6: TCheckBox
+    Left = 10
+    Height = 19
+    Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
+    Top = 382
+    Width = 260
+    Caption = 'Show the launcher again &after the game'
     TabOrder = 6
-    OnClick = Button6Click
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 500
+    OnTimer = Timer1Timer
+    Left = 400
+    Top = 16
+  end
+  object GroupBox4: TGroupBox
+    Left = 8
+    Height = 54
+    Top = 406
+    Width = 448
+    Caption = ' Tools '
+    ClientHeight = 36
+    ClientWidth = 446
+    TabOrder = 4
+    object Button7: TButton
+      Left = 8
+      Height = 25
+      Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
+      Top = 2
+      Width = 81
+      Caption = '&Mods...'
+      TabOrder = 0
+      OnClick = Button7Click
+    end
+    object Button8: TButton
+      Left = 95
+      Height = 25
+      Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
+      Top = 2
+      Width = 81
+      Caption = '&Game...'
+      TabOrder = 4
+      OnClick = Button8Click
+    end
+    object Button1: TButton
+      Left = 182
+      Height = 25
+      Hint = 'Check online for a new version and download it.'
+      Top = 2
+      Width = 81
+      Caption = '&Updates...'
+      TabOrder = 1
+      OnClick = Button1Click
+    end
+    object Button4: TButton
+      Left = 269
+      Height = 25
+      Hint = 'Extract the game data from the original Atomic Bomberman CD.'
+      Top = 2
+      Width = 81
+      Caption = 'CD e&xtractor...'
+      TabOrder = 2
+      OnClick = Button4Click
+    end
+    object Button6: TButton
+      Left = 356
+      Height = 25
+      Hint = 'Open the folder with the settings, the logs and atomic_server.ini.'
+      Top = 2
+      Width = 81
+      Caption = '&Config folder'
+      TabOrder = 3
+      OnClick = Button6Click
+    end
+  end
+  object Label8: TLabel
+    Cursor = crHandPoint
+    Left = 10
+    Height = 15
+    Hint = 'Open the game manual (MANUAL.md).'
+    Top = 475
+    Caption = 'Manual'
+    Font.Color = clBlue
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = Label8Click
+  end
+  object Button3: TButton
+    Left = 366
+    Height = 25
+    Top = 470
+    Width = 90
+    Cancel = True
+    Caption = 'Cl&ose'
+    TabOrder = 5
+    OnClick = Button3Click
+  end
+  object ComboBox1: TComboBox
+    AnchorSideRight.Control = Button3
+    Left = 246
+    Height = 23
+    Hint = 'The language of the launcher.'
+    Top = 471
+    Width = 110
+    Anchors = [akTop, akRight]
+    BorderSpacing.Right = 10
+    ItemHeight = 15
+    Items.Strings = (
+      'English'
+      'Deutsch'
+      'Français'
+      'Español'
+    )
+    OnChange = ComboBox1Change
+    ParentShowHint = False
+    ShowHint = True
+    Style = csDropDownList
+    TabOrder = 6
   end
 end

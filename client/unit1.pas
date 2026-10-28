@@ -141,9 +141,7 @@ Uses lazfileutils, LazUTF8, LCLType
   , bass
   //  , unit18 // Der Fortschrittsbalken während des Updates
   , uatomicfont
-{$IFDEF AUTOMODE}
-  , uscreens
-{$ENDIF}
+  , uscreens // sHost / sJoinNetwork für die Parameter -host / -join (und den AUTOMODE)
   , usdl_input
   , uopengl_legacychecker
   , uopengl_shaderprimitives
@@ -476,6 +474,7 @@ Procedure TForm1.OnIdle(Sender: TObject; Var Done: Boolean);
 Var
   i, port: Integer;
   msg, ip: String;
+  host, join: Boolean;
 Begin
 {$IFDEF AUTOMODE}
   Case AutomodeData.State Of
@@ -492,7 +491,8 @@ Begin
       End;
   End;
 {$ENDIF}
-  If Not ConnectParamsHandled Then Begin
+  // Erst wenn das Spiel fertig initialisiert ist, vorher würde SwitchToScreen nichts tun bzw. wieder ins Hauptmenü wechseln
+  If (Not ConnectParamsHandled) And GameInitialized Then Begin
     ConnectParamsHandled := true;
     (*
      * Im Falle, dass ein Spieler übers internet beitreten will, geht das typische UDP Suchen nicht
@@ -500,6 +500,8 @@ Begin
      *)
     ip := '';
     port := 0;
+    host := false;
+    join := false;
     For i := 1 To ParamCount Do Begin
       If ParamStr(i) = '-ip' Then Begin
         ip := ParamStr(i + 1);
@@ -507,8 +509,22 @@ Begin
       If ParamStr(i) = '-port' Then Begin
         port := strtointdef(ParamStr(i + 1), 0);
       End;
+      // -host: sofort ein Netzwerkspiel hosten, wie der Menüpunkt "Host" (Launcher: Strg + Launch)
+      If lowercase(ParamStr(i)) = '-host' Then Begin
+        host := true;
+      End;
+      // -join: sofort einem Netzwerkspiel beitreten, wie der Menüpunkt "Join network game" (Launcher: Shift + Launch)
+      If lowercase(ParamStr(i)) = '-join' Then Begin
+        join := true;
+      End;
     End;
-    If (ip <> '') And (port > 0) Then Begin
+    If host Then Begin
+      Game.SwitchToScreen(sHost);
+    End
+    Else If join Then Begin
+      Game.SwitchToScreen(sJoinNetwork);
+    End
+    Else If (ip <> '') And (port > 0) Then Begin
       Game.JoinViaParams(ip, port);
     End;
   End;
@@ -561,6 +577,7 @@ Begin
   Game.Settings.PlayTime := IniPropStorage1.ReadInteger('PlayTime', 2 * 60 + 30);
   Game.Settings.LostPlayersRevertToAI := IniPropStorage1.ReadBoolean('LostPlayersRevertToAI', false);
   Game.Settings.PlaySounds := IniPropStorage1.ReadBoolean('PlaySounds', true);
+  Game.Settings.PlaySoundEffects := IniPropStorage1.ReadBoolean('PlaySoundEffects', true);
   Game.Settings.Keys[ks0] := AtomicDefaultKeys(ks0);
   Game.Settings.Keys[ks0].UseSDL2 := IniPropStorage1.ReadBoolean('UseSDL', Game.Settings.Keys[ks0].UseSDL2);
   Game.Settings.Keys[ks0].KeyUp := IniPropStorage1.ReadInteger('KeyUp', Game.Settings.Keys[ks0].KeyUp);
@@ -610,7 +627,7 @@ Begin
   Game.Settings.ShowFPS := IniPropStorage1.ReadBoolean('ShowFPS', false);
   Game.Settings.CheckForUpdates := IniPropStorage1.ReadBoolean('CheckForUpdates', true);
   Game.Settings.LastPlayedField := IniPropStorage1.ReadString('LastPlayedField', '');
-  Game.Settings.LastPlayedFieldHash := StrToInt64Def(IniPropStorage1.ReadString('LastPlayedFieldHash', ''), 0);
+  Game.Settings.LastPlayedFieldHash := StrToQWordDef(IniPropStorage1.ReadString('LastPlayedFieldHash', ''), 0); // Wird vorzeichenlos gespeichert, StrToInt64Def lieferte für die Hälfte der Karten 0
   Game.Settings.LastWinsToWinMatch := IniPropStorage1.ReadInteger('LastWinsToWinMatch', 3);
 
   Game.Settings.Port := IniPropStorage1.ReadInteger('Port', TCPDefaultPort);
@@ -657,6 +674,7 @@ Begin
   IniPropStorage1.WriteInteger('PlayTime', Game.Settings.PlayTime);
   IniPropStorage1.WriteBoolean('LostPlayersRevertToAI', Game.Settings.LostPlayersRevertToAI);
   IniPropStorage1.WriteBoolean('PlaySounds', Game.Settings.PlaySounds);
+  IniPropStorage1.WriteBoolean('PlaySoundEffects', Game.Settings.PlaySoundEffects);
   IniPropStorage1.WriteInteger('KeyUp', Game.Settings.Keys[ks0].KeyUp);
   IniPropStorage1.WriteInteger('KeyDown', Game.Settings.Keys[ks0].KeyDown);
   IniPropStorage1.WriteInteger('KeyLeft', Game.Settings.Keys[ks0].KeyLeft);

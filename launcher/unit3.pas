@@ -71,7 +71,7 @@ Var
 
 Implementation
 
-Uses lazfileutils, md5, Zipper, FileUtil, process, UTF8Process, LCLType, Unit1, usynapsedownloader, uatomic_global;
+Uses lazfileutils, md5, Zipper, FileUtil, process, UTF8Process, LCLType, Unit1, usynapsedownloader, uatomic_global, ulocales;
 
 {$R *.lfm}
 
@@ -319,7 +319,7 @@ Var
 Begin
   // Download and Update
   If GetFilesToDLCount() = 0 Then Begin
-    showmessage('Nothing for download selected.');
+    showmessage(Tr('Nothing for download selected.'));
     exit;
   End;
   b := false;
@@ -332,7 +332,7 @@ Begin
     End;
   End;
   If b And (Not fforce) Then Begin
-    If id_no = Application.MessageBox('Zip files are merged without checks, do you really want to continue ?', 'Warning', MB_ICONWARNING Or MB_YESNO) Then Begin
+    If id_no = Application.MessageBox(pchar(Tr('Zip files are merged without checks, do you really want to continue ?')), pchar(Tr('Warning')), MB_ICONWARNING Or MB_YESNO) Then Begin
       exit;
     End;
   End;
@@ -379,7 +379,7 @@ Begin
     End;
   End;
   If total <> 0 Then Begin
-    If ID_NO = Application.MessageBox(pchar('Need to download ' + FileSizeToString(total) + ' continue?'), 'Info', MB_ICONQUESTION Or MB_YESNO) Then Begin
+    If ID_NO = Application.MessageBox(pchar(Tr('Need to download ') + FileSizeToString(total) + Tr(' continue?')), 'Info', MB_ICONQUESTION Or MB_YESNO) Then Begin
       exit;
     End;
   End;
@@ -404,7 +404,7 @@ Begin
     If SelfFile.URL <> '' Then Begin
       updater := 'updater'{$IFDEF Windows} + '.exe'{$ENDIF};
       If Not FileExists(updater) Then Begin
-        showmessage('Error, ' + updater + ' not found, without updater launcher can not be updated.');
+        showmessage(Tr('Error, ') + updater + Tr(' not found, without updater launcher can not be updated.'));
         log('Error, ' + updater + ' not found, without updater launcher can not be updated.');
         exit;
       End;
@@ -438,7 +438,7 @@ End;
 
 Procedure TForm3.CheckListBox1Click(Sender: TObject);
 Begin
-  label3.caption := format('%d files to download', [GetFilesToDLCount()]);
+  label3.caption := format(Tr('%d files to download'), [GetFilesToDLCount()]);
 End;
 
 Procedure TForm3.InitWith(Const aVersion: TVersion; Force: Boolean);

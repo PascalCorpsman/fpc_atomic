@@ -139,9 +139,43 @@ Const
    *             0.13004 = ADD: speedup startup
    *                       FIX: connect on some linux devices stalled
    *                       FIX: trampolin placing was wrong
+   *                       ADD: optional mods via atomic_server.ini (default off), first mod: thrown bombs landing on a player stun the player
+   *                       ADD: invulnerability of players (base for further mods), ends when hurry starts
+   *                       ADD: optional positive disease, makes the player invulnerable for some time (not during hurry)
+   *                       ADD: optional hit points per player name (handicap) -> need change in ProtocollVersion
+   *                       ADD: mod test mode with keys F1..F12 (without F10) and Ins for testing the mods (only master, only if enabled in atomic_server.ini)
+   *                       ADD: optional ghosts, dead players walk around the border and can throw bombs to get back into the game
+   *                       ADD: ghosts: max count per round and optional max time until they vanish (flicker faster before)
+   *                       ADD: mod settings code shared by server and launcher (defaults, limits, load / save)
+   *                       ADD: launcher: new layout (live name check, game data / version status) and mods dialog for atomic_server.ini
+   *                       ADD: optional glove at start, until the first step of a round every player can throw a bomb like with the glove
+   *                       ADD: optional disease "walk through bricks", the player is drawn see-through
+   *                       ADD: optional open borders, players walk over the border and come out on the opposite side (after a set time, shown by arrows on the frame)
+   *                       ADD: optional teleporters in the middle of the borders, they bring the player to the opposite border
+   *                       ADD: optional boxing glove, with the punch item the second action stuns an opponent in front of the player
+   *                       ADD: optional disease "white screen", the screen of the player turns white for some time
+   *                       ADD: optional white bomb item, the next bomb explodes without flames and turns the screens of all opponents white
+   *                       ADD: optional flamethrower item, hold the second action to fire, opponents staying in the beam are hit after some time
+   *                       ADD: mods manual in English and German (MODS_MANUAL.md, MODS_MANUAL_DE.md)
+   *                       FIX: launcher title showed the version with a locale comma (0,11)
+   *                       ADD: launcher: dialog for the game options (same options as in the game)
+   *                       ADD: client parameter -host (launcher: Ctrl + Launch) hosts a network game directly, -join (launcher: Shift + Launch) joins one
+   *                       FIX: -ip / -port are evaluated only after the game is initialized
+   *                       ADD: sound effects can be switched off independent of the music (launcher: "Play music" and Game options "Play sound effects")
+   *                       ADD: launcher option to show the launcher again after the game
+   *                       ADD: quit question only when leaving a network session (lobby, setup, game), the main menu quits at once
+   *                       ADD: launcher in English, German, French or Spanish (selection at the bottom right), in German the manual links open the German manuals
+   *                       FIX: disease "super slow" was never chosen
+   *                       FIX: respawned powerups could be placed below a bomb
+   *                       ADD: flamethrower: igniting bombs can be switched off and delayed, a dud bomb in the beam disappears without explosion
+   *                       ADD: flamethrower: optional friendly fire, longer default times (kill 2000 ms, ignite 1000 ms)
+   *                       FIX: the last played map was forgotten for about half of the maps (hash read back as signed number)
+   *                       ADD: launcher: map selection with a preview (map with the bricks of the scheme) in the game options
+   *                       FIX: mod test mode with GhostsKeepRound: when a player died with only 2 players, all bombs stayed off for the rest of the round (also after F7)
+   *                       ADD: open borders: the arrows on the frame disappear 10 s after the borders opened
    *)
 
-  ProtocollVersion: uint32 = 13; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   Version = '0.13004';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
@@ -224,6 +258,55 @@ Const
   AtomicDiseaseColorChangePeriodTime = 1500; //
   AtomicDiseaseColorChangePeriodRelaxTime = 500; // Zeit in derer der Atomic trotz Krankheit nicht Blinkt bezogen auf AtomicDiseaseColorChangePeriodTime
 
+  (*
+   * Damit man Stun und Unverwundbarkeit unterscheiden kann, blinken beide in unterschiedlicher Farbe und Geschwindigkeit
+   *)
+  AtomicStunColorChangeTime = 50; // Zeit in ms, nach derer ein gestunnter Atomic zwischen seiner Farbe und schwarz (bzw. rot) wechselt
+  AtomicInvulnColorChangeTime = 150; // Zeit in ms, nach derer ein unverwundbarer Atomic zwischen seiner Farbe und weiß (bzw. rot) wechselt
+
+  (*
+   * Obere Grenzen der Mod Einstellungen aus atomic_server.ini, die untere Grenze ist 0 (Ausnahmen stehen dabei).
+   * Der Server zieht ungültige Werte auf diese Grenzen, der Mods Dialog im Launcher nutzt sie für seine Eingabefelder.
+   *)
+  ModMaxStunMs = 10000; // StunMinMs, StunMaxMs
+  ModMaxPositiveDiseaseChance = 100; // in %
+  ModMaxPositiveMs = 120000; // PositiveMinMs, PositiveMaxMs
+  ModMaxBrickWalkChance = 100; // in %
+  ModMaxBrickWalkMs = 120000; // BrickWalkMinMs, BrickWalkMaxMs
+  ModMaxBrickWalkTransparency = 100; // in %, 100 = unsichtbar
+  ModMaxGhostReviveInvulnMs = 60000; // Zeit in ms, GhostReviveInvulnMs
+  ModMaxGhostFlameLen = 99; // untere Grenze 1
+  ModMaxGhostFlickerMs = 5000; // Zeit in ms, GhostFlickerMs
+  ModMaxGhostCount = 99; // GhostMaxCount
+  ModMaxGhostTimeMs = 600000; // GhostMaxTimeMs
+  ModMaxInvulnTimeMs = 60000; // untere Grenze FlameTime, sonst trifft die selbe Flamme den Spieler im nächsten Frame gleich noch mal
+  ModMaxHitPoints = 255; // DefaultHitPoints und [Handicap], untere Grenze 1 (TAtomicInfo.HitPoints ist ein uint8)
+  ModMaxRoundTimeSec = 3600; // Zeit in s, RoundTimeSec
+  ModMaxStartInvulnMs = 600000; // Zeit in ms, StartInvulnMs
+  ModMaxTeleportersActiveSec = 600; // Zeit in s, TeleportersActiveSec
+  ModMaxOpenBordersActiveSec = 600; // Zeit in s, OpenBordersActiveSec
+  ModMaxPunchStunCooldownMs = 10000; // Zeit in ms, PunchStunCooldownMs
+  ModMaxFlashChance = 100; // in %
+  ModMaxFlashIntensity = 100; // in %, 100 = komplett weiß
+  ModMaxFlashMs = 10000; // Dauer und Übergang zurück
+  ModMaxFlameThrowerChance = 100; // in %
+  ModMaxFlameThrowerFuelMs = 60000; // Zeit in ms, FlameThrowerFuelMs
+  ModMaxFlameThrowerRange = FieldWidth - 1; // untere Grenze 1
+  ModMaxFlameThrowerKillMs = 10000; // Zeit in ms, FlameThrowerKillMs
+  ModMaxFlameThrowerIgniteMs = 10000; // Zeit in ms, FlameThrowerIgniteMs
+
+  (*
+   * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
+   * im Uhrzeigersinn beginnend links oben. Jede Rahmenposition wirft damit eindeutig in genau eine Zeile oder Spalte.
+   *)
+  GhostRingLength = 2 * FieldWidth + 2 * FieldHeight; // Anzahl der Positionen auf dem Rahmen (52)
+  GhostSpeed = 5; // Geschwindigkeit eines Geistes in Randfeldern pro Sekunde
+  GhostWarnTime = 5000; // Zeit in ms, so lange vor dem Verschwinden (GhostMaxTimeMs) flackert ein Geist doppelt so schnell
+  GhostThrowDistance = 3; // So viele Felder senkrecht vom Rand ins Feld wirft ein Geist seine Bombe
+  GhostScale = 0.5; // Geister werden im Client verkleinert auf dem Rahmen außerhalb des Spielfeldes gerendert
+  OpenBordersWarnTime = 3000; // Zeit in ms, so lange vor dem Öffnen blinken die Pfeile der offenen Grenzen
+  OpenBordersArrowTime = 10000; // Zeit in ms, so lange nach dem Öffnen bleiben die Pfeile der offenen Grenzen stehen, danach stören sie nur
+
   BrickExplodeTime = 900; //  Zeit in ms, Beim Explodieren eines Steines Setzt der Server für diese Zeit den "Puls" zum senden des Exploded Flags an die Clients, danach wird es wieder gelöscht
   FlameTime = 500; // Zeit in ms, wie Lange die Flammen Stehen bleiben..
 
@@ -274,6 +357,7 @@ Const
   TeamIndexRed = 1;
 
   WhiteColorIndex = 0; // Siehe PlayerColors
+  BlackColorIndex = 1; // Siehe PlayerColors
   RedColorIndex = 2; // Siehe PlayerColors
 
   (*
@@ -329,6 +413,7 @@ Type
     Position: TVector2; // in Field Coordinaten, können aber auch "Verrückt" sein, wenn die Bombe wild rum fliegt..
     Animation: TBombAnimation; // Die Jeweilige Animation
     AnimationOffset: uint16; // Damit nicht alle "Gleich" aussehen
+    WhiteBomb: Boolean; // Mod weiße Bombe: explodiert ohne Flammen und flasht alle Gegner (zählt nicht zu den Bomben des Spielers), der Client zeichnet sie grau
 {$IFDEF Server}
     FlyStart, FlyTarget: TVector2;
     FlyTime: integer; // Zeit In ms Seit derer die Bombe Fliegt
@@ -342,6 +427,11 @@ Type
     Jelly: Boolean;
     MoveDir: TBombMoveDir;
     DudTime: integer; // Zähler für die Jeweilige Bombe wie lange sie "Dud" ist
+    FlameThrowerHit: Boolean; // Mod Flammenwerfer: True, ein Strahl endet in diesem Frame an der Bombe (setzt FlameThrowerBeam, HandleBombs wertet aus)
+    FlameThrowerExposure: integer; // Mod Flammenwerfer: Zeit in ms, so lange liegt die Bombe schon am Stück in einem Strahl
+    Fizzled: Boolean; // Mod Flammenwerfer: True, ein Blindgänger wurde vom Strahl gelöscht, er verschwindet ohne Explosion
+    StunOnLand: Boolean; // True, wenn die Bombe geworfen (nicht gepuncht) wurde, landet sie auf einem Spieler, wird dieser gestunnt (nur wenn Mod aktiv)
+    GhostBomb: Boolean; // True, die Bombe wurde von einem Geist geworfen (der Geist bekommt keine Bombe zurück, darf aber nach der Explosion wieder werfen)
 {$ENDIF}
   End;
 
@@ -459,6 +549,9 @@ Type
     TrampRunning: Boolean; // Wenn True, dann "wackelt" die Tramp Animation
     TrampOffset: Byte; // Das Tramp Running Offset, sonst sehen die alle Gleich aus..
     Counter: uint16; // Der Zähler, der Zählt wie Lange die Aktuelle animation schon läuft (Entweder Flamme oder Explosion oder Trampolin)
+    WhiteBomb: Boolean; // Mod weiße Bombe: True, das PowerUp (immer puExtraBomb) ist eine weiße Bombe, der Client zeichnet es weiß
+    FlameGhost: Boolean; // Mod Geister: True, die Flamme stammt von einer Geisterbombe (belebt den Geist, kein Kill)
+    FlameThrowerItem: Boolean; // Mod Flammenwerfer: True, das PowerUp (immer puLongerFlameLength) ist ein Flammenwerfer, der Client zeichnet einen roten Rahmen
   End;
 
   TFieldBricks = Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of TFieldBrick;
@@ -502,7 +595,33 @@ Type
     Position: TVector2; // Position in Weltkoordinaten (muss noch mit FieldBlockWidth, FieldBlockHeight skalliert werden zum Rendern
     Direction: Single; // Blickrichtung im Mathematischen Drehsinn
     ColorIndex: uint8; // 0 .. length(PlayerColors) - 1 -> Zur Anzeige / Auswahl beim Rendering
+    HitPoints: uint8; // Mod Trefferpunkte: Anzeige im Client wie viele Treffer der Spieler noch aushält, 0 = nicht anzeigen (Mod aus oder ShowHitPoints = 0)
+    TestInvulnTime: uint16; // Nur im Mod Test Modus: Restzeit der Unverwundbarkeit in 1/10 s (für die Zustandsanzeige), sonst 0
+    TestStunTime: uint16; // Nur im Mod Test Modus: Restzeit des Stun in 1/10 s (für die Zustandsanzeige), sonst 0
+    Ghost: Boolean; // Mod Geister: True, der Spieler ist tot (Alive = false) und läuft als Geist am Rand entlang
+    GhostTime: uint16; // Mod Geister: Restzeit in ms bis der Geist verschwindet (für die Warnung im Client), 0 = kein Limit
+    BrickWalk: Boolean; // Mod durch Blöcke laufen: True, der Spieler kann durch Blöcke laufen bzw. steht noch in einem (der Client zeichnet ihn durchsichtig)
+    TestBrickWalkTime: uint16; // Nur im Mod Test Modus: Restzeit von "durch Blöcke laufen" in 1/10 s (für die Zustandsanzeige), sonst 0
+    FlameThrowerLen: uint8; // Mod Flammenwerfer: Länge des Strahls in Kacheln in Blickrichtung, 0 = feuert gerade nicht
+    FlameThrowerColor: uint8; // Mod Flammenwerfer: Farbe des Strahls (die echte Farbe des Spielers, ColorIndex blinkt ggf.)
   End;
+
+  (*
+   * Befehle des Mod Test Modus zum Testen der Mods, werden per miDebugCommand vom Client zum Server gesendet
+   *)
+  TModTestCommand = (
+    mtPositiveDisease // F5, Positive Krankheit -> Unverwundbar
+    , mtHitMe // F6, Treffer wie durch eine Flamme (Trefferpunkt weg bzw. sterben)
+    , mtGhost // F7, zum Geist machen bzw. als Geist zurück ins Spiel
+    , mtHurry // F8, Hurry sofort starten
+    , mtStun // F9, Stun
+    , mtAllItems // F4, Kick, Punch, Grab, Bomben, Flammen
+    , mtMaxHitPoints // F11, Trefferpunkte wieder auf Maximum
+    , mtBrickWalk // F12, durch Blöcke laufen
+    , mtFlash // F2, weißer Bildschirm
+    , mtWhiteBomb // F1, die nächste gelegte Bombe ist weiß
+    , mtSpawnItems // Einfg, die Items der neuen Mods auf freie Felder verteilen
+    );
 
   TAtomicKey = (
     akNone, // Kein Gültiger Key
@@ -563,7 +682,94 @@ Type
     Action: TAtomicAction;
     Powers: TAtomicPowers;
     PowerUpCounter: Array[TPowerUps] Of Integer; // Zähler, welche Powerups der Spieler wie oft aufgenommen hat, wenn er stirbt werden diese wieder "Verteilt"
+    StunTimer: Integer; // Zeit in ms, wie lange der Spieler noch gestunnt ist (0 = nicht gestunnt), so lange kann er sich weder bewegen noch Aktionen ausführen
+    InvulnTimer: Integer; // Zeit in ms, wie lange der Spieler noch unverwundbar ist (0 = verwundbar), endet spätestens mit Beginn des Hurry
+    MaxHitPoints: Integer; // Mod Trefferpunkte: Trefferpunkte zu Rundenbeginn (aus [Handicap] bzw. DefaultHitPoints)
+    HitPoints: Integer; // Mod Trefferpunkte: Anzahl Treffer die der Spieler noch aushält (Info.HitPoints ist nur die Anzeige davon)
+    GhostRingPos: Single; // Mod Geister: Position auf dem Rahmen [0..GhostRingLength[, der ganzzahlige Anteil ist die Rahmenposition, siehe GhostRingToField
+    GhostDir: Integer; // Mod Geister: Letzte Laufrichtung auf dem Ring (-1, 0, 1), damit läuft der Geist bis zum nächsten Randfeld weiter
+    GhostCount: Integer; // Mod Geister: Wie oft der Spieler in dieser Runde schon Geist geworden ist
+    GhostTimer: Integer; // Mod Geister: Zeit in ms bis der Geist verschwindet, wenn er keinen Gegner trifft (nur wenn GhostMaxTimeMs > 0)
+    GhostBombActive: Boolean; // Mod Geister: True, so lange die geworfene Geisterbombe noch nicht explodiert ist
+    StartGlove: Boolean; // Mod Handschuh beim Start: True, bis sich der Spieler in dieser Runde das erste Mal bewegt hat, so lange kann er Bomben werfen wie mit Handschuh
+    BrickWalkTimer: Integer; // Mod durch Blöcke laufen: Zeit in ms, so lange kann der Spieler noch Blöcke betreten (danach nur noch heraus laufen)
+    PunchStunCooldown: Integer; // Mod Boxhandschuh: Zeit in ms, so lange kann der Spieler keinen Gegner mehr stunnen
+    WhiteBombs: Integer; // Mod weiße Bombe: So viele der nächsten gelegten Bomben sind weiß
+    FlameThrowerFuel: Integer; // Mod Flammenwerfer: Zeit in ms, so lange kann der Spieler noch feuern (0 = kein Flammenwerfer)
+    FlameThrowerFiring: Boolean; // Mod Flammenwerfer: True, so lange die zweite Aktion gedrückt ist
+    FlameThrowerExposure: Integer; // Mod Flammenwerfer: Zeit in ms, so lange steht der Spieler schon am Stück in einem Strahl
+    StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
 {$ENDIF}
+  End;
+
+  (*
+   * Optionale Spiel Mods, werden aus atomic_server.ini geladen, alle Mods sind per Default aus.
+   * Der Server liest sie beim Start, der Launcher bearbeitet sie im Mods Dialog.
+   *)
+  TModSettings = Record
+    StunOnBombLanding: Boolean; // True, Landet eine geworfene Bombe auf einem Spieler, wird dieser gestunnt
+    StunMinMs: Integer; // Minimale Stun Zeit in ms
+    StunMaxMs: Integer; // Maximale Stun Zeit in ms
+    PunchStun: Boolean; // True, mit dem Punch Item stunnt die zweite Aktion einen Gegner direkt vor dem Spieler
+    PunchStunMinMs: Integer; // Minimale Stun Zeit in ms
+    PunchStunMaxMs: Integer; // Maximale Stun Zeit in ms
+    PunchStunCooldownMs: Integer; // Zeit in ms, so lange kann der Schläger danach nicht erneut schlagen (sonst wäre ein Dauer Stun möglich)
+    PositiveDisease: Boolean; // True, ein Teil der Krankheits Items macht statt krank unverwundbar (nicht im Hurry)
+    PositiveDiseaseChance: Integer; // in %, Anteil der Krankheits Items die positiv wirken
+    PositiveMinMs: Integer; // Minimale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
+    PositiveMaxMs: Integer; // Maximale Zeit in ms der Unverwundbarkeit durch die positive Krankheit
+    BrickWalk: Boolean; // True, ein Teil der Krankheits Items lässt durch zerstörbare Blöcke laufen (nicht im Hurry)
+    BrickWalkChance: Integer; // in %, Anteil der Krankheits Items (die nicht schon positiv waren), die durch Blöcke laufen lassen
+    BrickWalkMinMs: Integer; // Minimale Zeit in ms
+    BrickWalkMaxMs: Integer; // Maximale Zeit in ms
+    BrickWalkTransparency: Integer; // in %, so durchsichtig wird der Spieler gezeichnet (0 = normal, 100 = unsichtbar)
+    FlashDisease: Boolean; // True, ein Teil der Krankheits Items macht den Bildschirm des Spielers kurz weiß
+    FlashDiseaseChance: Integer; // in %, Anteil der Krankheits Items (die nicht schon positiv waren)
+    FlashDiseaseIntensity: Integer; // in %, wie weiß der Bildschirm wird (100 = man sieht nichts mehr)
+    FlashDiseaseMs: Integer; // Zeit in ms, so lange bleibt der Bildschirm weiß
+    FlashDiseaseFadeMs: Integer; // Zeit in ms, so lange dauert der Übergang zurück
+    WhiteBomb: Boolean; // True, ein Teil der Items unter den Steinen sind weiße Bomben, die alle Gegner flashen
+    WhiteBombChance: Integer; // in %, Anteil der Items unter den Steinen, die zur weißen Bombe werden
+    WhiteBombIntensity: Integer; // in %, wie weiß der Bildschirm der Gegner wird
+    WhiteBombMs: Integer; // Zeit in ms, so lange bleibt der Bildschirm weiß
+    WhiteBombFadeMs: Integer; // Zeit in ms, so lange dauert der Übergang zurück
+    FlameThrower: Boolean; // True, ein Teil der Items unter den Steinen sind Flammenwerfer (zweite Aktion gedrückt halten)
+    FlameThrowerChance: Integer; // in %, Anteil der Items unter den Steinen, die zum Flammenwerfer werden
+    FlameThrowerFuelMs: Integer; // Zeit in ms, so lange kann man mit einem Item feuern (wird nur beim Feuern verbraucht, weitere Items füllen auf)
+    FlameThrowerRange: Integer; // Reichweite des Strahls in Kacheln
+    FlameThrowerKillMs: Integer; // Zeit in ms, so lange muss ein Gegner am Stück im Strahl stehen, bis er getroffen ist
+    FlameThrowerBurnItems: Boolean; // True, Items im Strahl verbrennen sofort (wie bei einer Flamme), sonst geht der Strahl darüber hinweg
+    FlameThrowerIgniteBombs: Boolean; // True, Bomben im Strahl werden gezündet (ein Blindgänger verschwindet), sonst endet der Strahl nur an ihnen
+    FlameThrowerIgniteMs: Integer; // Zeit in ms, so lange muss eine Bombe am Stück im Strahl liegen, bis sie gezündet wird (0 = sofort)
+    FlameThrowerFriendlyFire: Boolean; // True, im Teamspiel verletzt der Strahl auch Teamkollegen
+    Ghosts: Boolean; // True, Tote laufen bis zum Hurry als Geist am Rand und können mit einem Treffer eines Gegners zurück ins Spiel
+    GhostReviveInvulnMs: Integer; // Zeit in ms, so lange ist ein zurückgekehrter Geist unverwundbar
+    GhostFlameLen: Integer; // Flammenlänge der Geisterbombe
+    GhostFlickerMs: Integer; // Zeit in ms, Geister sind im Client 3 Takte sichtbar und 1 Takt unsichtbar, 0 = kein Flackern
+    GhostMaxCount: Integer; // Wie oft ein Spieler pro Runde Geist werden kann, 0 = unbegrenzt
+    GhostMaxTimeMs: Integer; // Zeit in ms, nach derer ein Geist ohne Treffer auf einen Gegner verschwindet, 0 = unbegrenzt
+    HitPoints: Boolean; // True, Spieler halten mehrere Treffer aus (pro Spielername in [Handicap], nicht im Hurry)
+    InvulnTimeMs: Integer; // Zeit in ms, so lange ist der Spieler nach einem nicht tödlichen Treffer unverwundbar (>= FlameTime)
+    DefaultHitPoints: Integer; // Trefferpunkte, wenn der Spieler nicht in [Handicap] steht
+    ShowHitPoints: Boolean; // True, die Clients zeigen die Trefferpunkte über den Spielern an
+    Handicap: TStringList; // Inhalt von [Handicap] als Spielername=Trefferpunkte
+    GloveAtStart: Boolean; // True, bis zum ersten Schritt einer Runde kann jeder seine Bombe werfen wie mit Handschuh (gegen das Einsperren beim Start)
+    OpenBorders: Boolean; // True, Spieler können über den Rand laufen und kommen auf der Gegenseite heraus
+    OpenBordersTopBottom: Boolean; // Offene Grenzen oben <-> unten
+    OpenBordersLeftRight: Boolean; // Offene Grenzen links <-> rechts
+    OpenBordersActiveSec: Integer; // Zeit in s nach Rundenbeginn, ab der die Grenzen offen sind (damit keiner gleich aus seiner Startecke flieht)
+    Teleporters: Boolean; // True, in der Mitte der Ränder gibt es Teleporter, die zum gegenüberliegenden Rand bringen (nicht im Hurry)
+    TeleportersTopBottom: Boolean; // Teleporter oben <-> unten
+    TeleportersLeftRight: Boolean; // Teleporter links <-> rechts
+    TeleportersActiveSec: Integer; // Zeit in s nach Rundenbeginn, ab der die Teleporter erscheinen und wirken
+    (*
+     * [Debug] Abschnitt, nur zum Testen der Mods
+     *)
+    ModTestMode: Boolean; // Master Schalter für den Mod Test Modus, nur wenn True werden die folgenden Debug Werte und die Test Tasten ausgewertet
+    StartItems: String; // z.B. "kick,punch,grab,bomb*3" diese Items bekommt jeder Spieler zu Rundenbeginn
+    RoundTimeSec: Integer; // > 0 überschreibt die Rundenzeit in s (Hurry beginnt bei 80s Restzeit, 90 = Hurry nach 10s)
+    StartInvulnMs: Integer; // Zeit in ms, so lange sind alle Spieler zu Rundenbeginn unverwundbar
+    GhostsKeepRound: Boolean; // True, Geister zählen für das Rundenende als lebendig (damit kann man Geister auch zu zweit testen)
   End;
 
   TPlayerGetsPowerUpEvent = Procedure(Var Player: TPlayer; PlayerIndex: integer; PowerUp: TPowerUps) Of Object;
@@ -607,7 +813,8 @@ Type
     PlayTime: integer; // in [s]
     LostPlayersRevertToAI: Boolean;
 {$IFDEF Client}
-    PlaySounds: Boolean;
+    PlaySounds: Boolean; // Nur die Musik (im Spiel: "Disable music during gameplay")
+    PlaySoundEffects: Boolean; // Die Soundeffekte, unabhängig von der Musik (nur im Launcher einstellbar: Game options)
     Keys: TKeyArray;
     ShowFPS: Boolean;
 {$ENDIF}
@@ -635,6 +842,23 @@ Type
 Procedure SchemeToStream(Const Stream: TStream; Const Scheme: TScheme); // Speichert ein Scheme in einen Stream
 Function SchemeFromStream(Const Stream: TStream; Out Scheme: TScheme): Boolean;
 Function GetDefaultScheme(): TScheme;
+Function ModTestCommandToString(Value: TModTestCommand): String;
+
+(*
+ * Gemeinsamer Code von Server und Launcher für atomic_server.ini, damit beide dieselben Defaults und Grenzen nutzen.
+ * Settings.Handicap wird bei Bedarf erzeugt und muss vom Aufrufer wieder frei gegeben werden.
+ *)
+Procedure ModSettingsDefaults(Var Settings: TModSettings);
+// Liest alle Werte (fehlende = Default), zieht ungültige Werte mit einer Warnung auf ihre Grenzen und legt fehlende Schlüssel in der Datei an
+Procedure LoadModSettingsFromFile(Const Filename: String; Var Settings: TModSettings);
+// Schreibt alle Werte und [Handicap] komplett neu (Kommentare in [Handicap] gehen dabei verloren)
+Function SaveModSettingsToFile(Const Filename: String; Const Settings: TModSettings): Boolean;
+
+{$IFDEF Server}
+Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
+Function FieldToGhostRing(Const Position: TVector2): integer; // Liefert den Index der Rahmenposition, welche am nächsten an Position liegt
+Function GhostRingToPosition(RingPos: Single): TVector2; // Position in Feld Koordinaten, zwischen zwei Randfeldern wird interpoliert
+{$ENDIF}
 
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
 Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
@@ -661,7 +885,7 @@ Function GetSDL2VersionByManualDynamicLoading(LibFilename: String): String;
 
 Implementation
 
-Uses math
+Uses math, IniFiles, uatomic_global
 {$IFNDEF Server} // Das nutzt auch der Launcher, also darf hier nicht auf Client geprüft werden sondern es muss nicht server sein ;)
   , LCLType
   , SDL2, dynlibs
@@ -898,6 +1122,407 @@ Begin
   result.PowerUps[puSuperBadDisease] := empty;
   result.PowerUps[puSlow] := empty;
   result.PowerUps[purandom] := empty;
+End;
+
+{$IFDEF Server}
+
+Function GhostRingToField(Index: integer): TPoint;
+Begin
+  index := index Mod GhostRingLength;
+  If index < 0 Then index := index + GhostRingLength;
+  If index < FieldWidth Then Begin // Oben von links nach rechts
+    result := point(index, -1);
+  End
+  Else If index < FieldWidth + FieldHeight Then Begin // Rechts von oben nach unten
+    result := point(FieldWidth, index - FieldWidth);
+  End
+  Else If index < 2 * FieldWidth + FieldHeight Then Begin // Unten von rechts nach links
+    result := point(FieldWidth - 1 - (index - FieldWidth - FieldHeight), FieldHeight);
+  End
+  Else Begin // Links von unten nach oben
+    result := point(-1, FieldHeight - 1 - (index - 2 * FieldWidth - FieldHeight));
+  End;
+End;
+
+Function GhostRingToPosition(RingPos: Single): TVector2;
+Var
+  k: integer;
+  f: Single;
+  a, b: TPoint;
+Begin
+  k := trunc(RingPos);
+  f := RingPos - k;
+  a := GhostRingToField(k);
+  b := GhostRingToField(k + 1);
+  result := v2(a.x + 0.5 + (b.x - a.x) * f, a.y + 0.5 + (b.y - a.y) * f);
+End;
+
+Function FieldToGhostRing(Const Position: TVector2): integer;
+Var
+  i: integer;
+  p: TPoint;
+  d, best: Single;
+Begin
+  result := 0;
+  best := 1000;
+  For i := 0 To GhostRingLength - 1 Do Begin
+    p := GhostRingToField(i);
+    d := sqr(p.x + 0.5 - Position.x) + sqr(p.y + 0.5 - Position.y);
+    If d < best Then Begin
+      best := d;
+      result := i;
+    End;
+  End;
+End;
+{$ENDIF}
+
+Procedure ModSettingsDefaults(Var Settings: TModSettings);
+Begin
+  // Alle Mods sind aus
+  Settings.StunOnBombLanding := false;
+  Settings.StunMinMs := 100;
+  Settings.StunMaxMs := 500;
+  Settings.PunchStun := false;
+  Settings.PunchStunMinMs := 300;
+  Settings.PunchStunMaxMs := 800;
+  Settings.PunchStunCooldownMs := 1500;
+  Settings.PositiveDisease := false;
+  Settings.PositiveDiseaseChance := 15;
+  Settings.PositiveMinMs := 5000;
+  Settings.PositiveMaxMs := 20000;
+  Settings.BrickWalk := false;
+  Settings.BrickWalkChance := 15;
+  Settings.BrickWalkMinMs := 5000;
+  Settings.BrickWalkMaxMs := 10000;
+  Settings.BrickWalkTransparency := 50;
+  Settings.FlashDisease := false;
+  Settings.FlashDiseaseChance := 15;
+  Settings.FlashDiseaseIntensity := 90;
+  Settings.FlashDiseaseMs := 2500;
+  Settings.FlashDiseaseFadeMs := 2000;
+  Settings.WhiteBomb := false;
+  Settings.WhiteBombChance := 10;
+  Settings.WhiteBombIntensity := 90;
+  Settings.WhiteBombMs := 2500;
+  Settings.WhiteBombFadeMs := 2000;
+  Settings.FlameThrower := false;
+  Settings.FlameThrowerChance := 5;
+  Settings.FlameThrowerFuelMs := 5000;
+  Settings.FlameThrowerRange := 3;
+  Settings.FlameThrowerKillMs := 2000;
+  Settings.FlameThrowerBurnItems := true;
+  Settings.FlameThrowerIgniteBombs := true;
+  Settings.FlameThrowerIgniteMs := 1000;
+  Settings.FlameThrowerFriendlyFire := false;
+  Settings.Ghosts := false;
+  Settings.GhostReviveInvulnMs := 3000;
+  Settings.GhostFlameLen := 2;
+  Settings.GhostFlickerMs := 200;
+  Settings.GhostMaxCount := 1;
+  Settings.GhostMaxTimeMs := 0;
+  Settings.HitPoints := false;
+  Settings.InvulnTimeMs := 5000;
+  Settings.DefaultHitPoints := 1;
+  Settings.ShowHitPoints := true;
+  If Not assigned(Settings.Handicap) Then Settings.Handicap := TStringList.Create;
+  Settings.Handicap.Clear;
+  Settings.GloveAtStart := false;
+  Settings.OpenBorders := false;
+  Settings.OpenBordersTopBottom := true;
+  Settings.OpenBordersLeftRight := true;
+  Settings.OpenBordersActiveSec := 30;
+  Settings.Teleporters := false;
+  Settings.TeleportersTopBottom := true;
+  Settings.TeleportersLeftRight := true;
+  Settings.TeleportersActiveSec := 60;
+  Settings.ModTestMode := false;
+  Settings.StartItems := '';
+  Settings.RoundTimeSec := 0;
+  Settings.StartInvulnMs := 0;
+  Settings.GhostsKeepRound := false;
+End;
+
+(*
+ * Schreibt alle Werte außer [Handicap], bei OnlyMissing nur die, die in der Datei noch fehlen.
+ * Damit stehen die Schlüssel für Laden (fehlende anlegen) und Speichern nur an einer Stelle.
+ *)
+
+Procedure WriteModSettings(Const ini: TIniFile; Const Settings: TModSettings; OnlyMissing: Boolean);
+
+  Procedure WriteB(Const Section, Key: String; Value: Boolean);
+  Begin
+    If OnlyMissing And ini.ValueExists(Section, Key) Then exit;
+    ini.WriteBool(Section, Key, Value);
+  End;
+
+  Procedure WriteI(Const Section, Key: String; Value: Integer);
+  Begin
+    If OnlyMissing And ini.ValueExists(Section, Key) Then exit;
+    ini.WriteInteger(Section, Key, Value);
+  End;
+
+  Procedure WriteS(Const Section, Key: String; Value: String);
+  Begin
+    If OnlyMissing And ini.ValueExists(Section, Key) Then exit;
+    ini.WriteString(Section, Key, Value);
+  End;
+
+Begin
+  WriteB('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
+  WriteI('Mods', 'StunMinMs', Settings.StunMinMs);
+  WriteI('Mods', 'StunMaxMs', Settings.StunMaxMs);
+  WriteB('Mods', 'PunchStun', Settings.PunchStun);
+  WriteI('Mods', 'PunchStunMinMs', Settings.PunchStunMinMs);
+  WriteI('Mods', 'PunchStunMaxMs', Settings.PunchStunMaxMs);
+  WriteI('Mods', 'PunchStunCooldownMs', Settings.PunchStunCooldownMs);
+  WriteB('Mods', 'PositiveDisease', Settings.PositiveDisease);
+  WriteI('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
+  WriteI('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
+  WriteI('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
+  WriteB('Mods', 'BrickWalk', Settings.BrickWalk);
+  WriteI('Mods', 'BrickWalkChance', Settings.BrickWalkChance);
+  WriteI('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
+  WriteI('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
+  WriteI('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
+  WriteB('Mods', 'FlashDisease', Settings.FlashDisease);
+  WriteI('Mods', 'FlashDiseaseChance', Settings.FlashDiseaseChance);
+  WriteI('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
+  WriteI('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
+  WriteI('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
+  WriteB('Mods', 'WhiteBomb', Settings.WhiteBomb);
+  WriteI('Mods', 'WhiteBombChance', Settings.WhiteBombChance);
+  WriteI('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
+  WriteI('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
+  WriteI('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
+  WriteB('Mods', 'FlameThrower', Settings.FlameThrower);
+  WriteI('Mods', 'FlameThrowerChance', Settings.FlameThrowerChance);
+  WriteI('Mods', 'FlameThrowerFuelMs', Settings.FlameThrowerFuelMs);
+  WriteI('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
+  WriteI('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
+  WriteB('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
+  WriteB('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
+  WriteI('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
+  WriteB('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
+  WriteB('Mods', 'Ghosts', Settings.Ghosts);
+  WriteI('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
+  WriteI('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
+  WriteI('Mods', 'GhostFlickerMs', Settings.GhostFlickerMs);
+  WriteI('Mods', 'GhostMaxCount', Settings.GhostMaxCount);
+  WriteI('Mods', 'GhostMaxTimeMs', Settings.GhostMaxTimeMs);
+  WriteB('Mods', 'HitPoints', Settings.HitPoints);
+  WriteI('Mods', 'InvulnTimeMs', Settings.InvulnTimeMs);
+  WriteI('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
+  WriteB('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
+  WriteB('Mods', 'GloveAtStart', Settings.GloveAtStart);
+  WriteB('Mods', 'OpenBorders', Settings.OpenBorders);
+  WriteB('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
+  WriteB('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
+  WriteI('Mods', 'OpenBordersActiveSec', Settings.OpenBordersActiveSec);
+  WriteB('Mods', 'Teleporters', Settings.Teleporters);
+  WriteB('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
+  WriteB('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
+  WriteI('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
+  WriteB('Debug', 'ModTestMode', Settings.ModTestMode);
+  WriteS('Debug', 'StartItems', Settings.StartItems);
+  WriteI('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
+  WriteI('Debug', 'StartInvulnMs', Settings.StartInvulnMs);
+  WriteB('Debug', 'GhostsKeepRound', Settings.GhostsKeepRound);
+End;
+
+Procedure LoadModSettingsFromFile(Const Filename: String;
+  Var Settings: TModSettings);
+
+  // Zieht einen ungültigen Wert mit einer Warnung auf MinValue..MaxValue
+  Procedure Clamp(Const Key: String; Var Value: Integer; MinValue, MaxValue: Integer);
+  Begin
+    If (Value < MinValue) Or (Value > MaxValue) Then Begin
+      log(ExtractFileName(Filename) + ': ' + Key + ' not in ' + inttostr(MinValue) + '..' + inttostr(MaxValue) + ', clamping', llWarning);
+      Value := min(MaxValue, max(MinValue, Value));
+    End;
+  End;
+
+Var
+  ini: TIniFile;
+Begin
+  ModSettingsDefaults(Settings);
+  If Not ForceDirectories(ExtractFileDir(Filename)) Then Begin
+    log('Unable to create: ' + Filename, llCritical);
+    exit;
+  End;
+  ini := TIniFile.Create(Filename);
+  Try
+    Settings.StunOnBombLanding := ini.ReadBool('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
+    Settings.StunMinMs := ini.ReadInteger('Mods', 'StunMinMs', Settings.StunMinMs);
+    Settings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', Settings.StunMaxMs);
+    Settings.PunchStun := ini.ReadBool('Mods', 'PunchStun', Settings.PunchStun);
+    Settings.PunchStunMinMs := ini.ReadInteger('Mods', 'PunchStunMinMs', Settings.PunchStunMinMs);
+    Settings.PunchStunMaxMs := ini.ReadInteger('Mods', 'PunchStunMaxMs', Settings.PunchStunMaxMs);
+    Settings.PunchStunCooldownMs := ini.ReadInteger('Mods', 'PunchStunCooldownMs', Settings.PunchStunCooldownMs);
+    Settings.PositiveDisease := ini.ReadBool('Mods', 'PositiveDisease', Settings.PositiveDisease);
+    Settings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
+    Settings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
+    Settings.PositiveMaxMs := ini.ReadInteger('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
+    Settings.BrickWalk := ini.ReadBool('Mods', 'BrickWalk', Settings.BrickWalk);
+    Settings.BrickWalkChance := ini.ReadInteger('Mods', 'BrickWalkChance', Settings.BrickWalkChance);
+    Settings.BrickWalkMinMs := ini.ReadInteger('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
+    Settings.BrickWalkMaxMs := ini.ReadInteger('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
+    Settings.BrickWalkTransparency := ini.ReadInteger('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
+    Settings.FlashDisease := ini.ReadBool('Mods', 'FlashDisease', Settings.FlashDisease);
+    Settings.FlashDiseaseChance := ini.ReadInteger('Mods', 'FlashDiseaseChance', Settings.FlashDiseaseChance);
+    Settings.FlashDiseaseIntensity := ini.ReadInteger('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
+    Settings.FlashDiseaseMs := ini.ReadInteger('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
+    Settings.FlashDiseaseFadeMs := ini.ReadInteger('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
+    Settings.WhiteBomb := ini.ReadBool('Mods', 'WhiteBomb', Settings.WhiteBomb);
+    Settings.WhiteBombChance := ini.ReadInteger('Mods', 'WhiteBombChance', Settings.WhiteBombChance);
+    Settings.WhiteBombIntensity := ini.ReadInteger('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
+    Settings.WhiteBombMs := ini.ReadInteger('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
+    Settings.WhiteBombFadeMs := ini.ReadInteger('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
+    Settings.FlameThrower := ini.ReadBool('Mods', 'FlameThrower', Settings.FlameThrower);
+    Settings.FlameThrowerChance := ini.ReadInteger('Mods', 'FlameThrowerChance', Settings.FlameThrowerChance);
+    Settings.FlameThrowerFuelMs := ini.ReadInteger('Mods', 'FlameThrowerFuelMs', Settings.FlameThrowerFuelMs);
+    Settings.FlameThrowerRange := ini.ReadInteger('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
+    Settings.FlameThrowerKillMs := ini.ReadInteger('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
+    Settings.FlameThrowerBurnItems := ini.ReadBool('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
+    Settings.FlameThrowerIgniteBombs := ini.ReadBool('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
+    Settings.FlameThrowerIgniteMs := ini.ReadInteger('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
+    Settings.FlameThrowerFriendlyFire := ini.ReadBool('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
+    Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
+    Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
+    Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
+    Settings.GhostFlickerMs := ini.ReadInteger('Mods', 'GhostFlickerMs', Settings.GhostFlickerMs);
+    Settings.GhostMaxCount := ini.ReadInteger('Mods', 'GhostMaxCount', Settings.GhostMaxCount);
+    Settings.GhostMaxTimeMs := ini.ReadInteger('Mods', 'GhostMaxTimeMs', Settings.GhostMaxTimeMs);
+    Settings.HitPoints := ini.ReadBool('Mods', 'HitPoints', Settings.HitPoints);
+    Settings.InvulnTimeMs := ini.ReadInteger('Mods', 'InvulnTimeMs', Settings.InvulnTimeMs);
+    Settings.DefaultHitPoints := ini.ReadInteger('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
+    Settings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
+    ini.ReadSectionValues('Handicap', Settings.Handicap); // Spielername=Trefferpunkte
+    Settings.GloveAtStart := ini.ReadBool('Mods', 'GloveAtStart', Settings.GloveAtStart);
+    Settings.OpenBorders := ini.ReadBool('Mods', 'OpenBorders', Settings.OpenBorders);
+    Settings.OpenBordersTopBottom := ini.ReadBool('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
+    Settings.OpenBordersLeftRight := ini.ReadBool('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
+    Settings.OpenBordersActiveSec := ini.ReadInteger('Mods', 'OpenBordersActiveSec', Settings.OpenBordersActiveSec);
+    Settings.Teleporters := ini.ReadBool('Mods', 'Teleporters', Settings.Teleporters);
+    Settings.TeleportersTopBottom := ini.ReadBool('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
+    Settings.TeleportersLeftRight := ini.ReadBool('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
+    Settings.TeleportersActiveSec := ini.ReadInteger('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
+    Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
+    Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
+    Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
+    Settings.StartInvulnMs := ini.ReadInteger('Debug', 'StartInvulnMs', Settings.StartInvulnMs);
+    Settings.GhostsKeepRound := ini.ReadBool('Debug', 'GhostsKeepRound', Settings.GhostsKeepRound);
+    (*
+     * Ungültige Werte auf gültige Grenzen ziehen
+     *)
+    Clamp('StunMinMs', Settings.StunMinMs, 0, ModMaxStunMs);
+    Clamp('StunMaxMs', Settings.StunMaxMs, 0, ModMaxStunMs);
+    If Settings.StunMaxMs < Settings.StunMinMs Then Begin
+      log(ExtractFileName(Filename) + ': StunMaxMs < StunMinMs, using StunMinMs', llWarning);
+      Settings.StunMaxMs := Settings.StunMinMs;
+    End;
+    Clamp('PunchStunMinMs', Settings.PunchStunMinMs, 0, ModMaxStunMs);
+    Clamp('PunchStunMaxMs', Settings.PunchStunMaxMs, 0, ModMaxStunMs);
+    If Settings.PunchStunMaxMs < Settings.PunchStunMinMs Then Begin
+      log(ExtractFileName(Filename) + ': PunchStunMaxMs < PunchStunMinMs, using PunchStunMinMs', llWarning);
+      Settings.PunchStunMaxMs := Settings.PunchStunMinMs;
+    End;
+    Clamp('PunchStunCooldownMs', Settings.PunchStunCooldownMs, 0, ModMaxPunchStunCooldownMs);
+    Clamp('PositiveDiseaseChance', Settings.PositiveDiseaseChance, 0, ModMaxPositiveDiseaseChance);
+    Clamp('PositiveMinMs', Settings.PositiveMinMs, 0, ModMaxPositiveMs);
+    Clamp('PositiveMaxMs', Settings.PositiveMaxMs, 0, ModMaxPositiveMs);
+    If Settings.PositiveMaxMs < Settings.PositiveMinMs Then Begin
+      log(ExtractFileName(Filename) + ': PositiveMaxMs < PositiveMinMs, using PositiveMinMs', llWarning);
+      Settings.PositiveMaxMs := Settings.PositiveMinMs;
+    End;
+    Clamp('BrickWalkChance', Settings.BrickWalkChance, 0, ModMaxBrickWalkChance);
+    Clamp('BrickWalkMinMs', Settings.BrickWalkMinMs, 0, ModMaxBrickWalkMs);
+    Clamp('BrickWalkMaxMs', Settings.BrickWalkMaxMs, 0, ModMaxBrickWalkMs);
+    If Settings.BrickWalkMaxMs < Settings.BrickWalkMinMs Then Begin
+      log(ExtractFileName(Filename) + ': BrickWalkMaxMs < BrickWalkMinMs, using BrickWalkMinMs', llWarning);
+      Settings.BrickWalkMaxMs := Settings.BrickWalkMinMs;
+    End;
+    Clamp('BrickWalkTransparency', Settings.BrickWalkTransparency, 0, ModMaxBrickWalkTransparency);
+    Clamp('FlashDiseaseChance', Settings.FlashDiseaseChance, 0, ModMaxFlashChance);
+    Clamp('FlashDiseaseIntensity', Settings.FlashDiseaseIntensity, 0, ModMaxFlashIntensity);
+    Clamp('FlashDiseaseMs', Settings.FlashDiseaseMs, 0, ModMaxFlashMs);
+    Clamp('FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs, 0, ModMaxFlashMs);
+    Clamp('WhiteBombChance', Settings.WhiteBombChance, 0, ModMaxFlashChance);
+    Clamp('WhiteBombIntensity', Settings.WhiteBombIntensity, 0, ModMaxFlashIntensity);
+    Clamp('WhiteBombMs', Settings.WhiteBombMs, 0, ModMaxFlashMs);
+    Clamp('WhiteBombFadeMs', Settings.WhiteBombFadeMs, 0, ModMaxFlashMs);
+    Clamp('FlameThrowerChance', Settings.FlameThrowerChance, 0, ModMaxFlameThrowerChance);
+    Clamp('FlameThrowerFuelMs', Settings.FlameThrowerFuelMs, 0, ModMaxFlameThrowerFuelMs);
+    Clamp('FlameThrowerRange', Settings.FlameThrowerRange, 1, ModMaxFlameThrowerRange);
+    Clamp('FlameThrowerKillMs', Settings.FlameThrowerKillMs, 0, ModMaxFlameThrowerKillMs);
+    Clamp('FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs, 0, ModMaxFlameThrowerIgniteMs);
+    Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
+    Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
+    Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
+    Clamp('GhostMaxCount', Settings.GhostMaxCount, 0, ModMaxGhostCount);
+    Clamp('GhostMaxTimeMs', Settings.GhostMaxTimeMs, 0, ModMaxGhostTimeMs);
+    Clamp('InvulnTimeMs', Settings.InvulnTimeMs, FlameTime, ModMaxInvulnTimeMs);
+    Clamp('DefaultHitPoints', Settings.DefaultHitPoints, 1, ModMaxHitPoints);
+    Clamp('RoundTimeSec', Settings.RoundTimeSec, 0, ModMaxRoundTimeSec);
+    Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
+    Clamp('TeleportersActiveSec', Settings.TeleportersActiveSec, 0, ModMaxTeleportersActiveSec);
+    Clamp('OpenBordersActiveSec', Settings.OpenBordersActiveSec, 0, ModMaxOpenBordersActiveSec);
+    (*
+     * Fehlende Schlüssel mit ihren Defaults anlegen, damit man sie in der Datei auch findet
+     *)
+    WriteModSettings(ini, Settings, true);
+  Finally
+    ini.free;
+  End;
+End;
+
+Function SaveModSettingsToFile(Const Filename: String;
+  Const Settings: TModSettings): Boolean;
+Var
+  ini: TIniFile;
+  i: Integer;
+Begin
+  result := false;
+  If Not ForceDirectories(ExtractFileDir(Filename)) Then Begin
+    log('Unable to create: ' + Filename, llCritical);
+    exit;
+  End;
+  Try
+    ini := TIniFile.Create(Filename);
+    Try
+      ini.CacheUpdates := true;
+      WriteModSettings(ini, Settings, false);
+      ini.EraseSection('Handicap');
+      For i := 0 To Settings.Handicap.Count - 1 Do Begin
+        ini.WriteString('Handicap', Settings.Handicap.Names[i], Settings.Handicap.ValueFromIndex[i]);
+      End;
+      ini.UpdateFile;
+      result := true;
+    Finally
+      ini.free;
+    End;
+  Except
+    On av: Exception Do Begin
+      log('Unable to write: ' + Filename + ' ' + av.Message, llCritical);
+    End;
+  End;
+End;
+
+Function ModTestCommandToString(Value: TModTestCommand): String;
+Begin
+  result := '';
+  Case Value Of
+    mtPositiveDisease: result := 'positive disease';
+    mtHitMe: result := 'hit me';
+    mtGhost: result := 'ghost on / off';
+    mtHurry: result := 'start hurry';
+    mtStun: result := 'stun me';
+    mtAllItems: result := 'all items';
+    mtMaxHitPoints: result := 'max hit points';
+    mtBrickWalk: result := 'walk through bricks';
+    mtFlash: result := 'white screen';
+    mtWhiteBomb: result := 'white bomb';
+    mtSpawnItems: result := 'spawn mod items';
+  End;
 End;
 
 End.

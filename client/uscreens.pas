@@ -505,9 +505,16 @@ End;
 Procedure TMatchStatistikMenu.OnKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Begin
+  // Mitten im Netzwerkspiel, deshalb nachfragen
   If key = VK_ESCAPE Then Begin
-    Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-    TGame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
+{$ENDIF}
+      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
+      TGame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    End;
+{$ENDIF}
   End;
   If PlayerIsFirst Then Begin
     If key = VK_RETURN Then Begin
@@ -584,9 +591,16 @@ End;
 Procedure TDrawGameMenu.OnKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Begin
+  // Mitten im Netzwerkspiel, deshalb nachfragen
   If key = VK_ESCAPE Then Begin
-    Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-    Tgame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
+{$ENDIF}
+      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
+      Tgame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    End;
+{$ENDIF}
   End;
   If PlayerIsFirst Then Begin
     If key = VK_RETURN Then Begin
@@ -709,9 +723,16 @@ End;
 Procedure TFieldSetupMenu.OnKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Begin
+  // Mitten im Netzwerkspiel, deshalb nachfragen
   If key = VK_ESCAPE Then Begin
-    Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-    TGame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
+{$ENDIF}
+      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
+      TGame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    End;
+{$ENDIF}
   End;
   If PlayerIsFirst Then Begin
     If key = VK_RETURN Then Begin
@@ -835,8 +856,14 @@ Begin
     End;
   End;
   If key = VK_ESCAPE Then Begin
-    Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-    Tgame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
+{$ENDIF}
+      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
+      Tgame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    End;
+{$ENDIF}
   End;
   If key = VK_DOWN Then Begin
     fCursorPos := min(fCursorPos + 1, length(PlayerColors) - 1);
@@ -970,8 +997,15 @@ Procedure TJoinMenu.OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState
   );
 Begin
   If (key = VK_ESCAPE) Or (key = VK_BACK) Then Begin
-    Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-    Tgame(fOwner).SwitchToScreen(sMainScreen);
+    // Wer schon verbunden ist, verlässt mit ESC die Lobby (und das Netzwerkspiel), deshalb nachfragen
+{$IFNDEF Only3Player}
+    If (Not Connected) Or (ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO)) Then Begin
+{$ENDIF}
+      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
+      Tgame(fOwner).SwitchToScreen(sMainScreen);
+{$IFNDEF Only3Player}
+    End;
+{$ENDIF}
   End;
   If key = VK_RETURN Then Begin // Alle Clients sind da -> Ab in den Spieler Config Dialog..
     If PlayerIsFirst Then Begin
@@ -1325,11 +1359,9 @@ Begin
       6: key := VK_ESCAPE; // -- Exit Bomberman
     End;
   End;
+  // Im Hauptmenü gibt es nichts zu verlieren, deshalb ohne Abfrage (die kommt nur in der Lobby und im Spiel)
   If key = VK_ESCAPE Then Begin
-{$IFNDEF Only3Player}
-    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
-{$ENDIF}
-      TGame(fOwner).SwitchToScreen(sExitBomberman);
+    TGame(fOwner).SwitchToScreen(sExitBomberman);
   End;
 End;
 

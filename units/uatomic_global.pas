@@ -36,6 +36,7 @@ Function GetAtomicConfigFile(): String;
 Function GetAtomicStatsFile(): String;
 Function GetAtomicPlayerStatsFile(): String;
 {$ENDIF}
+Function GetAtomicServerIniFile(): String; // Server und Launcher (Mods Dialog)
 
 (*
  * Returns a Log file separated by application, or raises an exception, if the corresponding define is not set
@@ -118,6 +119,13 @@ Begin
 End;
 
 {$ENDIF}
+
+Function GetAtomicServerIniFile(): String;
+Begin
+  Setup;
+  result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'atomic_server.ini';
+  TearDown;
+End;
 
 Function GetAtomicAppLogFile: String;
 Var
