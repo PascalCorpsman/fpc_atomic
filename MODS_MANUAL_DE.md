@@ -20,15 +20,17 @@ Welche Mods zu welcher Spielerrunde passen, beantwortet die [Mods-FAQ](MODS_FAQ_
 - [Offene Grenzen](#offene-grenzen)
 - [Teleporter](#teleporter)
 - [Mod-Test-Modus](#mod-test-modus)
-- [atomic_server.ini von Hand bearbeiten](#atomic_serverini-von-hand-bearbeiten)
+- [atomic_mods.ini von Hand bearbeiten](#atomic_modsini-von-hand-bearbeiten)
 
 ## Mods einrichten
 
-Die Mods sind eine Einstellung des **Servers**. Nur der PC, der das Spiel hostet, braucht sie. Alle anderen Spieler bekommen die Regeln vom Server und müssen nichts ändern.
+Die Mods sind eine Einstellung des **Hosts**, also des ersten Spielers, der dem Spiel beitritt. Beim Beitreten schickt das Spiel die Mods an den Server, auch an einen [dedizierten Server](MANUAL_DE.md#server-befehle) auf einem anderen PC. Alle anderen Spieler bekommen die Regeln vom Server und müssen nichts ändern. Ihre eigenen Mod-Einstellungen werden nicht genutzt.
 
-Am einfachsten geht es im Launcher: **Mods...** anklicken, links die gewünschten Mods anhaken und rechts ihre Werte einstellen. **OK** speichert. Die Einstellungen gelten für das **nächste Spiel, das auf diesem PC gehostet wird** (der Server liest sie beim Start).
+Am einfachsten geht es im Launcher: **Mods...** anklicken, links die gewünschten Mods anhaken und rechts ihre Werte einstellen. **OK** speichert. Die Einstellungen gelten für das **nächste Spiel, dem dieser PC als erster Spieler beitritt**.
 
-Gespeichert werden die Einstellungen in `atomic_server.ini` im Konfigurationsordner (Launcher: **Konfigordner**), siehe [atomic_server.ini von Hand bearbeiten](#atomic_serverini-von-hand-bearbeiten).
+Gespeichert werden die Einstellungen in `atomic_mods.ini` im Konfigurationsordner (Launcher: **Konfigordner**), siehe [atomic_mods.ini von Hand bearbeiten](#atomic_modsini-von-hand-bearbeiten).
+
+Haben alle Spieler den Server verlassen (oder ist das Match vorbei), schaltet der Server alle Mods wieder aus. Der nächste Host bringt seine eigenen Mods mit.
 
 Die Namen der Einstellungen stehen in den Tabellen so, wie sie im Launcher auf Deutsch heißen (umschalten mit dem Link unten rechts im Launcher).
 
@@ -298,12 +300,14 @@ Diese Einstellungen wirken nur, solange der Mod-Test-Modus an ist:
 - **Rundenzeit:** Der Hurry beginnt bei 80 s Restzeit, `90` startet den Hurry also nach 10 s.
 - **Geister zählen als lebendig:** Die Runde endet nicht, solange noch Geister übrig sind. So lassen sich Geister auch mit nur 2 Spielern testen.
 
-## atomic_server.ini von Hand bearbeiten
+## atomic_mods.ini von Hand bearbeiten
 
 Die Datei liegt im Konfigurationsordner von FPC Atomic:
 
-- Windows: `%LOCALAPPDATA%\fpc_atomic\atomic_server.ini`
-- Linux: `~/.config/fpc_atomic/atomic_server.ini`
+- Windows: `%LOCALAPPDATA%\fpc_atomic\atomic_mods.ini`
+- Linux: `~/.config/fpc_atomic/atomic_mods.ini`
+
+Ältere Versionen haben die Mods in `atomic_server.ini` gespeichert, der Server hat sie von dort gelesen. Gibt es `atomic_mods.ini` noch nicht, übernehmen Spiel und Launcher diese Datei einmalig, danach wird `atomic_server.ini` nicht mehr genutzt.
 
 Beispiel:
 
@@ -329,7 +333,7 @@ Bitte beachten:
 - **Keine Kommentare hinter Werten.** Ein Kommentar muss in einer eigenen Zeile stehen und mit `;` beginnen. `HitPoints=0 ; aus` wird als „an“ gelesen, Zahlen mit Kommentar dahinter fallen auf ihren Default zurück.
 - `1` heißt an, `0` heißt aus.
 - Steht ein Schlüssel zweimal da, zählt der erste.
-- Fehlende Schlüssel werden beim Serverstart mit ihrem Default angelegt. So findet man alle Schlüssel in der Datei.
-- Ungültige Werte werden auf den nächsten gültigen Wert gesetzt. Das Server-Log (Konfigurationsordner, `log/server.log`) zeigt für jeden eine Warnung.
-- Der Server liest die Datei nur beim Start. Änderungen gelten ab dem nächsten gehosteten Spiel.
+- Fehlende Schlüssel werden mit ihrem Default angelegt, sobald Spiel oder Launcher die Datei lesen. So findet man alle Schlüssel in der Datei.
+- Ungültige Werte werden auf den nächsten gültigen Wert gesetzt. Das Spiel-Log (Konfigurationsordner, `log/client.log`) zeigt für jeden eine Warnung. Der Server prüft die empfangenen Werte noch einmal.
+- Das Spiel liest die Datei jedes Mal, wenn es einem Server als erster Spieler beitritt. Änderungen gelten ab dem nächsten Spiel, ein Neustart ist nicht nötig.
 - Der Dialog **Mods...** im Launcher schreibt den Abschnitt `[Handicap]` komplett neu. Kommentare in diesem Abschnitt gehen verloren, Kommentare in allen anderen Abschnitten bleiben erhalten.

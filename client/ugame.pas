@@ -1391,6 +1391,7 @@ End;
 Procedure TGame.SendSettings;
 Var
   m: TMemoryStream;
+  Mods: TModSettings;
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TGame.SendSettings');
@@ -1416,6 +1417,13 @@ Begin
   // Port hat der Server nicht
   // CheckForUpdates hat der Server nicht
   SendChunk(miUpdateSettings, m);
+  // Die Mods bestimmt ebenfalls der Master, auch auf einem fremden Server
+  Mods.Handicap := Nil;
+  LoadModSettingsFromFile(GetAtomicModsIniFile(), Mods);
+  m := TMemoryStream.Create;
+  m.WriteAnsiString(ModSettingsToString(Mods));
+  Mods.Handicap.free;
+  SendChunk(miUpdateModSettings, m);
   (*
    * Da der Server das nicht mehr zu uns zurück schickt muss der passende Screen dazu hier "händisch" gesetzt werden.
    *)

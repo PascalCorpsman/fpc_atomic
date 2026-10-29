@@ -289,7 +289,7 @@ object Form1: TForm1
     object Button6: TButton
       Left = 356
       Height = 25
-      Hint = 'Open the folder with the settings, the logs and atomic_server.ini.'
+      Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
       Top = 2
       Width = 81
       Caption = '&Config folder'

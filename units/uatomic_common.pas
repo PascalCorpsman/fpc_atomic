@@ -173,10 +173,10 @@ Const
    *                       ADD: launcher: map selection with a preview (map with the bricks of the scheme) in the game options
    *                       FIX: mod test mode with GhostsKeepRound: when a player died with only 2 players, all bombs stayed off for the rest of the round (also after F7)
    *                       ADD: open borders: the arrows on the frame disappear 10 s after the borders opened
-   *             0.14000 =
+   *             0.14000 = ADD: the mods are no longer read by the server from atomic_server.ini, the first player (master) sends the mods (atomic_mods.ini) to the server -> need change in ProtocollVersion
    *)
 
-  ProtocollVersion: uint32 = 14; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  ProtocollVersion: uint32 = 15; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   Version = '0.14000';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
@@ -266,7 +266,7 @@ Const
   AtomicInvulnColorChangeTime = 150; // Zeit in ms, nach derer ein unverwundbarer Atomic zwischen seiner Farbe und weiß (bzw. rot) wechselt
 
   (*
-   * Obere Grenzen der Mod Einstellungen aus atomic_server.ini, die untere Grenze ist 0 (Ausnahmen stehen dabei).
+   * Obere Grenzen der Mod Einstellungen (atomic_mods.ini), die untere Grenze ist 0 (Ausnahmen stehen dabei).
    * Der Server zieht ungültige Werte auf diese Grenzen, der Mods Dialog im Launcher nutzt sie für seine Eingabefelder.
    *)
   ModMaxStunMs = 10000; // StunMinMs, StunMaxMs
@@ -704,8 +704,8 @@ Type
   End;
 
   (*
-   * Optionale Spiel Mods, werden aus atomic_server.ini geladen, alle Mods sind per Default aus.
-   * Der Server liest sie beim Start, der Launcher bearbeitet sie im Mods Dialog.
+   * Optionale Spiel Mods aus atomic_mods.ini, alle Mods sind per Default aus.
+   * Der Launcher bearbeitet sie im Mods Dialog, der Client (Master) schickt sie beim Login an den Server (miUpdateModSettings).
    *)
   TModSettings = Record
     StunOnBombLanding: Boolean; // True, Landet eine geworfene Bombe auf einem Spieler, wird dieser gestunnt
@@ -846,7 +846,8 @@ Function GetDefaultScheme(): TScheme;
 Function ModTestCommandToString(Value: TModTestCommand): String;
 
 (*
- * Gemeinsamer Code von Server und Launcher für atomic_server.ini, damit beide dieselben Defaults und Grenzen nutzen.
+ * Gemeinsamer Code von Server, Client und Launcher für die Mod Einstellungen, damit alle dieselben Defaults und Grenzen nutzen.
+ * Der Launcher bearbeitet atomic_mods.ini, der Client (Master) schickt sie mit miUpdateModSettings als Text an den Server.
  * Settings.Handicap wird bei Bedarf erzeugt und muss vom Aufrufer wieder frei gegeben werden.
  *)
 Procedure ModSettingsDefaults(Var Settings: TModSettings);
@@ -854,6 +855,10 @@ Procedure ModSettingsDefaults(Var Settings: TModSettings);
 Procedure LoadModSettingsFromFile(Const Filename: String; Var Settings: TModSettings);
 // Schreibt alle Werte und [Handicap] komplett neu (Kommentare in [Handicap] gehen dabei verloren)
 Function SaveModSettingsToFile(Const Filename: String; Const Settings: TModSettings): Boolean;
+// Alle Werte und [Handicap] als Inhalt einer Ini Datei (für miUpdateModSettings)
+Function ModSettingsToString(Const Settings: TModSettings): String;
+// Gegenstück zu ModSettingsToString, fehlende Werte = Default, ungültige Werte werden wie beim Laden der Datei auf ihre Grenzen gezogen
+Procedure ModSettingsFromString(Const Data: String; Var Settings: TModSettings);
 
 {$IFDEF Server}
 Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
@@ -1248,7 +1253,7 @@ End;
  * Damit stehen die Schlüssel für Laden (fehlende anlegen) und Speichern nur an einer Stelle.
  *)
 
-Procedure WriteModSettings(Const ini: TIniFile; Const Settings: TModSettings; OnlyMissing: Boolean);
+Procedure WriteModSettings(Const ini: TCustomIniFile; Const Settings: TModSettings; OnlyMissing: Boolean);
 
   Procedure WriteB(Const Section, Key: String; Value: Boolean);
   Begin
@@ -1330,18 +1335,155 @@ Begin
   WriteB('Debug', 'GhostsKeepRound', Settings.GhostsKeepRound);
 End;
 
-Procedure LoadModSettingsFromFile(Const Filename: String;
-  Var Settings: TModSettings);
+// Schreibt [Handicap] komplett neu (Kommentare in [Handicap] gehen dabei verloren)
+
+Procedure WriteHandicap(Const ini: TCustomIniFile; Const Settings: TModSettings);
+Var
+  i: Integer;
+Begin
+  ini.EraseSection('Handicap');
+  For i := 0 To Settings.Handicap.Count - 1 Do Begin
+    ini.WriteString('Handicap', Settings.Handicap.Names[i], Settings.Handicap.ValueFromIndex[i]);
+  End;
+End;
+
+(*
+ * Liest alle Werte (fehlende = Default) und zieht ungültige Werte mit einer Warnung auf ihre Grenzen,
+ * Source steht dabei in der Warnung (Dateiname oder Herkunft des Textes).
+ *)
+
+Procedure ReadModSettings(Const ini: TCustomIniFile; Const Source: String; Var Settings: TModSettings);
 
   // Zieht einen ungültigen Wert mit einer Warnung auf MinValue..MaxValue
   Procedure Clamp(Const Key: String; Var Value: Integer; MinValue, MaxValue: Integer);
   Begin
     If (Value < MinValue) Or (Value > MaxValue) Then Begin
-      log(ExtractFileName(Filename) + ': ' + Key + ' not in ' + inttostr(MinValue) + '..' + inttostr(MaxValue) + ', clamping', llWarning);
+      log(Source + ': ' + Key + ' not in ' + inttostr(MinValue) + '..' + inttostr(MaxValue) + ', clamping', llWarning);
       Value := min(MaxValue, max(MinValue, Value));
     End;
   End;
 
+Begin
+  ModSettingsDefaults(Settings);
+  Settings.StunOnBombLanding := ini.ReadBool('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
+  Settings.StunMinMs := ini.ReadInteger('Mods', 'StunMinMs', Settings.StunMinMs);
+  Settings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', Settings.StunMaxMs);
+  Settings.PunchStun := ini.ReadBool('Mods', 'PunchStun', Settings.PunchStun);
+  Settings.PunchStunMinMs := ini.ReadInteger('Mods', 'PunchStunMinMs', Settings.PunchStunMinMs);
+  Settings.PunchStunMaxMs := ini.ReadInteger('Mods', 'PunchStunMaxMs', Settings.PunchStunMaxMs);
+  Settings.PunchStunCooldownMs := ini.ReadInteger('Mods', 'PunchStunCooldownMs', Settings.PunchStunCooldownMs);
+  Settings.PositiveDisease := ini.ReadBool('Mods', 'PositiveDisease', Settings.PositiveDisease);
+  Settings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
+  Settings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
+  Settings.PositiveMaxMs := ini.ReadInteger('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
+  Settings.BrickWalk := ini.ReadBool('Mods', 'BrickWalk', Settings.BrickWalk);
+  Settings.BrickWalkChance := ini.ReadInteger('Mods', 'BrickWalkChance', Settings.BrickWalkChance);
+  Settings.BrickWalkMinMs := ini.ReadInteger('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
+  Settings.BrickWalkMaxMs := ini.ReadInteger('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
+  Settings.BrickWalkTransparency := ini.ReadInteger('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
+  Settings.FlashDisease := ini.ReadBool('Mods', 'FlashDisease', Settings.FlashDisease);
+  Settings.FlashDiseaseChance := ini.ReadInteger('Mods', 'FlashDiseaseChance', Settings.FlashDiseaseChance);
+  Settings.FlashDiseaseIntensity := ini.ReadInteger('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
+  Settings.FlashDiseaseMs := ini.ReadInteger('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
+  Settings.FlashDiseaseFadeMs := ini.ReadInteger('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
+  Settings.WhiteBomb := ini.ReadBool('Mods', 'WhiteBomb', Settings.WhiteBomb);
+  Settings.WhiteBombChance := ini.ReadInteger('Mods', 'WhiteBombChance', Settings.WhiteBombChance);
+  Settings.WhiteBombIntensity := ini.ReadInteger('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
+  Settings.WhiteBombMs := ini.ReadInteger('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
+  Settings.WhiteBombFadeMs := ini.ReadInteger('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
+  Settings.FlameThrower := ini.ReadBool('Mods', 'FlameThrower', Settings.FlameThrower);
+  Settings.FlameThrowerChance := ini.ReadInteger('Mods', 'FlameThrowerChance', Settings.FlameThrowerChance);
+  Settings.FlameThrowerFuelMs := ini.ReadInteger('Mods', 'FlameThrowerFuelMs', Settings.FlameThrowerFuelMs);
+  Settings.FlameThrowerRange := ini.ReadInteger('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
+  Settings.FlameThrowerKillMs := ini.ReadInteger('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
+  Settings.FlameThrowerBurnItems := ini.ReadBool('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
+  Settings.FlameThrowerIgniteBombs := ini.ReadBool('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
+  Settings.FlameThrowerIgniteMs := ini.ReadInteger('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
+  Settings.FlameThrowerFriendlyFire := ini.ReadBool('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
+  Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
+  Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
+  Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
+  Settings.GhostFlickerMs := ini.ReadInteger('Mods', 'GhostFlickerMs', Settings.GhostFlickerMs);
+  Settings.GhostMaxCount := ini.ReadInteger('Mods', 'GhostMaxCount', Settings.GhostMaxCount);
+  Settings.GhostMaxTimeMs := ini.ReadInteger('Mods', 'GhostMaxTimeMs', Settings.GhostMaxTimeMs);
+  Settings.HitPoints := ini.ReadBool('Mods', 'HitPoints', Settings.HitPoints);
+  Settings.InvulnTimeMs := ini.ReadInteger('Mods', 'InvulnTimeMs', Settings.InvulnTimeMs);
+  Settings.DefaultHitPoints := ini.ReadInteger('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
+  Settings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
+  ini.ReadSectionValues('Handicap', Settings.Handicap); // Spielername=Trefferpunkte
+  Settings.GloveAtStart := ini.ReadBool('Mods', 'GloveAtStart', Settings.GloveAtStart);
+  Settings.OpenBorders := ini.ReadBool('Mods', 'OpenBorders', Settings.OpenBorders);
+  Settings.OpenBordersTopBottom := ini.ReadBool('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
+  Settings.OpenBordersLeftRight := ini.ReadBool('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
+  Settings.OpenBordersActiveSec := ini.ReadInteger('Mods', 'OpenBordersActiveSec', Settings.OpenBordersActiveSec);
+  Settings.Teleporters := ini.ReadBool('Mods', 'Teleporters', Settings.Teleporters);
+  Settings.TeleportersTopBottom := ini.ReadBool('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
+  Settings.TeleportersLeftRight := ini.ReadBool('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
+  Settings.TeleportersActiveSec := ini.ReadInteger('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
+  Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
+  Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
+  Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
+  Settings.StartInvulnMs := ini.ReadInteger('Debug', 'StartInvulnMs', Settings.StartInvulnMs);
+  Settings.GhostsKeepRound := ini.ReadBool('Debug', 'GhostsKeepRound', Settings.GhostsKeepRound);
+  (*
+   * Ungültige Werte auf gültige Grenzen ziehen
+   *)
+  Clamp('StunMinMs', Settings.StunMinMs, 0, ModMaxStunMs);
+  Clamp('StunMaxMs', Settings.StunMaxMs, 0, ModMaxStunMs);
+  If Settings.StunMaxMs < Settings.StunMinMs Then Begin
+    log(Source + ': StunMaxMs < StunMinMs, using StunMinMs', llWarning);
+    Settings.StunMaxMs := Settings.StunMinMs;
+  End;
+  Clamp('PunchStunMinMs', Settings.PunchStunMinMs, 0, ModMaxStunMs);
+  Clamp('PunchStunMaxMs', Settings.PunchStunMaxMs, 0, ModMaxStunMs);
+  If Settings.PunchStunMaxMs < Settings.PunchStunMinMs Then Begin
+    log(Source + ': PunchStunMaxMs < PunchStunMinMs, using PunchStunMinMs', llWarning);
+    Settings.PunchStunMaxMs := Settings.PunchStunMinMs;
+  End;
+  Clamp('PunchStunCooldownMs', Settings.PunchStunCooldownMs, 0, ModMaxPunchStunCooldownMs);
+  Clamp('PositiveDiseaseChance', Settings.PositiveDiseaseChance, 0, ModMaxPositiveDiseaseChance);
+  Clamp('PositiveMinMs', Settings.PositiveMinMs, 0, ModMaxPositiveMs);
+  Clamp('PositiveMaxMs', Settings.PositiveMaxMs, 0, ModMaxPositiveMs);
+  If Settings.PositiveMaxMs < Settings.PositiveMinMs Then Begin
+    log(Source + ': PositiveMaxMs < PositiveMinMs, using PositiveMinMs', llWarning);
+    Settings.PositiveMaxMs := Settings.PositiveMinMs;
+  End;
+  Clamp('BrickWalkChance', Settings.BrickWalkChance, 0, ModMaxBrickWalkChance);
+  Clamp('BrickWalkMinMs', Settings.BrickWalkMinMs, 0, ModMaxBrickWalkMs);
+  Clamp('BrickWalkMaxMs', Settings.BrickWalkMaxMs, 0, ModMaxBrickWalkMs);
+  If Settings.BrickWalkMaxMs < Settings.BrickWalkMinMs Then Begin
+    log(Source + ': BrickWalkMaxMs < BrickWalkMinMs, using BrickWalkMinMs', llWarning);
+    Settings.BrickWalkMaxMs := Settings.BrickWalkMinMs;
+  End;
+  Clamp('BrickWalkTransparency', Settings.BrickWalkTransparency, 0, ModMaxBrickWalkTransparency);
+  Clamp('FlashDiseaseChance', Settings.FlashDiseaseChance, 0, ModMaxFlashChance);
+  Clamp('FlashDiseaseIntensity', Settings.FlashDiseaseIntensity, 0, ModMaxFlashIntensity);
+  Clamp('FlashDiseaseMs', Settings.FlashDiseaseMs, 0, ModMaxFlashMs);
+  Clamp('FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs, 0, ModMaxFlashMs);
+  Clamp('WhiteBombChance', Settings.WhiteBombChance, 0, ModMaxFlashChance);
+  Clamp('WhiteBombIntensity', Settings.WhiteBombIntensity, 0, ModMaxFlashIntensity);
+  Clamp('WhiteBombMs', Settings.WhiteBombMs, 0, ModMaxFlashMs);
+  Clamp('WhiteBombFadeMs', Settings.WhiteBombFadeMs, 0, ModMaxFlashMs);
+  Clamp('FlameThrowerChance', Settings.FlameThrowerChance, 0, ModMaxFlameThrowerChance);
+  Clamp('FlameThrowerFuelMs', Settings.FlameThrowerFuelMs, 0, ModMaxFlameThrowerFuelMs);
+  Clamp('FlameThrowerRange', Settings.FlameThrowerRange, 1, ModMaxFlameThrowerRange);
+  Clamp('FlameThrowerKillMs', Settings.FlameThrowerKillMs, 0, ModMaxFlameThrowerKillMs);
+  Clamp('FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs, 0, ModMaxFlameThrowerIgniteMs);
+  Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
+  Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
+  Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
+  Clamp('GhostMaxCount', Settings.GhostMaxCount, 0, ModMaxGhostCount);
+  Clamp('GhostMaxTimeMs', Settings.GhostMaxTimeMs, 0, ModMaxGhostTimeMs);
+  Clamp('InvulnTimeMs', Settings.InvulnTimeMs, FlameTime, ModMaxInvulnTimeMs);
+  Clamp('DefaultHitPoints', Settings.DefaultHitPoints, 1, ModMaxHitPoints);
+  Clamp('RoundTimeSec', Settings.RoundTimeSec, 0, ModMaxRoundTimeSec);
+  Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
+  Clamp('TeleportersActiveSec', Settings.TeleportersActiveSec, 0, ModMaxTeleportersActiveSec);
+  Clamp('OpenBordersActiveSec', Settings.OpenBordersActiveSec, 0, ModMaxOpenBordersActiveSec);
+End;
+
+Procedure LoadModSettingsFromFile(Const Filename: String;
+  Var Settings: TModSettings);
 Var
   ini: TIniFile;
 Begin
@@ -1352,121 +1494,7 @@ Begin
   End;
   ini := TIniFile.Create(Filename);
   Try
-    Settings.StunOnBombLanding := ini.ReadBool('Mods', 'StunOnBombLanding', Settings.StunOnBombLanding);
-    Settings.StunMinMs := ini.ReadInteger('Mods', 'StunMinMs', Settings.StunMinMs);
-    Settings.StunMaxMs := ini.ReadInteger('Mods', 'StunMaxMs', Settings.StunMaxMs);
-    Settings.PunchStun := ini.ReadBool('Mods', 'PunchStun', Settings.PunchStun);
-    Settings.PunchStunMinMs := ini.ReadInteger('Mods', 'PunchStunMinMs', Settings.PunchStunMinMs);
-    Settings.PunchStunMaxMs := ini.ReadInteger('Mods', 'PunchStunMaxMs', Settings.PunchStunMaxMs);
-    Settings.PunchStunCooldownMs := ini.ReadInteger('Mods', 'PunchStunCooldownMs', Settings.PunchStunCooldownMs);
-    Settings.PositiveDisease := ini.ReadBool('Mods', 'PositiveDisease', Settings.PositiveDisease);
-    Settings.PositiveDiseaseChance := ini.ReadInteger('Mods', 'PositiveDiseaseChance', Settings.PositiveDiseaseChance);
-    Settings.PositiveMinMs := ini.ReadInteger('Mods', 'PositiveMinMs', Settings.PositiveMinMs);
-    Settings.PositiveMaxMs := ini.ReadInteger('Mods', 'PositiveMaxMs', Settings.PositiveMaxMs);
-    Settings.BrickWalk := ini.ReadBool('Mods', 'BrickWalk', Settings.BrickWalk);
-    Settings.BrickWalkChance := ini.ReadInteger('Mods', 'BrickWalkChance', Settings.BrickWalkChance);
-    Settings.BrickWalkMinMs := ini.ReadInteger('Mods', 'BrickWalkMinMs', Settings.BrickWalkMinMs);
-    Settings.BrickWalkMaxMs := ini.ReadInteger('Mods', 'BrickWalkMaxMs', Settings.BrickWalkMaxMs);
-    Settings.BrickWalkTransparency := ini.ReadInteger('Mods', 'BrickWalkTransparency', Settings.BrickWalkTransparency);
-    Settings.FlashDisease := ini.ReadBool('Mods', 'FlashDisease', Settings.FlashDisease);
-    Settings.FlashDiseaseChance := ini.ReadInteger('Mods', 'FlashDiseaseChance', Settings.FlashDiseaseChance);
-    Settings.FlashDiseaseIntensity := ini.ReadInteger('Mods', 'FlashDiseaseIntensity', Settings.FlashDiseaseIntensity);
-    Settings.FlashDiseaseMs := ini.ReadInteger('Mods', 'FlashDiseaseMs', Settings.FlashDiseaseMs);
-    Settings.FlashDiseaseFadeMs := ini.ReadInteger('Mods', 'FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs);
-    Settings.WhiteBomb := ini.ReadBool('Mods', 'WhiteBomb', Settings.WhiteBomb);
-    Settings.WhiteBombChance := ini.ReadInteger('Mods', 'WhiteBombChance', Settings.WhiteBombChance);
-    Settings.WhiteBombIntensity := ini.ReadInteger('Mods', 'WhiteBombIntensity', Settings.WhiteBombIntensity);
-    Settings.WhiteBombMs := ini.ReadInteger('Mods', 'WhiteBombMs', Settings.WhiteBombMs);
-    Settings.WhiteBombFadeMs := ini.ReadInteger('Mods', 'WhiteBombFadeMs', Settings.WhiteBombFadeMs);
-    Settings.FlameThrower := ini.ReadBool('Mods', 'FlameThrower', Settings.FlameThrower);
-    Settings.FlameThrowerChance := ini.ReadInteger('Mods', 'FlameThrowerChance', Settings.FlameThrowerChance);
-    Settings.FlameThrowerFuelMs := ini.ReadInteger('Mods', 'FlameThrowerFuelMs', Settings.FlameThrowerFuelMs);
-    Settings.FlameThrowerRange := ini.ReadInteger('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
-    Settings.FlameThrowerKillMs := ini.ReadInteger('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
-    Settings.FlameThrowerBurnItems := ini.ReadBool('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
-    Settings.FlameThrowerIgniteBombs := ini.ReadBool('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
-    Settings.FlameThrowerIgniteMs := ini.ReadInteger('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
-    Settings.FlameThrowerFriendlyFire := ini.ReadBool('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
-    Settings.Ghosts := ini.ReadBool('Mods', 'Ghosts', Settings.Ghosts);
-    Settings.GhostReviveInvulnMs := ini.ReadInteger('Mods', 'GhostReviveInvulnMs', Settings.GhostReviveInvulnMs);
-    Settings.GhostFlameLen := ini.ReadInteger('Mods', 'GhostFlameLen', Settings.GhostFlameLen);
-    Settings.GhostFlickerMs := ini.ReadInteger('Mods', 'GhostFlickerMs', Settings.GhostFlickerMs);
-    Settings.GhostMaxCount := ini.ReadInteger('Mods', 'GhostMaxCount', Settings.GhostMaxCount);
-    Settings.GhostMaxTimeMs := ini.ReadInteger('Mods', 'GhostMaxTimeMs', Settings.GhostMaxTimeMs);
-    Settings.HitPoints := ini.ReadBool('Mods', 'HitPoints', Settings.HitPoints);
-    Settings.InvulnTimeMs := ini.ReadInteger('Mods', 'InvulnTimeMs', Settings.InvulnTimeMs);
-    Settings.DefaultHitPoints := ini.ReadInteger('Mods', 'DefaultHitPoints', Settings.DefaultHitPoints);
-    Settings.ShowHitPoints := ini.ReadBool('Mods', 'ShowHitPoints', Settings.ShowHitPoints);
-    ini.ReadSectionValues('Handicap', Settings.Handicap); // Spielername=Trefferpunkte
-    Settings.GloveAtStart := ini.ReadBool('Mods', 'GloveAtStart', Settings.GloveAtStart);
-    Settings.OpenBorders := ini.ReadBool('Mods', 'OpenBorders', Settings.OpenBorders);
-    Settings.OpenBordersTopBottom := ini.ReadBool('Mods', 'OpenBordersTopBottom', Settings.OpenBordersTopBottom);
-    Settings.OpenBordersLeftRight := ini.ReadBool('Mods', 'OpenBordersLeftRight', Settings.OpenBordersLeftRight);
-    Settings.OpenBordersActiveSec := ini.ReadInteger('Mods', 'OpenBordersActiveSec', Settings.OpenBordersActiveSec);
-    Settings.Teleporters := ini.ReadBool('Mods', 'Teleporters', Settings.Teleporters);
-    Settings.TeleportersTopBottom := ini.ReadBool('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
-    Settings.TeleportersLeftRight := ini.ReadBool('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
-    Settings.TeleportersActiveSec := ini.ReadInteger('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
-    Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
-    Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
-    Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
-    Settings.StartInvulnMs := ini.ReadInteger('Debug', 'StartInvulnMs', Settings.StartInvulnMs);
-    Settings.GhostsKeepRound := ini.ReadBool('Debug', 'GhostsKeepRound', Settings.GhostsKeepRound);
-    (*
-     * Ungültige Werte auf gültige Grenzen ziehen
-     *)
-    Clamp('StunMinMs', Settings.StunMinMs, 0, ModMaxStunMs);
-    Clamp('StunMaxMs', Settings.StunMaxMs, 0, ModMaxStunMs);
-    If Settings.StunMaxMs < Settings.StunMinMs Then Begin
-      log(ExtractFileName(Filename) + ': StunMaxMs < StunMinMs, using StunMinMs', llWarning);
-      Settings.StunMaxMs := Settings.StunMinMs;
-    End;
-    Clamp('PunchStunMinMs', Settings.PunchStunMinMs, 0, ModMaxStunMs);
-    Clamp('PunchStunMaxMs', Settings.PunchStunMaxMs, 0, ModMaxStunMs);
-    If Settings.PunchStunMaxMs < Settings.PunchStunMinMs Then Begin
-      log(ExtractFileName(Filename) + ': PunchStunMaxMs < PunchStunMinMs, using PunchStunMinMs', llWarning);
-      Settings.PunchStunMaxMs := Settings.PunchStunMinMs;
-    End;
-    Clamp('PunchStunCooldownMs', Settings.PunchStunCooldownMs, 0, ModMaxPunchStunCooldownMs);
-    Clamp('PositiveDiseaseChance', Settings.PositiveDiseaseChance, 0, ModMaxPositiveDiseaseChance);
-    Clamp('PositiveMinMs', Settings.PositiveMinMs, 0, ModMaxPositiveMs);
-    Clamp('PositiveMaxMs', Settings.PositiveMaxMs, 0, ModMaxPositiveMs);
-    If Settings.PositiveMaxMs < Settings.PositiveMinMs Then Begin
-      log(ExtractFileName(Filename) + ': PositiveMaxMs < PositiveMinMs, using PositiveMinMs', llWarning);
-      Settings.PositiveMaxMs := Settings.PositiveMinMs;
-    End;
-    Clamp('BrickWalkChance', Settings.BrickWalkChance, 0, ModMaxBrickWalkChance);
-    Clamp('BrickWalkMinMs', Settings.BrickWalkMinMs, 0, ModMaxBrickWalkMs);
-    Clamp('BrickWalkMaxMs', Settings.BrickWalkMaxMs, 0, ModMaxBrickWalkMs);
-    If Settings.BrickWalkMaxMs < Settings.BrickWalkMinMs Then Begin
-      log(ExtractFileName(Filename) + ': BrickWalkMaxMs < BrickWalkMinMs, using BrickWalkMinMs', llWarning);
-      Settings.BrickWalkMaxMs := Settings.BrickWalkMinMs;
-    End;
-    Clamp('BrickWalkTransparency', Settings.BrickWalkTransparency, 0, ModMaxBrickWalkTransparency);
-    Clamp('FlashDiseaseChance', Settings.FlashDiseaseChance, 0, ModMaxFlashChance);
-    Clamp('FlashDiseaseIntensity', Settings.FlashDiseaseIntensity, 0, ModMaxFlashIntensity);
-    Clamp('FlashDiseaseMs', Settings.FlashDiseaseMs, 0, ModMaxFlashMs);
-    Clamp('FlashDiseaseFadeMs', Settings.FlashDiseaseFadeMs, 0, ModMaxFlashMs);
-    Clamp('WhiteBombChance', Settings.WhiteBombChance, 0, ModMaxFlashChance);
-    Clamp('WhiteBombIntensity', Settings.WhiteBombIntensity, 0, ModMaxFlashIntensity);
-    Clamp('WhiteBombMs', Settings.WhiteBombMs, 0, ModMaxFlashMs);
-    Clamp('WhiteBombFadeMs', Settings.WhiteBombFadeMs, 0, ModMaxFlashMs);
-    Clamp('FlameThrowerChance', Settings.FlameThrowerChance, 0, ModMaxFlameThrowerChance);
-    Clamp('FlameThrowerFuelMs', Settings.FlameThrowerFuelMs, 0, ModMaxFlameThrowerFuelMs);
-    Clamp('FlameThrowerRange', Settings.FlameThrowerRange, 1, ModMaxFlameThrowerRange);
-    Clamp('FlameThrowerKillMs', Settings.FlameThrowerKillMs, 0, ModMaxFlameThrowerKillMs);
-    Clamp('FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs, 0, ModMaxFlameThrowerIgniteMs);
-    Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
-    Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
-    Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
-    Clamp('GhostMaxCount', Settings.GhostMaxCount, 0, ModMaxGhostCount);
-    Clamp('GhostMaxTimeMs', Settings.GhostMaxTimeMs, 0, ModMaxGhostTimeMs);
-    Clamp('InvulnTimeMs', Settings.InvulnTimeMs, FlameTime, ModMaxInvulnTimeMs);
-    Clamp('DefaultHitPoints', Settings.DefaultHitPoints, 1, ModMaxHitPoints);
-    Clamp('RoundTimeSec', Settings.RoundTimeSec, 0, ModMaxRoundTimeSec);
-    Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
-    Clamp('TeleportersActiveSec', Settings.TeleportersActiveSec, 0, ModMaxTeleportersActiveSec);
-    Clamp('OpenBordersActiveSec', Settings.OpenBordersActiveSec, 0, ModMaxOpenBordersActiveSec);
+    ReadModSettings(ini, ExtractFileName(Filename), Settings);
     (*
      * Fehlende Schlüssel mit ihren Defaults anlegen, damit man sie in der Datei auch findet
      *)
@@ -1480,7 +1508,6 @@ Function SaveModSettingsToFile(Const Filename: String;
   Const Settings: TModSettings): Boolean;
 Var
   ini: TIniFile;
-  i: Integer;
 Begin
   result := false;
   If Not ForceDirectories(ExtractFileDir(Filename)) Then Begin
@@ -1492,10 +1519,7 @@ Begin
     Try
       ini.CacheUpdates := true;
       WriteModSettings(ini, Settings, false);
-      ini.EraseSection('Handicap');
-      For i := 0 To Settings.Handicap.Count - 1 Do Begin
-        ini.WriteString('Handicap', Settings.Handicap.Names[i], Settings.Handicap.ValueFromIndex[i]);
-      End;
+      WriteHandicap(ini, Settings);
       ini.UpdateFile;
       result := true;
     Finally
@@ -1505,6 +1529,42 @@ Begin
     On av: Exception Do Begin
       log('Unable to write: ' + Filename + ' ' + av.Message, llCritical);
     End;
+  End;
+End;
+
+Function ModSettingsToString(Const Settings: TModSettings): String;
+Var
+  ini: TMemIniFile;
+  sl: TStringList;
+Begin
+  // Ohne Dateiname schreibt TMemIniFile nichts auf die Platte
+  ini := TMemIniFile.Create('');
+  sl := TStringList.Create;
+  Try
+    WriteModSettings(ini, Settings, false);
+    WriteHandicap(ini, Settings);
+    ini.GetStrings(sl);
+    result := sl.Text;
+  Finally
+    sl.free;
+    ini.free;
+  End;
+End;
+
+Procedure ModSettingsFromString(Const Data: String; Var Settings: TModSettings);
+Var
+  ini: TMemIniFile;
+  sl: TStringList;
+Begin
+  ini := TMemIniFile.Create('');
+  sl := TStringList.Create;
+  Try
+    sl.Text := Data;
+    ini.SetStrings(sl);
+    ReadModSettings(ini, 'mod settings', Settings);
+  Finally
+    sl.free;
+    ini.free;
   End;
 End;
 

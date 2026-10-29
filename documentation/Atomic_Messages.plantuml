@@ -81,8 +81,12 @@ end rnote
 
 == Accept ==
 Server->Client_1 : miRequestLoginResult
+Server->Client_1 : miModInfo
+note right
+  mods still default (off)
+end note
 
-group broadcast 
+group broadcast
   Server->Client_1 : miRefreshPlayerStats
 end
 
@@ -103,6 +107,21 @@ end note
 rnote over Server
   Load Settings
 end rnote
+
+Client_1->Server : miUpdateModSettings
+note left
+  only the master,
+  mods from atomic_mods.ini
+end note
+
+rnote over Server
+  Check master
+  Clamp and apply mods
+end rnote
+
+group broadcast
+  Server->Client_1 : miModInfo
+end
 
 group Add further clients
   rnote over Client_n #00AA00
@@ -135,7 +154,8 @@ group Add further clients
     Check playercount
   end rnote
   Server->Client_n : miRequestLoginResult
-  group broadcast 
+  Server->Client_n : miModInfo
+  group broadcast
     Server->Client_1 : miRefreshPlayerStats
     Server->Client_n : miRefreshPlayerStats
   end
@@ -376,6 +396,10 @@ Server->Client_n : miCommandoBackToMainMenu
 
 Client_1->Server: Disconnect
 Client_n->Server: Disconnect
+
+rnote over Server
+  Reset mods (all off)
+end rnote
 
 rnote over Server
   Start UDP Listening

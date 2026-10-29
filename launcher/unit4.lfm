@@ -1345,7 +1345,7 @@ object Form4: TForm4
   object Button2: TButton
     Left = 388
     Height = 25
-    Hint = 'Save the settings to atomic_server.ini. They apply to the next game hosted on this PC.'
+    Hint = 'Save the settings to atomic_mods.ini. They apply to the next game this PC joins as first player, also on another server.'
     Top = 360
     Width = 80
     Caption = 'OK'

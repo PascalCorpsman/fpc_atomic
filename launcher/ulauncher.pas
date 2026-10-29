@@ -46,7 +46,7 @@ Const
    * -Released- 0.10 = ADD: switch to ulogger.pas in uatomic_global.pas
    *            0.11 = ADD: Button zum öffnen des config Verzeichnisses
    *                   ADD: Neues Layout (Namensprüfung, Status der Spieldaten und Version, Kürzel, Hints)
-   *                   ADD: Mods Dialog für atomic_server.ini
+   *                   ADD: Mods Dialog für atomic_mods.ini (der Client schickt die Mods als Master an den Server)
    *                   ADD: Dialog für die Spiel Optionen, Musik und Soundeffekte getrennt
    *                   ADD: Links auf MANUAL.md / MODS_MANUAL.md
    *                   ADD: Strg + Launch hostet, Shift + Launch tritt einem Netzwerkspiel direkt bei

@@ -66,7 +66,7 @@ Some options of the game (launcher: **Game...**) help as well:
 
 ### Example
 
-A setup for an evening with two beginners (Anna, Ben) and some strong players, in `atomic_server.ini` (or the same values in the launcher under **Mods...**):
+A setup for an evening with two beginners (Anna, Ben) and some strong players, in `atomic_mods.ini` of the host (or the same values in the launcher under **Mods...**):
 
 ```ini
 [Mods]
