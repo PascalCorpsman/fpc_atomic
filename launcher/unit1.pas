@@ -749,6 +749,7 @@ Begin
   For i := 1 To ParamCount Do Begin
     If SameText(ParamStr(i), '-lazarus-ide') Then Begin
       Language.AskNameChanges := true;
+      Language.DeleteUnusedItems := true;
       ComboBox1.ItemIndex := 0; // Force to en!
       break;
     End;

@@ -74,6 +74,7 @@ Type
     Function CompIsIgnored(Comp: TComponent): Boolean; // True, wenn die Componente auf der ignore Liste steht
   public
     AskNameChanges: boolean; // Dieser Switch zeigt beim Laden einer Sprache an, ob der Gespeicherte Wert <> dem Eingegebenen Wert (zur Designtime) ist, und wenn ja kann man sich aussuchen welchen man neu gespeichert haben will.
+    DeleteUnusedItems: boolean;
     Constructor Create;
     Destructor Destroy; override;
     // Achtung, es werden nur die Berücksichtigt, welche beim Aufruf bereits in TApplication
@@ -273,6 +274,7 @@ Constructor TLanguage.Create;
 Begin
   Inherited Create;
   AskNameChanges := false;
+  DeleteUnusedItems := false;
   FCurrentLanguage := '';
   fIgnored := Nil;
   fIgnoredComp := Nil;
@@ -738,7 +740,9 @@ Begin
       IniFile.Free;
     End;
     // Löschen aller nicht verwendeten Einträge in der Ini-Datei
-    DeleteAllUnusedItems(UsedNamesList, nValue);
+    If DeleteUnusedItems Then Begin
+      DeleteAllUnusedItems(UsedNamesList, nValue);
+    End;
     UsedNamesList.free;
   End;
 End;
