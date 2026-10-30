@@ -223,6 +223,7 @@ Type
     Procedure PingForOpenGames;
     Procedure DoDisconnect();
 
+    Function ScreenToGame(X, Y: Integer): TPoint; // Fensterkoordinaten -> Spielkoordinaten (GameWidth x GameHeight)
     Procedure OnMessageDialogOpen(Sender: TObject);
     Procedure OnQuitGameConfirmed(Sender: TObject);
   public
@@ -601,28 +602,37 @@ Begin
   If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
 End;
 
-Procedure TGame.FOnMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-Var
-  xx, yy: Integer;
+Function TGame.ScreenToGame(X, Y: Integer): TPoint;
 Begin
   // Umrechnen der Echten Koords in die Screencoords
   If settings.Proportional Then Begin
-    xx := x - fViewPortInfo.TopLeft.X;
-    yy := y - fViewPortInfo.TopLeft.Y;
-    xx := trunc(xx / fViewPortInfo.Scale);
-    yy := trunc(yy / fViewPortInfo.Scale);
+    result.x := trunc((x - fViewPortInfo.TopLeft.X) / fViewPortInfo.Scale);
+    result.y := trunc((y - fViewPortInfo.TopLeft.Y) / fViewPortInfo.Scale);
   End
   Else Begin
-    xx := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
-    yy := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
+    result.x := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
+    result.y := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
   End;
-  Case fgameState Of
-    gs_MainMenu: Begin
-        If assigned(fActualScreen) Then Begin
-          fActualScreen.OnMouseDown(Sender, button, Shift, xx, yy);
+End;
+
+Procedure TGame.FOnMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+Var
+  p: TPoint;
+Begin
+  p := ScreenToGame(x, y);
+  If fMessageDialog.Active Then Begin
+    // Ein offener Dialog bekommt alle Klicks, der Screen dahinter keine
+    If Button = mbLeft Then fMessageDialog.HandleMouseDown(p.x, p.y);
+  End
+  Else Begin
+    Case fgameState Of
+      gs_MainMenu: Begin
+          If assigned(fActualScreen) Then Begin
+            fActualScreen.OnMouseDown(Sender, button, Shift, p.x, p.y);
+          End;
         End;
-      End;
+    End;
   End;
   If Assigned(FOnMouseDownCapture) Then Begin
     FOnMouseDownCapture(Sender, Button, Shift, x, y);
@@ -640,7 +650,13 @@ End;
 
 Procedure TGame.FOnMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer
   );
+Var
+  p: TPoint;
 Begin
+  If fMessageDialog.Active Then Begin
+    p := ScreenToGame(x, y);
+    fMessageDialog.HandleMouseMove(p.x, p.y);
+  End;
   // TODO: Prüfen ob das gelöscht werden kann
   If Assigned(FOnMousemoveCapture) Then Begin
     FOnMousemoveCapture(Sender, Shift, x, y);

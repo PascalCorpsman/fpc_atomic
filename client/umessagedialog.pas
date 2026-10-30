@@ -51,6 +51,8 @@ Type
     Function getReady: Boolean;
     Procedure Add(Const Entry: TMessageDialogEntry);
     Procedure CloseActual(Yes: Boolean);
+    Procedure GetLayout(Out Left, Top, Height, ContentHeight: Integer);
+    Function ButtonAt(x, y: Integer): Integer; // 0 = OK bzw. Yes, 1 = No, -1 = kein Button
   public
     OnOpen: TNotifyEvent; // Wird ausgelöst, sobald ein Dialog sichtbar wird
 
@@ -65,6 +67,8 @@ Type
     Procedure AskYesNo(Question: String; OnYes: TNotifyEvent);
 
     Procedure HandleKey(Key: Word);
+    Procedure HandleMouseDown(x, y: Integer); // x, y in Spielkoordinaten (GameWidth x GameHeight)
+    Procedure HandleMouseMove(x, y: Integer); // x, y in Spielkoordinaten, markiert Yes / No unter der Maus
     Procedure Render; // Erwartet, dass Go2d bereits auf GameWidth x GameHeight eingestellt ist
   End;
 
@@ -91,6 +95,10 @@ Const
   LineHeight = 14;
   MaxCharsPerLine = (DialogWidth - 2 * DialogTile) Div LetterWidth;
   MaxLines = 20;
+  // Linke Kante der Buttons
+  ButtonOKLeft = GameWidth Div 2 - 2 * LetterWidth Div 2;
+  ButtonYesLeft = GameWidth Div 2 - 60 - 3 * LetterWidth Div 2;
+  ButtonNoLeft = GameWidth Div 2 + 60 - 2 * LetterWidth Div 2;
 
 Procedure RenderDialogFrame(Left, Top, Width, Height: integer; Depth: Single;
   Const Texture: TGraphikItem);
@@ -284,6 +292,56 @@ Begin
   End;
 End;
 
+Procedure TMessageDialog.GetLayout(Out Left, Top, Height, ContentHeight: Integer
+  );
+Begin
+  ContentHeight := (length(fQueue[0].Lines) + 4) * LineHeight; // Titel, Leerzeile, Text, Leerzeile, Buttons
+  Height := ContentHeight + 2 * DialogTile;
+  Height := ((Height + DialogTile - 1) Div DialogTile) * DialogTile;
+  Left := (GameWidth - DialogWidth) Div 2;
+  Top := (GameHeight - Height) Div 2;
+End;
+
+Function TMessageDialog.ButtonAt(x, y: Integer): Integer;
+
+  Function Hit(Left, Chars: integer): Boolean;
+  Begin
+    result := (x >= Left - 10) And (x <= Left + Chars * LetterWidth + 10);
+  End;
+
+Var
+  l, t, h, ContentHeight, by: Integer;
+Begin
+  result := -1;
+  If Not Active Then exit;
+  GetLayout(l, t, h, ContentHeight);
+  by := t + DialogTile + (h - 2 * DialogTile - ContentHeight) Div 2 + ContentHeight - LineHeight;
+  If (y < by - 5) Or (y > by + LineHeight + 5) Then exit;
+  If fQueue[0].Kind = mdkYesNo Then Begin
+    If Hit(ButtonYesLeft, 3) Then result := 0;
+    If Hit(ButtonNoLeft, 2) Then result := 1;
+  End
+  Else Begin
+    If Hit(ButtonOKLeft, 2) Then result := 0;
+  End;
+End;
+
+Procedure TMessageDialog.HandleMouseDown(x, y: Integer);
+Begin
+  Case ButtonAt(x, y) Of
+    0: CloseActual(fQueue[0].Kind = mdkYesNo);
+    1: CloseActual(false);
+  End;
+End;
+
+Procedure TMessageDialog.HandleMouseMove(x, y: Integer);
+Begin
+  Case ButtonAt(x, y) Of
+    0: fYesSelected := true;
+    1: fYesSelected := false;
+  End;
+End;
+
 Procedure TMessageDialog.Render;
 
   Procedure TextoutCentered(y: integer; Const Text: String);
@@ -296,11 +354,7 @@ Var
   Title: String;
 Begin
   If (Not Active) Or (Not Ready) Then exit;
-  ContentHeight := (length(fQueue[0].Lines) + 4) * LineHeight; // Titel, Leerzeile, Text, Leerzeile, Buttons
-  h := ContentHeight + 2 * DialogTile;
-  h := ((h + DialogTile - 1) Div DialogTile) * DialogTile;
-  l := (GameWidth - DialogWidth) Div 2;
-  t := (GameHeight - h) Div 2;
+  GetLayout(l, t, h, ContentHeight);
   // Der Dialog liegt über allem, deshalb wird ohne Tiefentest in der Reihenfolge gezeichnet
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_DEPTH_TEST);
@@ -354,13 +408,13 @@ Begin
   // Die Buttons, der ausgewählte ist gelb
   If fQueue[0].Kind = mdkYesNo Then Begin
     If fYesSelected Then AtomicFont.Color := clYellow Else AtomicFont.Color := clGray;
-    AtomicFont.Textout(GameWidth Div 2 - 60 - 3 * LetterWidth Div 2, y, atomic_dialog_Layer + atomic_EPSILON, 'Yes');
+    AtomicFont.Textout(ButtonYesLeft, y, atomic_dialog_Layer + atomic_EPSILON, 'Yes');
     If fYesSelected Then AtomicFont.Color := clGray Else AtomicFont.Color := clYellow;
-    AtomicFont.Textout(GameWidth Div 2 + 60 - 2 * LetterWidth Div 2, y, atomic_dialog_Layer + atomic_EPSILON, 'No');
+    AtomicFont.Textout(ButtonNoLeft, y, atomic_dialog_Layer + atomic_EPSILON, 'No');
   End
   Else Begin
     AtomicFont.Color := clYellow;
-    TextoutCentered(y, 'OK');
+    AtomicFont.Textout(ButtonOKLeft, y, atomic_dialog_Layer + atomic_EPSILON, 'OK');
   End;
   AtomicFont.Color := clWhite;
   glEnable(GL_DEPTH_TEST);
