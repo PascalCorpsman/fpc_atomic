@@ -3116,6 +3116,12 @@ Begin
   m.Write(fModSettings.ModTestMode, sizeof(fModSettings.ModTestMode));
   m.Write(fModSettings.GhostFlickerMs, sizeof(fModSettings.GhostFlickerMs));
   m.Write(fModSettings.BrickWalkTransparency, sizeof(fModSettings.BrickWalkTransparency));
+  // Spielmodus Hunter: Modus, Darstellung des Gejagten und welche Spielmodi die KI kann (für die Anzeige im Player Setup)
+  m.Write(fModSettings.GameMode, sizeof(fModSettings.GameMode));
+  m.Write(fModSettings.HuntedGold, sizeof(fModSettings.HuntedGold));
+  m.Write(fModSettings.HuntedAura, sizeof(fModSettings.HuntedAura));
+  m.Write(fModSettings.HuntedAuraSelf, sizeof(fModSettings.HuntedAuraSelf));
+  m.Write(AiGameModesMask, sizeof(AiGameModesMask));
   SendChunk(miModInfo, m, UID);
 End;
 

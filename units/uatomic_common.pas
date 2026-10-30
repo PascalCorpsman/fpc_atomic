@@ -175,9 +175,11 @@ Const
    *                       ADD: open borders: the arrows on the frame disappear 10 s after the borders opened
    *             0.14000 = ADD: the mods are no longer read by the server from atomic_server.ini, the first player (master) sends the mods (atomic_mods.ini) to the server -> need change in ProtocollVersion
    *                       ADD: optional items & diseases, weights for how often each item and each disease appears and the share of bricks with an item
+   *                       ADD: game mode hunter, one player is the hunted with (almost) all items, who gets him becomes the new hunted -> need change in ProtocollVersion
+   *                       ADD: ai interface version 5 (optional game modes, version 4 libs can still be loaded)
    *)
 
-  ProtocollVersion: uint32 = 15; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  ProtocollVersion: uint32 = 16; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
   Version = '0.14000';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
@@ -299,6 +301,24 @@ Const
   ModMaxItemChance = 100; // in %, ItemChance
   ModMaxItemWeight = 100; // ItemWeight*, DiseaseWeight*
   ModMaxSuperBadSwapChance = 100; // in %
+  ModMaxHuntedInvulnMs = 60000; // Zeit in ms, HuntedInvulnMs
+  ModMaxHunterRespawnMs = 60000; // Zeit in ms, HunterRespawnMs
+  ModMaxHunterRespawnInvulnMs = 60000; // Zeit in ms, HunterRespawnInvulnMs
+  HunterDefaultRoundTimeSec = 120; // Spielmodus Hunter mit Respawn: Rundenzeit, wenn die Spielzeit unendlich ist (sonst endet die Runde nie)
+
+  (*
+   * Spielmodus Hunter: Einer ist der Gejagte und hat (fast) alle Items, wer ihn erwischt wird der neue Gejagte.
+   * Die Werte der Einstellungen (atomic_mods.ini, Abschnitt [Hunter])
+   *)
+  HuntedStartRandom = 0; // HuntedStart: zufälliger Spieler wird zu Rundenbeginn der Gejagte
+  HuntedStartLeader = 1; // HuntedStart: der Spieler mit dem höchsten Score (bei Gleichstand zufällig)
+  HuntedLostRandom = 0; // HuntedLost: stirbt der Gejagte ohne fremden Killer, wird ein zufälliger anderer lebender Spieler der Gejagte
+  HuntedLostKeep = 1; // HuntedLost: er bleibt der Gejagte (nur mit Respawn, sonst wie HuntedLostRandom)
+  HunterScoringTime = 0; // HunterScoring: Rundensieger ist, wer am längsten der Gejagte war
+  HunterScoringKills = 1; // HunterScoring: Rundensieger ist, wer den Gejagten am häufigsten erwischt hat
+  HunterScoringHolder = 2; // HunterScoring: Rundensieger ist, wer am Rundenende der Gejagte ist
+  HuntedLoseItemsRestore = 0; // HuntedLoseItems: der bisherige Gejagte bekommt seinen Zustand von vor dem Wechsel zurück
+  HuntedLoseItemsScheme = 1; // HuntedLoseItems: der bisherige Gejagte fällt auf die Werte des Schemes zurück (keine Items)
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -392,6 +412,7 @@ Const
     (B: 100; G: 0; R: 50) // purple
     );
 {$ENDIF}
+  HuntedGoldColor: TRGB = (B: 10; G: 75; R: 100); // Spielmodus Hunter: Farbe des Gejagten (HuntedGold), wie PlayerColors im Range 0..100
 
   (*
    * Zur Unterscheidung, damit auf dem Server immer nur alle Debug oder Release haben..
@@ -616,6 +637,8 @@ Type
     TestBrickWalkTime: uint16; // Nur im Mod Test Modus: Restzeit von "durch Blöcke laufen" in 1/10 s (für die Zustandsanzeige), sonst 0
     FlameThrowerLen: uint8; // Mod Flammenwerfer: Länge des Strahls in Kacheln in Blickrichtung, 0 = feuert gerade nicht
     FlameThrowerColor: uint8; // Mod Flammenwerfer: Farbe des Strahls (die echte Farbe des Spielers, ColorIndex blinkt ggf.)
+    Hunted: Boolean; // Spielmodus Hunter: True, der Spieler ist gerade der Gejagte (Gold / Aura im Client)
+    HuntedTime: uint16; // Spielmodus Hunter: Zeit in s, die der Spieler in dieser Runde schon der Gejagte war (Anzeige im Client)
   End;
 
   (*
@@ -711,8 +734,18 @@ Type
     FlameThrowerFiring: Boolean; // Mod Flammenwerfer: True, so lange die zweite Aktion gedrückt ist
     FlameThrowerExposure: Integer; // Mod Flammenwerfer: Zeit in ms, so lange steht der Spieler schon am Stück in einem Strahl
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
+    HuntedTimeMs: Integer; // Spielmodus Hunter: Zeit in ms, die der Spieler in dieser Runde schon der Gejagte war
+    HuntedKills: Integer; // Spielmodus Hunter: Wie oft der Spieler in dieser Runde den Gejagten erwischt hat
+    RespawnTimer: Integer; // Spielmodus Hunter: Zeit in ms bis der tote Spieler wieder ins Spiel kommt, 0 = kein Respawn ausstehend
+    PowersBeforeHunted: TAtomicPowers; // Spielmodus Hunter: Die Powers von bevor der Spieler der Gejagte wurde (HuntedLoseItemsRestore)
 {$ENDIF}
   End;
+
+  (*
+   * Der Spielmodus, er steht mit in atomic_mods.ini (Abschnitt [GameMode]) und wird mit den Mods übertragen.
+   * Es ist immer genau einer aktiv, gmClassic ist das normale Spiel (mit oder ohne Team play).
+   *)
+  TGameMode = (gmClassic, gmHunter);
 
   (*
    * Optionale Spiel Mods aus atomic_mods.ini, alle Mods sind per Default aus.
@@ -780,6 +813,23 @@ Type
     DiseaseWeights: TDiseaseWeights; // Gewicht pro normaler Krankheit, 0 = kommt nie, alle 0 = es gibt kein Krankheits Item
     SuperBadSwapChance: Integer; // in %, so oft tauscht die super schlechte Krankheit die Plätze statt Ebola
     (*
+     * [GameMode] und [Hunter] Abschnitt, werden im Launcher im Dialog Spielmodus bearbeitet
+     *)
+    GameMode: TGameMode; // Der aktive Spielmodus, gmHunter wird im Team play ignoriert
+    HuntedItems: String; // Spielmodus Hunter: Items des Gejagten, Format wie StartItems z.B. "bomb*4,flame*4,kick"
+    HuntedStart: Integer; // Spielmodus Hunter: Wer zu Rundenbeginn der Gejagte ist, siehe HuntedStart*
+    HuntedLost: Integer; // Spielmodus Hunter: Was passiert, wenn der Gejagte ohne fremden Killer stirbt, siehe HuntedLost*
+    HunterScoring: Integer; // Spielmodus Hunter: Wer die Runde gewinnt, siehe HunterScoring*
+    HuntedInvulnMs: Integer; // Spielmodus Hunter: Zeit in ms, so lange ist ein neuer Gejagter unverwundbar, 0 = gar nicht
+    HuntedLoseItems: Integer; // Spielmodus Hunter: Was der bisherige Gejagte danach hat, siehe HuntedLoseItems*
+    HunterRespawn: Boolean; // Spielmodus Hunter: True, tote Spieler kommen nach HunterRespawnMs zurück (dann gibt es keinen Hurry)
+    HunterRespawnMs: Integer; // Spielmodus Hunter: Zeit in ms bis zum Respawn
+    HunterRespawnInvulnMs: Integer; // Spielmodus Hunter: Zeit in ms, so lange ist ein Spieler nach dem Respawn unverwundbar
+    HuntedNoDiseases: Boolean; // Spielmodus Hunter: True, der Gejagte wird nicht krank (Krankheit, Slow und Tauschen verfallen, kein Anstecken)
+    HuntedGold: Boolean; // Spielmodus Hunter: True, der Gejagte wird in Gold gezeichnet
+    HuntedAura: Boolean; // Spielmodus Hunter: True, um den Gejagten wird eine pulsierende Aura gezeichnet
+    HuntedAuraSelf: Boolean; // Spielmodus Hunter: True, der Gejagte sieht seine eigene Aura auch (sonst nur die Jäger)
+    (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)
     ModTestMode: Boolean; // Master Schalter für den Mod Test Modus, nur wenn True werden die folgenden Debug Werte und die Test Tasten ausgewertet
@@ -814,6 +864,17 @@ Const
     , 'DiseaseWeightNoBombs'
     , 'DiseaseWeightDudBombs'
     );
+  // Die Werte von [GameMode] Mode= in atomic_mods.ini
+  GameModeNames: Array[TGameMode] Of String = (
+    'Classic'
+    , 'Hunter'
+    );
+  // Das Bit des Spielmodus in der Bitmaske der KI, die Werte müssen AiMode_* in server/uai_types.pas entsprechen (Team play = 2 wird extra geprüft)
+  GameModeAiBits: Array[TGameMode] Of UInt32 = (
+    1 // AiMode_Classic
+    , 4 // AiMode_Hunter
+    );
+  AiModeTeamplayBit = 2; // AiMode_Teamplay
 
 Type
   TPlayerGetsPowerUpEvent = Procedure(Var Player: TPlayer; PlayerIndex: integer; PowerUp: TPowerUps) Of Object;
@@ -906,6 +967,8 @@ Procedure ModSettingsFromString(Const Data: String; Var Settings: TModSettings);
 Function WeightSum(Const Weights: Array Of Integer): Integer;
 // Wählt einen Index mit der Wahrscheinlichkeit Weights[i] / Summe, -1 wenn die Summe 0 ist
 Function WeightedPick(Const Weights: Array Of Integer): Integer;
+// Der Spielmodus, der tatsächlich gespielt wird: Hunter wird im Team play ignoriert
+Function EffectiveGameMode(Const Settings: TModSettings; TeamPlay: Boolean): TGameMode;
 
 {$IFDEF Server}
 Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
@@ -1302,6 +1365,20 @@ Begin
     Settings.DiseaseWeights[d] := 10;
   End;
   Settings.SuperBadSwapChance := 10;
+  Settings.GameMode := gmClassic;
+  Settings.HuntedItems := 'bomb*4,flame*4,speed*2,kick,punch,grab,jelly';
+  Settings.HuntedStart := HuntedStartRandom;
+  Settings.HuntedLost := HuntedLostRandom;
+  Settings.HunterScoring := HunterScoringTime;
+  Settings.HuntedInvulnMs := 1500;
+  Settings.HuntedLoseItems := HuntedLoseItemsRestore;
+  Settings.HunterRespawn := true;
+  Settings.HunterRespawnMs := 3000;
+  Settings.HunterRespawnInvulnMs := 2000;
+  Settings.HuntedNoDiseases := true;
+  Settings.HuntedGold := true;
+  Settings.HuntedAura := true;
+  Settings.HuntedAuraSelf := false;
   Settings.ModTestMode := false;
   Settings.StartItems := '';
   Settings.RoundTimeSec := 0;
@@ -1401,6 +1478,20 @@ Begin
     WriteI('Mods', ModDiseaseWeightKeys[d], Settings.DiseaseWeights[d]);
   End;
   WriteI('Mods', 'SuperBadSwapChance', Settings.SuperBadSwapChance);
+  WriteS('GameMode', 'Mode', GameModeNames[Settings.GameMode]);
+  WriteS('Hunter', 'HuntedItems', Settings.HuntedItems);
+  WriteI('Hunter', 'HuntedStart', Settings.HuntedStart);
+  WriteI('Hunter', 'HuntedLost', Settings.HuntedLost);
+  WriteI('Hunter', 'HunterScoring', Settings.HunterScoring);
+  WriteI('Hunter', 'HuntedInvulnMs', Settings.HuntedInvulnMs);
+  WriteI('Hunter', 'HuntedLoseItems', Settings.HuntedLoseItems);
+  WriteB('Hunter', 'HunterRespawn', Settings.HunterRespawn);
+  WriteI('Hunter', 'HunterRespawnMs', Settings.HunterRespawnMs);
+  WriteI('Hunter', 'HunterRespawnInvulnMs', Settings.HunterRespawnInvulnMs);
+  WriteB('Hunter', 'HuntedNoDiseases', Settings.HuntedNoDiseases);
+  WriteB('Hunter', 'HuntedGold', Settings.HuntedGold);
+  WriteB('Hunter', 'HuntedAura', Settings.HuntedAura);
+  WriteB('Hunter', 'HuntedAuraSelf', Settings.HuntedAuraSelf);
   WriteB('Debug', 'ModTestMode', Settings.ModTestMode);
   WriteS('Debug', 'StartItems', Settings.StartItems);
   WriteI('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1429,6 +1520,9 @@ Procedure ReadModSettings(Const ini: TCustomIniFile; Const Source: String; Var S
 Var
   pu: TPowerUps;
   d: TDisease;
+  gm: TGameMode;
+  s: String;
+  found: Boolean;
 
   // Zieht einen ungültigen Wert mit einer Warnung auf MinValue..MaxValue
   Procedure Clamp(Const Key: String; Var Value: Integer; MinValue, MaxValue: Integer);
@@ -1505,6 +1599,28 @@ Begin
     Settings.DiseaseWeights[d] := ini.ReadInteger('Mods', ModDiseaseWeightKeys[d], Settings.DiseaseWeights[d]);
   End;
   Settings.SuperBadSwapChance := ini.ReadInteger('Mods', 'SuperBadSwapChance', Settings.SuperBadSwapChance);
+  s := ini.ReadString('GameMode', 'Mode', GameModeNames[Settings.GameMode]);
+  found := false;
+  For gm In TGameMode Do Begin
+    If SameText(s, GameModeNames[gm]) Then Begin
+      Settings.GameMode := gm;
+      found := true;
+    End;
+  End;
+  If Not found Then log(Source + ': unknown game mode "' + s + '", using ' + GameModeNames[Settings.GameMode], llWarning);
+  Settings.HuntedItems := ini.ReadString('Hunter', 'HuntedItems', Settings.HuntedItems);
+  Settings.HuntedStart := ini.ReadInteger('Hunter', 'HuntedStart', Settings.HuntedStart);
+  Settings.HuntedLost := ini.ReadInteger('Hunter', 'HuntedLost', Settings.HuntedLost);
+  Settings.HunterScoring := ini.ReadInteger('Hunter', 'HunterScoring', Settings.HunterScoring);
+  Settings.HuntedInvulnMs := ini.ReadInteger('Hunter', 'HuntedInvulnMs', Settings.HuntedInvulnMs);
+  Settings.HuntedLoseItems := ini.ReadInteger('Hunter', 'HuntedLoseItems', Settings.HuntedLoseItems);
+  Settings.HunterRespawn := ini.ReadBool('Hunter', 'HunterRespawn', Settings.HunterRespawn);
+  Settings.HunterRespawnMs := ini.ReadInteger('Hunter', 'HunterRespawnMs', Settings.HunterRespawnMs);
+  Settings.HunterRespawnInvulnMs := ini.ReadInteger('Hunter', 'HunterRespawnInvulnMs', Settings.HunterRespawnInvulnMs);
+  Settings.HuntedNoDiseases := ini.ReadBool('Hunter', 'HuntedNoDiseases', Settings.HuntedNoDiseases);
+  Settings.HuntedGold := ini.ReadBool('Hunter', 'HuntedGold', Settings.HuntedGold);
+  Settings.HuntedAura := ini.ReadBool('Hunter', 'HuntedAura', Settings.HuntedAura);
+  Settings.HuntedAuraSelf := ini.ReadBool('Hunter', 'HuntedAuraSelf', Settings.HuntedAuraSelf);
   Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
   Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
   Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1573,6 +1689,19 @@ Begin
     Clamp(ModDiseaseWeightKeys[d], Settings.DiseaseWeights[d], 0, ModMaxItemWeight);
   End;
   Clamp('SuperBadSwapChance', Settings.SuperBadSwapChance, 0, ModMaxSuperBadSwapChance);
+  Clamp('HuntedStart', Settings.HuntedStart, HuntedStartRandom, HuntedStartLeader);
+  Clamp('HuntedLost', Settings.HuntedLost, HuntedLostRandom, HuntedLostKeep);
+  Clamp('HunterScoring', Settings.HunterScoring, HunterScoringTime, HunterScoringHolder);
+  Clamp('HuntedInvulnMs', Settings.HuntedInvulnMs, 0, ModMaxHuntedInvulnMs);
+  Clamp('HuntedLoseItems', Settings.HuntedLoseItems, HuntedLoseItemsRestore, HuntedLoseItemsScheme);
+  Clamp('HunterRespawnMs', Settings.HunterRespawnMs, 0, ModMaxHunterRespawnMs);
+  Clamp('HunterRespawnInvulnMs', Settings.HunterRespawnInvulnMs, 0, ModMaxHunterRespawnInvulnMs);
+End;
+
+Function EffectiveGameMode(Const Settings: TModSettings; TeamPlay: Boolean): TGameMode;
+Begin
+  result := Settings.GameMode;
+  If TeamPlay And (result = gmHunter) Then result := gmClassic;
 End;
 
 Function WeightSum(Const Weights: Array Of Integer): Integer;

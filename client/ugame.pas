@@ -118,6 +118,11 @@ Type
     fModTestMode: Boolean; // True, wenn der Server den Mod Test Modus erlaubt (miModInfo), nur dann reagieren die F-Tasten
     fGhostFlickerMs: Integer; // Zeit in ms eines Flacker Taktes der Geister (miModInfo), 0 = kein Flackern
     fBrickWalkTransparency: Integer; // in %, so durchsichtig werden Spieler gezeichnet, die durch Blöcke laufen (miModInfo)
+    fGameMode: TGameMode; // Der eingestellte Spielmodus (miModInfo), im Team play wird gmHunter ignoriert (siehe EffectiveGameMode)
+    fHuntedGold: Boolean; // Spielmodus Hunter: Gejagten in Gold zeichnen (miModInfo)
+    fHuntedAura: Boolean; // Spielmodus Hunter: Aura um den Gejagten zeichnen (miModInfo)
+    fHuntedAuraSelf: Boolean; // Spielmodus Hunter: Der Gejagte sieht seine eigene Aura auch (miModInfo)
+    fAiGameModes: UInt32; // Bitmaske AiMode_* der Spielmodi, die die KI des Servers kann, 0 = keine KI geladen (miModInfo)
     fRenderFrame: Int64; // Zähler der gerenderten Spiel Frames, für die Durchsichtigkeit (BrickWalkVisible)
     fFlashTimeStamp: QWord; // Mod weißer Bildschirm: Beginn des Flashs, 0 = kein Flash
     fFlashIntensity: Integer; // in %
@@ -1248,6 +1253,17 @@ Begin
         Chunk.Data.Read(fGhostFlickerMs, sizeof(fGhostFlickerMs));
         fBrickWalkTransparency := 0;
         Chunk.Data.Read(fBrickWalkTransparency, sizeof(fBrickWalkTransparency));
+        // Spielmodus Hunter (Reihenfolge siehe TServer.SendModInfo)
+        fGameMode := gmClassic;
+        Chunk.Data.Read(fGameMode, sizeof(fGameMode));
+        fHuntedGold := false;
+        Chunk.Data.Read(fHuntedGold, sizeof(fHuntedGold));
+        fHuntedAura := false;
+        Chunk.Data.Read(fHuntedAura, sizeof(fHuntedAura));
+        fHuntedAuraSelf := false;
+        Chunk.Data.Read(fHuntedAuraSelf, sizeof(fHuntedAuraSelf));
+        fAiGameModes := 0;
+        Chunk.Data.Read(fAiGameModes, sizeof(fAiGameModes));
       End;
     miStartGame: Begin
         HandleStartGame();
