@@ -89,8 +89,18 @@ object Form6: TForm6
         Height = 30
         Hint = 'Items the hunted gets on top of the scheme, comma separated, *n = n times. Possible: bomb, flame, goldflame, speed, kick, punch, grab, spooger, jelly, trigger.'
         Top = 88
-        Width = 210
+        Width = 180
         TabOrder = 0
+      end
+      object Button4: TButton
+        Left = 434
+        Height = 30
+        Hint = 'Add an item. Items that are already in the list are greyed out, grab and spooger replace each other.'
+        Top = 88
+        Width = 26
+        Caption = '+'
+        OnClick = Button4Click
+        TabOrder = 13
       end
       object Label6: TLabel
         Left = 8

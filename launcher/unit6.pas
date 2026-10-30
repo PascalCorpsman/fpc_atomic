@@ -20,7 +20,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  ComCtrls, Spin, uatomic_common, ulauncher;
+  ComCtrls, Spin, Menus, uatomic_common, ulauncher;
 
 Type
 
@@ -38,6 +38,7 @@ Type
     Button1: TButton;
     Button2: TButton;
     Button3: TButton;
+    Button4: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -73,6 +74,7 @@ Type
     TabSheet2: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
+    Procedure Button4Click(Sender: TObject);
     Procedure CheckBox1Change(Sender: TObject);
     Procedure FormCreate(Sender: TObject);
     Procedure FormDestroy(Sender: TObject);
@@ -81,6 +83,9 @@ Type
     Procedure ListBox1SelectionChange(Sender: TObject; User: boolean);
   private
     fSettings: TModSettings;
+    fItemsMenu: TPopupMenu; // Das Menü von Button4 mit den Namen der Items für Edit1
+    Procedure ItemsMenuClick(Sender: TObject);
+    Function HuntedItemIndex(Const Items: TStrings; Const ItemName: String): Integer;
     Procedure SettingsToControls();
     Procedure ControlsToSettings();
     Procedure UpdateEnabled();
@@ -99,9 +104,17 @@ Implementation
 
 Uses uatomic_global, ulanguage;
 
+Const
+  // Die Namen, die ApplyStartItems (Server) für die Items des Gejagten kennt
+  HuntedItemNames: Array[0..9] Of String = (
+    'bomb', 'flame', 'goldflame', 'speed', 'kick', 'punch', 'grab', 'spooger', 'jelly', 'trigger');
+
 { TForm6 }
 
 Procedure TForm6.FormCreate(Sender: TObject);
+Var
+  i: Integer;
+  mi: TMenuItem;
 Begin
   caption := 'Game mode';
 {$IFDEF Windows}
@@ -116,6 +129,85 @@ Begin
   SpinEdit2.MaxValue := ModMaxHunterRespawnMs;
   SpinEdit3.MaxValue := ModMaxHunterRespawnInvulnMs;
   PageControl1.ActivePageIndex := 0;
+  fItemsMenu := TPopupMenu.Create(self);
+  For i := 0 To high(HuntedItemNames) Do Begin
+    mi := TMenuItem.Create(fItemsMenu);
+    mi.Caption := HuntedItemNames[i];
+    mi.OnClick := @ItemsMenuClick;
+    fItemsMenu.Items.Add(mi);
+  End;
+End;
+
+Function TForm6.HuntedItemIndex(Const Items: TStrings; Const ItemName: String
+  ): Integer;
+Var
+  i, j: Integer;
+  s: String;
+Begin
+  // Index des Eintrags in Items (z.B. "bomb*4"), dessen Name ohne *n ItemName ist, -1 = nicht enthalten
+  result := -1;
+  For i := 0 To Items.Count - 1 Do Begin
+    s := lowercase(trim(Items[i]));
+    j := pos('*', s);
+    If j > 0 Then s := trim(copy(s, 1, j - 1));
+    If s = ItemName Then Begin
+      result := i;
+      exit;
+    End;
+  End;
+End;
+
+Procedure TForm6.Button4Click(Sender: TObject);
+Var
+  sl: TStringList;
+  i: Integer;
+  p: TPoint;
+Begin
+  // Items, die schon in Edit1 stehen, sind ausgegraut
+  sl := TStringList.Create;
+  sl.Delimiter := ',';
+  sl.StrictDelimiter := true;
+  sl.DelimitedText := Edit1.Text;
+  For i := 0 To fItemsMenu.Items.Count - 1 Do Begin
+    fItemsMenu.Items[i].Enabled := HuntedItemIndex(sl, HuntedItemNames[i]) = -1;
+  End;
+  sl.free;
+  p := Button4.ClientToScreen(Point(0, Button4.Height));
+  fItemsMenu.PopUp(p.x, p.y);
+End;
+
+Procedure TForm6.ItemsMenuClick(Sender: TObject);
+Var
+  sl: TStringList;
+  ItemName, Other: String;
+  i: Integer;
+Begin
+  ItemName := HuntedItemNames[fItemsMenu.Items.IndexOf(Sender As TMenuItem)];
+  sl := TStringList.Create;
+  Try
+    sl.Delimiter := ',';
+    sl.StrictDelimiter := true;
+    sl.DelimitedText := Edit1.Text;
+    // Leere Einträge (z.B. von ",," oder einem leeren Feld) fallen weg
+    For i := sl.Count - 1 Downto 0 Do Begin
+      sl[i] := trim(sl[i]);
+      If sl[i] = '' Then sl.Delete(i);
+    End;
+    // Doppelte werden nicht eingefügt (die Anzahl steht im Feld als *n)
+    If HuntedItemIndex(sl, ItemName) <> -1 Then exit;
+    // Grab und Spooger schließen sich aus, das neue ersetzt das andere
+    Other := '';
+    If ItemName = 'grab' Then Other := 'spooger';
+    If ItemName = 'spooger' Then Other := 'grab';
+    If Other <> '' Then Begin
+      i := HuntedItemIndex(sl, Other);
+      If i <> -1 Then sl.Delete(i);
+    End;
+    sl.Add(ItemName);
+    Edit1.Text := sl.DelimitedText;
+  Finally
+    sl.free;
+  End;
 End;
 
 Procedure TForm6.FormDestroy(Sender: TObject);
