@@ -100,7 +100,7 @@ Without respawn the normal rules apply: the round ends when only one player is l
 **Display**
 
 - The hunted is drawn in **gold** and has a pulsing **aura** (both can be switched off). When the hunted blinks (invulnerable or stunned), the blinking is shown instead of the gold.
-- The header shows `H:` with the seconds a player has been the hunted in this round, next to the score (`S:`) and the kills (`K:`).
+- In the hunter mode the header shows `S:` (score) and `H:` with the seconds a player has been the hunted in this round, instead of the kills (`K:`).
 
 **Team play and mods**
 

@@ -100,7 +100,7 @@ Ohne Respawn gelten die normalen Regeln: Die Runde endet, wenn nur noch ein Spie
 **Darstellung**
 
 - Der Gejagte wird in **Gold** gezeichnet und hat eine pulsierende **Aura** (beides abschaltbar). Blinkt der Gejagte (unverwundbar oder gestunnt), wird statt Gold das Blinken gezeigt.
-- Die Kopfzeile zeigt `H:` mit den Sekunden, die ein Spieler in dieser Runde der Gejagte war, neben dem Score (`S:`) und den Kills (`K:`).
+- Im Hunter-Modus zeigt die Kopfzeile `S:` (Score) und `H:` mit den Sekunden, die ein Spieler in dieser Runde der Gejagte war, statt der Kills (`K:`).
 
 **Teamspiel und Mods**
 
