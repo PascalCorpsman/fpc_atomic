@@ -284,6 +284,7 @@ Begin
         Case Key Of
           VK_LEFT: fYesSelected := true;
           VK_RIGHT: fYesSelected := false;
+          VK_TAB: fYesSelected := Not fYesSelected;
           VK_Y: CloseActual(true);
           VK_N, VK_ESCAPE, VK_BACK: CloseActual(false);
           VK_RETURN, VK_SPACE: CloseActual(fYesSelected);

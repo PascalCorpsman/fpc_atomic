@@ -229,6 +229,7 @@ Type
     Procedure OnLoaderRender(Sender: TObject); // Gibt dem Lade Dialog den aktuellen Viewport
     Function ScreenToGame(X, Y: Integer): TPoint; // Fensterkoordinaten -> Spielkoordinaten (GameWidth x GameHeight)
     Procedure OnMessageDialogOpen(Sender: TObject);
+    Procedure OnApplicationKeyDownBefore(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure OnQuitGameConfirmed(Sender: TObject);
   public
 {$IFDEF DebuggMode}
@@ -548,6 +549,16 @@ Begin
     For ak In [akUp, akDown, akLeft, akRight, akSecondAction] Do Begin
       If fPlayer[fPlayerIndex[k]].KeysPressed[ak] Then CheckKeyUp(ak, k);
     End;
+  End;
+End;
+
+Procedure TGame.OnApplicationKeyDownBefore(Sender: TObject; Var Key: Word;
+  Shift: TShiftState);
+Begin
+  // Tab nutzt die LCL zum Wechsel des Fokus, noch bevor OnKeyDown kommt, deshalb wird es für einen offenen Dialog hier abgefangen
+  If (Key = VK_TAB) And (Sender = fOwner) And fMessageDialog.Active Then Begin
+    fMessageDialog.HandleKey(Key);
+    Key := VK_UNKNOWN;
   End;
 End;
 
@@ -2516,6 +2527,7 @@ Var
   j: Integer;
 Begin
   SDL_FreeSticks;
+  Application.RemoveOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -2639,6 +2651,7 @@ Begin
         fOwner.OnDblClick := @FOnDblClick;
         FOnKeyDownCapture := fOwner.OnKeyDown;
         fOwner.OnKeyDown := @FOnKeyDown;
+        Application.AddOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
         FOnKeyUpCapture := fOwner.OnKeyUp;
         fOwner.OnKeyUp := @FOnKeyUp;
         fOnResizeCapture := fOwner.OnResize;
