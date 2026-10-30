@@ -147,6 +147,7 @@ Type
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
     fMessageDialog: TMessageDialog; // Meldungen und Ja / Nein Abfragen direkt im Spiel
+    fReclaimFocusUntil: QWord; // Bis zu diesem GetTickCount64 holt sich das Spiel den Fokus von der Server Konsole zurück (StartHost)
 
     Procedure FOnResize(Sender: TObject);
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -223,6 +224,7 @@ Type
     Procedure PingForOpenGames;
     Procedure DoDisconnect();
 
+    Procedure ReclaimFocus();
     Function ScreenToGame(X, Y: Integer): TPoint; // Fensterkoordinaten -> Spielkoordinaten (GameWidth x GameHeight)
     Procedure OnMessageDialogOpen(Sender: TObject);
     Procedure OnQuitGameConfirmed(Sender: TObject);
@@ -600,6 +602,44 @@ Begin
     fViewPortInfo.Scale := 1;
   End;
   If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
+End;
+
+{$IFDEF Windows}
+// Nur diese Funktionen, die Unit Windows würde z.B. Point aus Classes überdecken
+Function GetForegroundWindow(): THandle; stdcall; external 'user32.dll';
+Function SetForegroundWindow(hWnd: THandle): LongBool; stdcall; external 'user32.dll';
+Function BringWindowToTop(hWnd: THandle): LongBool; stdcall; external 'user32.dll';
+Function GetWindowThreadProcessId(hWnd: THandle; lpdwProcessId: PDWord): DWord; stdcall; external 'user32.dll';
+Function AttachThreadInput(idAttach, idAttachTo: DWord; fAttach: LongBool): LongBool; stdcall; external 'user32.dll';
+Function GetCurrentThreadId(): DWord; stdcall; external 'kernel32.dll';
+{$ENDIF}
+
+Procedure TGame.ReclaimFocus;
+{$IFDEF Windows}
+Var
+  Form: TCustomForm;
+  fg: THandle;
+  fgThread, OwnThread: DWORD;
+{$ENDIF}
+Begin
+{$IFDEF Windows}
+  (*
+   * Ein anderer Prozess (die Konsole des Servers) hat den Vordergrund, dann darf SetForegroundWindow normalerweise nicht.
+   * Hängt man sich kurz an die Eingabe des Vordergrund Threads, geht es.
+   *)
+  Form := GetParentForm(fOwner);
+  If Not assigned(Form) Then exit;
+  fg := GetForegroundWindow();
+  If fg = Form.Handle Then exit;
+  OwnThread := GetCurrentThreadId();
+  fgThread := 0;
+  If fg <> 0 Then fgThread := GetWindowThreadProcessId(fg, Nil);
+  If (fgThread <> 0) And (fgThread <> OwnThread) Then AttachThreadInput(OwnThread, fgThread, true);
+  SetForegroundWindow(Form.Handle);
+  BringWindowToTop(Form.Handle);
+  If (fgThread <> 0) And (fgThread <> OwnThread) Then AttachThreadInput(OwnThread, fgThread, false);
+  If fOwner.CanFocus Then fOwner.SetFocus;
+{$ENDIF}
 End;
 
 Function TGame.ScreenToGame(X, Y: Integer): TPoint;
@@ -990,6 +1030,8 @@ Begin
 {$IFDEF Windows}
     // Windows needs the new console, otherwise the server could lag..
     p.Options := [poNewConsole];
+    // Die Konsole des Servers startet minimiert und ohne Fokus, sonst landen die Eingaben (vor allem im Vollbild) nicht mehr im Spiel
+    p.ShowWindow := swoshowMinNOActive;
 {$ELSE}
     p.Options := [poDetached];
 {$ENDIF}
@@ -1015,6 +1057,9 @@ Begin
   // StartClientGame; --> Das Verbinden macht der SwitchToScreen schon ;)
   Application.Restore;
   Application.BringToFront;
+  // Die Konsole des Servers kann den Fokus auch noch nach dem Warten übernehmen (z.B. mit Windows Terminal), deshalb holt OnIdle ihn eine Weile zurück
+  fReclaimFocusUntil := GetTickCount64 + 3000;
+  ReclaimFocus();
   result := true;
   LogLeave(EnterID);
 End;
@@ -2439,6 +2484,7 @@ Begin
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
   fMessageDialog := TMessageDialog.Create;
+  fReclaimFocusUntil := 0;
   fMessageDialog.OnOpen := @OnMessageDialogOpen;
   fUDPPingData.Connection := Nil;
   fUDPPingData.Active := false;
@@ -3045,6 +3091,14 @@ End;
 Procedure TGame.OnIdle;
 Begin
   PingForOpenGames;
+  If fReclaimFocusUntil <> 0 Then Begin
+    If GetTickCount64 > fReclaimFocusUntil Then Begin
+      fReclaimFocusUntil := 0;
+    End
+    Else Begin
+      ReclaimFocus();
+    End;
+  End;
   (*
    * Doing the "real" disconnect in the idle handler, is the fastest way to do without risking a endles
    * recursion of disconnects in diconnect.
