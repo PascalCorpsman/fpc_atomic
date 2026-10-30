@@ -144,6 +144,8 @@ Type
     End;
   public
     TeamPlay: Boolean; // True = Anzeigen der Spielerfarben als Team wird via "miSwitchToPlayerSetup" gesetzt
+    GameMode: TGameMode; // Der eingestellte Spielmodus (miModInfo), wird angezeigt
+    AiGameModes: UInt32; // Bitmaske der Spielmodi, die die KI des Servers kann (miModInfo), 0 = keine KI geladen
 
     Procedure OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState); override;
     // TODO: Maus Support
@@ -946,6 +948,7 @@ Procedure TPlayerSetupMenu.Render;
 Var
   i: Integer;
   s: String;
+  AiBit: UInt32;
 Begin
   Inherited Render;
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -982,6 +985,33 @@ Begin
   AtomicFont.Color := clwhite;
   AtomicFont.BackColor := clBlack;
   AtomicFont.Textout(60, 400, 0, 'Scheme: ' + fSchemeFile);
+  (*
+   * Der Spielmodus und ob die KI des Servers ihn kann (sonst verweigert der Server KI Spieler)
+   *)
+  If GameMode = gmHunter Then Begin
+    If TeamPlay Then Begin
+      s := 'Mode: Hunter (off in team play)';
+    End
+    Else Begin
+      s := 'Mode: Hunter';
+    End;
+    AtomicFont.Textout(60, 420, 0, s);
+  End;
+  If TeamPlay Then Begin
+    AiBit := AiModeTeamplayBit;
+  End
+  Else Begin
+    AiBit := GameModeAiBits[GameMode];
+  End;
+  If AiGameModes = 0 Then Begin
+    AtomicFont.Color := clYellow;
+    AtomicFont.Textout(60, 440, 0, 'No AI available on the server');
+  End
+  Else If (AiGameModes And AiBit) = 0 Then Begin
+    AtomicFont.Color := clYellow;
+    AtomicFont.Textout(60, 440, 0, 'AI not available in this mode');
+  End;
+  AtomicFont.Color := clwhite;
   RenderAlphaQuad(60 - 32 + 10, 37 + 14 + 28 * fCursorPos + 50, atomic_Map_Layer + atomic_EPSILON, fcursorTex);
 End;
 
