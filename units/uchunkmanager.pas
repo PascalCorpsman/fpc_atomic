@@ -896,7 +896,7 @@ Begin
       // Suchen des Sockets mit der UserDefinedID
       While fconnection.IterNext Do Begin // Skipt Root Socket
         pu := fconnection.Iterator.UserData;
-        If pu^.UID = UID Then Begin
+        If assigned(pu) And (pu^.UID = UID) Then Begin
           AddChunkForSendToSocketQueue(fconnection.Iterator, UserDefinedID, Data);
           result := true;
           b := true;
