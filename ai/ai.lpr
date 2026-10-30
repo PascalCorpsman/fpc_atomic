@@ -107,6 +107,37 @@ Begin
   result := ais[PlayerIndex].CalcAiCommand(AiInfo);
 End;
 
+(*
+ * Optional (interface version >= 5): Bitmask of the supported game modes, see AiMode_Classic ...
+ *)
+
+Function AiGameModes(): cuint32; cdecl;
+Begin
+  result := AiMode_Classic Or AiMode_Teamplay Or AiMode_Hunter;
+End;
+
+(*
+ * Optional (interface version >= 5): Will be called instead of AiHandlePlayer, with additional info about the game mode
+ *)
+
+Function AiHandlePlayerEx(PlayerIndex: cuint32; Var AiInfo: TAiInfo; Var ModeInfo: TAiModeInfo): TAiCommand; cdecl;
+Var
+  mi: TAiModeInfo;
+Begin
+  // Defaults for all fields the server did not send (only read the fields that fit into ModeInfo.Size)
+  mi.Size := sizeof(mi);
+  mi.GameMode := 0;
+  mi.HuntedIndex := -1;
+  mi.RoundTimeLeftMs := -1;
+  If ModeInfo.Size < sizeof(mi) Then Begin
+    move(ModeInfo, mi, ModeInfo.Size);
+  End
+  Else Begin
+    move(ModeInfo, mi, sizeof(mi));
+  End;
+  result := ais[PlayerIndex].CalcAiCommand(AiInfo, mi.GameMode, mi.HuntedIndex);
+End;
+
 Exports
 
   AiInit
@@ -115,6 +146,8 @@ Exports
   , AiVersion
   , AiNewRound
   , AiHandlePlayer
+  , AiGameModes
+  , AiHandlePlayerEx
   ;
 
 Begin

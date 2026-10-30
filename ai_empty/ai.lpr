@@ -94,6 +94,35 @@ Begin
    *)
 End;
 
+(*
+ * Optional (interface version >= 5): Bitmask of the supported game modes, see AiMode_Classic ...
+ * If this function is not exported, the server assumes AiMode_Classic Or AiMode_Teamplay.
+ * The server does not allow ai players in a game mode the lib does not support.
+ *)
+
+Function AiGameModes(): cuint32; cdecl;
+Begin
+  (*
+   * Add AiMode_Hunter if your ai knows how to play this mode (see TAiModeInfo.HuntedIndex)
+   *)
+  result := AiMode_Classic Or AiMode_Teamplay;
+End;
+
+(*
+ * Optional (interface version >= 5): If exported it is called instead of AiHandlePlayer
+ * with additional infos about the game mode.
+ * Only read fields of ModeInfo that fit into ModeInfo.Size, newer servers may append fields.
+ *)
+
+Function AiHandlePlayerEx(PlayerIndex: cuint32; Var AiInfo: TAiInfo; Var ModeInfo: TAiModeInfo): TAiCommand; cdecl;
+Begin
+  (*
+   * Put your implementation here...
+   * e.g. If ModeInfo.GameMode = AiMode_Hunter Then ... ModeInfo.HuntedIndex ...
+   *)
+  result := AiHandlePlayer(PlayerIndex, AiInfo);
+End;
+
 Exports
 
   AiInit
@@ -102,6 +131,8 @@ Exports
   , AiVersion
   , AiNewRound
   , AiHandlePlayer
+  , AiGameModes // Optional, can be removed
+  , AiHandlePlayerEx // Optional, can be removed
   ;
 
 Begin
