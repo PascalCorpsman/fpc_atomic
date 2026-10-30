@@ -475,6 +475,7 @@ Var
   i, port: Integer;
   msg, ip: String;
   host, join: Boolean;
+  UserMessage: TUserMessages;
 Begin
 {$IFDEF AUTOMODE}
   Case AutomodeData.State Of
@@ -534,14 +535,20 @@ Begin
     // Weiterleiten an den Logger
     log(fUserMessages[0].Msg, fUserMessages[0].WarnLevel);
     // Merken der Nachricht für die Anzeige nachher
+    UserMessage := fUserMessages[0];
     msg := LogLevelToString(fUserMessages[0].WarnLevel) + ' : ' + fUserMessages[0].Msg;
     // Entfernen aus der Merkliste
     For i := 0 To high(fUserMessages) - 1 Do Begin
       fUserMessages[i] := fUserMessages[i + 1];
     End;
     setlength(fUserMessages, high(fUserMessages));
-    // Anzeigen der Nachricht
-    ShowMessage(msg); // Unter Windows ist das nicht Blockend, deswegen muss die Nachricht gelöscht werden bevor sie angezeigt wird
+    // Anzeigen der Nachricht, wenn möglich direkt im Spiel
+    If assigned(Game) And Game.MessageDialogReady Then Begin
+      Game.ShowMessageDialog(UserMessage.Msg, UserMessage.WarnLevel);
+    End
+    Else Begin
+      ShowMessage(msg); // Unter Windows ist das nicht Blockend, deswegen muss die Nachricht gelöscht werden bevor sie angezeigt wird
+    End;
   End;
   (*
    * Wir haben nix zu tun, evtl wollen wir ja gerade einem Spiel beitreten, dann pingen wir mal ein bisschen rum ;)

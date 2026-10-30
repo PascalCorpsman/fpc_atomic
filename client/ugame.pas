@@ -23,7 +23,7 @@ Interface
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
   uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field,
-  uatomic, uopengl_graphikengine, usounds, uloaderdialog;
+  uatomic, uopengl_graphikengine, usounds, uloaderdialog, umessagedialog, uatomic_global;
 
 Type
   TUDPPingData = Record
@@ -146,6 +146,7 @@ Type
 
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
+    fMessageDialog: TMessageDialog; // Meldungen und Ja / Nein Abfragen direkt im Spiel
 
     Procedure FOnResize(Sender: TObject);
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -221,6 +222,9 @@ Type
     Procedure Join(IP: String; Port: Integer);
     Procedure PingForOpenGames;
     Procedure DoDisconnect();
+
+    Procedure OnMessageDialogOpen(Sender: TObject);
+    Procedure OnQuitGameConfirmed(Sender: TObject);
   public
 {$IFDEF DebuggMode}
     fPlayer: TPlayers;
@@ -255,6 +259,13 @@ Type
     Procedure StartPlayingSong(Filename: String);
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
     Procedure Resize();
+
+    (*
+     * Meldungen und Ja / Nein Abfragen direkt im Spiel (statt als LCL-Fenster)
+     *)
+    Function MessageDialogReady: Boolean; // False, solange die Textur des Dialogs nicht geladen ist
+    Procedure ShowMessageDialog(Msg: String; Level: TLogLevel);
+    Procedure AskYesNo(Question: String; OnYes: TNotifyEvent);
   End;
 
 Var
@@ -281,7 +292,6 @@ Uses dglopengl
   , uatomicfont
   , uopengl_spriteengine
   , ugraphics
-  , uatomic_global
   , usdl_input
   , uopengl_shaderprimitives
   ;
@@ -521,6 +531,41 @@ Begin
   LogLeave(EnterID);
 End;
 
+Procedure TGame.OnMessageDialogOpen(Sender: TObject);
+Var
+  k: TKeySet;
+  ak: TAtomicKey;
+Begin
+  // Im Spiel die gehaltenen Tasten los lassen, sonst läuft der Spieler hinter dem Dialog weiter
+  If fgameState <> gs_Gaming Then exit;
+  For k In TKeySet Do Begin
+    If fPlayerIndex[k] = -1 Then Continue;
+    For ak In [akUp, akDown, akLeft, akRight, akSecondAction] Do Begin
+      If fPlayer[fPlayerIndex[k]].KeysPressed[ak] Then CheckKeyUp(ak, k);
+    End;
+  End;
+End;
+
+Procedure TGame.OnQuitGameConfirmed(Sender: TObject);
+Begin
+  SwitchToScreen(sMainScreen);
+End;
+
+Function TGame.MessageDialogReady: Boolean;
+Begin
+  result := fMessageDialog.Ready;
+End;
+
+Procedure TGame.ShowMessageDialog(Msg: String; Level: TLogLevel);
+Begin
+  fMessageDialog.ShowInfo(Msg, Level);
+End;
+
+Procedure TGame.AskYesNo(Question: String; OnYes: TNotifyEvent);
+Begin
+  fMessageDialog.AskYesNo(Question, OnYes);
+End;
+
 Procedure TGame.Resize;
 Begin
   FOnResize(fOwner);
@@ -623,6 +668,11 @@ Begin
     SwitchToScreen(sExitBomberman);
     exit;
   End;
+  // Ein offener Dialog bekommt alle Tasten (außer Alt + Enter für den Vollbild Modus)
+  If fMessageDialog.Active And Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin
+    fMessageDialog.HandleKey(Key);
+    exit;
+  End;
   If Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin // Sonst wird das VK_Return ggf unsinnig ausgewertet
     If (key = VK_ADD) Or (key = VK_OEM_PLUS) Then Begin
       aVolume := fSoundManager.IncVolume;
@@ -660,9 +710,10 @@ Begin
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
 {$IFNDEF Only3Player}
-            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
+            AskYesNo('Do you really want to quit?', @OnQuitGameConfirmed);
+{$ELSE}
+            SwitchToScreen(sMainScreen);
 {$ENDIF}
-              SwitchToScreen(sMainScreen);
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
@@ -846,7 +897,8 @@ End;
 Procedure TGame.FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
   writeln('SDLDown');
-  If fgameState = gs_Gaming Then Begin
+  // Ist ein Dialog offen, wird er auch im Spiel mit dem Gamepad bedient
+  If (fgameState = gs_Gaming) And (Not fMessageDialog.Active) Then Begin
     CheckKeyDown(aKey, aKeyset);
   End
   Else Begin
@@ -2370,6 +2422,8 @@ Begin
   fInitialized := false;
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
+  fMessageDialog := TMessageDialog.Create;
+  fMessageDialog.OnOpen := @OnMessageDialogOpen;
   fUDPPingData.Connection := Nil;
   fUDPPingData.Active := false;
   fLastIdleTick := GetTickCount64;
@@ -2403,6 +2457,8 @@ Begin
   End;
   setlength(fFields, 0);
   DoDisconnect();
+  fMessageDialog.free;
+  fMessageDialog := Nil;
   fChunkManager.free;
   fChunkManager := Nil;
 End;
@@ -2465,6 +2521,8 @@ Begin
         fSerialInit.t := GetTickCount64;
         fSerialInit.total := fSerialInit.t;
 {$ENDIF}
+        // Der Meldungsdialog nutzt den Rahmen des Lade Dialogs, damit auch Fehler beim Laden schon im Spiel angezeigt werden können
+        fMessageDialog.LoadFromDisk(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png');
         fSerialInit.Loader := TLoaderDialog.create(fOwner);
         (*
          * Lade Prozente
@@ -2906,6 +2964,7 @@ Begin
       'Error during loading, please restart application.' + LineEnding + LineEnding +
       'If the problem persists try a re run of the cd_data_extractor'
       );
+    fMessageDialog.Render;
     Exit2d();
     exit;
   End;
@@ -2961,6 +3020,7 @@ Begin
         RenderFlash();
       End;
   End;
+  fMessageDialog.Render; // Über allem anderen
   fSoundInfo.Render;
   ResetShaderTransform;
   Exit2d();
