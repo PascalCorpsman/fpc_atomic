@@ -33,6 +33,7 @@ Type
     Button5: TButton;
     Button7: TButton;
     Button8: TButton;
+    Button9: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -56,6 +57,7 @@ Type
     Label7: TLabel;
     Label8: TLabel;
     Label9: TLabel;
+    Label10: TLabel;
     ComboBox1: TComboBox;
     Panel1: TPanel;
     Timer1: TTimer;
@@ -66,6 +68,7 @@ Type
     Procedure Button5Click(Sender: TObject);
     Procedure Button7Click(Sender: TObject);
     Procedure Button8Click(Sender: TObject);
+    Procedure Button9Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
@@ -92,6 +95,7 @@ Type
     Procedure LoadSettings();
     Procedure UpdateStatus();
     Procedure UpdateModsCaption();
+    Procedure UpdateGameModeCaption();
     Procedure StoreSettings();
     Procedure ApplyLanguage();
 
@@ -109,7 +113,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
+Uses process, Unit2, Unit3, Unit4, Unit5, Unit6, LCLType, lclintf
   , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage
 {$IFDEF Windows}
   , LResources
@@ -331,6 +335,14 @@ Begin
     form5.SaveToIni(ini);
     ini.UpdateFile;
   End;
+End;
+
+Procedure TForm1.Button9Click(Sender: TObject);
+Begin
+  // Spielmodus, der Dialog liest und schreibt atomic_mods.ini selbst, Team play nur für seinen Hinweis
+  form6.TeamPlay := ini.ReadBool(FPC_AtomicIniSection, 'TeamPlay', false);
+  form6.ShowModal;
+  UpdateGameModeCaption();
 End;
 
 Procedure TForm1.Label8Click(Sender: TObject);
@@ -741,6 +753,17 @@ Begin
   End;
 End;
 
+Procedure TForm1.UpdateGameModeCaption;
+Var
+  Settings: TModSettings;
+Begin
+  // Der aktive Spielmodus steht neben dem Knopf, der Name ist der übersetzte aus dem Dialog
+  Settings.Handicap := Nil;
+  LoadModSettingsFromFile(GetAtomicModsIniFile(), Settings);
+  Settings.Handicap.free;
+  Label10.Caption := form6.Caption + ': ' + form6.GameModeName(Settings.GameMode);
+End;
+
 Procedure TForm1.FormShow(Sender: TObject);
 Var
   i: Integer;
@@ -760,6 +783,7 @@ Begin
   Language.AddIgnoredIdentifier('Form1.Label5.Caption');
   Language.AddIgnoredIdentifier('Form1.Label5.Hint');
   Language.AddIgnoredIdentifier('Form1.Label6.Caption');
+  Language.AddIgnoredIdentifier('Form1.Label10.Caption'); // Setzt UpdateGameModeCaption
   Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
   Language.AddIgnoredComponent(Form3.CheckListBox1);
   Language.AddIgnoredComponent(Form3.CheckListBox2);
@@ -814,6 +838,7 @@ Begin
   UpdateStatus();
   Form3.CheckListBox1Click(Nil);
   UpdateModsCaption();
+  UpdateGameModeCaption();
 End;
 
 Procedure TForm1.StoreSettings;

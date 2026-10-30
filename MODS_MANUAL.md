@@ -202,6 +202,7 @@ A player that dies does not leave the round but walks on as a small, flickering 
 - **Limits:** A player can become a ghost only a limited number of times per round. A ghost that hits no opponent within a set time vanishes. In the last 5 s before it vanishes it flickers faster.
 - With the hurry all ghosts vanish.
 - The round ends as usual when only one player (or team) is left alive, ghosts do not count. So ghosts only matter with 3 or more players.
+- In the [hunter game mode](GAMEOPTIONS_MANUAL.md#hunter) ghosts only work without respawn, with respawn dead players come back anyway.
 
 | Setting | ini key | Default | Range |
 |---|---|---|---|

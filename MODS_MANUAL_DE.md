@@ -204,6 +204,7 @@ Ein Spieler, der stirbt, verlässt die Runde nicht. Er läuft als kleiner, flack
 - **Grenzen:** Ein Spieler kann pro Runde nur begrenzt oft Geist werden. Ein Geist, der innerhalb einer einstellbaren Zeit keinen Gegner trifft, verschwindet. In den letzten 5 s davor flackert er schneller.
 - Mit dem Hurry verschwinden alle Geister.
 - Die Runde endet wie gewohnt, wenn nur noch ein Spieler (oder Team) lebt, Geister zählen nicht. Geister spielen also erst ab 3 Spielern eine Rolle.
+- Im [Spielmodus Hunter](GAMEOPTIONS_MANUAL_DE.md#hunter) wirken Geister nur ohne Respawn, mit Respawn kommen Tote ohnehin zurück.
 
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
 |---|---|---|---|
