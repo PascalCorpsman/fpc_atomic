@@ -581,10 +581,10 @@ Begin
     exit;
   End;
 {$IFDEF Release}
-  If ClientMode <> GameModeRelease Then
+  If ClientMode <> GameModeRelease Then Begin
 {$ELSE}
-  If ClientMode <> GameModeDebug Then
-{$ENDIF}Begin
+  If ClientMode <> GameModeDebug Then Begin
+{$ENDIF}
     i := EC_Invalid_Mode_Versions;
     m.Write(i, sizeof(i));
     SendChunk(miRequestLoginResult, m, UID);
@@ -642,6 +642,7 @@ Begin
    * Oben der Check ging durch und hier finden wir nix, das darf nicht sein, alles canceln !
    *)
   If index = -1 Then Begin
+    m.free;
     log('Error player overflow', llCritical);
     HandleSwitchToWaitForPlayersToConnect;
     LogLeave(EnterID);
@@ -1199,6 +1200,7 @@ Var
   m: TMemoryStream;
   i, EnterID: Integer;
 Begin
+  If fGameState <> gsPlaying Then exit;
   EnterID := LogEnter('TServer.HandleTogglePause');
   fpausing := Not fpausing;
   ApplyPause(fpausing);

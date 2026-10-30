@@ -259,8 +259,11 @@ Var
 Var
   EnterID: Integer;
 Begin
+  If index < 0 Then exit;
   EnterID := LogEnter('TPlayerStatisticEngine.AssignPlayerID');
   // Löschen Verbotener Zeichen, man weis ja nie was spieler sich für namen ausdenken ..
+  username := StringReplace(UserName, #13, '', [rfReplaceAll]);
+  username := StringReplace(UserName, #10, '', [rfReplaceAll]);
   username := StringReplace(UserName, #9, '', [rfReplaceAll]);
   username := StringReplace(UserName, ';', '', [rfReplaceAll]);
   Log(format('Username: %s, KeySet %s', [UserName, KeySetToString(KeySet)]), lldebug);
