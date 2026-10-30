@@ -126,7 +126,7 @@ Type
     Procedure HandleSwitchToWaitForPlayersToConnect;
     Procedure HandleUpdateFieldSetup(Const Stream: TStream; Uid: integer);
     Procedure HandleReceiveHeartBeat(p: integer; t: int64);
-    Procedure HandleClientKeyEvent(Const Stream: TStream);
+    Procedure HandleClientKeyEvent(Const Stream: TStream; Uid: integer);
 
     Procedure RefreshAllPlayerStats(Uid: integer);
     Procedure PlayerLeaves(PlayerUid: integer);
@@ -361,7 +361,7 @@ Begin
         UserName := 'no user connected';
       End;
       username := username + ':' + inttostr(fTCPPort);
-      cnt := length(username);
+      cnt := min(length(username), high(buffer));
       b := 21; // CTD hat hier 42 -> Wir wollen das die beiden nicht "Kompatibel" sind !
       For i := 0 To cnt - 1 Do Begin
         buffer[i] := ord(username[i + 1]);
@@ -380,77 +380,88 @@ Var
   i, j, EnterID: integer;
   DoLog: Boolean;
   ts: QWord;
+  aSocket: TLSocket;
 Begin
-  HandleStatisticCallback(ssTotalNetworkPacketsIn);
-  HandleStatisticCallback(ssTotalNetworkBytesIn, Chunk.Data.Size + ChunkManagerHeaderLen);
-  EnterID := 0;
+  Try
+    HandleStatisticCallback(ssTotalNetworkPacketsIn);
+    HandleStatisticCallback(ssTotalNetworkBytesIn, Chunk.Data.Size + ChunkManagerHeaderLen);
+    EnterID := 0;
 {$IFDEF DoNotLog_CyclicMessages}
-  DoLog := ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
-    ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent);
+    DoLog := ((Chunk.UserDefinedID And $FFFF) <> miHeartBeat) And
+      ((Chunk.UserDefinedID And $FFFF) <> miClientKeyEvent);
 {$ELSE}
-  DoLog := true;
+    DoLog := true;
 {$ENDIF}
-  If DoLog Then
-    EnterID := LogEnter(format('TServer.OnReceivedChunk : %d, %s', [Chunk.UID, MessageIdentifierToString(Chunk.UserDefinedID)]));
+    If DoLog Then
+      EnterID := LogEnter(format('TServer.OnReceivedChunk : %d, %s', [Chunk.UID, MessageIdentifierToString(Chunk.UserDefinedID)]));
 
-  Case (Chunk.UserDefinedID And $FFFF) Of
-    miTogglePause: Begin
-        HandleTogglePause();
-      End;
-    miClientKeyEvent: Begin
-        HandleClientKeyEvent(Chunk.Data);
-      End;
-    miHeartBeat: Begin
-        i := -1;
-        chunk.Data.Read(i, sizeof(i));
-        ts := 0;
-        chunk.Data.Read(ts, sizeof(ts));
-        HandleReceiveHeartBeat(i, ts);
-      End;
-    miRequestLogin: Begin
-        HandleRequestUserLogin(Chunk.data, chunk.UID);
-      End;
-    miSwitchToPlayerSetup: Begin
-        HandleSwitchToPlayerSetup();
-      End;
-    miUpdateSettings: Begin
-        HandleLoadSettings(Chunk.Data);
-      End;
-    miUpdateModSettings: Begin
-        HandleUpdateModSettings(Chunk.Data, Chunk.UID);
-      End;
-    miChangePlayerKey: Begin
-        i := -1;
-        chunk.Data.Read(i, sizeof(i));
-        j := 0;
-        chunk.Data.Read(j, sizeof(j));
-        s := Chunk.Data.ReadAnsiString;
-        HandleChangePlayerKey(i, j, s, Chunk.UID);
-      End;
-    miSwitchToFieldSetup: Begin
-        HandleSwitchToMapProperties(Chunk.UID);
-      End;
-    miUpdateFieldSetup: Begin
-        HandleUpdateFieldSetup(Chunk.Data, Chunk.UID);
-      End;
-    miDebugCommand: Begin
-        HandleDebugCommand(Chunk.Data, Chunk.UID);
-      End;
-    miStartGame: Begin
-        If fGameState = gsShowHighscore Then Begin
-          If MatchFinished() Then Begin
-            HandleShowVictory();
+    Case (Chunk.UserDefinedID And $FFFF) Of
+      miTogglePause: Begin
+          HandleTogglePause();
+        End;
+      miClientKeyEvent: Begin
+          HandleClientKeyEvent(Chunk.Data, Chunk.UID);
+        End;
+      miHeartBeat: Begin
+          i := -1;
+          chunk.Data.Read(i, sizeof(i));
+          ts := 0;
+          chunk.Data.Read(ts, sizeof(ts));
+          HandleReceiveHeartBeat(i, ts);
+        End;
+      miRequestLogin: Begin
+          HandleRequestUserLogin(Chunk.data, chunk.UID);
+        End;
+      miSwitchToPlayerSetup: Begin
+          HandleSwitchToPlayerSetup();
+        End;
+      miUpdateSettings: Begin
+          HandleLoadSettings(Chunk.Data);
+        End;
+      miUpdateModSettings: Begin
+          HandleUpdateModSettings(Chunk.Data, Chunk.UID);
+        End;
+      miChangePlayerKey: Begin
+          i := -1;
+          chunk.Data.Read(i, sizeof(i));
+          j := 0;
+          chunk.Data.Read(j, sizeof(j));
+          s := Chunk.Data.ReadAnsiString;
+          HandleChangePlayerKey(i, j, s, Chunk.UID);
+        End;
+      miSwitchToFieldSetup: Begin
+          HandleSwitchToMapProperties(Chunk.UID);
+        End;
+      miUpdateFieldSetup: Begin
+          HandleUpdateFieldSetup(Chunk.Data, Chunk.UID);
+        End;
+      miDebugCommand: Begin
+          HandleDebugCommand(Chunk.Data, Chunk.UID);
+        End;
+      miStartGame: Begin
+          If fGameState = gsShowHighscore Then Begin
+            If MatchFinished() Then Begin
+              HandleShowVictory();
+            End
+            Else Begin
+              HandleStartRound();
+            End;
           End
           Else Begin
-            HandleStartRound();
+            HandleStartGame();
           End;
-        End
-        Else Begin
-          HandleStartGame();
         End;
+    Else Begin
+        log('Unknown user defined id : ' + inttostr(Chunk.UserDefinedID And $FFFF), llError);
       End;
-  Else Begin
-      log('Unknown user defined id : ' + inttostr(Chunk.UserDefinedID And $FFFF), llError);
+    End;
+  Except
+    // Trennen der Verbindung zum Spieler, hier war was faul
+    On av: Exception Do Begin
+      log('Exception from uid ' + inttostr(Chunk.UID) + ': ' + av.Message);
+      aSocket := fChunkManager.UIDToSocket(Chunk.UID);
+      // das Disconnect löst das Leaveplayer aus
+      If assigned(aSocket) Then aSocket.Disconnect(true);
     End;
   End;
   If DoLog Then
@@ -778,7 +789,9 @@ Var
   EnterID: Integer;
 Begin
   EnterID := LogEnter(format('TServer.HandleChangePlayerKey (%d, %d, %s)', [PlayerIndex, Direction, PlayerName]));
-  If (PlayerIndex = -1) Or (Direction = 0) Or (UID = 0) Then Begin
+  If (PlayerIndex < 0) Or (PlayerIndex > high(fPLayer)) Or
+    (Direction = 0) Or (UID = 0) Or (Not ValidNodeName(PlayerName)) Or
+    (Not (fGameState In [gsWaitForPlayersToConnect, gsPlayerSetup])) Then Begin
     LogLeave(EnterID);
     exit;
   End;
@@ -2026,13 +2039,13 @@ Begin
   End;
 End;
 
-Procedure TServer.HandleClientKeyEvent(Const Stream: TStream);
+Procedure TServer.HandleClientKeyEvent(Const Stream: TStream; Uid: integer);
 Var
   Player: integer;
   Double, State: Boolean;
   Key: TAtomicKey;
 Begin
-  If fpausing Then exit;
+  If fpausing Or (fGameState <> gsPlaying) Then exit;
   player := -1;
   State := false;
   Double := false;
@@ -2041,6 +2054,7 @@ Begin
   stream.Read(State, sizeof(State));
   stream.Read(key, sizeof(key));
   stream.Read(Double, sizeof(Double));
+  If (player < 0) Or (Player > high(fPLayer)) Or (fPLayer[Player].UID <> Uid) Then exit;
   fPLayer[Player].IdleTimer := 0; // Der Spieler hat eine Eingabe gemacht -> reset des Idle Timers ;)
   If State Then Begin
     If dInvertedKeyboard In fPLayer[Player].Disease Then Begin
@@ -2657,9 +2671,9 @@ Begin
       End;
       m.Write(DiseasedInfo, sizeof(DiseasedInfo));
     End
-    (*
-     * Wenn der Spieler eine Krankheit hat, dann wechselt seine Farbe alle AtomicDiseaseColorChangeTime
-     *)
+      (*
+       * Wenn der Spieler eine Krankheit hat, dann wechselt seine Farbe alle AtomicDiseaseColorChangeTime
+       *)
     Else If (fPLayer[i].Disease <> []) And ((fPLayer[i].DiseaseCounter Mod AtomicDiseaseColorChangePeriodTime) < AtomicDiseaseColorChangePeriodTime - AtomicDiseaseColorChangePeriodRelaxTime) Then Begin
       DiseasedInfo := fPLayer[i].Info;
       DiseasedInfo.ColorIndex := (fPLayer[i].DiseaseCounter Div AtomicDiseaseColorChangeTime) Mod length(PlayerColors);
