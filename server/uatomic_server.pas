@@ -2825,6 +2825,8 @@ Begin
   End
   Else Begin
     // Nur noch 1 Überlebender Spieler
+    // Mod Test Modus mit GhostsKeepRound: Ist der Letzte ein Geist, lebt keiner mehr -> unentschieden (ein Geist gewinnt nicht)
+    If (cnt = 1) And (Not fPLayer[cntindex].Info.Alive) Then cnt := 0;
     If cnt = 1 Then Begin
       // Dem Sieger den Punkt geben, aber nur, wenn er nicht auch gerade am sterben ist ..
       // Wenn der Spieler Gestorben ist geht dann cnt von alleine Später auf 0 ;)
