@@ -1629,7 +1629,10 @@ Begin
     (*
      * Wenn die Alte Animation eine einmal ablaufen Animation ist.
      * Ein Geist (Mod) beginnt ohne die Todesanimation, sonst würde diese hier nochmal abgespielt.
+     * Die Todesanimation gilt nur so lange der Spieler stirbt, kommt er wieder ins Spiel (Respawn im Spielmodus Hunter)
+     * ist sie sofort vorbei (der Server setzt dabei den Counter zurück, sie würde sonst weiter laufen).
      *)
+    If (OldAnim = raDie) And (Not fPlayer[i].Info.Dying) Then OldAnim := raStandStill;
     If (OldAnim In OneTimeAnimations) And (Not fPlayer[i].Info.Ghost) Then Begin
       If fPlayer[i].Info.Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
         fPlayer[i].Info.Animation := OldAnim;
