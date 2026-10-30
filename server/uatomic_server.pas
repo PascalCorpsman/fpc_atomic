@@ -84,6 +84,7 @@ Type
     fAutotimeout: integer;
     fPLayer: TPlayers;
     fUidInfos: Array Of TUidInfos; // Informationen die am Spieler hängen aber nicht an den Positionen ..
+    fHuntedIndex: integer; // Spielmodus Hunter: Index des Gejagten, -1 = keiner
 
     Procedure OnAccept(aSocket: TLSocket);
     Procedure OnDisconnect(aSocket: TLSocket);
@@ -115,6 +116,16 @@ Type
     Function HandlePlayerHit(PlayerIndex: integer): Boolean;
     Function HandlePlayerPunch(PlayerIndex, x, y: integer): Boolean;
     Procedure HandleGhostRevive(GhostIndex: integer);
+    Procedure RespawnPlayer(Index: integer; Position: TPoint; InvulnMs: integer); // Holt einen Toten (oder Geist) mit den Werten des Schemes auf Position zurück ins Spiel
+    Procedure SetPlayerPowers(Index: integer; Const NewPowers: TAtomicPowers); // Setzt neue Powers, die gerade liegenden Bomben des Spielers bleiben dabei "verbraucht"
+    Function HunterActive(): Boolean; // True, wenn der Spielmodus Hunter gespielt wird (im Team play nie)
+    Function HunterRespawnActive(): Boolean; // True, Spielmodus Hunter mit Respawn (dann ohne Hurry)
+    Function HuntedImmune(PlayerIndex: integer): Boolean; // True, wenn PlayerIndex der Gejagte ist und nicht krank werden kann (HuntedNoDiseases)
+    Function PickRandomHunted(Exclude: integer): integer; // Ein zufälliger lebender Spieler außer Exclude, -1 = keiner
+    Function PickStartHunted(): integer; // Der Gejagte zu Rundenbeginn gemäß HuntedStart
+    Procedure SetHunted(NewIndex: integer);
+    Procedure HandlePlayerKilled(Victim, Killer: integer);
+    Procedure HandleHunter(); // Spielmodus Hunter, pro Frame: Respawn und Zeit als Gejagter
     Procedure MakeGhost(PlayerIndex: integer);
     Procedure SendFlash(PlayerIndex, Intensity, DurationMs, FadeMs: integer);
     Procedure HandleWhiteBomb(PlayerIndex: integer);
@@ -143,6 +154,8 @@ Type
 
     Procedure LoadAi();
     Procedure HurryHandling;
+    Function AiSupportsCurrentMode(): Boolean; // True, wenn eine KI geladen ist und sie den aktiven Spielmodus kann
+    Function AiNotSupportedText(): String; // Die Meldung, wenn AiSupportsCurrentMode false ist
     Procedure HandleUpdateModSettings(Const Stream: TStream; UID: integer);
     Procedure ApplyModSettingsToFields();
     Procedure SendModInfo(UID: integer);
@@ -208,6 +221,7 @@ Begin
     fFields[i].GhostReviveCallback := @HandleGhostRevive;
     fFields[i].PlayerPunchCallback := @HandlePlayerPunch;
     fFields[i].WhiteBombCallback := @HandleWhiteBomb;
+    fFields[i].PlayerKilledCallback := @HandlePlayerKilled;
     If Not fFields[i].loadFromDirectory(sl[i]) Then Begin
       Raise exception.create('Error, unable to load field:' + sl[i]);
     End;
@@ -796,7 +810,14 @@ Begin
             fPLayer[PlayerIndex].Keyboard := ks1;
           End
           Else Begin
-            fPLayer[PlayerIndex].UID := AIPlayer;
+            // Kann die KI den Spielmodus nicht (oder ist keine geladen), wird die KI übersprungen
+            If AiSupportsCurrentMode() Then Begin
+              fPLayer[PlayerIndex].UID := AIPlayer;
+            End
+            Else Begin
+              fPLayer[PlayerIndex].UID := NoPlayer;
+              SendSplashMessage(AiNotSupportedText(), UID);
+            End;
             fPLayer[PlayerIndex].UserName := '';
           End;
           RefreshAllPlayerStats(0);
@@ -834,8 +855,17 @@ Begin
   Else Begin
     If UID = fSettings.MasterUid Then Begin
       If fPLayer[PlayerIndex].UID = NoPlayer Then Begin
-        fPLayer[PlayerIndex].UID := AIPlayer;
-        fPLayer[PlayerIndex].UserName := '';
+        // Kann die KI den Spielmodus nicht (oder ist keine geladen), geht es direkt weiter mit Uid (key1)
+        If AiSupportsCurrentMode() Then Begin
+          fPLayer[PlayerIndex].UID := AIPlayer;
+          fPLayer[PlayerIndex].UserName := '';
+        End
+        Else Begin
+          fPLayer[PlayerIndex].UID := UID;
+          fPLayer[PlayerIndex].Keyboard := ks1;
+          fPLayer[PlayerIndex].UserName := PlayerName;
+          SendSplashMessage(AiNotSupportedText(), UID);
+        End;
         RefreshAllPlayerStats(0);
       End
       Else Begin
@@ -909,6 +939,12 @@ Begin
   End;
   If (pcnt = 1) And (aicnt = 0) Then Begin
     SendSplashMessage('Only one player on the map makes no sense, please wait for other players or activate at least one ai player.', UID);
+    LogLeave(EnterID);
+    exit;
+  End;
+  // Der Spielmodus kann sich nach der Wahl der KI Slots noch geändert haben (Mods vom Master)
+  If (aicnt <> 0) And (Not AiSupportsCurrentMode()) Then Begin
+    SendSplashMessage(AiNotSupportedText() + ' Please remove the ai players.', UID);
     LogLeave(EnterID);
     exit;
   End;
@@ -1063,6 +1099,14 @@ Begin
   If fModSettings.ModTestMode And (fModSettings.RoundTimeSec > 0) Then Begin
     fPlayingTimedesc := fModSettings.RoundTimeSec * 1000; // Zum Testen des Hurry, gilt auch im Infinity Mode
   End;
+  If (fModSettings.GameMode = gmHunter) And fSettings.TeamPlay Then Begin
+    log('Game mode hunter is ignored in team play, playing classic.', llWarning);
+  End;
+  // Spielmodus Hunter mit Respawn: Ohne Zeitlimit würde die Runde nie enden
+  If HunterRespawnActive() And (fPlayingTimedesc = -1000) Then Begin
+    fPlayingTimedesc := HunterDefaultRoundTimeSec * 1000;
+    log(format('Game mode hunter with respawn needs a round time, using %d s.', [HunterDefaultRoundTimeSec]), llInfo);
+  End;
   fPlayingTimeasc := 0;
   For i := 0 To high(Startindex) Do Begin
     Startindex[i] := i;
@@ -1131,6 +1175,12 @@ Begin
     fPLayer[i].GhostCount := 0;
     fPLayer[i].StartPosition := fPLayer[i].Info.Position;
     fPLayer[i].StartGlove := fModSettings.GloveAtStart;
+    // Spielmodus Hunter
+    fPLayer[i].HuntedTimeMs := 0;
+    fPLayer[i].HuntedKills := 0;
+    fPLayer[i].RespawnTimer := 0;
+    fPLayer[i].Info.Hunted := false;
+    fPLayer[i].Info.HuntedTime := 0;
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
     fPLayer[i].Powers := PowersFromScheme(fSettings.Scheme);
     If fModSettings.ModTestMode Then ApplyStartItems(fPLayer[i].Powers, fModSettings.StartItems);
@@ -1159,6 +1209,11 @@ Begin
 
   fActualField.Initialize(fPLayer, fSettings.Scheme, fSettings.TeamPlay);
   fRoundTimeMs := 0;
+  // Spielmodus Hunter: Den ersten Gejagten bestimmen
+  fHuntedIndex := -1;
+  If HunterActive() Then Begin
+    SetHunted(PickStartHunted());
+  End;
   SendChunk(miStartGame, Nil, 0);
   n := GetTickCount64;
   For i := 0 To high(fPLayer) Do Begin // Egal das das alle sind ..
@@ -1222,6 +1277,11 @@ Begin
   EnterID := LogEnter('TServer.HandlePlayerGetsPowerUp');
   // TODO: Die Force, Override, forbidden dinge müssen hier noch berücksichtigt werden..
   //       \-> Das Forbidden wird in TAtomicField.Initialize bereits gemacht.
+  // Spielmodus Hunter: Der Gejagte wird nicht krank, Krankheit, Slow und Tauschen verfallen beim Aufheben
+  If HuntedImmune(PlayerIndex) And (PowerUp In [puDisease, puSuperBadDisease, puSlow]) Then Begin
+    LogLeave(EnterID);
+    exit;
+  End;
   If PowerUp <> puNone Then Begin
     fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssPowerupsCollected);
     HandleStatisticCallback(ssPowerupsCollected);
@@ -1644,6 +1704,7 @@ Begin
       HandlePlaySoundEffect(j, seOtherPlayerDied);
       HandleStatisticCallback(ssPlayerDeaths);
       fPlayerStatistics.UpdatePlayerID(j, pssDeaths);
+      HandlePlayerKilled(j, InBeam[j]);
       fActualField.KillPlayer(fPLayer, j);
     End;
   End;
@@ -1681,7 +1742,6 @@ End;
 Procedure TServer.HandleGhostRevive(GhostIndex: integer);
 Var
   p: TPoint;
-  pu: TPowerUps;
   EnterID: integer;
 Begin
   EnterID := LogEnter('TServer.HandleGhostRevive');
@@ -1694,32 +1754,251 @@ Begin
    * und zwar wie zu Rundenbeginn, seine Items wurden ja beim Sterben verteilt.
    *)
   p := fActualField.FindFreeField(trunc(fPLayer[GhostIndex].StartPosition.x), trunc(fPLayer[GhostIndex].StartPosition.y));
-  fPLayer[GhostIndex].Info.Ghost := false;
-  fPLayer[GhostIndex].Info.GhostTime := 0;
-  fPLayer[GhostIndex].Info.Alive := true;
-  fPLayer[GhostIndex].Info.Dying := false;
-  fPLayer[GhostIndex].Info.Position := v2(p.x + 0.5, p.y + 0.5);
-  fPLayer[GhostIndex].Info.Animation := raStandStill;
-  fPLayer[GhostIndex].Info.Counter := 0;
-  fPLayer[GhostIndex].Flying := false;
-  fPLayer[GhostIndex].IsInHohle := false;
-  fPLayer[GhostIndex].Disease := [];
-  fPLayer[GhostIndex].DiseaseCounter := 0;
-  fPLayer[GhostIndex].StunTimer := 0;
-  fPLayer[GhostIndex].BrickWalkTimer := 0;
-  fPLayer[GhostIndex].WhiteBombs := 0;
-  fPLayer[GhostIndex].FlameThrowerFuel := 0;
-  fPLayer[GhostIndex].Info.BrickWalk := false;
-  fPLayer[GhostIndex].InvulnTimer := fModSettings.GhostReviveInvulnMs;
-  fPLayer[GhostIndex].Powers := PowersFromScheme(fSettings.Scheme);
-  For pu In TPowerUps Do Begin
-    fPLayer[GhostIndex].PowerUpCounter[pu] := 0;
-  End;
-  fPLayer[GhostIndex].HitPoints := fPLayer[GhostIndex].MaxHitPoints;
-  If fModSettings.ShowHitPoints Then fPLayer[GhostIndex].Info.HitPoints := fPLayer[GhostIndex].HitPoints;
-  HandlePlaySoundEffect(GhostIndex, seGetGoodPowerUp);
+  RespawnPlayer(GhostIndex, p, fModSettings.GhostReviveInvulnMs);
   log('Ghost revived: ' + fPLayer[GhostIndex].UserName, llInfo);
   LogLeave(EnterID);
+End;
+
+Procedure TServer.RespawnPlayer(Index: integer; Position: TPoint;
+  InvulnMs: integer);
+Var
+  pu: TPowerUps;
+Begin
+  (*
+   * Der Spieler kommt auf Position zurück, und zwar wie zu Rundenbeginn, seine Items wurden ja beim Sterben verteilt.
+   * Benutzt von den Geistern (HandleGhostRevive) und dem Respawn im Spielmodus Hunter (HandleHunter).
+   *)
+  fPLayer[Index].Info.Ghost := false;
+  fPLayer[Index].Info.GhostTime := 0;
+  fPLayer[Index].Info.Alive := true;
+  fPLayer[Index].Info.Dying := false;
+  fPLayer[Index].Info.Position := v2(Position.x + 0.5, Position.y + 0.5);
+  fPLayer[Index].Info.Animation := raStandStill;
+  fPLayer[Index].Info.Counter := 0;
+  fPLayer[Index].Flying := false;
+  fPLayer[Index].IsInHohle := false;
+  fPLayer[Index].Disease := []; // Vor SetPlayerPowers, sonst würde die Geschwindigkeit von dSuperSlow gemerkt
+  fPLayer[Index].DiseaseCounter := 0;
+  fPLayer[Index].StunTimer := 0;
+  fPLayer[Index].BrickWalkTimer := 0;
+  fPLayer[Index].WhiteBombs := 0;
+  fPLayer[Index].FlameThrowerFuel := 0;
+  fPLayer[Index].FlameThrowerExposure := 0;
+  fPLayer[Index].Info.BrickWalk := false;
+  fPLayer[Index].InvulnTimer := InvulnMs;
+  fPLayer[Index].RespawnTimer := 0;
+  // Bomben, die der Spieler vor seinem Tod gelegt hat und die noch liegen, geben beim Explodieren eine Bombe zurück -> SetPlayerPowers
+  SetPlayerPowers(Index, PowersFromScheme(fSettings.Scheme));
+  For pu In TPowerUps Do Begin
+    fPLayer[Index].PowerUpCounter[pu] := 0;
+  End;
+  fPLayer[Index].HitPoints := fPLayer[Index].MaxHitPoints;
+  If fModSettings.ShowHitPoints Then fPLayer[Index].Info.HitPoints := fPLayer[Index].HitPoints;
+  HandlePlaySoundEffect(Index, seGetGoodPowerUp);
+End;
+
+Procedure TServer.SetPlayerPowers(Index: integer;
+  Const NewPowers: TAtomicPowers);
+Var
+  Placed: integer;
+  Speed: Single;
+Begin
+  (*
+   * Explodiert eine liegende Bombe, bekommt der Spieler AvailableBombs + 1 zurück (siehe TAtomicField.HandleBombs).
+   * Damit die Anzahl danach stimmt, bleiben die gerade liegenden Bomben von den neuen Bomben abgezogen,
+   * AvailableBombs darf dabei auch negativ werden.
+   *)
+  Placed := fPLayer[Index].Powers.OverAllBombs - fPLayer[Index].Powers.AvailableBombs;
+  If dSuperSlow In fPLayer[Index].Disease Then Begin
+    // Der Spieler bleibt langsam, nach dem Heilen bekommt er die neue Geschwindigkeit
+    Speed := fPLayer[Index].Powers.Speed;
+    fPLayer[Index].BeforeSlowDiseaseSpeed := NewPowers.Speed;
+    fPLayer[Index].Powers := NewPowers;
+    fPLayer[Index].Powers.Speed := Speed;
+  End
+  Else Begin
+    fPLayer[Index].Powers := NewPowers;
+  End;
+  fPLayer[Index].Powers.AvailableBombs := fPLayer[Index].Powers.OverAllBombs - Placed;
+End;
+
+Function TServer.HunterActive: Boolean;
+Begin
+  result := EffectiveGameMode(fModSettings, fSettings.TeamPlay) = gmHunter;
+End;
+
+Function TServer.HunterRespawnActive: Boolean;
+Begin
+  result := HunterActive() And fModSettings.HunterRespawn;
+End;
+
+Function TServer.HuntedImmune(PlayerIndex: integer): Boolean;
+Begin
+  result := fModSettings.HuntedNoDiseases And (PlayerIndex >= 0) And (PlayerIndex = fHuntedIndex) And HunterActive();
+End;
+
+Function TServer.PickRandomHunted(Exclude: integer): integer;
+Var
+  Candidates: Array[0..length(PlayerColors) - 1] Of integer;
+  i, cnt: integer;
+Begin
+  cnt := 0;
+  For i := 0 To high(fPLayer) Do Begin
+    If (i = Exclude) Or (fPLayer[i].UID = NoPlayer) Or (Not fPLayer[i].Info.Alive) Or fPLayer[i].Info.Dying Then Continue;
+    Candidates[cnt] := i;
+    inc(cnt);
+  End;
+  If cnt = 0 Then Begin
+    result := -1;
+  End
+  Else Begin
+    result := Candidates[random(cnt)];
+  End;
+End;
+
+Function TServer.PickStartHunted: integer;
+Var
+  Candidates: Array[0..length(PlayerColors) - 1] Of integer;
+  i, cnt, best: integer;
+Begin
+  If fModSettings.HuntedStart <> HuntedStartLeader Then Begin
+    result := PickRandomHunted(-1);
+    exit;
+  End;
+  // Der mit dem höchsten Score, bei Gleichstand zufällig
+  cnt := 0;
+  best := -1;
+  For i := 0 To high(fPLayer) Do Begin
+    If (fPLayer[i].UID = NoPlayer) Or (Not fPLayer[i].Info.Alive) Then Continue;
+    If fPLayer[i].Score > best Then Begin
+      best := fPLayer[i].Score;
+      cnt := 0;
+    End;
+    If fPLayer[i].Score = best Then Begin
+      Candidates[cnt] := i;
+      inc(cnt);
+    End;
+  End;
+  If cnt = 0 Then Begin
+    result := -1;
+  End
+  Else Begin
+    result := Candidates[random(cnt)];
+  End;
+End;
+
+Procedure TServer.SetHunted(NewIndex: integer);
+Var
+  OldIndex, i, EnterID: integer;
+  p: TAtomicPowers;
+Begin
+  EnterID := LogEnter(format('TServer.SetHunted (%d)', [NewIndex]));
+  OldIndex := fHuntedIndex;
+  fHuntedIndex := NewIndex;
+  // 1. Der bisherige Gejagte (falls er noch lebt) verliert seine Items
+  If (OldIndex >= 0) And (OldIndex <> NewIndex) And fPLayer[OldIndex].Info.Alive Then Begin
+    If fModSettings.HuntedLoseItems = HuntedLoseItemsScheme Then Begin
+      p := PowersFromScheme(fSettings.Scheme);
+    End
+    Else Begin
+      p := fPLayer[OldIndex].PowersBeforeHunted;
+    End;
+    SetPlayerPowers(OldIndex, p);
+  End;
+  For i := 0 To high(fPLayer) Do Begin
+    fPLayer[i].Info.Hunted := i = NewIndex;
+  End;
+  If NewIndex < 0 Then Begin
+    log('Nobody is hunted', llInfo);
+    LogLeave(EnterID);
+    exit;
+  End;
+  // 2. Der neue Gejagte, sein Zustand wird gemerkt (ohne die Verlangsamung von dSuperSlow)
+  fPLayer[NewIndex].PowersBeforeHunted := fPLayer[NewIndex].Powers;
+  If dSuperSlow In fPLayer[NewIndex].Disease Then Begin
+    fPLayer[NewIndex].PowersBeforeHunted.Speed := fPLayer[NewIndex].BeforeSlowDiseaseSpeed;
+  End;
+  If fModSettings.HuntedNoDiseases And (fPLayer[NewIndex].Disease <> []) Then Begin
+    If dSuperSlow In fPLayer[NewIndex].Disease Then Begin
+      fPLayer[NewIndex].Powers.Speed := fPLayer[NewIndex].BeforeSlowDiseaseSpeed;
+    End;
+    fPLayer[NewIndex].Disease := [];
+    fPLayer[NewIndex].DiseaseCounter := 0;
+  End;
+  p := PowersFromScheme(fSettings.Scheme);
+  ApplyStartItems(p, fModSettings.HuntedItems);
+  SetPlayerPowers(NewIndex, p);
+  fPLayer[NewIndex].InvulnTimer := max(fPLayer[NewIndex].InvulnTimer, fModSettings.HuntedInvulnMs); // Das Blinken macht UpdateAllClients
+  HandlePlaySoundEffect(NewIndex, seGetGoodPowerUp);
+  log('Hunted: ' + fPLayer[NewIndex].UserName + ' (' + inttostr(NewIndex) + ')', llInfo);
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.HandlePlayerKilled(Victim, Killer: integer);
+Var
+  i, EnterID: integer;
+Begin
+  (*
+   * Wird direkt vor KillPlayer aufgerufen (Flamme, Flammenwerfer, Hurry), Killer = -1 niemand.
+   * Spielmodus Hunter: Wer den Gejagten erwischt, wird der neue Gejagte.
+   *)
+  If Not HunterActive() Then exit;
+  If (Victim <> fHuntedIndex) Or (Victim < 0) Then exit;
+  EnterID := LogEnter(format('TServer.HandlePlayerKilled (%d, %d)', [Victim, Killer]));
+  If (Killer >= 0) And (Killer <> Victim) And fPLayer[Killer].Info.Alive And (Not fPLayer[Killer].Info.Dying) Then Begin
+    fPLayer[Killer].HuntedKills := fPLayer[Killer].HuntedKills + 1;
+    SetHunted(Killer);
+  End
+  Else Begin
+    // Kein (lebender) fremder Killer
+    If (fModSettings.HuntedLost = HuntedLostKeep) And fModSettings.HunterRespawn Then Begin
+      // Er bleibt der Gejagte, nach dem Respawn bekommt er die Items wieder (HandleHunter)
+    End
+    Else Begin
+      i := PickRandomHunted(Victim);
+      If i >= 0 Then SetHunted(i); // Gibt es keinen, bleibt er es bis sich einer findet (HandleHunter)
+    End;
+  End;
+  LogLeave(EnterID);
+End;
+
+Procedure TServer.HandleHunter;
+Var
+  i: integer;
+  AvoidPos: TPoint;
+Begin
+  If Not HunterActive() Then exit;
+  // 1. Respawn der Toten
+  For i := 0 To high(fPLayer) Do Begin
+    If fPLayer[i].RespawnTimer <= 0 Then Continue;
+    If (fPLayer[i].UID = NoPlayer) Or fPLayer[i].Info.Alive Then Begin // Der Spieler hat das Spiel verlassen
+      fPLayer[i].RespawnTimer := 0;
+      Continue;
+    End;
+    fPLayer[i].RespawnTimer := fPLayer[i].RespawnTimer - FrameRate;
+    If fPLayer[i].RespawnTimer > 0 Then Continue;
+    // Möglichst weit weg vom Gejagten, gibt es keinen lebenden ist jedes Feld weit genug weg
+    AvoidPos := point(-2 * FieldWidth, -2 * FieldHeight);
+    If (fHuntedIndex >= 0) And (fHuntedIndex <> i) And fPLayer[fHuntedIndex].Info.Alive Then Begin
+      AvoidPos := point(trunc(fPLayer[fHuntedIndex].Info.Position.x), trunc(fPLayer[fHuntedIndex].Info.Position.y));
+    End;
+    RespawnPlayer(i, fActualField.FindRespawnField(AvoidPos), fModSettings.HunterRespawnInvulnMs);
+    log('Respawn: ' + fPLayer[i].UserName + ' (' + inttostr(i) + ')', llInfo);
+    If i = fHuntedIndex Then SetHunted(i); // HuntedLostKeep: Er ist weiterhin der Gejagte und bekommt die Items wieder
+  End;
+  // 2. Es gibt keinen (lebenden) Gejagten mehr, dann wird einer bestimmt, sobald es wieder jemanden gibt
+  If (fHuntedIndex < 0) Or
+    ((Not fPLayer[fHuntedIndex].Info.Alive) And ((fPLayer[fHuntedIndex].RespawnTimer <= 0) Or (fModSettings.HuntedLost <> HuntedLostKeep))) Then Begin
+    i := PickRandomHunted(fHuntedIndex);
+    If i >= 0 Then SetHunted(i);
+  End;
+  // 3. Die Zeit als Gejagter
+  If (fHuntedIndex >= 0) And fPLayer[fHuntedIndex].Info.Alive And (Not fPLayer[fHuntedIndex].Info.Dying) Then Begin
+    fPLayer[fHuntedIndex].HuntedTimeMs := min(fPLayer[fHuntedIndex].HuntedTimeMs + FrameRate, high(Integer) - FrameRate);
+  End;
+  For i := 0 To high(fPLayer) Do Begin
+    fPLayer[i].Info.HuntedTime := min(high(uint16), fPLayer[i].HuntedTimeMs Div 1000);
+  End;
 End;
 
 Procedure TServer.HandleGhosts;
@@ -1892,6 +2171,7 @@ Begin
         End
         Else Begin
           HandlePlaySoundEffect(PlayerIndex, seAtomicDie);
+          HandlePlayerKilled(PlayerIndex, -1);
           fActualField.KillPlayer(fPLayer, PlayerIndex);
           s := 'hit, player died';
         End;
@@ -1982,6 +2262,7 @@ Begin
   // TODO: Klären was noch alles zurück gesetzt werden muss ..
   fSettings.MasterUid := -1;
   fActualField := Nil;
+  fHuntedIndex := -1;
   fSettings.LastWinsToWinMatch := 3; // Default der Clients
   // Die Mods gehören zum Master, der nächste Master schickt seine eigenen
   ModSettingsDefaults(fModSettings);
@@ -2148,10 +2429,12 @@ Begin
         fPLayer[i].UID := NoPlayer;
       End
       Else Begin
-        If fSettings.LostPlayersRevertToAI Then Begin
+        // Kann die KI den Spielmodus nicht, scheidet der Spieler aus
+        If fSettings.LostPlayersRevertToAI And AiSupportsCurrentMode() Then Begin
           fPLayer[i].UID := AIPlayer;
         End
         Else Begin
+          If fSettings.LostPlayersRevertToAI Then log(AiNotSupportedText() + ' The player is out.', llWarning);
           fPLayer[i].UID := NoPlayer;
         End;
       End;
@@ -2169,6 +2452,12 @@ Begin
     End;
     // Zählen der Noch aktiven Spieler
     If fPLayer[i].UID > 0 Then inc(cnt);
+  End;
+  // Spielmodus Hunter: Verlässt der Gejagte das Spiel, wird ein neuer bestimmt
+  If (fGameState = gsPlaying) And HunterActive() And (fHuntedIndex >= 0) Then Begin
+    If fPLayer[fHuntedIndex].UID = NoPlayer Then Begin
+      SetHunted(PickRandomHunted(fHuntedIndex)); // -1, wenn es keinen gibt, dann macht das HandleHunter später
+    End;
   End;
   For i := 0 To high(fUidInfos) Do Begin
     If fUidInfos[i].Uid = PlayerUid Then Begin
@@ -2393,6 +2682,7 @@ Var
   AiCommand: TAiCommand;
   OldCounter: UInt16;
   WillBeGhost: Boolean;
+  ModeInfo: TAiModeInfo;
   Stunned: Boolean;
   StunMoveState: TMoveState;
   OldPosition: TVector2;
@@ -2425,6 +2715,25 @@ Begin
   End;
   If assigned(AiHandlePlayer) Then Begin
     aiInfo := fActualField.GetAiInfo(fPLayer, fSettings.TeamPlay);
+    // Die Infos zum Spielmodus, nur für AiHandlePlayerEx (KI Interface ab Version 5)
+    ModeInfo.Size := sizeof(ModeInfo);
+    ModeInfo.HuntedIndex := -1;
+    If fSettings.TeamPlay Then Begin
+      ModeInfo.GameMode := AiMode_Teamplay;
+    End
+    Else If HunterActive() Then Begin
+      ModeInfo.GameMode := AiMode_Hunter;
+      ModeInfo.HuntedIndex := fHuntedIndex;
+    End
+    Else Begin
+      ModeInfo.GameMode := AiMode_Classic;
+    End;
+    If fPlayingTimedesc = -1000 Then Begin
+      ModeInfo.RoundTimeLeftMs := -1;
+    End
+    Else Begin
+      ModeInfo.RoundTimeLeftMs := max(0, fPlayingTimedesc);
+    End;
   End;
   // Die Spieler Bewegen
   For i := 0 To high(fPLayer) Do Begin
@@ -2433,7 +2742,12 @@ Begin
       If fPLayer[i].UID = AIPlayer Then Begin
         If assigned(AiHandlePlayer) Then Begin
           Try
-            AiCommand := AiHandlePlayer(i, aiInfo);
+            If assigned(AiHandlePlayerEx) Then Begin
+              AiCommand := AiHandlePlayerEx(i, aiInfo, ModeInfo);
+            End
+            Else Begin
+              AiCommand := AiHandlePlayer(i, aiInfo);
+            End;
           Except
             On e: exception Do Begin
               log('Ai raised an exception: ' + e.Message, llCritical);
@@ -2468,6 +2782,7 @@ Begin
       OldPosition := fPLayer[i].Info.Position;
       If fActualField.HandleMovePlayer(fPLayer, i, fSettings.ConveyorSpeed) Then Begin
         // im Hurry mode kann der Spieler sterben, wenn ein Solid Brick an seiner Koordinate "entsteht"
+        HandlePlayerKilled(i, -1);
         fActualField.KillPlayer(fPLayer, i);
       End;
       // Handschuh beim Start: Mit dem ersten Schritt ist er weg, gegen eine Wand drücken dreht nur (damit kann man zielen)
@@ -2498,7 +2813,8 @@ Begin
          * Das Anstecken, Spieler i steckt Spieler j an
          *)
         For j := 0 To high(fPLayer) Do Begin
-          If (i <> j) And
+          // Spielmodus Hunter: Der Gejagte steckt weder an noch wird er angesteckt (HuntedNoDiseases)
+          If (i <> j) And (Not HuntedImmune(i)) And (Not HuntedImmune(j)) And
             (LenV2SQR(fPLayer[i].Info.Position - fPLayer[j].Info.Position) <= 0.5 * 0.5) And
             (fPLayer[i].Disease <> fPLayer[j].Disease) Then Begin
             If fPLayer[j].Disease = [] Then Begin // Ist Spieler j aber auch schon krank dann zählt es nicht, denn dann weis keiner so genau wer hier wen ansteckt..
@@ -2553,7 +2869,8 @@ Begin
   HandleGhosts();
   // Bomben Handeln
   // TODO: Magic Numbers -> entfernen klären ...
-  fActualField.HandleBombs(fPLayer, (fPlayingTimedesc <= 80000) And (fPlayingTimedesc <> -1000), fSettings.ConveyorSpeed);
+  // Spielmodus Hunter mit Respawn: Kein Hurry
+  fActualField.HandleBombs(fPLayer, (fPlayingTimedesc <= 80000) And (fPlayingTimedesc <> -1000) And (Not HunterRespawnActive()), fSettings.ConveyorSpeed);
   // Kollision mit Flammen
   fActualField.HandlePlayerVsMap(fPLayer, @HandlePlayerGetsPowerUp);
 
@@ -2578,7 +2895,8 @@ Begin
       End;
       If fPLayer[i].Info.Dying Then Begin
         // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt)
-        WillBeGhost := fModSettings.Ghosts And (Not fActualField.HurryActive()) And
+        // Spielmodus Hunter mit Respawn: Statt Geist kommt der Spieler nach HunterRespawnMs zurück
+        WillBeGhost := fModSettings.Ghosts And (Not HunterRespawnActive()) And (Not fActualField.HurryActive()) And
           ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount));
         // Wie der Geist danach (siehe unten) zählt beim Testen der Geister zu zweit schon das Sterben, sonst wären die Bomben für den Rest der Runde aus
         If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And WillBeGhost Then inc(alive[fPLayer[i].Team]);
@@ -2586,7 +2904,12 @@ Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fPLayer[i].Info.Dying := false;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
-          If WillBeGhost Then MakeGhost(i);
+          If HunterRespawnActive() Then Begin
+            fPLayer[i].RespawnTimer := max(1, fModSettings.HunterRespawnMs); // Mindestens 1, 0 = kein Respawn ausstehend
+          End
+          Else If WillBeGhost Then Begin
+            MakeGhost(i);
+          End;
         End;
       End
       Else Begin
@@ -2598,17 +2921,21 @@ Begin
       If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And fPLayer[i].Info.Ghost Then inc(alive[fPLayer[i].Team]); // siehe EndGameCheck
     End;
   End;
-  If fSettings.TeamPlay Then Begin
-    If (Alive[0] < 1) Or (Alive[1] < 1) Then Begin // Abschalten sobald das andere Team Platt gemacht wurde !
-      fActualField.DisableAllBombs;
+  HandleHunter();
+  // Spielmodus Hunter mit Respawn: Die Runde endet nur durch die Zeit, die Bomben bleiben an und es gibt keinen Hurry
+  If Not HunterRespawnActive() Then Begin
+    If fSettings.TeamPlay Then Begin
+      If (Alive[0] < 1) Or (Alive[1] < 1) Then Begin // Abschalten sobald das andere Team Platt gemacht wurde !
+        fActualField.DisableAllBombs;
+      End;
+    End
+    Else Begin
+      If Alive[0] + Alive[1] <= 1 Then Begin // Abschalten Aller Bomben sobald nur noch einer am Leben ist bzw noch nicht am Sterben ;)
+        fActualField.DisableAllBombs;
+      End;
     End;
-  End
-  Else Begin
-    If Alive[0] + Alive[1] <= 1 Then Begin // Abschalten Aller Bomben sobald nur noch einer am Leben ist bzw noch nicht am Sterben ;)
-      fActualField.DisableAllBombs;
-    End;
+    HurryHandling;
   End;
-  HurryHandling;
   EndGameCheck();
 End;
 
@@ -2730,9 +3057,81 @@ Var
 
 Var
   WinnerTeamIndex, teamwhite, teamred, cnt, cntindex, i: Integer;
+  pcnt, value, best, bestcnt: Integer;
   m: TMemoryStream;
   v: TVictor;
 Begin
+  SoundSends := Nil;
+  If HunterActive() Then Begin
+    (*
+     * Spielmodus Hunter:
+     * - mit Respawn endet die Runde nur durch die Zeit (oder wenn nur noch ein Spieler übrig ist, weil die anderen gegangen sind)
+     * - ohne Respawn wie gewohnt, wenn höchstens noch einer lebt, oder durch die Zeit
+     * Der Sieger ergibt sich aus HunterScoring, nicht daraus wer überlebt hat.
+     *)
+    cnt := 0;
+    pcnt := 0;
+    cntindex := -1;
+    For i := 0 To high(fPLayer) Do Begin
+      If fPLayer[i].UID <> NoPlayer Then inc(pcnt);
+      If fPLayer[i].Info.Alive Then Begin
+        inc(cnt);
+        cntindex := i;
+      End;
+    End;
+    If (fPlayingTimedesc = -1000) Or (fPlayingTimedesc > 0) Then Begin // Die Zeit läuft noch
+      If fModSettings.HunterRespawn Then Begin
+        If pcnt > 1 Then exit;
+      End
+      Else Begin
+        If cnt > 1 Then exit;
+        If (cnt = 1) And fPLayer[cntindex].Info.Dying Then exit; // Erst die Todesanimation abwarten
+      End;
+    End;
+    // Den Sieger bestimmen, bei Gleichstand (oder wenn keiner etwas erreicht hat) gibt es ein Unentschieden
+    cntindex := -1;
+    best := 0;
+    bestcnt := 0;
+    For i := 0 To high(fPLayer) Do Begin
+      If fPLayer[i].UID = NoPlayer Then Continue;
+      Case fModSettings.HunterScoring Of
+        HunterScoringKills: value := fPLayer[i].HuntedKills;
+        HunterScoringHolder: value := ord(i = fHuntedIndex);
+      Else
+        value := fPLayer[i].HuntedTimeMs;
+      End;
+      If value > best Then Begin
+        best := value;
+        bestcnt := 1;
+        cntindex := i;
+      End
+      Else If (value = best) And (value > 0) Then Begin
+        inc(bestcnt);
+      End;
+    End;
+    If (cntindex >= 0) And (bestcnt = 1) Then Begin
+      log(format('Hunter round winner: %s (hunted %d s, got the hunted %d times)',
+        [fPLayer[cntindex].UserName, fPLayer[cntindex].HuntedTimeMs Div 1000, fPLayer[cntindex].HuntedKills]), llInfo);
+      SendWinner(fPLayer[cntindex].UID, cntindex);
+      fPLayer[cntindex].Score := fPLayer[cntindex].Score + 1;
+      SendPlayerStatistiks(); // Damit alle Clients auch die Richtigen Scores anzeigen diese nun Aktualisieren
+      v := TVictor(integer(vCol0) + cntindex);
+      m := TMemoryStream.Create;
+      m.Write(v, SizeOf(v));
+      SendChunk(miShowMatchStatistik, m, 0);
+      fPlayerStatistics.UpdatePlayerID(cntindex, pssWonRounds);
+    End
+    Else Begin
+      SendChunk(miDrawGame, Nil, 0);
+      For i := 0 To high(fPLayer) Do Begin
+        If fPLayer[i].UID <> NoPlayer Then Begin
+          fPlayerStatistics.UpdatePlayerID(i, pssDrawRounds);
+        End;
+      End;
+    End;
+    fGameState := gsShowHighscore;
+    exit;
+  End;
   (*
    * Bedingungen zum "Ende"
    *)
@@ -2900,6 +3299,38 @@ Begin
   LogLeave(EnterID);
 End;
 
+Function TServer.AiSupportsCurrentMode: Boolean;
+Var
+  Bit: UInt32;
+Begin
+  // Ohne geladene KI ist die Maske 0
+  If fSettings.TeamPlay Then Begin
+    Bit := AiModeTeamplayBit;
+  End
+  Else Begin
+    Bit := GameModeAiBits[EffectiveGameMode(fModSettings, fSettings.TeamPlay)];
+  End;
+  result := (AiGameModesMask And Bit) <> 0;
+End;
+
+Function TServer.AiNotSupportedText: String;
+Var
+  s: String;
+Begin
+  If AiGameModesMask = 0 Then Begin
+    result := 'No ai loaded.';
+  End
+  Else Begin
+    If fSettings.TeamPlay Then Begin
+      s := 'team play';
+    End
+    Else Begin
+      s := lowercase(GameModeNames[EffectiveGameMode(fModSettings, fSettings.TeamPlay)]);
+    End;
+    result := format('The loaded ai (%s) does not support the game mode %s.', [AiVersion(), s]);
+  End;
+End;
+
 Procedure TServer.HurryHandling;
 Begin
   If fPlayingTimedesc = -1000 Then exit; // Nicht im Infinity Mode
@@ -2991,10 +3422,12 @@ Begin
           End;
         'a', 'A': Begin
             LoadAi;
+            If GetActivePlayerCount() <> 0 Then SendModInfo(0); // Die Clients zeigen an, welche Spielmodi die KI kann
           End;
         'u', 'U': Begin
             UnLoadAiLib;
             LogShow('Disabled ai', llInfo);
+            If GetActivePlayerCount() <> 0 Then SendModInfo(0);
           End;
       End;
     End;
@@ -3141,6 +3574,7 @@ Begin
   If fModSettings.OpenBorders Then result := result + ', open borders';
   If fModSettings.Teleporters Then result := result + ', teleporters';
   If fModSettings.ItemConfig Then result := result + ', items & diseases';
+  If fModSettings.GameMode = gmHunter Then result := result + ', hunter';
   If fModSettings.ModTestMode Then result := result + ', mod test mode';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));
