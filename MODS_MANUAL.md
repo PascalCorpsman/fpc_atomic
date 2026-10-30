@@ -19,6 +19,7 @@ Which mods fit which group of players is answered in the [mods FAQ](MODS_FAQ.md)
 - [Glove at start](#glove-at-start)
 - [Open borders](#open-borders)
 - [Teleporters](#teleporters)
+- [Items & diseases](#items--diseases)
 - [Mod test mode](#mod-test-mode)
 - [Editing atomic_mods.ini by hand](#editing-atomic_modsini-by-hand)
 
@@ -258,6 +259,45 @@ Teleporters in the middle of the borders bring the player to the teleporter on t
 | Top <-> bottom | `TeleportersTopBottom` | 1 (on) | 0 / 1 |
 | Left <-> right | `TeleportersLeftRight` | 1 (on) | 0 / 1 |
 | Appear after (s) | `TeleportersActiveSec` | 60 | 0 .. 600, 0 = from the start |
+
+## Items & diseases
+
+Sets **if and how often** each item and each disease appears. Without the mod every brick has the same chance for each of the 13 items or for nothing (about 7 % each).
+
+- **Bricks with an item (%)**: share of the destructible bricks that have an item below them. 93 is like without the mod.
+- **Weight of an item**: the share of an item is its weight divided by the sum of all weights. 0 = the item never appears. With all weights at 10 the items appear as often as without the mod. The dialog shows the resulting share of the bricks next to each item.
+- **Weight of a disease** ![](data/res/powdisea.png): decides which normal disease a disease item gives. If all four are 0, there is no disease item.
+- **Super bad disease** ![](data/res/powebola.png): share of the super bad disease items that swap the places with another player instead of making the player place bombs all the time (10 % like without the mod).
+
+Please note:
+
+- Items that the map (scheme) forbids do not appear. Their weight is left out, so the share of the bricks with an item stays the same.
+- The [positive disease](#positive-disease), [walk through bricks](#walk-through-bricks) and [white screen](#white-screen) are rolled first as before. The weights only decide the normal disease after that.
+- [White bomb](#white-bomb) and [flamethrower](#flamethrower) replace a part of these items afterwards, as before.
+- Items of a dead player are spread again as before, no matter what the weights say.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `ItemConfig` | 0 (off) | 0 / 1 |
+| Bricks with an item (%) | `ItemChance` | 93 | 0 .. 100 |
+| Extra bomb ![](data/res/powbomb.png) | `ItemWeightExtraBomb` | 10 | 0 .. 100 |
+| Longer flame ![](data/res/powflame.png) | `ItemWeightFlameLength` | 10 | 0 .. 100 |
+| Gold flame ![](data/res/powgold.png) | `ItemWeightGoldFlame` | 10 | 0 .. 100 |
+| Extra speed ![](data/res/powskate.png) | `ItemWeightSpeed` | 10 | 0 .. 100 |
+| Kick ![](data/res/powkick.png) | `ItemWeightKick` | 10 | 0 .. 100 |
+| Punch ![](data/res/powpunch.png) | `ItemWeightPunch` | 10 | 0 .. 100 |
+| Grab ![](data/res/powgrab.png) | `ItemWeightGrab` | 10 | 0 .. 100 |
+| Spooger ![](data/res/powspoog.png) | `ItemWeightSpooger` | 10 | 0 .. 100 |
+| Trigger ![](data/res/powtrig.png) | `ItemWeightTrigger` | 10 | 0 .. 100 |
+| Jelly bombs ![](data/res/powjelly.png) | `ItemWeightJelly` | 10 | 0 .. 100 |
+| Disease ![](data/res/powdisea.png) | `ItemWeightDisease` | 10 | 0 .. 100 |
+| Super bad disease ![](data/res/powebola.png) | `ItemWeightSuperBadDisease` | 10 | 0 .. 100 |
+| Slow ![](data/res/powslow.png) | `ItemWeightSlow` | 10 | 0 .. 100 |
+| Inverted keys | `DiseaseWeightInverted` | 10 | 0 .. 100 |
+| No bombs | `DiseaseWeightNoBombs` | 10 | 0 .. 100 |
+| Dud bombs | `DiseaseWeightDudBombs` | 10 | 0 .. 100 |
+| Super slow | `DiseaseWeightSuperSlow` | 10 | 0 .. 100 |
+| Super bad: swap places (%) | `SuperBadSwapChance` | 10 | 0 .. 100 |
 
 ## Mod test mode
 

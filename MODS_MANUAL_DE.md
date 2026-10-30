@@ -19,6 +19,7 @@ Welche Mods zu welcher Spielerrunde passen, beantwortet die [Mods-FAQ](MODS_FAQ_
 - [Handschuh beim Start](#handschuh-beim-start)
 - [Offene Grenzen](#offene-grenzen)
 - [Teleporter](#teleporter)
+- [Items & Krankheiten](#items--krankheiten)
 - [Mod-Test-Modus](#mod-test-modus)
 - [atomic_mods.ini von Hand bearbeiten](#atomic_modsini-von-hand-bearbeiten)
 
@@ -260,6 +261,45 @@ Teleporter in der Mitte der Ränder bringen den Spieler zum Teleporter am gegen�
 | Oben <-> unten | `TeleportersTopBottom` | 1 (an) | 0 / 1 |
 | Links <-> rechts | `TeleportersLeftRight` | 1 (an) | 0 / 1 |
 | Erscheinen nach (s) | `TeleportersActiveSec` | 60 | 0 .. 600, 0 = ab Rundenbeginn |
+
+## Items & Krankheiten
+
+Stellt ein, **ob und wie oft** welches Item und welche Krankheit vorkommt. Ohne den Mod hat jeder Stein für jedes der 13 Items und für „nichts“ die gleiche Chance (je etwa 7 %).
+
+- **Steine mit Item (%)**: Anteil der zerstörbaren Steine, unter denen ein Item liegt. 93 ist wie ohne den Mod.
+- **Gewicht eines Items**: Der Anteil eines Items ist sein Gewicht geteilt durch die Summe aller Gewichte. 0 = das Item kommt nie. Stehen alle Gewichte auf 10, kommen die Items so oft wie ohne den Mod. Der Dialog zeigt neben jedem Item den Anteil an den Steinen.
+- **Gewicht einer Krankheit** ![](data/res/powdisea.png): bestimmt, welche normale Krankheit ein Krankheits-Item gibt. Sind alle vier 0, gibt es kein Krankheits-Item.
+- **Super schlechte Krankheit** ![](data/res/powebola.png): Anteil der super schlechten Krankheits-Items, die die Plätze mit einem anderen Spieler tauschen, statt dass der Spieler dauernd Bomben legt (10 % wie ohne den Mod).
+
+Bitte beachten:
+
+- Items, die die Karte (Scheme) verbietet, kommen nicht vor. Ihr Gewicht fällt weg, der Anteil der Steine mit Item bleibt also gleich.
+- [Positive Krankheit](#positive-krankheit), [Durch Steine laufen](#durch-steine-laufen) und [Weißer Bildschirm](#weißer-bildschirm) werden wie bisher zuerst gewürfelt. Die Gewichte bestimmen nur die normale Krankheit danach.
+- [Weiße Bombe](#weiße-bombe) und [Flammenwerfer](#flammenwerfer) ersetzen wie bisher danach einen Teil dieser Items.
+- Die Items eines toten Spielers werden wie bisher wieder verteilt, egal was die Gewichte sagen.
+
+| Einstellung | ini-Schlüssel | Standard | Bereich |
+|---|---|---|---|
+| Mod an / aus | `ItemConfig` | 0 (aus) | 0 / 1 |
+| Steine mit Item (%) | `ItemChance` | 93 | 0 .. 100 |
+| Extra Bombe ![](data/res/powbomb.png) | `ItemWeightExtraBomb` | 10 | 0 .. 100 |
+| Längere Flamme ![](data/res/powflame.png) | `ItemWeightFlameLength` | 10 | 0 .. 100 |
+| Goldene Flamme ![](data/res/powgold.png) | `ItemWeightGoldFlame` | 10 | 0 .. 100 |
+| Schneller ![](data/res/powskate.png) | `ItemWeightSpeed` | 10 | 0 .. 100 |
+| Kicken ![](data/res/powkick.png) | `ItemWeightKick` | 10 | 0 .. 100 |
+| Schlagen (Handschuh) ![](data/res/powpunch.png) | `ItemWeightPunch` | 10 | 0 .. 100 |
+| Greifen ![](data/res/powgrab.png) | `ItemWeightGrab` | 10 | 0 .. 100 |
+| Spooger ![](data/res/powspoog.png) | `ItemWeightSpooger` | 10 | 0 .. 100 |
+| Fernzünder ![](data/res/powtrig.png) | `ItemWeightTrigger` | 10 | 0 .. 100 |
+| Gummibomben ![](data/res/powjelly.png) | `ItemWeightJelly` | 10 | 0 .. 100 |
+| Krankheit ![](data/res/powdisea.png) | `ItemWeightDisease` | 10 | 0 .. 100 |
+| Super schlechte Krankheit ![](data/res/powebola.png) | `ItemWeightSuperBadDisease` | 10 | 0 .. 100 |
+| Langsam ![](data/res/powslow.png) | `ItemWeightSlow` | 10 | 0 .. 100 |
+| Vertauschte Tasten | `DiseaseWeightInverted` | 10 | 0 .. 100 |
+| Keine Bomben | `DiseaseWeightNoBombs` | 10 | 0 .. 100 |
+| Blindgänger | `DiseaseWeightDudBombs` | 10 | 0 .. 100 |
+| Super langsam | `DiseaseWeightSuperSlow` | 10 | 0 .. 100 |
+| Super schlecht: Plätze tauschen (%) | `SuperBadSwapChance` | 10 | 0 .. 100 |
 
 ## Mod-Test-Modus
 

@@ -1273,16 +1273,27 @@ Begin
           LogLeave(EnterID);
           exit;
         End;
+        // Mod Items & Krankheiten: Die Krankheit nach Gewicht wählen, ohne den Mod sind alle gleich wahrscheinlich
+        If fModSettings.ItemConfig Then Begin
+          index := WeightedPick(fModSettings.DiseaseWeights);
+        End
+        Else Begin
+          index := random(4);
+        End;
+        If index < 0 Then Begin // Alle Krankheiten abgeschaltet (das Item kommt dann gar nicht erst unter die Steine)
+          LogLeave(EnterID);
+          exit;
+        End;
         fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
-        Case random(4) Of
-          0: Player.Disease := Player.Disease + [dInvertedKeyboard];
-          1: Begin
+        Case TDisease(index) Of
+          dInvertedKeyboard: Player.Disease := Player.Disease + [dInvertedKeyboard];
+          dNoBombs: Begin
               Player.Disease := Player.Disease + [dNoBombs];
               Player.Action := aaNone;
             End;
-          2: Player.Disease := Player.Disease + [dDudBombs];
-          3: Begin
+          dDudBombs: Player.Disease := Player.Disease + [dDudBombs];
+          dSuperSlow: Begin
               If Not (dSuperSlow In Player.Disease) Then Begin
                 Player.BeforeSlowDiseaseSpeed := Player.powers.Speed;
                 Player.Disease := Player.Disease + [dSuperSlow];
@@ -1330,9 +1341,11 @@ Begin
         fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssDiseased);
         HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
         (*
-         * Mit Einer Wahrscheinlichkeit von 10 % tauschen wir die Plätze mit einem anderen Spieler ;)
+         * Mit Einer Wahrscheinlichkeit von 10 % (Mod Items & Krankheiten: SuperBadSwapChance) tauschen wir die Plätze mit einem anderen Spieler ;)
          *)
-        If random(100) < 10 Then Begin
+        cnt := 10;
+        If fModSettings.ItemConfig Then cnt := fModSettings.SuperBadSwapChance;
+        If random(100) < cnt Then Begin
           cnt := 0;
           For i := 0 To high(fPLayer) Do Begin
             If fPLayer[i].Info.Alive Then inc(cnt);
@@ -3076,6 +3089,13 @@ Begin
     If fModSettings.WhiteBomb Then fFields[i].WhiteBombChance := fModSettings.WhiteBombChance;
     fFields[i].FlameThrowerChance := 0;
     If fModSettings.FlameThrower Then fFields[i].FlameThrowerChance := fModSettings.FlameThrowerChance;
+    fFields[i].ItemChance := -1;
+    If fModSettings.ItemConfig Then Begin
+      fFields[i].ItemChance := fModSettings.ItemChance;
+      fFields[i].ItemWeights := fModSettings.ItemWeights;
+      // Ohne eine einzige Krankheit würde das Krankheits Item nichts tun, also kommt es dann gar nicht vor
+      If WeightSum(fModSettings.DiseaseWeights) = 0 Then fFields[i].ItemWeights[puDisease] := 0;
+    End;
     fFields[i].FlameThrowerFuelMs := fModSettings.FlameThrowerFuelMs;
     fFields[i].FlameThrowerBurnItems := fModSettings.FlameThrowerBurnItems;
     fFields[i].FlameThrowerIgniteBombs := fModSettings.FlameThrowerIgniteBombs;
@@ -3114,6 +3134,7 @@ Begin
   If fModSettings.GloveAtStart Then result := result + ', glove at start';
   If fModSettings.OpenBorders Then result := result + ', open borders';
   If fModSettings.Teleporters Then result := result + ', teleporters';
+  If fModSettings.ItemConfig Then result := result + ', items & diseases';
   If fModSettings.ModTestMode Then result := result + ', mod test mode';
   If result <> '' Then Begin
     result := 'Active mods: ' + copy(result, 3, length(result));

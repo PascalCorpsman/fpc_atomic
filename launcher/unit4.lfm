@@ -32,6 +32,7 @@ object Form4: TForm4
       'Glove at start'
       'Open borders'
       'Teleporters'
+      'Items & diseases'
       'Mod test mode'
     )
     ItemHeight = 22
@@ -39,7 +40,7 @@ object Form4: TForm4
     OnClickCheck = CheckListBox1ClickCheck
     OnSelectionChange = CheckListBox1SelectionChange
     Data = {
-      0D00000000000000000000000000000000
+      0E0000000000000000000000000000000000
     }
   end
   object PageControl1: TPageControl
@@ -1207,6 +1208,507 @@ object Form4: TForm4
           AutoSize = False
           Caption = 'The teleporter tiles and the tiles next to them stay free of bricks from the start. No bombs can be placed on a teleporter, rolling bombs stop in front of it.'
           WordWrap = True
+        end
+      end
+    end
+    object TabSheet14: TTabSheet
+      Caption = 'TabSheet14'
+      ClientHeight = 330
+      ClientWidth = 478
+      object CheckBox23: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: the weights below decide how often each item and each disease appears.'
+        Top = 8
+        Width = 140
+        Caption = 'Items && diseases'
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 0
+        OnChange = CheckBox1Change
+      end
+      object Label64: TLabel
+        Left = 8
+        Height = 48
+        Top = 34
+        Width = 460
+        AutoSize = False
+        Caption = 'How often the items below the bricks and the diseases appear. Share = weight / sum of all weights.'
+        WordWrap = True
+      end
+      object ScrollBox1: TScrollBox
+        Left = 0
+        Height = 240
+        Top = 88
+        Width = 476
+        HorzScrollBar.Visible = False
+        VertScrollBar.Increment = 28
+        VertScrollBar.Tracking = True
+        BorderStyle = bsNone
+        TabOrder = 1
+        object Panel14: TPanel
+          Left = 0
+          Height = 724
+          Top = 0
+          Width = 452
+          BevelOuter = bvNone
+          ClientHeight = 724
+          ClientWidth = 452
+          TabOrder = 0
+          object Label65: TLabel
+            Left = 8
+            Height = 16
+            Top = 12
+            Width = 160
+            Caption = 'Bricks with an item (%)'
+          end
+          object SpinEdit37: TSpinEdit
+            Left = 276
+            Height = 26
+            Hint = 'Share of the destructible bricks that have an item below them. 93 is like without the mod.'
+            Top = 8
+            Width = 80
+            Increment = 5
+            TabOrder = 0
+            OnChange = SpinEdit38Change
+          end
+          object Label66: TLabel
+            Left = 8
+            Height = 32
+            Top = 42
+            Width = 430
+            AutoSize = False
+            Caption = 'Weight of the items (0 = never), share of the bricks'
+            Font.Style = [fsBold]
+            ParentFont = False
+            WordWrap = True
+          end
+          object Label67: TLabel
+            Left = 8
+            Height = 16
+            Top = 82
+            Width = 160
+            Caption = 'Extra bomb'
+          end
+          object SpinEdit38: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 78
+            Width = 80
+            Increment = 5
+            TabOrder = 1
+            OnChange = SpinEdit38Change
+          end
+          object Label80: TLabel
+            Left = 364
+            Height = 16
+            Top = 82
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label68: TLabel
+            Left = 8
+            Height = 16
+            Top = 110
+            Width = 160
+            Caption = 'Longer flame'
+          end
+          object SpinEdit39: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 106
+            Width = 80
+            Increment = 5
+            TabOrder = 2
+            OnChange = SpinEdit38Change
+          end
+          object Label81: TLabel
+            Left = 364
+            Height = 16
+            Top = 110
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label69: TLabel
+            Left = 8
+            Height = 16
+            Top = 138
+            Width = 160
+            Caption = 'Gold flame'
+          end
+          object SpinEdit40: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 134
+            Width = 80
+            Increment = 5
+            TabOrder = 3
+            OnChange = SpinEdit38Change
+          end
+          object Label82: TLabel
+            Left = 364
+            Height = 16
+            Top = 138
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label70: TLabel
+            Left = 8
+            Height = 16
+            Top = 166
+            Width = 160
+            Caption = 'Extra speed'
+          end
+          object SpinEdit41: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 162
+            Width = 80
+            Increment = 5
+            TabOrder = 4
+            OnChange = SpinEdit38Change
+          end
+          object Label83: TLabel
+            Left = 364
+            Height = 16
+            Top = 166
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label71: TLabel
+            Left = 8
+            Height = 16
+            Top = 194
+            Width = 160
+            Caption = 'Kick'
+          end
+          object SpinEdit42: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 190
+            Width = 80
+            Increment = 5
+            TabOrder = 5
+            OnChange = SpinEdit38Change
+          end
+          object Label84: TLabel
+            Left = 364
+            Height = 16
+            Top = 194
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label72: TLabel
+            Left = 8
+            Height = 16
+            Top = 222
+            Width = 160
+            Caption = 'Punch'
+          end
+          object SpinEdit43: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 218
+            Width = 80
+            Increment = 5
+            TabOrder = 6
+            OnChange = SpinEdit38Change
+          end
+          object Label85: TLabel
+            Left = 364
+            Height = 16
+            Top = 222
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label73: TLabel
+            Left = 8
+            Height = 16
+            Top = 250
+            Width = 160
+            Caption = 'Grab'
+          end
+          object SpinEdit44: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 246
+            Width = 80
+            Increment = 5
+            TabOrder = 7
+            OnChange = SpinEdit38Change
+          end
+          object Label86: TLabel
+            Left = 364
+            Height = 16
+            Top = 250
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label74: TLabel
+            Left = 8
+            Height = 16
+            Top = 278
+            Width = 160
+            Caption = 'Spooger'
+          end
+          object SpinEdit45: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 274
+            Width = 80
+            Increment = 5
+            TabOrder = 8
+            OnChange = SpinEdit38Change
+          end
+          object Label87: TLabel
+            Left = 364
+            Height = 16
+            Top = 278
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label75: TLabel
+            Left = 8
+            Height = 16
+            Top = 306
+            Width = 160
+            Caption = 'Trigger'
+          end
+          object SpinEdit46: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 302
+            Width = 80
+            Increment = 5
+            TabOrder = 9
+            OnChange = SpinEdit38Change
+          end
+          object Label88: TLabel
+            Left = 364
+            Height = 16
+            Top = 306
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label76: TLabel
+            Left = 8
+            Height = 16
+            Top = 334
+            Width = 160
+            Caption = 'Jelly bombs'
+          end
+          object SpinEdit47: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 330
+            Width = 80
+            Increment = 5
+            TabOrder = 10
+            OnChange = SpinEdit38Change
+          end
+          object Label89: TLabel
+            Left = 364
+            Height = 16
+            Top = 334
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label77: TLabel
+            Left = 8
+            Height = 16
+            Top = 362
+            Width = 160
+            Caption = 'Disease'
+          end
+          object SpinEdit48: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 358
+            Width = 80
+            Increment = 5
+            TabOrder = 11
+            OnChange = SpinEdit38Change
+          end
+          object Label90: TLabel
+            Left = 364
+            Height = 16
+            Top = 362
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label78: TLabel
+            Left = 8
+            Height = 16
+            Top = 390
+            Width = 160
+            Caption = 'Super bad disease'
+          end
+          object SpinEdit49: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 386
+            Width = 80
+            Increment = 5
+            TabOrder = 12
+            OnChange = SpinEdit38Change
+          end
+          object Label91: TLabel
+            Left = 364
+            Height = 16
+            Top = 390
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label79: TLabel
+            Left = 8
+            Height = 16
+            Top = 418
+            Width = 160
+            Caption = 'Slow'
+          end
+          object SpinEdit50: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 414
+            Width = 80
+            Increment = 5
+            TabOrder = 13
+            OnChange = SpinEdit38Change
+          end
+          object Label92: TLabel
+            Left = 364
+            Height = 16
+            Top = 418
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label93: TLabel
+            Left = 8
+            Height = 16
+            Top = 448
+            Width = 430
+            Caption = 'Weight of the diseases (0 = never)'
+            Font.Style = [fsBold]
+            ParentFont = False
+          end
+          object Label94: TLabel
+            Left = 8
+            Height = 16
+            Top = 476
+            Width = 160
+            Caption = 'Inverted keys'
+          end
+          object SpinEdit51: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 472
+            Width = 80
+            Increment = 5
+            TabOrder = 14
+            OnChange = SpinEdit38Change
+          end
+          object Label100: TLabel
+            Left = 364
+            Height = 16
+            Top = 476
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label95: TLabel
+            Left = 8
+            Height = 16
+            Top = 504
+            Width = 160
+            Caption = 'No bombs'
+          end
+          object SpinEdit52: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 500
+            Width = 80
+            Increment = 5
+            TabOrder = 15
+            OnChange = SpinEdit38Change
+          end
+          object Label101: TLabel
+            Left = 364
+            Height = 16
+            Top = 504
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label96: TLabel
+            Left = 8
+            Height = 16
+            Top = 532
+            Width = 160
+            Caption = 'Dud bombs'
+          end
+          object SpinEdit53: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 528
+            Width = 80
+            Increment = 5
+            TabOrder = 16
+            OnChange = SpinEdit38Change
+          end
+          object Label102: TLabel
+            Left = 364
+            Height = 16
+            Top = 532
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label97: TLabel
+            Left = 8
+            Height = 16
+            Top = 560
+            Width = 160
+            Caption = 'Super slow'
+          end
+          object SpinEdit54: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 556
+            Width = 80
+            Increment = 5
+            TabOrder = 17
+            OnChange = SpinEdit38Change
+          end
+          object Label103: TLabel
+            Left = 364
+            Height = 16
+            Top = 560
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label98: TLabel
+            Left = 8
+            Height = 16
+            Top = 594
+            Width = 160
+            Caption = 'Super bad: swap places (%)'
+          end
+          object SpinEdit55: TSpinEdit
+            Left = 276
+            Height = 26
+            Hint = 'How often the super bad disease swaps the places with another player instead of making the player place bombs all the time.'
+            Top = 590
+            Width = 80
+            Increment = 5
+            TabOrder = 18
+            OnChange = SpinEdit38Change
+          end
+          object Label99: TLabel
+            Left = 8
+            Height = 96
+            Top = 624
+            Width = 430
+            AutoSize = False
+            Caption = 'Items that the map (scheme) forbids do not appear, the share of the bricks with an item stays the same. If all diseases are 0, there is no disease item. White bomb and flamethrower replace a part of these items afterwards.'
+            WordWrap = True
+          end
         end
       end
     end

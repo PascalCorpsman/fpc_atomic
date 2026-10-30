@@ -134,6 +134,8 @@ Type
     WhiteBombCallback: TWhiteBombCallback; // Optional, wird vom Server gesetzt (Weiße Bombe Mod)
     WhiteBombChance: Integer; // Mod weiße Bombe: in %, so viele der Items unter den Steinen werden zur weißen Bombe, 0 = Mod aus
     FlameThrowerChance: Integer; // Mod Flammenwerfer: in %, so viele der Items unter den Steinen werden zum Flammenwerfer, 0 = Mod aus
+    ItemChance: Integer; // Mod Items & Krankheiten: in %, so viele der Steine haben ein Item, -1 = Mod aus
+    ItemWeights: TItemWeights; // Mod Items & Krankheiten: Gewicht pro Item
     FlameThrowerFuelMs: Integer; // Mod Flammenwerfer: so viel Zeit zum Feuern bringt ein Item
     FlameThrowerBurnItems: Boolean; // Mod Flammenwerfer: True, Items im Strahl verbrennen sofort
     FlameThrowerIgniteBombs: Boolean; // Mod Flammenwerfer: True, Bomben im Strahl werden gezündet (ein Blindgänger verschwindet)
@@ -422,6 +424,7 @@ Begin
   WhiteBombCallback := Nil;
   WhiteBombChance := 0;
   FlameThrowerChance := 0;
+  ItemChance := -1;
   FlameThrowerFuelMs := 0;
   FlameThrowerBurnItems := false;
   FlameThrowerIgniteBombs := false;
@@ -781,8 +784,10 @@ Procedure TAtomicField.Initialize(Const Players: TPlayers; Const Scheme: TScheme
   End;
 
 Var
-  px, py, i, j, maxpow: Integer;
+  px, py, i, j, maxpow, k: Integer;
   b: Boolean;
+  Weights: TItemWeights;
+  pu: TPowerUps;
 Begin
   fPause := false;
   fNextBrickSpawnTime := GetTickCount64() + RandomRange(FieldBrickMinSpawnTime, FieldBrickMaxSpawnTime) + AtomicBombDetonateTime;
@@ -896,36 +901,50 @@ Begin
     End;
   End;
   // 3. Die PowerUps die Hinter den "Bricks" liegen
+  // Mod Items & Krankheiten: Verbotene Items fallen aus der Summe, damit bleibt der Anteil der Steine mit Item erhalten
+  Weights := ItemWeights;
+  For pu In TPowerUps Do Begin
+    If Scheme.PowerUps[pu].Forbidden Then Weights[pu] := 0;
+  End;
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
       If fField[i, j].BrickData = bdBrick Then Begin // Nur Wo Wegsprengbare Steine sind, können Powerups drunder sein..
-        (* Die Random Powerups sind "Abschaltbar" *)
-        If Scheme.PowerUps[purandom].BornWith > 0 Then Begin
-          maxpow := 15;
+        If ItemChance >= 0 Then Begin
+          fField[i, j].PowerUp := puNone;
+          If random(100) < ItemChance Then Begin
+            k := WeightedPick(Weights);
+            If k >= 0 Then fField[i, j].PowerUp := TPowerUps(k);
+          End;
         End
         Else Begin
-          maxpow := 14;
-        End;
-        Case random(maxpow) Of
-          0: fField[i, j].PowerUp := puNone;
-          1: fField[i, j].PowerUp := puExtraBomb;
-          2: fField[i, j].PowerUp := puLongerFlameLength;
-          3: fField[i, j].PowerUp := puDisease;
-          4: fField[i, j].PowerUp := puCanCick;
-          5: fField[i, j].PowerUp := puExtraSpeed;
-          6: fField[i, j].PowerUp := puCanPunch;
-          7: fField[i, j].PowerUp := puCanGrab;
-          8: fField[i, j].PowerUp := puCanSpooger;
-          9: fField[i, j].PowerUp := puGoldFlame;
-          10: fField[i, j].PowerUp := puTrigger;
-          11: fField[i, j].PowerUp := puCanJelly;
-          12: fField[i, j].PowerUp := puSuperBadDisease;
-          13: fField[i, j].PowerUp := puSlow;
-          14: fField[i, j].PowerUp := purandom;
-        End;
-        // TODO: das sollte ggf noch feiner Justiert werden ..
-        If fField[i, j].PowerUp <> puNone Then Begin
-          If Scheme.PowerUps[fField[i, j].PowerUp].Forbidden Then fField[i, j].PowerUp := puNone;
+          (* Die Random Powerups sind "Abschaltbar" *)
+          If Scheme.PowerUps[purandom].BornWith > 0 Then Begin
+            maxpow := 15;
+          End
+          Else Begin
+            maxpow := 14;
+          End;
+          Case random(maxpow) Of
+            0: fField[i, j].PowerUp := puNone;
+            1: fField[i, j].PowerUp := puExtraBomb;
+            2: fField[i, j].PowerUp := puLongerFlameLength;
+            3: fField[i, j].PowerUp := puDisease;
+            4: fField[i, j].PowerUp := puCanCick;
+            5: fField[i, j].PowerUp := puExtraSpeed;
+            6: fField[i, j].PowerUp := puCanPunch;
+            7: fField[i, j].PowerUp := puCanGrab;
+            8: fField[i, j].PowerUp := puCanSpooger;
+            9: fField[i, j].PowerUp := puGoldFlame;
+            10: fField[i, j].PowerUp := puTrigger;
+            11: fField[i, j].PowerUp := puCanJelly;
+            12: fField[i, j].PowerUp := puSuperBadDisease;
+            13: fField[i, j].PowerUp := puSlow;
+            14: fField[i, j].PowerUp := purandom;
+          End;
+          // TODO: das sollte ggf noch feiner Justiert werden ..
+          If fField[i, j].PowerUp <> puNone Then Begin
+            If Scheme.PowerUps[fField[i, j].PowerUp].Forbidden Then fField[i, j].PowerUp := puNone;
+          End;
         End;
         // Mod weiße Bombe: Ein Teil der Items wird zur weißen Bombe (sie sieht aus wie ein weißes Bomben Item)
         If (fField[i, j].PowerUp <> puNone) And (WhiteBombChance > 0) And (random(100) < WhiteBombChance) Then Begin

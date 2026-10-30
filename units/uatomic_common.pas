@@ -174,6 +174,7 @@ Const
    *                       FIX: mod test mode with GhostsKeepRound: when a player died with only 2 players, all bombs stayed off for the rest of the round (also after F7)
    *                       ADD: open borders: the arrows on the frame disappear 10 s after the borders opened
    *             0.14000 = ADD: the mods are no longer read by the server from atomic_server.ini, the first player (master) sends the mods (atomic_mods.ini) to the server -> need change in ProtocollVersion
+   *                       ADD: optional items & diseases, weights for how often each item and each disease appears and the share of bricks with an item
    *)
 
   ProtocollVersion: uint32 = 15; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
@@ -295,6 +296,9 @@ Const
   ModMaxFlameThrowerRange = FieldWidth - 1; // untere Grenze 1
   ModMaxFlameThrowerKillMs = 10000; // Zeit in ms, FlameThrowerKillMs
   ModMaxFlameThrowerIgniteMs = 10000; // Zeit in ms, FlameThrowerIgniteMs
+  ModMaxItemChance = 100; // in %, ItemChance
+  ModMaxItemWeight = 100; // ItemWeight*, DiseaseWeight*
+  ModMaxSuperBadSwapChance = 100; // in %
 
   (*
    * Mod Geister: Die Geister laufen auf einem gedachten Rahmen rund um das Spielfeld (y = -1, x = FieldWidth, y = FieldHeight, x = -1),
@@ -508,6 +512,13 @@ Type
 {$IFDEF Client}
   TPowerTexArray = Array[TPowerUps] Of TGraphikItem;
 {$ENDIF}
+
+  (*
+   * Mod Items & Krankheiten: Gewicht pro Item bzw. Krankheit, Anteil = Gewicht / Summe aller Gewichte.
+   * puNone und purandom werden nicht genutzt (immer 0), bei den Krankheiten nur die normalen (ohne dEbola).
+   *)
+  TItemWeights = Array[TPowerUps] Of Integer;
+  TDiseaseWeights = Array[dSuperSlow..dDudBombs] Of Integer;
 
   TPowerUp = Record
     BornWith: Integer; // <0 Ignoriert, >=1 "erlaubt" oder der Wert bei der Geburt
@@ -763,6 +774,11 @@ Type
     TeleportersTopBottom: Boolean; // Teleporter oben <-> unten
     TeleportersLeftRight: Boolean; // Teleporter links <-> rechts
     TeleportersActiveSec: Integer; // Zeit in s nach Rundenbeginn, ab der die Teleporter erscheinen und wirken
+    ItemConfig: Boolean; // True, die folgenden Werte bestimmen wie oft welche Items und Krankheiten auftauchen
+    ItemChance: Integer; // in %, Anteil der zerstörbaren Steine, unter denen ein Item liegt
+    ItemWeights: TItemWeights; // Gewicht pro Item, 0 = kommt nie
+    DiseaseWeights: TDiseaseWeights; // Gewicht pro normaler Krankheit, 0 = kommt nie, alle 0 = es gibt kein Krankheits Item
+    SuperBadSwapChance: Integer; // in %, so oft tauscht die super schlechte Krankheit die Plätze statt Ebola
     (*
      * [Debug] Abschnitt, nur zum Testen der Mods
      *)
@@ -773,6 +789,33 @@ Type
     GhostsKeepRound: Boolean; // True, Geister zählen für das Rundenende als lebendig (damit kann man Geister auch zu zweit testen)
   End;
 
+Const
+  // Mod Items & Krankheiten: Die Schlüssel in atomic_mods.ini, leer = nicht einstellbar
+  ModItemWeightKeys: Array[TPowerUps] Of String = (
+    '' // puNone
+    , 'ItemWeightExtraBomb'
+    , 'ItemWeightFlameLength'
+    , 'ItemWeightKick'
+    , 'ItemWeightSpeed'
+    , 'ItemWeightSpooger'
+    , 'ItemWeightPunch'
+    , 'ItemWeightGrab'
+    , 'ItemWeightGoldFlame'
+    , 'ItemWeightTrigger'
+    , 'ItemWeightJelly'
+    , 'ItemWeightDisease'
+    , 'ItemWeightSuperBadDisease'
+    , 'ItemWeightSlow'
+    , '' // purandom
+    );
+  ModDiseaseWeightKeys: Array[dSuperSlow..dDudBombs] Of String = (
+    'DiseaseWeightSuperSlow'
+    , 'DiseaseWeightInverted'
+    , 'DiseaseWeightNoBombs'
+    , 'DiseaseWeightDudBombs'
+    );
+
+Type
   TPlayerGetsPowerUpEvent = Procedure(Var Player: TPlayer; PlayerIndex: integer; PowerUp: TPowerUps) Of Object;
 
   TVictor = (vRedTeam, vWhiteTeam, vCol0, vCol1, vCol2, vCol3, vCol4, vCol5, vCol6, vCol7, vCol8, vCol9);
@@ -859,6 +902,10 @@ Function SaveModSettingsToFile(Const Filename: String; Const Settings: TModSetti
 Function ModSettingsToString(Const Settings: TModSettings): String;
 // Gegenstück zu ModSettingsToString, fehlende Werte = Default, ungültige Werte werden wie beim Laden der Datei auf ihre Grenzen gezogen
 Procedure ModSettingsFromString(Const Data: String; Var Settings: TModSettings);
+// Summe aller Gewichte, negative zählen als 0
+Function WeightSum(Const Weights: Array Of Integer): Integer;
+// Wählt einen Index mit der Wahrscheinlichkeit Weights[i] / Summe, -1 wenn die Summe 0 ist
+Function WeightedPick(Const Weights: Array Of Integer): Integer;
 
 {$IFDEF Server}
 Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
@@ -1183,6 +1230,9 @@ End;
 {$ENDIF}
 
 Procedure ModSettingsDefaults(Var Settings: TModSettings);
+Var
+  pu: TPowerUps;
+  d: TDisease;
 Begin
   // Alle Mods sind aus
   Settings.StunOnBombLanding := false;
@@ -1241,6 +1291,17 @@ Begin
   Settings.TeleportersTopBottom := true;
   Settings.TeleportersLeftRight := true;
   Settings.TeleportersActiveSec := 60;
+  // Mit diesen Werten ist die Verteilung wie ohne den Mod
+  Settings.ItemConfig := false;
+  Settings.ItemChance := 93;
+  For pu In TPowerUps Do Begin
+    Settings.ItemWeights[pu] := 0;
+    If ModItemWeightKeys[pu] <> '' Then Settings.ItemWeights[pu] := 10;
+  End;
+  For d := low(Settings.DiseaseWeights) To high(Settings.DiseaseWeights) Do Begin
+    Settings.DiseaseWeights[d] := 10;
+  End;
+  Settings.SuperBadSwapChance := 10;
   Settings.ModTestMode := false;
   Settings.StartItems := '';
   Settings.RoundTimeSec := 0;
@@ -1254,6 +1315,9 @@ End;
  *)
 
 Procedure WriteModSettings(Const ini: TCustomIniFile; Const Settings: TModSettings; OnlyMissing: Boolean);
+Var
+  pu: TPowerUps;
+  d: TDisease;
 
   Procedure WriteB(Const Section, Key: String; Value: Boolean);
   Begin
@@ -1328,6 +1392,15 @@ Begin
   WriteB('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
   WriteB('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
   WriteI('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
+  WriteB('Mods', 'ItemConfig', Settings.ItemConfig);
+  WriteI('Mods', 'ItemChance', Settings.ItemChance);
+  For pu In TPowerUps Do Begin
+    If ModItemWeightKeys[pu] <> '' Then WriteI('Mods', ModItemWeightKeys[pu], Settings.ItemWeights[pu]);
+  End;
+  For d := low(Settings.DiseaseWeights) To high(Settings.DiseaseWeights) Do Begin
+    WriteI('Mods', ModDiseaseWeightKeys[d], Settings.DiseaseWeights[d]);
+  End;
+  WriteI('Mods', 'SuperBadSwapChance', Settings.SuperBadSwapChance);
   WriteB('Debug', 'ModTestMode', Settings.ModTestMode);
   WriteS('Debug', 'StartItems', Settings.StartItems);
   WriteI('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1353,6 +1426,9 @@ End;
  *)
 
 Procedure ReadModSettings(Const ini: TCustomIniFile; Const Source: String; Var Settings: TModSettings);
+Var
+  pu: TPowerUps;
+  d: TDisease;
 
   // Zieht einen ungültigen Wert mit einer Warnung auf MinValue..MaxValue
   Procedure Clamp(Const Key: String; Var Value: Integer; MinValue, MaxValue: Integer);
@@ -1420,6 +1496,15 @@ Begin
   Settings.TeleportersTopBottom := ini.ReadBool('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
   Settings.TeleportersLeftRight := ini.ReadBool('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
   Settings.TeleportersActiveSec := ini.ReadInteger('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
+  Settings.ItemConfig := ini.ReadBool('Mods', 'ItemConfig', Settings.ItemConfig);
+  Settings.ItemChance := ini.ReadInteger('Mods', 'ItemChance', Settings.ItemChance);
+  For pu In TPowerUps Do Begin
+    If ModItemWeightKeys[pu] <> '' Then Settings.ItemWeights[pu] := ini.ReadInteger('Mods', ModItemWeightKeys[pu], Settings.ItemWeights[pu]);
+  End;
+  For d := low(Settings.DiseaseWeights) To high(Settings.DiseaseWeights) Do Begin
+    Settings.DiseaseWeights[d] := ini.ReadInteger('Mods', ModDiseaseWeightKeys[d], Settings.DiseaseWeights[d]);
+  End;
+  Settings.SuperBadSwapChance := ini.ReadInteger('Mods', 'SuperBadSwapChance', Settings.SuperBadSwapChance);
   Settings.ModTestMode := ini.ReadBool('Debug', 'ModTestMode', Settings.ModTestMode);
   Settings.StartItems := ini.ReadString('Debug', 'StartItems', Settings.StartItems);
   Settings.RoundTimeSec := ini.ReadInteger('Debug', 'RoundTimeSec', Settings.RoundTimeSec);
@@ -1480,6 +1565,41 @@ Begin
   Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
   Clamp('TeleportersActiveSec', Settings.TeleportersActiveSec, 0, ModMaxTeleportersActiveSec);
   Clamp('OpenBordersActiveSec', Settings.OpenBordersActiveSec, 0, ModMaxOpenBordersActiveSec);
+  Clamp('ItemChance', Settings.ItemChance, 0, ModMaxItemChance);
+  For pu In TPowerUps Do Begin
+    If ModItemWeightKeys[pu] <> '' Then Clamp(ModItemWeightKeys[pu], Settings.ItemWeights[pu], 0, ModMaxItemWeight);
+  End;
+  For d := low(Settings.DiseaseWeights) To high(Settings.DiseaseWeights) Do Begin
+    Clamp(ModDiseaseWeightKeys[d], Settings.DiseaseWeights[d], 0, ModMaxItemWeight);
+  End;
+  Clamp('SuperBadSwapChance', Settings.SuperBadSwapChance, 0, ModMaxSuperBadSwapChance);
+End;
+
+Function WeightSum(Const Weights: Array Of Integer): Integer;
+Var
+  i: Integer;
+Begin
+  result := 0;
+  For i := 0 To high(Weights) Do Begin
+    result := result + max(0, Weights[i]);
+  End;
+End;
+
+Function WeightedPick(Const Weights: Array Of Integer): Integer;
+Var
+  i, sum, r: Integer;
+Begin
+  result := -1;
+  sum := WeightSum(Weights);
+  If sum <= 0 Then exit;
+  r := random(sum);
+  For i := 0 To high(Weights) Do Begin
+    r := r - max(0, Weights[i]);
+    If r < 0 Then Begin
+      result := i;
+      exit;
+    End;
+  End;
 End;
 
 Procedure LoadModSettingsFromFile(Const Filename: String;
