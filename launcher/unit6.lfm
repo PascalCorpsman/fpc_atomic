@@ -106,7 +106,6 @@ object Form6: TForm6
         Anchors = [akTop, akLeft, akBottom]
         BorderSpacing.Left = 4
         Caption = '+'
-        OnClick = Button4Click
         TabOrder = 13
       end
       object Label6: TLabel

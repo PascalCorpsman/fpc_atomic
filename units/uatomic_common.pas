@@ -866,6 +866,9 @@ Const
     , 'DiseaseWeightNoBombs'
     , 'DiseaseWeightDudBombs'
     );
+  // Die Namen der Items, die StartItems und HuntedItems kennen (siehe TServer.ApplyStartItems), z.B. "kick,punch,bomb*3"
+  StartItemNames: Array[0..9] Of String = (
+    'bomb', 'flame', 'goldflame', 'speed', 'kick', 'punch', 'grab', 'spooger', 'jelly', 'trigger');
   // Die Werte von [GameMode] Mode= in atomic_mods.ini
   GameModeNames: Array[TGameMode] Of String = (
     'Classic'

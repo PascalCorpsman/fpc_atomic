@@ -1760,8 +1760,24 @@ object Form4: TForm4
           Height = 30
           Hint = 'Items every player gets at round start, comma separated, *n = n times. Possible: bomb, flame, goldflame, speed, kick, punch, grab, spooger, jelly, trigger.'
           Top = 8
-          Width = 196
+          Width = 166
           TabOrder = 0
+        end
+        object Button6: TButton
+          AnchorSideLeft.Control = Edit1
+          AnchorSideLeft.Side = asrBottom
+          AnchorSideTop.Control = Edit1
+          AnchorSideBottom.Control = Edit1
+          AnchorSideBottom.Side = asrBottom
+          Left = 390
+          Height = 30
+          Hint = 'Add an item. Items that are already in the list are greyed out, grab and spooger replace each other.'
+          Top = 8
+          Width = 26
+          Anchors = [akTop, akLeft, akBottom]
+          BorderSpacing.Left = 4
+          Caption = '+'
+          TabOrder = 5
         end
         object Label22: TLabel
           Left = 220

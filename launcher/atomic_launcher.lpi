@@ -99,6 +99,10 @@
         <UnitName Value="Unit6"/>
       </Unit>
       <Unit>
+        <Filename Value="uitemsedit.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/DatenSteuerung/uJSON.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
