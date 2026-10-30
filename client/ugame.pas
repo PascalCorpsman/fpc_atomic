@@ -225,6 +225,8 @@ Type
     Procedure DoDisconnect();
 
     Procedure ReclaimFocus();
+    Procedure UpdateViewPort(); // Berechnet fViewPortInfo aus der Größe von fOwner
+    Procedure OnLoaderRender(Sender: TObject); // Gibt dem Lade Dialog den aktuellen Viewport
     Function ScreenToGame(X, Y: Integer): TPoint; // Fensterkoordinaten -> Spielkoordinaten (GameWidth x GameHeight)
     Procedure OnMessageDialogOpen(Sender: TObject);
     Procedure OnQuitGameConfirmed(Sender: TObject);
@@ -575,13 +577,19 @@ Begin
 End;
 
 Procedure TGame.FOnResize(Sender: TObject);
+Begin
+  UpdateViewPort();
+  If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
+End;
+
+Procedure TGame.UpdateViewPort;
 Var
   ScreenRatio, GameRatio: Single;
 Begin
   fViewPortInfo.TopLeft := point(0, 0);
   If settings.Proportional Then Begin
-    fViewPortInfo.ScreenWidth := TOpenGLControl(sender).Width;
-    fViewPortInfo.ScreenHeight := TOpenGLControl(sender).Height;
+    fViewPortInfo.ScreenWidth := fOwner.Width;
+    fViewPortInfo.ScreenHeight := fOwner.Height;
     (*
      * Do a Proportional Scale like TImage, but from hand ;)
      *)
@@ -601,7 +609,6 @@ Begin
     fViewPortInfo.ScreenHeight := GameHeight;
     fViewPortInfo.Scale := 1;
   End;
-  If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
 End;
 
 {$IFDEF Windows}
@@ -613,6 +620,16 @@ Function GetWindowThreadProcessId(hWnd: THandle; lpdwProcessId: PDWord): DWord; 
 Function AttachThreadInput(idAttach, idAttachTo: DWord; fAttach: LongBool): LongBool; stdcall; external 'user32.dll';
 Function GetCurrentThreadId(): DWord; stdcall; external 'kernel32.dll';
 {$ENDIF}
+
+Procedure TGame.OnLoaderRender(Sender: TObject);
+Begin
+  UpdateViewPort(); // Das Fenster kann sich während des Ladens noch ändern (z.B. Vollbild beim Start)
+  fSerialInit.Loader.ScreenWidth := fViewPortInfo.ScreenWidth;
+  fSerialInit.Loader.ScreenHeight := fViewPortInfo.ScreenHeight;
+  fSerialInit.Loader.Left := fViewPortInfo.TopLeft.X;
+  fSerialInit.Loader.Top := fViewPortInfo.TopLeft.Y;
+  fSerialInit.Loader.Scale := fViewPortInfo.Scale;
+End;
 
 Procedure TGame.ReclaimFocus;
 {$IFDEF Windows}
@@ -2586,6 +2603,7 @@ Begin
         // Der Meldungsdialog nutzt den Rahmen des Lade Dialogs, damit auch Fehler beim Laden schon im Spiel angezeigt werden können
         fMessageDialog.LoadFromDisk(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png');
         fSerialInit.Loader := TLoaderDialog.create(fOwner);
+        fSerialInit.Loader.OnBeforeRender := @OnLoaderRender;
         (*
          * Lade Prozente
          * 0..10 : Screens

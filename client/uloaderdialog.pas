@@ -33,6 +33,11 @@ Type
     fTexture: TGraphikItem; // Die 9 Einzeltextruren des Hintergrunds
   public
     Percent: integer;
+    // Wie TGame.fViewPortInfo, damit der Dialog wie das Spiel skaliert wird (Seitenverhältnis beibehalten)
+    ScreenWidth, ScreenHeight: integer;
+    Left, Top: integer;
+    Scale: Single;
+    OnBeforeRender: TNotifyEvent; // Zum Setzen von ScreenWidth .. Scale vor jedem Render
     Constructor Create(Const Owner: TOpenGLControl);
     Destructor Destroy(); override;
     (*
@@ -54,6 +59,7 @@ Uses
   , uOpenGL_ASCII_Font
   , uopengl_shaderprimitives
   , umessagedialog
+  , uvectormath
   ;
 
 { TLoaderDialog }
@@ -64,6 +70,12 @@ Begin
   fHeight := 5 * 24;
   fOwner := Owner;
   Percent := 0;
+  ScreenWidth := GameWidth;
+  ScreenHeight := GameHeight;
+  Left := 0;
+  Top := 0;
+  Scale := 1;
+  OnBeforeRender := Nil;
   fTexture := OpenGL_GraphikEngine.LoadGraphikItem(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png', smClamp);
 End;
 
@@ -77,11 +89,17 @@ Procedure TLoaderDialog.Render;
 Var
   l, t, x: Integer;
   s: String;
+  m: TMatrix4x4;
 Begin
+  If assigned(OnBeforeRender) Then OnBeforeRender(self);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
   glBindTexture(GL_TEXTURE_2D, 0);
-  Go2d(GameWidth, GameHeight);
+  Go2d(ScreenWidth, ScreenHeight);
+  m := IdentityMatrix4x4;
+  m := TranslateMatrix4x4(m, Left, Top, 0);
+  m := ScaleMatrix4x4(m, Scale, Scale, 1);
+  SetShaderTransform(m);
   l := (GameWidth - fWidth) Div 2;
   t := (GameHeight - fHeight) Div 2;
   UseTextureShader;
@@ -123,6 +141,7 @@ Begin
   glShaderVertex(l + fWidth - 24 - 1, t + 82 + 1, atomic_dialog_Layer + atomic_EPSILON);
   glShaderEnd();
   UseTextureShader;
+  ResetShaderTransform;
   Exit2d();
   fOwner.SwapBuffers;
   Application.ProcessMessages;
