@@ -109,6 +109,10 @@ Type
     FPS_Counter, LastFPS_Counter: integer;
     LastFPSTime: int64;
     FWishFullscreen: Boolean;
+{$IFDEF Windows}
+    fFrameHidden: Boolean; // True, wenn der Fensterrahmen für den Vollbild Modus entfernt wurde (SetWindowFrame)
+    fFrameStyle: PtrInt; // Die Rahmen Bits des Fensterstils vor dem Entfernen
+{$ENDIF}
 {$IFDEF AUTOMODE}
     AutomodeData: TAutomodeData;
 {$ENDIF}
@@ -118,6 +122,9 @@ Type
     Procedure HideCursor(Sender: TObject);
     Procedure ShowCursor(Sender: TObject);
     Procedure SetupFrame;
+{$IFDEF Windows}
+    Procedure SetWindowFrame(FrameVisible: Boolean);
+{$ENDIF}
   public
     { public declarations }
     Procedure Load_Atomic_Settings;
@@ -642,7 +649,6 @@ Begin
   Game.Settings.Fullscreen := IniPropStorage1.ReadBoolean('Fullscreen', false);
   If Game.Settings.Fullscreen Then Begin
 {$IFDEF Windows}
-    BorderStyle := bsNone;
     SetFullScreen(True);
 {$ENDIF}
   End;
@@ -734,11 +740,40 @@ Begin
   IniPropStorage1.WriteBoolean('Fullscreen', Game.Settings.Fullscreen);
 End;
 
+{$IFDEF Windows}
+
+Procedure TForm1.SetWindowFrame(FrameVisible: Boolean);
+Const
+  FrameBits = WS_CAPTION Or WS_THICKFRAME Or WS_SYSMENU Or WS_MINIMIZEBOX Or WS_MAXIMIZEBOX;
+Var
+  Style: PtrInt;
+Begin
+  (*
+   * Die LCL kennt unter Windows kein wsFullScreen (wird zu Maximiert), deshalb wird für den Vollbild Modus
+   * der Rahmen über den Fensterstil entfernt. BorderStyle := bsNone ginge auch, erzeugt das Fenster
+   * (und damit den OpenGL Kontext) aber neu und wurde beim Zurück in den Fenster Modus nie wieder gesetzt.
+   *)
+  If FrameVisible = Not fFrameHidden Then exit;
+  Style := GetWindowLongPtr(Handle, GWL_STYLE);
+  If FrameVisible Then Begin
+    Style := (Style And Not PtrInt(WS_POPUP)) Or fFrameStyle;
+  End
+  Else Begin
+    fFrameStyle := Style And PtrInt(FrameBits);
+    Style := (Style And Not PtrInt(FrameBits)) Or PtrInt(WS_POPUP);
+  End;
+  fFrameHidden := Not FrameVisible;
+  SetWindowLongPtr(Handle, GWL_STYLE, Style);
+  SetWindowPos(Handle, 0, 0, 0, 0, 0, SWP_FRAMECHANGED Or SWP_NOMOVE Or SWP_NOSIZE Or SWP_NOZORDER Or SWP_NOACTIVATE);
+End;
+{$ENDIF}
+
 Procedure TForm1.SetFullScreen(Value: Boolean);
 Begin
   If value Then Begin
-    // TODO: Klären ob man unter Windows wirklich die Differenzierung braucht
 {$IFDEF Windows}
+    If WindowState = wsMaximized Then WindowState := wsNormal; // Sonst bleibt ein vorher maximiertes Fenster auf die Arbeitsfläche begrenzt
+    SetWindowFrame(false);
     WindowState := wsMaximized;
 {$ELSE}
     WindowState := wsFullScreen;
@@ -746,6 +781,9 @@ Begin
   End
   Else Begin
     WindowState := wsNormal;
+{$IFDEF Windows}
+    SetWindowFrame(true);
+{$ENDIF}
   End;
   Game.Settings.Fullscreen := value;
   fWishFullscreen := value;
@@ -757,12 +795,7 @@ Begin
   // Für Windows noch nicht optimal, ..
   // Siehe auch: https://www.lazarusforum.de/viewtopic.php?f=9&t=14831
   If (key = 13) And (ssAlt In Shift) Then Begin
-    If WindowState = wsNormal Then Begin
-      SetFullScreen(true);
-    End
-    Else Begin
-      SetFullScreen(false);
-    End;
+    SetFullScreen(Not fWishFullscreen);
   End;
 End;
 

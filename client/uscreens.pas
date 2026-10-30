@@ -1178,11 +1178,6 @@ Begin
       11: Begin
           Tgame(fOwner).Settings.Fullscreen := Not Tgame(fOwner).Settings.Fullscreen;
           Form1.SetFullScreen(Tgame(fOwner).Settings.Fullscreen);
-{$IFDEF Windows}
-          If Tgame(fOwner).Settings.Fullscreen Then Begin
-            LogShow('To switch to Fullscreen mode, you need to restart the game.');
-          End;
-{$ENDIF}
         End;
       12: Begin
           Tgame(fOwner).Settings.Proportional := Not Tgame(fOwner).Settings.Proportional;
