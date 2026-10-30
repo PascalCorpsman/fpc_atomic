@@ -1732,8 +1732,12 @@ Var
 Begin
   For i := 0 To high(fPLayer) Do Begin
     If Not fPLayer[i].Info.Ghost Then Continue;
-    // Mit Beginn des Hurry sind alle Geister weg, es gibt dann kein Zurück mehr
-    If fActualField.HurryActive() Then Begin
+    (*
+     * Mit Beginn des Hurry sind alle Geister weg, es gibt dann kein Zurück mehr.
+     * Ein Geist, dessen Spieler das Spiel verlassen hat und zur KI wurde (LostPlayersRevertToAI), verschwindet,
+     * denn die KI wird nur für lebende Spieler aufgerufen und der Geist würde nur noch herum stehen.
+     *)
+    If fActualField.HurryActive() Or (fPLayer[i].UID = AIPlayer) Then Begin
       fPLayer[i].Info.Ghost := false;
       Continue;
     End;
@@ -2580,8 +2584,8 @@ Begin
         fActualField.TelePortPlayer(fPLayer[i]);
       End;
       If fPLayer[i].Info.Dying Then Begin
-        // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt)
-        WillBeGhost := fModSettings.Ghosts And (Not fActualField.HurryActive()) And
+        // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt), KI Spieler werden nie Geist (die KI kann keinen Geist steuern)
+        WillBeGhost := fModSettings.Ghosts And (Not fActualField.HurryActive()) And (fPLayer[i].UID <> AIPlayer) And
           ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount));
         // Wie der Geist danach (siehe unten) zählt beim Testen der Geister zu zweit schon das Sterben, sonst wären die Bomben für den Rest der Runde aus
         If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And WillBeGhost Then inc(alive[fPLayer[i].Team]);

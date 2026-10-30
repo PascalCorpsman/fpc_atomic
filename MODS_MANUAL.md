@@ -200,6 +200,7 @@ A player that dies does not leave the round but walks on as a small, flickering 
 - If [Stun on bomb landing](#stun-on-bomb-landing) is on, ghost bombs stun like thrown bombs.
 - **Limits:** A player can become a ghost only a limited number of times per round. A ghost that hits no opponent within a set time vanishes. In the last 5 s before it vanishes it flickers faster.
 - With the hurry all ghosts vanish.
+- AI players never become ghosts, the AI can not control a ghost. If a player leaves the game as a ghost and becomes an AI player ("Lost net players revert to AI"), the ghost vanishes.
 - The round ends as usual when only one player (or team) is left alive, ghosts do not count. So ghosts only matter with 3 or more players.
 
 | Setting | ini key | Default | Range |

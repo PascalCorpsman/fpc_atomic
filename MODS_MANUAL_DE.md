@@ -202,6 +202,7 @@ Ein Spieler, der stirbt, verlässt die Runde nicht. Er läuft als kleiner, flack
 - Ist [Stun bei Bombenlandung](#stun-bei-bombenlandung) an, stunnen Geisterbomben wie geworfene Bomben.
 - **Grenzen:** Ein Spieler kann pro Runde nur begrenzt oft Geist werden. Ein Geist, der innerhalb einer einstellbaren Zeit keinen Gegner trifft, verschwindet. In den letzten 5 s davor flackert er schneller.
 - Mit dem Hurry verschwinden alle Geister.
+- KI-Spieler werden nie Geist, die KI kann keinen Geist steuern. Verlässt ein Spieler als Geist das Spiel und wird zum KI-Spieler („Lost net players revert to AI“), verschwindet der Geist.
 - Die Runde endet wie gewohnt, wenn nur noch ein Spieler (oder Team) lebt, Geister zählen nicht. Geister spielen also erst ab 3 Spielern eine Rolle.
 
 | Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
