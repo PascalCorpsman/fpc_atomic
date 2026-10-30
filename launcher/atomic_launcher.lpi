@@ -111,10 +111,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="sdl2_cfg.inc"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="../units/usdlwizzard.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
