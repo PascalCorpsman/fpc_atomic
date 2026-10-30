@@ -166,7 +166,7 @@ object Form6: TForm6
       object ComboBox4: TComboBox
         Left = 250
         Height = 30
-        Hint = 'What the old hunted has after he lost the status (if he is still alive): his items from before he became the hunted, or only the start values of the scheme.'
+        Hint = 'What the old hunted starts with after his respawn: his items from before he became the hunted (they are not spread on the field when he dies), or only the start values of the scheme.'
         Top = 216
         Width = 210
         ItemHeight = 0

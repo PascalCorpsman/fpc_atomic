@@ -54,9 +54,9 @@ One player is the **hunted**. He gets (almost) all items, all other players hunt
 
 1. At the start of the round one player becomes the hunted (random or the leader, see the settings).
 2. The hunted gets the start values of the scheme plus the **items of the hunted**. He blinks and is invulnerable for a short time.
-3. If a hunter kills the hunted (with a bomb or a flamethrower), the hunter becomes the new hunted.
+3. If a hunter kills the hunted (with a bomb or a flamethrower), the hunter becomes the new hunted. If the hunter is already dead at that moment (his bomb exploded after his death), he still gets the point for "Kills of the hunted", but the setting "Hunted dies without a killer" decides who is next.
 4. If the hunted dies **without a killer** (his own bomb, the hurry, a ghost bomb), the setting "Hunted dies without a killer" decides who is next.
-5. With **respawn** dead players come back after a waiting time at a random free tile far away from the hunted, and are invulnerable for a short time. The round ends when the play time is over.
+5. With **respawn** dead players come back after a waiting time at a random free tile far away from the hunted, and are invulnerable for a short time. The waiting time counts from the moment of death, the death animation runs during it (but at least 4 s, the length of the longest death animation). The round ends when the play time is over (or when only one player is left in the game).
 6. The round winner is decided by the setting "Round winner". The winner gets one win for the match. A tie is a draw.
 
 **Settings**
@@ -68,12 +68,12 @@ One player is the **hunted**. He gets (almost) all items, all other players hunt
 | Hunted at round start | `HuntedStart` | 0 | 0 = a random player, 1 = the leader (most won rounds in the match, random on a tie) |
 | Hunted dies without a killer | `HuntedLost` | 0 | 0 = a random other living player becomes the hunted, 1 = he stays the hunted (only with respawn, without respawn like 0) |
 | Round winner | `HunterScoring` | 0 | 0 = longest time as hunted, 1 = most kills of the hunted, 2 = the hunted at the end of the round |
-| The old hunted gets | `HuntedLoseItems` | 0 | 0 = his items from before he became the hunted, 1 = no items (only the start values of the scheme) |
+| The old hunted gets | `HuntedLoseItems` | 0 | What the old hunted starts with after his respawn: 0 = his items from before he became the hunted, 1 = no items (only the start values of the scheme) |
 | Invulnerable as new hunted (ms) | `HuntedInvulnMs` | 1500 | 0 .. 60000, 0 = not at all |
-| Respawn | `HunterRespawn` | 1 (on) | Dead players come back, the round only ends when the time is over, there is no hurry |
-| Respawn after (ms) | `HunterRespawnMs` | 3000 | 0 .. 60000 |
+| Respawn | `HunterRespawn` | 1 (on) | Dead players come back, the round ends when the time is over, there is no hurry |
+| Respawn after (ms) | `HunterRespawnMs` | 3000 | 0 .. 60000, counts from the moment of death (at least 4 s) |
 | Invulnerable after respawn (ms) | `HunterRespawnInvulnMs` | 2000 | 0 .. 60000 |
-| The hunted gets no diseases | `HuntedNoDiseases` | 1 (on) | Diseases, slow and swap have no effect on the hunted, he is not infected by others |
+| The hunted gets no diseases | `HuntedNoDiseases` | 1 (on) | Diseases (also the positive ones of the mods), slow and swap have no effect on the hunted, he is not infected by others and nobody swaps places with him |
 | Gold color | `HuntedGold` | 1 (on) | The hunted is drawn in gold |
 | Aura | `HuntedAura` | 1 (on) | A pulsing aura around the hunted |
 | The hunted sees his aura | `HuntedAuraSelf` | 0 (off) | Off: only the hunters see the aura. Two players on one PC always see it, because one of them could be a hunter. |
@@ -92,10 +92,10 @@ Without respawn the normal rules apply: the round ends when only one player is l
 
 **A new hunted, the old hunted**
 
-- A new hunted blinks and is invulnerable for "Invulnerable as new hunted", so he is not killed by the bomb that made him the hunted.
+- A new hunted blinks and is invulnerable for "Invulnerable as new hunted", so he is not killed by the bomb that made him the hunted. This also holds if the hunter stands in his own flame in the same moment: he survives it and becomes the new hunted.
 - Bombs he has already placed are taken into account: with the new items he can place more bombs at once, the bombs on the field are counted against them.
-- The old hunted (if he is still alive) gets his items from before or only the scheme values, see "The old hunted gets".
-- The items of the hunted are not spread on the field when he dies, only items a player really picked up are spread as usual.
+- After his respawn the old hunted starts with his items from before he became the hunted or only with the scheme values, see "The old hunted gets". With "his items from before" these items are not spread on the field when he dies, so they do not exist twice.
+- The items of the hunted are not spread on the field when he dies, only items he really picked up as the hunted are spread as usual.
 
 **Display**
 

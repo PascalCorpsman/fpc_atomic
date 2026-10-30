@@ -134,6 +134,7 @@ Type
     PlayerPunchCallback: TPlayerPunchCallback; // Optional, wird vom Server gesetzt (Boxhandschuh Mod)
     WhiteBombCallback: TWhiteBombCallback; // Optional, wird vom Server gesetzt (Weiße Bombe Mod)
     PlayerKilledCallback: TPlayerKilledCallback; // Optional, wird vom Server gesetzt (Spielmodus Hunter)
+    FirstPlayerIndex: Integer; // Spielmodus Hunter: Dieser Spieler (der Gejagte) wird in HandlePlayerVsMap zuerst behandelt, -1 = in der normalen Reihenfolge
     WhiteBombChance: Integer; // Mod weiße Bombe: in %, so viele der Items unter den Steinen werden zur weißen Bombe, 0 = Mod aus
     FlameThrowerChance: Integer; // Mod Flammenwerfer: in %, so viele der Items unter den Steinen werden zum Flammenwerfer, 0 = Mod aus
     ItemChance: Integer; // Mod Items & Krankheiten: in %, so viele der Steine haben ein Item, -1 = Mod aus
@@ -426,6 +427,7 @@ Begin
   PlayerPunchCallback := Nil;
   WhiteBombCallback := Nil;
   PlayerKilledCallback := Nil;
+  FirstPlayerIndex := -1;
   WhiteBombChance := 0;
   FlameThrowerChance := 0;
   ItemChance := -1;
@@ -2092,7 +2094,7 @@ Const
   // Damit der Stein erstellt werden kann.
   SpawnEmptyRange = 2;
 Var
-  nx, ny, x, y, xx, yy, i, j: integer;
+  nx, ny, x, y, xx, yy, i, j, k: integer;
   b, GhostFlame: Boolean;
 Begin
   If fHasSpawningBricks And (Not fPause) Then Begin
@@ -2134,7 +2136,13 @@ Begin
       fNextBrickSpawnTime := GetTickCount64() + RandomRange(FieldBrickMinSpawnTime, FieldBrickMaxSpawnTime);
     End;
   End;
-  For i := 0 To high(Players) Do Begin
+  (*
+   * Spielmodus Hunter: Der Gejagte wird zuerst behandelt. Erwischt ihn ein Spieler, der im selben Frame in seiner
+   * eigenen Flamme steht, ist dieser als neuer Gejagter schon unverwundbar und überlebt (unabhängig von der Spielernummer).
+   *)
+  For k := 0 To high(Players) Do Begin
+    i := k;
+    If (FirstPlayerIndex >= 0) And (FirstPlayerIndex <= high(Players)) Then i := (FirstPlayerIndex + k) Mod length(Players);
     If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
     x := trunc(Players[i].Info.Position.x);
     y := trunc(Players[i].Info.Position.y);

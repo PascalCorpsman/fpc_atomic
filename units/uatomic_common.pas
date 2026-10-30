@@ -304,6 +304,7 @@ Const
   ModMaxHuntedInvulnMs = 60000; // Zeit in ms, HuntedInvulnMs
   ModMaxHunterRespawnMs = 60000; // Zeit in ms, HunterRespawnMs
   ModMaxHunterRespawnInvulnMs = 60000; // Zeit in ms, HunterRespawnInvulnMs
+  HunterMinDieTimeMs = 4000; // Spielmodus Hunter mit Respawn: So lange bleibt ein Toter mindestens liegen (die längste Todesanimation hat 77 Frames a 50 ms)
   HunterDefaultRoundTimeSec = 120; // Spielmodus Hunter mit Respawn: Rundenzeit, wenn die Spielzeit unendlich ist (sonst endet die Runde nie)
 
   (*
@@ -738,6 +739,7 @@ Type
     HuntedKills: Integer; // Spielmodus Hunter: Wie oft der Spieler in dieser Runde den Gejagten erwischt hat
     RespawnTimer: Integer; // Spielmodus Hunter: Zeit in ms bis der tote Spieler wieder ins Spiel kommt, 0 = kein Respawn ausstehend
     PowersBeforeHunted: TAtomicPowers; // Spielmodus Hunter: Die Powers von bevor der Spieler der Gejagte wurde (HuntedLoseItemsRestore)
+    RespawnBeforeHunted: Boolean; // Spielmodus Hunter: True, der Spieler war der Gejagte und bekommt beim Respawn PowersBeforeHunted (HuntedLoseItemsRestore)
 {$ENDIF}
   End;
 
@@ -969,6 +971,8 @@ Function WeightSum(Const Weights: Array Of Integer): Integer;
 Function WeightedPick(Const Weights: Array Of Integer): Integer;
 // Der Spielmodus, der tatsächlich gespielt wird: Hunter wird im Team play ignoriert
 Function EffectiveGameMode(Const Settings: TModSettings; TeamPlay: Boolean): TGameMode;
+// Kopiert nur die Werte von [GameMode] und [Hunter] (für "Defaults" in den Dialogen Mods und Spielmodus)
+Procedure CopyGameModeSettings(Const Source: TModSettings; Var Dest: TModSettings);
 
 {$IFDEF Server}
 Function GhostRingToField(Index: integer): TPoint; // Rechnet einen Index auf dem Rahmen in Feld Koordinaten um (liegt immer außerhalb des Feldes)
@@ -1702,6 +1706,24 @@ Function EffectiveGameMode(Const Settings: TModSettings; TeamPlay: Boolean): TGa
 Begin
   result := Settings.GameMode;
   If TeamPlay And (result = gmHunter) Then result := gmClassic;
+End;
+
+Procedure CopyGameModeSettings(Const Source: TModSettings; Var Dest: TModSettings);
+Begin
+  Dest.GameMode := Source.GameMode;
+  Dest.HuntedItems := Source.HuntedItems;
+  Dest.HuntedStart := Source.HuntedStart;
+  Dest.HuntedLost := Source.HuntedLost;
+  Dest.HunterScoring := Source.HunterScoring;
+  Dest.HuntedInvulnMs := Source.HuntedInvulnMs;
+  Dest.HuntedLoseItems := Source.HuntedLoseItems;
+  Dest.HunterRespawn := Source.HunterRespawn;
+  Dest.HunterRespawnMs := Source.HunterRespawnMs;
+  Dest.HunterRespawnInvulnMs := Source.HunterRespawnInvulnMs;
+  Dest.HuntedNoDiseases := Source.HuntedNoDiseases;
+  Dest.HuntedGold := Source.HuntedGold;
+  Dest.HuntedAura := Source.HuntedAura;
+  Dest.HuntedAuraSelf := Source.HuntedAuraSelf;
 End;
 
 Function WeightSum(Const Weights: Array Of Integer): Integer;

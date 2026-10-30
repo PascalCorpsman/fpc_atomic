@@ -456,9 +456,13 @@ Begin
 End;
 
 Procedure TForm4.Button1Click(Sender: TObject);
+Var
+  Keep: TModSettings;
 Begin
-  // Defaults
+  // Defaults, aber nur für die Mods, der Spielmodus in der selben Datei (Dialog Spielmodus) bleibt wie er ist
+  Keep := fSettings;
   ModSettingsDefaults(fSettings);
+  CopyGameModeSettings(Keep, fSettings);
   SettingsToControls();
 End;
 

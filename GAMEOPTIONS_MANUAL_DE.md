@@ -54,9 +54,9 @@ Ein Spieler ist der **Gejagte**. Er bekommt (fast) alle Items, alle anderen Spie
 
 1. Zu Rundenbeginn wird ein Spieler der Gejagte (zufällig oder der Führende, siehe Einstellungen).
 2. Der Gejagte bekommt die Startwerte des Schemas plus die **Items des Gejagten**. Er blinkt und ist kurz unverwundbar.
-3. Tötet ein Jäger den Gejagten (mit einer Bombe oder einem Flammenwerfer), wird dieser Jäger der neue Gejagte.
+3. Tötet ein Jäger den Gejagten (mit einer Bombe oder einem Flammenwerfer), wird dieser Jäger der neue Gejagte. Ist der Jäger in diesem Moment schon tot (seine Bombe ist erst nach seinem Tod explodiert), bekommt er trotzdem den Punkt für „Kills des Gejagten“, wer weitermacht, entscheidet dann aber die Einstellung „Gejagter stirbt ohne Killer“.
 4. Stirbt der Gejagte **ohne Killer** (eigene Bombe, Hurry, Geisterbombe), entscheidet die Einstellung „Gejagter stirbt ohne Killer“, wer weitermacht.
-5. Mit **Respawn** kommen tote Spieler nach einer Wartezeit auf einem zufälligen freien Feld weit weg vom Gejagten zurück und sind kurz unverwundbar. Die Runde endet, wenn die Spielzeit abgelaufen ist.
+5. Mit **Respawn** kommen tote Spieler nach einer Wartezeit auf einem zufälligen freien Feld weit weg vom Gejagten zurück und sind kurz unverwundbar. Die Wartezeit zählt ab dem Tod, die Todesanimation läuft darin mit (mindestens aber 4 s, so lang ist die längste Todesanimation). Die Runde endet, wenn die Spielzeit abgelaufen ist (oder nur noch ein Spieler im Spiel ist).
 6. Den Rundensieger bestimmt die Einstellung „Rundensieger“. Der Sieger bekommt einen Sieg für das Match. Bei Gleichstand ist die Runde unentschieden.
 
 **Einstellungen**
@@ -68,12 +68,12 @@ Ein Spieler ist der **Gejagte**. Er bekommt (fast) alle Items, alle anderen Spie
 | Gejagter bei Rundenbeginn | `HuntedStart` | 0 | 0 = ein zufälliger Spieler, 1 = der Führende (meiste gewonnene Runden im Match, bei Gleichstand zufällig) |
 | Gejagter stirbt ohne Killer | `HuntedLost` | 0 | 0 = ein zufälliger anderer lebender Spieler wird der Gejagte, 1 = er bleibt der Gejagte (nur mit Respawn, ohne Respawn wie 0) |
 | Rundensieger | `HunterScoring` | 0 | 0 = längste Zeit als Gejagter, 1 = am häufigsten den Gejagten getötet, 2 = wer am Rundenende der Gejagte ist |
-| Der bisherige Gejagte hat | `HuntedLoseItems` | 0 | 0 = seine Items von bevor er der Gejagte wurde, 1 = keine Items (nur die Startwerte des Schemas) |
+| Der bisherige Gejagte hat | `HuntedLoseItems` | 0 | Womit der bisherige Gejagte nach seinem Respawn startet: 0 = seine Items von bevor er der Gejagte wurde, 1 = keine Items (nur die Startwerte des Schemas) |
 | Unverwundbar als neuer Gejagter (ms) | `HuntedInvulnMs` | 1500 | 0 .. 60000, 0 = gar nicht |
-| Respawn | `HunterRespawn` | 1 (an) | Tote Spieler kommen zurück, die Runde endet nur durch Zeitablauf, es gibt keinen Hurry |
-| Respawn nach (ms) | `HunterRespawnMs` | 3000 | 0 .. 60000 |
+| Respawn | `HunterRespawn` | 1 (an) | Tote Spieler kommen zurück, die Runde endet durch Zeitablauf, es gibt keinen Hurry |
+| Respawn nach (ms) | `HunterRespawnMs` | 3000 | 0 .. 60000, zählt ab dem Tod (mindestens 4 s) |
 | Unverwundbar nach Respawn (ms) | `HunterRespawnInvulnMs` | 2000 | 0 .. 60000 |
-| Der Gejagte wird nicht krank | `HuntedNoDiseases` | 1 (an) | Krankheiten, Slow und Tauschen wirken nicht auf den Gejagten, er wird nicht angesteckt |
+| Der Gejagte wird nicht krank | `HuntedNoDiseases` | 1 (an) | Krankheiten (auch die positiven der Mods), Slow und Tauschen wirken nicht auf den Gejagten, er wird nicht angesteckt und niemand tauscht mit ihm den Platz |
 | Goldene Farbe | `HuntedGold` | 1 (an) | Der Gejagte wird in Gold gezeichnet |
 | Aura | `HuntedAura` | 1 (an) | Eine pulsierende Aura um den Gejagten |
 | Gejagter sieht seine Aura | `HuntedAuraSelf` | 0 (aus) | Aus: Nur die Jäger sehen die Aura. Zwei Spieler an einem PC sehen sie immer, denn einer von beiden könnte ein Jäger sein. |
@@ -92,10 +92,10 @@ Ohne Respawn gelten die normalen Regeln: Die Runde endet, wenn nur noch ein Spie
 
 **Ein neuer Gejagter, der bisherige Gejagte**
 
-- Ein neuer Gejagter blinkt und ist „Unverwundbar als neuer Gejagter“ lang unverwundbar, damit ihn nicht die Bombe erwischt, durch die er der Gejagte wurde.
+- Ein neuer Gejagter blinkt und ist „Unverwundbar als neuer Gejagter“ lang unverwundbar, damit ihn nicht die Bombe erwischt, durch die er der Gejagte wurde. Das gilt auch, wenn der Jäger im selben Moment in seiner eigenen Flamme steht: Er überlebt sie und wird der neue Gejagte.
 - Bomben, die er schon gelegt hat, werden berücksichtigt: Mit den neuen Items kann er mehr Bomben gleichzeitig legen, die Bomben auf dem Feld werden davon abgezogen.
-- Der bisherige Gejagte (falls er noch lebt) bekommt seine Items von vorher oder nur die Werte des Schemas, siehe „Der bisherige Gejagte hat“.
-- Die Items des Gejagten werden bei seinem Tod nicht auf dem Feld verteilt, nur wirklich aufgesammelte Items werden wie gewohnt verteilt.
+- Nach seinem Respawn startet der bisherige Gejagte mit seinen Items von bevor er der Gejagte wurde oder nur mit den Werten des Schemas, siehe „Der bisherige Gejagte hat“. Mit „seine Items von vorher“ werden diese Items bei seinem Tod nicht auf dem Feld verteilt, damit es sie nicht doppelt gibt.
+- Die Items des Gejagten werden bei seinem Tod nicht auf dem Feld verteilt, nur Items, die er als Gejagter wirklich aufgesammelt hat, werden wie gewohnt verteilt.
 
 **Darstellung**
 

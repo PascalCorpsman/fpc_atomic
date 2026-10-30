@@ -100,7 +100,8 @@ Begin
 {$ENDIF}
   Filename := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
   result := false;
-  If lib <> 0 Then UnloadLibrary(lib);
+  // Eine evtl. geladene Lib komplett entladen (mit AiDeInit), sonst zeigen die optionalen Funktionen ggf. noch in die alte Lib
+  UnLoadAiLib;
   If Not FileExists(Filename) Then exit;
   lib := LoadLibrary(Filename);
   If lib = 0 Then exit;

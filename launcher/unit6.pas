@@ -150,20 +150,7 @@ Begin
   // Defaults, aber nur für den Spielmodus, die Mods in der selben Datei bleiben wie sie sind
   Defaults.Handicap := Nil;
   ModSettingsDefaults(Defaults);
-  fSettings.GameMode := Defaults.GameMode;
-  fSettings.HuntedItems := Defaults.HuntedItems;
-  fSettings.HuntedStart := Defaults.HuntedStart;
-  fSettings.HuntedLost := Defaults.HuntedLost;
-  fSettings.HunterScoring := Defaults.HunterScoring;
-  fSettings.HuntedInvulnMs := Defaults.HuntedInvulnMs;
-  fSettings.HuntedLoseItems := Defaults.HuntedLoseItems;
-  fSettings.HunterRespawn := Defaults.HunterRespawn;
-  fSettings.HunterRespawnMs := Defaults.HunterRespawnMs;
-  fSettings.HunterRespawnInvulnMs := Defaults.HunterRespawnInvulnMs;
-  fSettings.HuntedNoDiseases := Defaults.HuntedNoDiseases;
-  fSettings.HuntedGold := Defaults.HuntedGold;
-  fSettings.HuntedAura := Defaults.HuntedAura;
-  fSettings.HuntedAuraSelf := Defaults.HuntedAuraSelf;
+  CopyGameModeSettings(Defaults, fSettings);
   Defaults.Handicap.free;
   SettingsToControls();
 End;

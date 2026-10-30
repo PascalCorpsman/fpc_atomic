@@ -1179,6 +1179,7 @@ Begin
     fPLayer[i].HuntedTimeMs := 0;
     fPLayer[i].HuntedKills := 0;
     fPLayer[i].RespawnTimer := 0;
+    fPLayer[i].RespawnBeforeHunted := false;
     fPLayer[i].Info.Hunted := false;
     fPLayer[i].Info.HuntedTime := 0;
     // fPLayer[i].Team := fSettings.Scheme.PlayerStartPositions[i].Team; -- Wurde schon gemacht in HandleLoadSettings
@@ -1406,14 +1407,15 @@ Begin
         cnt := 10;
         If fModSettings.ItemConfig Then cnt := fModSettings.SuperBadSwapChance;
         If random(100) < cnt Then Begin
+          // Spielmodus Hunter (HuntedNoDiseases): Mit dem Gejagten wird nicht getauscht
           cnt := 0;
           For i := 0 To high(fPLayer) Do Begin
-            If fPLayer[i].Info.Alive Then inc(cnt);
+            If fPLayer[i].Info.Alive And (i <> PlayerIndex) And (Not HuntedImmune(i)) Then inc(cnt);
           End;
-          If cnt > 1 Then Begin
+          If cnt > 0 Then Begin
             Repeat
               index := random(Length(fPLayer));
-            Until fPLayer[index].Info.Alive And (PlayerIndex <> index);
+            Until fPLayer[index].Info.Alive And (PlayerIndex <> index) And (Not HuntedImmune(index));
             tmppos := fPLayer[index].Info.Position;
             fPLayer[index].Info.Position := fPLayer[PlayerIndex].Info.Position;
             fPLayer[PlayerIndex].Info.Position := tmppos;
@@ -1891,19 +1893,28 @@ Procedure TServer.SetHunted(NewIndex: integer);
 Var
   OldIndex, i, EnterID: integer;
   p: TAtomicPowers;
+  pu: TPowerUps;
 Begin
   EnterID := LogEnter(format('TServer.SetHunted (%d)', [NewIndex]));
   OldIndex := fHuntedIndex;
   fHuntedIndex := NewIndex;
-  // 1. Der bisherige Gejagte (falls er noch lebt) verliert seine Items
-  If (OldIndex >= 0) And (OldIndex <> NewIndex) And fPLayer[OldIndex].Info.Alive Then Begin
+  (*
+   * 1. Der bisherige Gejagte verliert seine Items. Meist ist er gerade gestorben, dann bekommt er
+   *    mit HuntedLoseItemsRestore seinen Zustand von vorher erst beim Respawn zurück (HandleHunter).
+   *)
+  If (OldIndex >= 0) And (OldIndex <> NewIndex) Then Begin
     If fModSettings.HuntedLoseItems = HuntedLoseItemsScheme Then Begin
       p := PowersFromScheme(fSettings.Scheme);
     End
     Else Begin
       p := fPLayer[OldIndex].PowersBeforeHunted;
     End;
-    SetPlayerPowers(OldIndex, p);
+    If fPLayer[OldIndex].Info.Alive And (Not fPLayer[OldIndex].Info.Dying) Then Begin
+      SetPlayerPowers(OldIndex, p);
+    End
+    Else Begin
+      fPLayer[OldIndex].RespawnBeforeHunted := fModSettings.HuntedLoseItems = HuntedLoseItemsRestore;
+    End;
   End;
   For i := 0 To high(fPLayer) Do Begin
     fPLayer[i].Info.Hunted := i = NewIndex;
@@ -1913,10 +1924,25 @@ Begin
     LogLeave(EnterID);
     exit;
   End;
-  // 2. Der neue Gejagte, sein Zustand wird gemerkt (ohne die Verlangsamung von dSuperSlow)
-  fPLayer[NewIndex].PowersBeforeHunted := fPLayer[NewIndex].Powers;
-  If dSuperSlow In fPLayer[NewIndex].Disease Then Begin
-    fPLayer[NewIndex].PowersBeforeHunted.Speed := fPLayer[NewIndex].BeforeSlowDiseaseSpeed;
+  (*
+   * 2. Der neue Gejagte, sein Zustand wird gemerkt (ohne die Verlangsamung von dSuperSlow).
+   *    Bleibt er nach dem Respawn der Gejagte (HuntedLostKeep), gilt der Zustand von vorher weiter.
+   *)
+  fPLayer[NewIndex].RespawnBeforeHunted := false;
+  If OldIndex <> NewIndex Then Begin
+    fPLayer[NewIndex].PowersBeforeHunted := fPLayer[NewIndex].Powers;
+    If dSuperSlow In fPLayer[NewIndex].Disease Then Begin
+      fPLayer[NewIndex].PowersBeforeHunted.Speed := fPLayer[NewIndex].BeforeSlowDiseaseSpeed;
+    End;
+    (*
+     * Bekommt er den Zustand später zurück, sind seine bisher gesammelten Items darin "geparkt",
+     * sie werden bei seinem Tod dann nicht noch zusätzlich auf dem Feld verteilt.
+     *)
+    If fModSettings.HuntedLoseItems = HuntedLoseItemsRestore Then Begin
+      For pu In TPowerUps Do Begin
+        fPLayer[NewIndex].PowerUpCounter[pu] := 0;
+      End;
+    End;
   End;
   If fModSettings.HuntedNoDiseases And (fPLayer[NewIndex].Disease <> []) Then Begin
     If dSuperSlow In fPLayer[NewIndex].Disease Then Begin
@@ -1950,6 +1976,8 @@ Begin
     SetHunted(Killer);
   End
   Else Begin
+    // Ist der Killer schon tot (z.B. die Bombe explodiert erst nach seinem Tod), zählt der Treffer trotzdem für die Wertung
+    If (Killer >= 0) And (Killer <> Victim) Then fPLayer[Killer].HuntedKills := fPLayer[Killer].HuntedKills + 1;
     // Kein (lebender) fremder Killer
     If (fModSettings.HuntedLost = HuntedLostKeep) And fModSettings.HunterRespawn Then Begin
       // Er bleibt der Gejagte, nach dem Respawn bekommt er die Items wieder (HandleHunter)
@@ -1984,7 +2012,14 @@ Begin
     End;
     RespawnPlayer(i, fActualField.FindRespawnField(AvoidPos), fModSettings.HunterRespawnInvulnMs);
     log('Respawn: ' + fPLayer[i].UserName + ' (' + inttostr(i) + ')', llInfo);
-    If i = fHuntedIndex Then SetHunted(i); // HuntedLostKeep: Er ist weiterhin der Gejagte und bekommt die Items wieder
+    If i = fHuntedIndex Then Begin
+      SetHunted(i); // HuntedLostKeep: Er ist weiterhin der Gejagte und bekommt die Items wieder
+    End
+    Else If fPLayer[i].RespawnBeforeHunted Then Begin
+      // HuntedLoseItemsRestore: Der frühere Gejagte startet mit seinem Zustand von bevor er der Gejagte wurde
+      SetPlayerPowers(i, fPLayer[i].PowersBeforeHunted);
+      fPLayer[i].RespawnBeforeHunted := false;
+    End;
   End;
   // 2. Es gibt keinen (lebenden) Gejagten mehr, dann wird einer bestimmt, sobald es wieder jemanden gibt
   If (fHuntedIndex < 0) Or
@@ -2682,6 +2717,7 @@ Var
   AiCommand: TAiCommand;
   OldCounter: UInt16;
   WillBeGhost: Boolean;
+  DieTime: Integer;
   ModeInfo: TAiModeInfo;
   Stunned: Boolean;
   StunMoveState: TMoveState;
@@ -2872,6 +2908,9 @@ Begin
   // Spielmodus Hunter mit Respawn: Kein Hurry
   fActualField.HandleBombs(fPLayer, (fPlayingTimedesc <= 80000) And (fPlayingTimedesc <> -1000) And (Not HunterRespawnActive()), fSettings.ConveyorSpeed);
   // Kollision mit Flammen
+  // Spielmodus Hunter: Den Gejagten zuerst behandeln, damit wer ihn erwischt seine eigene Flamme im selben Frame überlebt
+  fActualField.FirstPlayerIndex := -1;
+  If HunterActive() Then fActualField.FirstPlayerIndex := fHuntedIndex;
   fActualField.HandlePlayerVsMap(fPLayer, @HandlePlayerGetsPowerUp);
 
   fActualField.HandleFieldAnims;
@@ -2900,12 +2939,18 @@ Begin
           ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount));
         // Wie der Geist danach (siehe unten) zählt beim Testen der Geister zu zweit schon das Sterben, sonst wären die Bomben für den Rest der Runde aus
         If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And WillBeGhost Then inc(alive[fPLayer[i].Team]);
-        If fPLayer[i].Info.Counter > AtomicDietimeout Then Begin
+        (*
+         * Spielmodus Hunter mit Respawn: Die Wartezeit zählt ab dem Treffer, die Todesanimation läuft darin mit.
+         * Deshalb ist der Spieler schon nach HunterMinDieTimeMs (statt AtomicDieTimeout) weg, sofern der Respawn nicht früher kommen soll.
+         *)
+        DieTime := AtomicDietimeout;
+        If HunterRespawnActive() Then DieTime := min(AtomicDietimeout, max(HunterMinDieTimeMs, fModSettings.HunterRespawnMs));
+        If fPLayer[i].Info.Counter > DieTime Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fPLayer[i].Info.Dying := false;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
           If HunterRespawnActive() Then Begin
-            fPLayer[i].RespawnTimer := max(1, fModSettings.HunterRespawnMs); // Mindestens 1, 0 = kein Respawn ausstehend
+            fPLayer[i].RespawnTimer := max(1, fModSettings.HunterRespawnMs - DieTime); // Mindestens 1, 0 = kein Respawn ausstehend
           End
           Else If WillBeGhost Then Begin
             MakeGhost(i);
@@ -3292,7 +3337,7 @@ Begin
     logshow('Failure on Ai load (AiInit returned false).', llError);
     UnLoadAiLib;
   End;
-  If fGameState = gsPlaying Then Begin
+  If (fGameState = gsPlaying) And assigned(AiNewRound) Then Begin // Nicht wenn AiInit fehlgeschlagen ist (dann ist die Lib schon wieder entladen)
     // TODO: Diese 100% müssen noch einstellbar gemacht werden !
     AiNewRound(100);
   End;
