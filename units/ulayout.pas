@@ -70,7 +70,7 @@ Type
     fRects: Array Of TRect;
     fClients: Array Of TPoint; // ClientWidth / ClientHeight
     fRefitTimer: TTimer;
-    fRefitTries: integer;
+    fRefitTries, fMappedTicks: integer;
     Procedure Add(c: TControl);
     Procedure Refit(Sender: TObject);
   public
@@ -155,6 +155,9 @@ Begin
     exit;
   End;
   If (Not IsMapped(TWinControl(Owner))) And (fRefitTries < 50) Then exit;
+  // Und dann noch etwas warten: Unter Wayland geht eine Größenänderung kurz nach dem Anzeigen verloren (GTK3 LCL)
+  inc(fMappedTicks);
+  If fMappedTicks < 15 Then exit;
   fRefitTimer.Enabled := false;
   FitLayout(TWinControl(Owner));
 End;
@@ -167,6 +170,7 @@ Begin
     fRefitTimer.OnTimer := @Refit;
   End;
   fRefitTries := 0;
+  fMappedTicks := 0;
   fRefitTimer.Enabled := true;
 End;
 
