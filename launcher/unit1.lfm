@@ -1,12 +1,12 @@
 object Form1: TForm1
   Left = 347
-  Height = 611
+  Height = 635
   Top = 107
   Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Form1'
-  ClientHeight = 611
+  ClientHeight = 635
   ClientWidth = 547
   KeyPreview = True
   Position = poScreenCenter
@@ -72,11 +72,11 @@ object Form1: TForm1
   end
   object GroupBox3: TGroupBox
     Left = 208
-    Height = 134
+    Height = 158
     Top = 128
     Width = 328
     Caption = ' Game settings '
-    ClientHeight = 116
+    ClientHeight = 140
     ClientWidth = 326
     TabOrder = 1
     object CheckBox2: TCheckBox
@@ -115,31 +115,40 @@ object Form1: TForm1
       Caption = 'S&how FPS'
       TabOrder = 3
     end
+    object CheckBox7: TCheckBox
+      Left = 8
+      Height = 21
+      Hint = 'Start the game window with the size and position of the last game. Off: centered with 640x480 (helps with several monitors or when the window is no longer visible).'
+      Top = 52
+      Width = 180
+      Caption = 'Re&member window position'
+      TabOrder = 4
+    end
     object Button8: TButton
       Left = 8
       Height = 25
       Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
-      Top = 56
+      Top = 80
       Width = 178
       Caption = '&Game options...'
-      TabOrder = 4
+      TabOrder = 5
       OnClick = Button8Click
     end
     object Button7: TButton
       Left = 192
       Height = 25
       Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
-      Top = 56
+      Top = 80
       Width = 126
       Caption = '&Mods...'
-      TabOrder = 5
+      TabOrder = 6
       OnClick = Button7Click
     end
     object Label10: TLabel
       Left = 8
       Height = 16
       Hint = 'The game mode of the next game hosted on this PC.'
-      Top = 91
+      Top = 115
       Width = 178
       AutoSize = False
       Caption = 'Label10'
@@ -148,17 +157,17 @@ object Form1: TForm1
       Left = 192
       Height = 25
       Hint = 'Choose the game mode (Classic or Hunter) and its settings. It applies when a game is hosted on this PC.'
-      Top = 86
+      Top = 110
       Width = 126
       Caption = 'Game mo&de...'
-      TabOrder = 6
+      TabOrder = 7
       OnClick = Button9Click
     end
   end
   object GroupBox2: TGroupBox
     Left = 208
     Height = 120
-    Top = 270
+    Top = 294
     Width = 328
     Caption = ' Internet game (optional) '
     ClientHeight = 102
@@ -212,7 +221,7 @@ object Form1: TForm1
   object GroupBox4: TGroupBox
     Left = 8
     Height = 80
-    Top = 398
+    Top = 422
     Width = 528
     Caption = ' Installation '
     ClientHeight = 62
@@ -261,7 +270,7 @@ object Form1: TForm1
     Left = 10
     Height = 21
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 486
+    Top = 510
     Width = 268
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
@@ -271,7 +280,7 @@ object Form1: TForm1
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 512
+    Top = 536
     Width = 528
     BevelOuter = bvNone
     ClientHeight = 50
@@ -310,7 +319,7 @@ object Form1: TForm1
     Left = 10
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 579
+    Top = 603
     Width = 42
     Caption = 'Manual'
     Font.Color = clBlue
@@ -326,7 +335,7 @@ object Form1: TForm1
     Left = 68
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
-    Top = 579
+    Top = 603
     Width = 80
     BorderSpacing.Left = 16
     Caption = 'Config folder'
@@ -338,7 +347,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 446
     Height = 30
-    Top = 572
+    Top = 596
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
@@ -350,7 +359,7 @@ object Form1: TForm1
     Left = 326
     Height = 30
     Hint = 'The language of the launcher.'
-    Top = 572
+    Top = 596
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10

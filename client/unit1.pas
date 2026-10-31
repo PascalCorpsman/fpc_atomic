@@ -109,6 +109,7 @@ Type
     FPS_Counter, LastFPS_Counter: integer;
     LastFPSTime: int64;
     FWishFullscreen: Boolean;
+    fRememberWindow: Boolean; // Position und Größe des Fensters merken (Launcher Option "RememberWindow")
 {$IFDEF Windows}
     fFrameHidden: Boolean; // True, wenn der Fensterrahmen für den Vollbild Modus entfernt wurde (SetWindowFrame)
     fFrameStyle: PtrInt; // Die Rahmen Bits des Fensterstils vor dem Entfernen
@@ -122,6 +123,7 @@ Type
     Procedure HideCursor(Sender: TObject);
     Procedure ShowCursor(Sender: TObject);
     Procedure SetupFrame;
+    Procedure RestoreWindowBounds;
 {$IFDEF Windows}
     Procedure SetWindowFrame(FrameVisible: Boolean);
 {$ENDIF}
@@ -141,7 +143,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses lazfileutils, LazUTF8, LCLType
+Uses lazfileutils, LazUTF8, LCLType, Types
 {$IFDEF Windows}
   , windows // Für Konsolenmodus zur Laufzeit
 {$ENDIF}
@@ -359,6 +361,7 @@ Begin
   Game := TGame.Create(OpenGLControl1);
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
+  RestoreWindowBounds; // Nicht in Load_Atomic_Settings, das wird auch aus den Optionen heraus aufgerufen
   Load_Atomic_Settings;
 {$IFDEF AUTOMODE}
   AutomodeData.State := AM_Idle;
@@ -424,10 +427,6 @@ Begin
     log('Shuting down (user confirmed exit).', llInfo);
     IniPropStorage1.WriteInteger('ProtocollVersion', ProtocollVersion);
     IniPropStorage1.WriteString('Version', Version);
-    //setValue('MainForm', 'Left', inttostr(Form1.left));
-    //setValue('MainForm', 'Top', inttostr(Form1.top));
-    //setValue('MainForm', 'Width', inttostr(Form1.Width));
-    //setValue('MainForm', 'Height', inttostr(Form1.Height));
 
     timer1.Enabled := false;
     Initialized := false;
@@ -738,6 +737,52 @@ Begin
 
   IniPropStorage1.WriteInteger('Port', Game.Settings.Port);
   IniPropStorage1.WriteBoolean('Fullscreen', Game.Settings.Fullscreen);
+  // Ist die Option aus, bleiben die alten Werte stehen und werden beim Start nicht gelesen
+  If fRememberWindow Then Begin
+    // Restored* sind die Bounds des normalen Fensters, auch wenn es gerade maximiert oder im Vollbild ist
+    IniPropStorage1.WriteInteger('WindowLeft', RestoredLeft);
+    IniPropStorage1.WriteInteger('WindowTop', RestoredTop);
+    IniPropStorage1.WriteInteger('WindowWidth', RestoredWidth);
+    IniPropStorage1.WriteInteger('WindowHeight', RestoredHeight);
+    IniPropStorage1.WriteBoolean('WindowMaximized', (WindowState = wsMaximized) And Not Game.Settings.Fullscreen);
+  End;
+End;
+
+Procedure TForm1.RestoreWindowBounds;
+Const
+  MinVisibleX = 100; // So viel von der Titelleiste muss auf einem Monitor liegen, damit man das Fenster noch greifen kann
+  MinVisibleY = 20;
+Var
+  l, t, w, h, i: Integer;
+  TitleBar, Overlap: TRect;
+  OnScreen: Boolean;
+Begin
+  (*
+   * Ohne die Option (oder wenn das Fenster auf keinem Monitor mehr zu sehen wäre, z.B. weil ein Monitor
+   * abgesteckt wurde) startet das Fenster wie bisher mit 640x480 in der Bildschirmmitte.
+   *)
+  fRememberWindow := IniPropStorage1.ReadBoolean('RememberWindow', true);
+  If Not fRememberWindow Then exit;
+  l := IniPropStorage1.ReadInteger('WindowLeft', 0);
+  t := IniPropStorage1.ReadInteger('WindowTop', 0);
+  w := IniPropStorage1.ReadInteger('WindowWidth', 0);
+  h := IniPropStorage1.ReadInteger('WindowHeight', 0);
+  If (w <= 0) Or (h <= 0) Then exit; // Noch nie gespeichert
+  TitleBar := Types.Rect(l, t, l + w, t + 30);
+  OnScreen := false;
+  For i := 0 To Screen.MonitorCount - 1 Do Begin
+    If Types.IntersectRect(Overlap, TitleBar, Screen.Monitors[i].WorkareaRect) And
+      (Overlap.Width >= MinVisibleX) And (Overlap.Height >= MinVisibleY) Then Begin
+      OnScreen := true;
+      break;
+    End;
+  End;
+  If Not OnScreen Then exit;
+  Position := poDesigned;
+  SetBounds(l, t, w, h);
+  If IniPropStorage1.ReadBoolean('WindowMaximized', false) Then Begin
+    WindowState := wsMaximized;
+  End;
 End;
 
 {$IFDEF Windows}
