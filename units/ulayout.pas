@@ -46,7 +46,11 @@ Procedure FitLayout(Root: TWinControl);
 Implementation
 
 Uses
-  Math, Types, StdCtrls, ComCtrls, ExtCtrls, Forms, CheckLst;
+  SysUtils, Math, Types, Graphics, StdCtrls, ComCtrls, ExtCtrls, Forms, CheckLst
+{$IFDEF LCLGTK3}
+  , gtk3widgets
+{$ENDIF}
+  ;
 
 Const
   MinGapX = 6; // Mindestabstand nebeneinander
@@ -65,8 +69,10 @@ Type
     fControls: TFPList;
     fRects: Array Of TRect;
     fClients: Array Of TPoint; // ClientWidth / ClientHeight
+    fRefitTimer: TTimer;
+    fRefitTries: integer;
     Procedure Add(c: TControl);
-    Procedure Refit(Data: PtrInt);
+    Procedure Refit(Sender: TObject);
   public
     Constructor Create(aRoot: TWinControl); reintroduce;
     Destructor Destroy; override;
@@ -74,6 +80,7 @@ Type
     Function Rect(c: TControl): TRect;
     Function Client(c: TControl): TPoint;
     Procedure Restore();
+    Procedure StartRefit();
   End;
 
   TItem = Record
@@ -104,6 +111,8 @@ Begin
     (TWinControl(c).ControlCount > 0);
 End;
 
+Function IsMapped(c: TControl): Boolean; forward;
+
 { TDesignBounds }
 
 Constructor TDesignBounds.Create(aRoot: TWinControl);
@@ -117,7 +126,6 @@ End;
 
 Destructor TDesignBounds.Destroy;
 Begin
-  Application.RemoveAsyncCalls(self);
   fControls.Free;
   Inherited Destroy;
 End;
@@ -138,9 +146,28 @@ Begin
   End;
 End;
 
-Procedure TDesignBounds.Refit(Data: PtrInt);
+Procedure TDesignBounds.Refit(Sender: TObject);
 Begin
-  If TWinControl(Owner).Showing Then FitLayout(TWinControl(Owner));
+  // Erst wenn das Fenster wirklich auf dem Bildschirm ist (siehe IsMapped), höchstens 1 s warten
+  inc(fRefitTries);
+  If Not TWinControl(Owner).Showing Then Begin
+    fRefitTimer.Enabled := false;
+    exit;
+  End;
+  If (Not IsMapped(TWinControl(Owner))) And (fRefitTries < 50) Then exit;
+  fRefitTimer.Enabled := false;
+  FitLayout(TWinControl(Owner));
+End;
+
+Procedure TDesignBounds.StartRefit;
+Begin
+  If fRefitTimer = Nil Then Begin
+    fRefitTimer := TTimer.Create(self);
+    fRefitTimer.Interval := 20;
+    fRefitTimer.OnTimer := @Refit;
+  End;
+  fRefitTries := 0;
+  fRefitTimer.Enabled := true;
 End;
 
 Function TDesignBounds.IndexOf(c: TControl): integer;
@@ -207,12 +234,47 @@ End;
 
 Function LayoutChildren(p: TWinControl; Const db: TDesignBounds): TPoint; forward;
 
+Var
+  ButtonTextPadding: integer = 0; // Breite eines Buttons - Breite seines Textes, siehe ComputeSize
+
+// Ist das Control wirklich auf dem Bildschirm? Erst dann stimmen unter GTK3 alle Größen
+Function IsMapped(c: TControl): Boolean;
+Begin
+  result := c.IsVisible And (GetParentForm(c) <> Nil) And GetParentForm(c).Showing;
+{$IFDEF LCLGTK3}
+  If result Then result := (c Is TWinControl) And TWinControl(c).HandleAllocated And TGtk3Widget(TWinControl(c).Handle).Widget^.get_mapped;
+{$ENDIF}
+End;
+
+// Die Breite der Beschriftung eines Buttons, ohne die & der Tastenkürzel
+Function ButtonTextWidth(b: TCustomButton): integer;
+Var
+  f: TCustomForm;
+  OldFont: TFont;
+  s: String;
+Begin
+  result := 0;
+  f := GetParentForm(b);
+  If (f = Nil) Or (Not f.HandleAllocated) Then exit;
+  s := StringReplace(StringReplace(StringReplace(b.Caption, '&&', #1, [rfReplaceAll]), '&', '', [rfReplaceAll]), #1, '&', [rfReplaceAll]);
+  If s = '' Then exit;
+  OldFont := TFont.Create;
+  Try
+    OldFont.Assign(f.Canvas.Font);
+    f.Canvas.Font := b.Font;
+    result := f.Canvas.TextWidth(s);
+    f.Canvas.Font := OldFont;
+  Finally
+    OldFont.Free;
+  End;
+End;
+
 (*
  * Die neue Größe eines Controls, Container werden dabei selbst ausgelegt
  *)
 Procedure ComputeSize(Var it: TItem; Const db: TDesignBounds);
 Var
-  pw, ph, i, dw, dh: integer;
+  pw, ph, i, dw, dh, tw: integer;
   dc, nc: TPoint;
   pc: TPageControl;
 Begin
@@ -268,9 +330,22 @@ Begin
     ((it.c Is TCustomEdit) And Not (it.c Is TCustomMemo))) Then exit;
   pw := 0;
   ph := 0;
+  it.c.InvalidatePreferredSize;
   it.c.GetPreferredSize(pw, ph);
   If it.c Is TCustomEdit Then Begin
     pw := it.w; // Die Breite eines Eingabefeldes kommt nicht vom Text
+  End;
+  If it.c Is TCustomButton Then Begin
+    (*
+     * Bevor ein Button wirklich auf dem Bildschirm ist, meldet GTK3 eine zu kleine Breite (ohne den Rand aus dem Theme).
+     * Deshalb merken wir uns den Rand um den Text, sobald ein Button auf dem Bildschirm gemessen wurde (spätestens beim
+     * Nachrechnen des Hauptfensters), und rechnen damit in den Dialogen, die danach geöffnet werden.
+     *)
+    tw := ButtonTextWidth(TCustomButton(it.c));
+    If tw > 0 Then Begin
+      If IsMapped(it.c) Then ButtonTextPadding := max(ButtonTextPadding, pw - tw);
+      pw := max(pw, tw + ButtonTextPadding);
+    End;
   End;
   If it.c Is TCustomComboBox Then Begin // Die einer Combobox vom längsten Eintrag (dazu Platz für den Pfeil)
     For i := 0 To TCustomComboBox(it.c).Items.Count - 1 Do Begin
@@ -570,7 +645,7 @@ Begin
    * endgültige Größe, deshalb einmal nachrechnen, sobald es angezeigt wird (sonst ändert sie sich erst beim nächsten Aufruf)
    *)
   If First And (Root Is TCustomForm) Then Begin
-    Application.QueueAsyncCall(@db.Refit, 0);
+    db.StartRefit();
   End;
   // Nur die Größe, die Position bleibt Sache der LCL (Position beim Anzeigen) und des Benutzers
   w := Root.Width + max(dc.X, nc.X) - Root.ClientWidth;
