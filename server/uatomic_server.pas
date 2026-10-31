@@ -2059,8 +2059,12 @@ Var
 Begin
   For i := 0 To high(fPLayer) Do Begin
     If Not fPLayer[i].Info.Ghost Then Continue;
-    // Mit Beginn des Hurry sind alle Geister weg, es gibt dann kein Zurück mehr
-    If fActualField.HurryActive() Then Begin
+    (*
+     * Mit Beginn des Hurry sind alle Geister weg, es gibt dann kein Zurück mehr.
+     * Ein Geist, dessen Spieler das Spiel verlassen hat und zur KI wurde (LostPlayersRevertToAI), verschwindet,
+     * denn die KI wird nur für lebende Spieler aufgerufen und der Geist würde nur noch herum stehen.
+     *)
+    If fActualField.HurryActive() Or (fPLayer[i].UID = AIPlayer) Then Begin
       fPLayer[i].Info.Ghost := false;
       Continue;
     End;
@@ -2949,9 +2953,9 @@ Begin
         fActualField.TelePortPlayer(fPLayer[i]);
       End;
       If fPLayer[i].Info.Dying Then Begin
-        // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt)
+        // Geist wird man nur bis zu GhostMaxCount mal pro Runde (0 = unbegrenzt), KI Spieler werden nie Geist (die KI kann keinen Geist steuern)
         // Spielmodus Hunter mit Respawn: Statt Geist kommt der Spieler nach HunterRespawnMs zurück
-        WillBeGhost := fModSettings.Ghosts And (Not HunterRespawnActive()) And (Not fActualField.HurryActive()) And
+        WillBeGhost := fModSettings.Ghosts And (Not HunterRespawnActive()) And (Not fActualField.HurryActive()) And (fPLayer[i].UID <> AIPlayer) And
           ((fModSettings.GhostMaxCount = 0) Or (fPLayer[i].GhostCount < fModSettings.GhostMaxCount));
         // Wie der Geist danach (siehe unten) zählt beim Testen der Geister zu zweit schon das Sterben, sonst wären die Bomben für den Rest der Runde aus
         If fModSettings.ModTestMode And fModSettings.GhostsKeepRound And WillBeGhost Then inc(alive[fPLayer[i].Team]);
@@ -3278,6 +3282,8 @@ Begin
   End
   Else Begin
     // Nur noch 1 Überlebender Spieler
+    // Mod Test Modus mit GhostsKeepRound: Ist der Letzte ein Geist, lebt keiner mehr -> unentschieden (ein Geist gewinnt nicht)
+    If (cnt = 1) And (Not fPLayer[cntindex].Info.Alive) Then cnt := 0;
     If cnt = 1 Then Begin
       // Dem Sieger den Punkt geben, aber nur, wenn er nicht auch gerade am sterben ist ..
       // Wenn der Spieler Gestorben ist geht dann cnt von alleine Später auf 0 ;)
