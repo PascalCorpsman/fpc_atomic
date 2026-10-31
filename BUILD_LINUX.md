@@ -146,11 +146,15 @@ If the dialog is left with Alt+Tab, then clicked again and closed, all controls 
 
 To narrow it down: Check whether the same happens with `GDK_BACKEND=x11` and on a native Linux desktop. If it only happens under Wayland / WSLg, it is a compositor topic and can be ignored for the game.
 
-### Wayland: the main window does not grow on the first language change
+### Wayland: resizing a shown window together with its position
 
-The launcher window grows when a language with longer texts is chosen (see [`FitLayout`](#what-the-launcher-does-fitlayout)). Under Wayland the first resize after the window is shown is not applied: the window keeps a smaller size and the right and bottom part is cut off. All later language changes resize the window correctly.
+When a form that is already shown gets a new size and position at once (`SetBounds(Left, Top, W, H)`, or a resize followed by a move), the first such change under Wayland is not applied: the window keeps a smaller size and the right and bottom part is cut off. Later changes work. With `GDK_BACKEND=x11` every change works.
 
-With `GDK_BACKEND=x11` the window has the correct size on every language change. So the cause is the Wayland support of the GTK3 LCL, which in Lazarus trunk compensates the client side decorations (shadow and title bar) of a window with deferred resizes (`WindowSizeAllocate` in `lcl/interfaces/gtk3/gtk3widgets.pas`). Workaround for testing: start with `GDK_BACKEND=x11`.
+The cause seems to be the Wayland support of the GTK3 LCL, which in Lazarus trunk compensates the client side decorations (shadow and title bar) with deferred resizes (`WindowSizeAllocate` in `lcl/interfaces/gtk3/gtk3widgets.pas`). The launcher is not affected: `FitLayout` only changes the size (`ClientWidth` / `ClientHeight`), never the position.
+
+### Wayland: windows start at a different position each time
+
+Under Wayland an application can not place its windows, the compositor decides. `Position = poScreenCenter` has no effect, the launcher appears somewhere else on every start. This is normal Wayland behaviour, with `GDK_BACKEND=x11` the window is centered.
 
 ### Lazarus 4.4: window too small
 
