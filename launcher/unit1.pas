@@ -731,7 +731,7 @@ Begin
     ord(Settings.BrickWalk) + ord(Settings.FlashDisease) + ord(Settings.WhiteBomb) +
     ord(Settings.FlameThrower) + ord(Settings.HitPoints) + ord(Settings.Ghosts) +
     ord(Settings.GloveAtStart) + ord(Settings.OpenBorders) + ord(Settings.Teleporters) +
-    ord(Settings.ModTestMode);
+    ord(Settings.ItemConfig) + ord(Settings.ModTestMode);
   Settings.Handicap.free;
   If Count = 0 Then Begin
     Button7.Caption := R_Mods;
@@ -766,6 +766,12 @@ Begin
   Language.AddIgnoredIdentifier('Form3.Label3.Caption');
   Language.AddIgnoredIdentifier('Form3.Label5.Caption');
   Language.AddIgnoredComponent(Form4.StringGrid1);
+  For i := 80 To 92 Do Begin // Form4: Anteile der Items und Krankheiten, setzt UpdateItemShares
+    Language.AddIgnoredIdentifier('Form4.Label' + inttostr(i) + '.Caption');
+  End;
+  For i := 100 To 103 Do Begin
+    Language.AddIgnoredIdentifier('Form4.Label' + inttostr(i) + '.Caption');
+  End;
   Language.AddIgnoredIdentifier('Form5.ComboBox2.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox4.Items');
   ApplyLanguage();
