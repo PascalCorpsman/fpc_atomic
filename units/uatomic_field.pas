@@ -45,6 +45,7 @@ Type
   TGhostReviveCallback = Procedure(GhostIndex: integer) Of Object; // Wird aufgerufen, wenn die Flamme eines Geistes einen Gegner getroffen hat -> der Geist darf zurück ins Spiel
   TPlayerPunchCallback = Function(PlayerIndex, x, y: integer): Boolean Of Object; // Wird aufgerufen, wenn ein Spieler mit Punch Item auf das Feld x, y schlägt, True = ein Gegner wurde gestunnt
   TWhiteBombCallback = Procedure(PlayerIndex: integer) Of Object; // Wird aufgerufen, wenn eine weiße Bombe von PlayerIndex explodiert -> alle Gegner flashen
+  TPlayerKilledCallback = Procedure(Victim, Killer: integer) Of Object; // Wird direkt vor KillPlayer aufgerufen, Killer = -1 niemand (Selbstkill, Geisterbombe, Hurry)
 {$ENDIF}
 
 {$IFDEF Client}
@@ -132,6 +133,8 @@ Type
     GhostReviveCallback: TGhostReviveCallback; // Optional, wird vom Server gesetzt (Geister Mod)
     PlayerPunchCallback: TPlayerPunchCallback; // Optional, wird vom Server gesetzt (Boxhandschuh Mod)
     WhiteBombCallback: TWhiteBombCallback; // Optional, wird vom Server gesetzt (Weiße Bombe Mod)
+    PlayerKilledCallback: TPlayerKilledCallback; // Optional, wird vom Server gesetzt (Spielmodus Hunter)
+    FirstPlayerIndex: Integer; // Spielmodus Hunter: Dieser Spieler (der Gejagte) wird in HandlePlayerVsMap zuerst behandelt, -1 = in der normalen Reihenfolge
     WhiteBombChance: Integer; // Mod weiße Bombe: in %, so viele der Items unter den Steinen werden zur weißen Bombe, 0 = Mod aus
     FlameThrowerChance: Integer; // Mod Flammenwerfer: in %, so viele der Items unter den Steinen werden zum Flammenwerfer, 0 = Mod aus
     ItemChance: Integer; // Mod Items & Krankheiten: in %, so viele der Steine haben ein Item, -1 = Mod aus
@@ -151,6 +154,7 @@ Type
     Function HurryActive(): Boolean; // True, sobald der erste Hurry Stein gesetzt wurde
     Function AddGhostBomb(PlayerIndex, ColorIndex, FlameLen: integer; Start, Target: TPoint): Boolean; // Eine fliegende Geisterbombe von Start nach Target erzeugen
     Function FindFreeField(x, y: integer): TPoint; // Liefert das zu x, y nächste Feld ohne Stein, Bombe, Flamme und Loch
+    Function FindRespawnField(AvoidPos: TPoint): TPoint; // Spielmodus Hunter: Zufälliges sicheres freies Feld mit Abstand zu AvoidPos (dem Gejagten)
     Function SpawnTestItem(Const Players: TPlayers; PowerUp: TPowerUps; WhiteBomb, FlameThrower: Boolean): Boolean; // Mod Test Modus: Item auf ein zufälliges freies Feld legen
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
@@ -422,6 +426,8 @@ Begin
   GhostReviveCallback := Nil;
   PlayerPunchCallback := Nil;
   WhiteBombCallback := Nil;
+  PlayerKilledCallback := Nil;
+  FirstPlayerIndex := -1;
   WhiteBombChance := 0;
   FlameThrowerChance := 0;
   ItemChance := -1;
@@ -2088,7 +2094,7 @@ Const
   // Damit der Stein erstellt werden kann.
   SpawnEmptyRange = 2;
 Var
-  nx, ny, x, y, xx, yy, i, j: integer;
+  nx, ny, x, y, xx, yy, i, j, k: integer;
   b, GhostFlame: Boolean;
 Begin
   If fHasSpawningBricks And (Not fPause) Then Begin
@@ -2130,7 +2136,13 @@ Begin
       fNextBrickSpawnTime := GetTickCount64() + RandomRange(FieldBrickMinSpawnTime, FieldBrickMaxSpawnTime);
     End;
   End;
-  For i := 0 To high(Players) Do Begin
+  (*
+   * Spielmodus Hunter: Der Gejagte wird zuerst behandelt. Erwischt ihn ein Spieler, der im selben Frame in seiner
+   * eigenen Flamme steht, ist dieser als neuer Gejagter schon unverwundbar und überlebt (unabhängig von der Spielernummer).
+   *)
+  For k := 0 To high(Players) Do Begin
+    i := k;
+    If (FirstPlayerIndex >= 0) And (FirstPlayerIndex <= high(Players)) Then i := (FirstPlayerIndex + k) Mod length(Players);
     If (Not Players[i].Info.Alive) Or (Players[i].Info.Dying) Or (Players[i].Flying) Then Continue;
     x := trunc(Players[i].Info.Position.x);
     y := trunc(Players[i].Info.Position.y);
@@ -2239,6 +2251,15 @@ Begin
         fPlaySoundEffect(i, seOtherPlayerDied);
         StatisticCallback(ssPlayerDeaths);
         fPlayerStatistics.UpdatePlayerID(i, pssDeaths);
+        // Spielmodus Hunter: Bei Selbstkill und Geisterbombe gibt es keinen Killer
+        If assigned(PlayerKilledCallback) Then Begin
+          If (i = fField[x, y].FlamePlayer) Or GhostFlame Then Begin
+            PlayerKilledCallback(i, -1);
+          End
+          Else Begin
+            PlayerKilledCallback(i, fField[x, y].FlamePlayer);
+          End;
+        End;
         KillPlayer(Players, i);
       End;
     End;
@@ -2541,6 +2562,99 @@ Begin
         End;
       End;
     End;
+  End;
+End;
+
+Function TAtomicField.FindRespawnField(AvoidPos: TPoint): TPoint;
+Const
+  MinDist = 4; // So viele Felder (Manhattan) soll der Respawn mindestens vom Gejagten entfernt sein
+Var
+  Safe, Walkable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
+  Candidates: Array[0..FieldWidth * FieldHeight - 1] Of TPoint;
+  i, j, k, d, bx, by, cnt, best, bestSafe, bestFree: integer;
+  pSafe, pFree: TPoint;
+
+  // True, wenn die Flamme der Bombe von bx, by aus das Feld x, y erreicht (keine Steine dazwischen)
+  Function InBombRange(x, y, FireLen: integer): Boolean;
+  Var
+    s, dx, dy: integer;
+  Begin
+    result := false;
+    If (x <> bx) And (y <> by) Then exit;
+    If abs(x - bx) + abs(y - by) > FireLen Then exit;
+    dx := sign(x - bx);
+    dy := sign(y - by);
+    For s := 1 To abs(x - bx) + abs(y - by) - 1 Do Begin
+      If fField[bx + s * dx, by + s * dy].BrickData <> bdBlank Then exit;
+    End;
+    result := true;
+  End;
+
+Begin
+  (*
+   * Spielmodus Hunter: Ein Feld zum Wiedereinsteigen
+   * - begehbar: kein Stein, keine Flamme, keine Bombe, kein Loch / Teleporter, kein Trampolin
+   * - sicher: nicht im Explosionsbereich einer liegenden Bombe
+   * - mit mindestens MinDist Abstand zum Gejagten, sonst das am weitesten entfernte Feld
+   *)
+  For i := 0 To FieldWidth - 1 Do Begin
+    For j := 0 To FieldHeight - 1 Do Begin
+      Walkable[i, j] := (fField[i, j].BrickData = bdBlank) And (fField[i, j].Flame = []) And (Not fField[i, j].Tramp) And
+        (Not (fHasHoles And (fHurryIndex = -1) And fHoles[i, j])) And (Not IsPortalCell(i, j));
+    End;
+  End;
+  For k := 0 To fBombCount - 1 Do Begin
+    bx := trunc(fBombs[k].Position.x);
+    by := trunc(fBombs[k].Position.y);
+    If (bx >= 0) And (bx < FieldWidth) And (by >= 0) And (by < FieldHeight) Then Walkable[bx, by] := false;
+  End;
+  Safe := Walkable;
+  For k := 0 To fBombCount - 1 Do Begin
+    bx := trunc(fBombs[k].Position.x);
+    by := trunc(fBombs[k].Position.y);
+    If (bx < 0) Or (bx >= FieldWidth) Or (by < 0) Or (by >= FieldHeight) Then Continue; // Fliegt gerade außerhalb, egal
+    For i := 0 To FieldWidth - 1 Do Begin
+      For j := 0 To FieldHeight - 1 Do Begin
+        If Safe[i, j] And InBombRange(i, j, fBombs[k].FireLen) Then Safe[i, j] := false;
+      End;
+    End;
+  End;
+  cnt := 0;
+  bestSafe := -1;
+  bestFree := -1;
+  pSafe := point(-1, -1);
+  pFree := point(-1, -1);
+  For i := 0 To FieldWidth - 1 Do Begin
+    For j := 0 To FieldHeight - 1 Do Begin
+      If Not Walkable[i, j] Then Continue;
+      d := abs(i - AvoidPos.x) + abs(j - AvoidPos.y);
+      If d > bestFree Then Begin
+        bestFree := d;
+        pFree := point(i, j);
+      End;
+      If Not Safe[i, j] Then Continue;
+      If d > bestSafe Then Begin
+        bestSafe := d;
+        pSafe := point(i, j);
+      End;
+      If d >= MinDist Then Begin
+        Candidates[cnt] := point(i, j);
+        inc(cnt);
+      End;
+    End;
+  End;
+  If cnt > 0 Then Begin
+    best := random(cnt);
+    result := Candidates[best];
+  End
+  Else If bestSafe >= 0 Then Begin
+    result := pSafe;
+  End
+  Else If bestFree >= 0 Then Begin
+    result := pFree;
+  End
+  Else Begin
+    result := FindFreeField(FieldWidth Div 2, FieldHeight Div 2);
   End;
 End;
 

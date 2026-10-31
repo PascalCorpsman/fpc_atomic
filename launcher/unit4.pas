@@ -39,6 +39,7 @@ Type
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
+    Button6: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -291,7 +292,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global, ulanguage;
+Uses uatomic_global, ulanguage, uitemsedit;
 
 Function ValidHandicapName(aName: String): Boolean;
 Begin
@@ -317,6 +318,8 @@ Begin
 {$ENDIF}
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
+  // Der "+" Button fügt Start Items in Edit1 ein (Mod Test Modus)
+  TItemsEditMenu.Create(Button6, Edit1);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
   setlength(fModCheckBoxes, 14);
   fModCheckBoxes[0] := CheckBox1;
@@ -456,9 +459,13 @@ Begin
 End;
 
 Procedure TForm4.Button1Click(Sender: TObject);
+Var
+  Keep: TModSettings;
 Begin
-  // Defaults
+  // Defaults, aber nur für die Mods, der Spielmodus in der selben Datei (Dialog Spielmodus) bleibt wie er ist
+  Keep := fSettings;
   ModSettingsDefaults(fSettings);
+  CopyGameModeSettings(Keep, fSettings);
   SettingsToControls();
 End;
 

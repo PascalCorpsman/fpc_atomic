@@ -36,8 +36,11 @@ Const
    * -Published- 0.06 - FIX: AV on ill flying AI'S
    *             0.07 - FIX: take solid bricks into account, when searching for destroyable bricks
    *                    FIX: don't get stuck on a hole if there are no more destroyable bricks
+   *             0.08 - Switch to InterfaceVersion 5 (AiHandlePlayerEx)
+   *                    ADD: game mode hunter: AttackAi hunts the enemy (hunters -> the hunted, the hunted -> all others)
+   *                    ADD: friendly fire check for hunters in TriggerBombAi
    *)
-  Ai_Version = 'Atomic ai ver. 0.07 by Corpsman';
+  Ai_Version = 'Atomic ai ver. 0.08 by Corpsman';
 
   (*
    * Powerups the AI want to collect
@@ -104,6 +107,8 @@ Type
     fIndex: integer; // The own player index
     fStrength: integer; // The requested Ai-Strength -> Actually not used
     fAiInfo: PAiInfo; // Pointer to AIinfo that is used globally by all routines
+    fGameMode: Cardinal; // AiMode_* of the actual frame, 0 = unknown (called without mode info) -> classic behavior
+    fHuntedIndex: integer; // AiMode_Hunter: player index of the hunted, -1 = nobody
 
     (*
      * True, if a bomb is on that coordinates (this is the unrolled version of fAiInfo^.bombs)
@@ -124,6 +129,11 @@ Type
      * \-> Does not need a initialized flag as it occures only once in code and this code directly initialize by itself
      *)
     fSimIsSurvivable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
+
+    (*
+     * Used by AttackAi: distance from the own position to every field from which a bomb would hit an enemy, NotAccessable = no such field
+     *)
+    fAttackDist: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Integer;
 
     (*
      * Container that stores "true" if the field coord is treated by own bombs or by chain reaction of own bombs
@@ -179,7 +189,23 @@ Type
      *)
     Function SimMoveWouldLeadToDeath(Const MoveState: TAiMoveState): Boolean;
 
+    (*
+     * Initializes fSimIsSurvivable = IsSurvivable + a own bomb placed at Pos
+     *)
+    Procedure SimPlaceBomb(Const Pos: TPoint);
+
     Function BrickDestroyAi(): TPoint; // Ai-Part thats aim is to destroy as much bricks as possible
+
+    (*
+     * True, if aIndex is a enemy of the Ai (only used in AiMode_Hunter)
+     *)
+    Function IsEnemy(aIndex: integer): Boolean;
+
+    (*
+     * Ai-Part that hunts the enemies (only used in AiMode_Hunter)
+     * Returns the field where the Ai should place a bomb to hit a enemy, NoTarget if no enemy can be attacked
+     *)
+    Function AttackAi(): TPoint;
 
     Function TriggerBombAi(): Boolean; // Ai-Part that detects wether the Ai-should trigger his own triggerable bombs
 
@@ -202,8 +228,9 @@ Type
 
     (*
      * Calculates based on AiInfo what the Agent whant to do as next
+     * GameMode = AiMode_* (0 = unknown -> classic behavior), HuntedIndex only valid in AiMode_Hunter
      *)
-    Function CalcAiCommand(Const AiInfo: TAiInfo): TAiCommand;
+    Function CalcAiCommand(Const AiInfo: TAiInfo; GameMode: Cardinal = 0; HuntedIndex: integer = -1): TAiCommand;
   End;
 
 Implementation
@@ -540,6 +567,48 @@ Begin
   End;
 End;
 
+Procedure TAtomicAi.SimPlaceBomb(Const Pos: TPoint);
+  Procedure SimExplode(sX, sY, sLen, sDirX, sDirY: Integer);
+  Begin
+    If (sLen < 0) Or (sx < 0) Or (sy < 0) Or (sx >= FieldWidth) Or (sy >= FieldHeight) Then exit;
+    If Not (fAiInfo^.Field[sx, sy] In [fBlank, fFlame]) Then exit; // Only
+    fSimIsSurvivable[sx, sy] := false;
+    sx := sx + sDirX;
+    sy := sy + sDirY;
+    SimExplode(sx, sy, slen - 1, sdirx, sdiry);
+  End;
+Var
+  i, j: integer;
+Begin
+  // Das Alte Feld übernehmen
+  For i := 0 To FieldWidth - 1 Do Begin
+    For j := 0 To FieldHeight - 1 Do Begin
+      fSimIsSurvivable[i, j] := IsSurvivable(i, j);
+    End;
+  End;
+  // Die neu gelegte Bombe Simulieren
+  SimExplode(
+    Pos.x, pos.y,
+    fAiInfo^.PlayerInfos[fIndex].FlameLength,
+    -1, 0
+    );
+  SimExplode(
+    Pos.x, pos.y,
+    fAiInfo^.PlayerInfos[fIndex].FlameLength,
+    1, 0
+    );
+  SimExplode(
+    Pos.x, pos.y,
+    fAiInfo^.PlayerInfos[fIndex].FlameLength,
+    0, -1
+    );
+  SimExplode(
+    Pos.x, pos.y,
+    fAiInfo^.PlayerInfos[fIndex].FlameLength,
+    0, 1
+    );
+End;
+
 Function TAtomicAi.BrickDestroyAi: TPoint;
 
   Function getBrickCountAt(x, y: integer): integer;
@@ -639,48 +708,6 @@ Function TAtomicAi.BrickDestroyAi: TPoint;
     SimBombExplodeOnBrickField(sx, sy, slen - 1, sdirx, sdiry);
   End;
 
-  Procedure SimPlaceBomb(Const Pos: TPoint);
-    Procedure SimExplode(sX, sY, sLen, sDirX, sDirY: Integer);
-    Begin
-      If (sLen < 0) Or (sx < 0) Or (sy < 0) Or (sx >= FieldWidth) Or (sy >= FieldHeight) Then exit;
-      If Not (fAiInfo^.Field[sx, sy] In [fBlank, fFlame]) Then exit; // Only
-      fSimIsSurvivable[sx, sy] := false;
-      sx := sx + sDirX;
-      sy := sy + sDirY;
-      SimExplode(sx, sy, slen - 1, sdirx, sdiry);
-    End;
-  Var
-    i, j: integer;
-  Begin
-    // Das Alte Feld übernehmen
-    For i := 0 To FieldWidth - 1 Do Begin
-      For j := 0 To FieldHeight - 1 Do Begin
-        fSimIsSurvivable[i, j] := IsSurvivable(i, j);
-      End;
-    End;
-    // Die neu gelegte Bombe Simulieren
-    SimExplode(
-      Pos.x, pos.y,
-      fAiInfo^.PlayerInfos[fIndex].FlameLength,
-      -1, 0
-      );
-    SimExplode(
-      Pos.x, pos.y,
-      fAiInfo^.PlayerInfos[fIndex].FlameLength,
-      1, 0
-      );
-    SimExplode(
-      Pos.x, pos.y,
-      fAiInfo^.PlayerInfos[fIndex].FlameLength,
-      0, -1
-      );
-    SimExplode(
-      Pos.x, pos.y,
-      fAiInfo^.PlayerInfos[fIndex].FlameLength,
-      0, 1
-      );
-  End;
-
 Var
   i, j, k: Integer;
   cnt, amax: Integer;
@@ -742,10 +769,101 @@ Begin
   End;
 End;
 
+Function TAtomicAi.IsEnemy(aIndex: integer): Boolean;
+Begin
+  result := false;
+  If (aIndex = fIndex) Or (aIndex < 0) Or (aIndex > high(fAiInfo^.PlayerInfos)) Then exit;
+  If fGameMode = AiMode_Hunter Then Begin
+    If fIndex = fHuntedIndex Then Begin
+      result := true; // The hunted fights against everybody
+    End
+    Else Begin
+      result := aIndex = fHuntedIndex; // Hunters only hunt the hunted
+    End;
+  End
+  Else Begin
+    result := (Not fAiInfo^.Teamplay) Or (fAiInfo^.PlayerInfos[aIndex].Team <> fAiInfo^.PlayerInfos[fIndex].Team);
+  End;
+End;
+
+Function TAtomicAi.AttackAi(): TPoint;
+Const
+  (*
+   * Max number of attack fields that are checked for a escape route, the
+   * check needs a height field calculation -> limit the CPU-Time per frame
+   *)
+  MaxAttackChecks = 5;
+  DirX: Array[0..3] Of integer = (-1, 1, 0, 0);
+  DirY: Array[0..3] Of integer = (0, 0, -1, 1);
+Var
+  i, j, k, d, ex, ey, tx, ty, mi: Integer;
+  nt: TPoint;
+  found: Boolean;
+Begin
+  result := NoTarget;
+  // Ohne Bomben können wir nicht angreifen -> klassisch weiter (BrickDestroyAi + TriggerBombAi)
+  If fAiInfo^.PlayerInfos[fIndex].AvailableBombs <= 0 Then exit;
+  // 1. Alle von uns aus erreichbaren Felder, von denen aus eine Bombe einen Feind trifft
+  InitHeightFieldFromPos(fAix, fAiy, true);
+  For i := 0 To FieldWidth - 1 Do Begin
+    For j := 0 To FieldHeight - 1 Do Begin
+      fAttackDist[i, j] := NotAccessable;
+    End;
+  End;
+  found := false;
+  For k := 0 To high(fAiInfo^.PlayerInfos) Do Begin
+    If Not IsEnemy(k) Then Continue;
+    If (Not fAiInfo^.PlayerInfos[k].Alive) Or fAiInfo^.PlayerInfos[k].Flying Then Continue;
+    ex := trunc(fAiInfo^.PlayerInfos[k].Position.x);
+    ey := trunc(fAiInfo^.PlayerInfos[k].Position.y);
+    If (ex < 0) Or (ey < 0) Or (ex >= FieldWidth) Or (ey >= FieldHeight) Then Continue;
+    // Flammenlinie des Feindes: gleiche Zeile / Spalte, Abstand <= eigene Flammenlänge, kein Stein dazwischen
+    For d := 0 To 3 Do Begin
+      For i := 0 To fAiInfo^.PlayerInfos[fIndex].FlameLength Do Begin
+        tx := ex + DirX[d] * i;
+        ty := ey + DirY[d] * i;
+        If (tx < 0) Or (ty < 0) Or (tx >= FieldWidth) Or (ty >= FieldHeight) Then break;
+        If Not (fAiInfo^.Field[tx, ty] In WalkableFields + [fFlame]) Then break; // Bricks, solids (and powerups) stop the flame
+        If (fAiInfo^.Field[tx, ty] In BombPlaceableFields) And (fHeightField[tx, ty] <> NotAccessable) And (Not HasBomb(tx, ty)) Then Begin
+          fAttackDist[tx, ty] := fHeightField[tx, ty];
+          found := true;
+        End;
+      End;
+    End;
+  End;
+  If Not found Then exit; // No enemy reachable -> BrickDestroyAi, so that the Ai blows its way free
+  // 2. Die nächsten Felder prüfen, ob es nach dem Legen der Bombe noch einen Fluchtweg gibt
+  For k := 1 To MaxAttackChecks Do Begin
+    nt := NoTarget;
+    mi := NotAccessable;
+    For i := 0 To FieldWidth - 1 Do Begin
+      For j := 0 To FieldHeight - 1 Do Begin
+        If fAttackDist[i, j] < mi Then Begin
+          mi := fAttackDist[i, j];
+          nt := point(i, j);
+        End;
+      End;
+    End;
+    If nt = NoTarget Then exit;
+    fAttackDist[nt.x, nt.y] := NotAccessable; // Checked
+    SimPlaceBomb(nt);
+    InitHeightFieldFromPos(nt.x, nt.y, true);
+    For i := 0 To FieldWidth - 1 Do Begin
+      For j := 0 To FieldHeight - 1 Do Begin
+        If fSimIsSurvivable[i, j] And (fHeightField[i, j] <> NotAccessable) Then Begin
+          result := nt;
+          exit;
+        End;
+      End;
+    End;
+  End;
+End;
+
 Function TAtomicAi.TriggerBombAi(): Boolean;
 Var
   px, py: integer;
   iBomb, iPlayer: Integer;
+  isFriend: Boolean;
 Begin
   result := false;
   If (IsSurvivable(fAix, fAiy)) Then Begin
@@ -756,13 +874,26 @@ Begin
       End;
     End;
     // We do not have any triggerable bomb -> no need to check anything
-    // We are not in Teamplay -> kill them all !
-    If (Not result) Or (Not fAiInfo^.Teamplay) Then exit;
+    If Not result Then exit;
+    If fGameMode = AiMode_Hunter Then Begin
+      // We are the hunted -> kill them all !
+      If fIndex = fHuntedIndex Then exit;
+    End
+    Else Begin
+      // We are not in Teamplay -> kill them all !
+      If Not fAiInfo^.Teamplay Then exit;
+    End;
     For iBomb := 0 To fAiInfo^.BombsCount - 1 Do Begin
       If (fAiInfo^.Bombs[iBomb].Owner = fIndex) And (fAiInfo^.Bombs[iBomb].ManualTrigger) Then Begin
         // Check for friendly fire
         For iPlayer := 0 To high(fAiInfo^.PlayerInfos) Do Begin
-          If fAiInfo^.PlayerInfos[iPlayer].Alive And (fAiInfo^.PlayerInfos[iPlayer].Team = fAiInfo^.PlayerInfos[fIndex].Team) Then Begin
+          If fGameMode = AiMode_Hunter Then Begin
+            isFriend := iPlayer <> fHuntedIndex; // For a hunter all other hunters are friends
+          End
+          Else Begin
+            isFriend := fAiInfo^.PlayerInfos[iPlayer].Team = fAiInfo^.PlayerInfos[fIndex].Team;
+          End;
+          If fAiInfo^.PlayerInfos[iPlayer].Alive And isFriend Then Begin
             px := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.x);
             py := trunc(fAiInfo^.PlayerInfos[iPlayer].Position.y);
             If (point(px, py) <> point(fAix, fAiy)) And TreatedByOwnBombs(px, py) Then Begin
@@ -881,7 +1012,8 @@ Begin
   fActualTarget := NoTarget;
 End;
 
-Function TAtomicAi.CalcAiCommand(Const AiInfo: TAiInfo): TAiCommand;
+Function TAtomicAi.CalcAiCommand(Const AiInfo: TAiInfo; GameMode: Cardinal;
+  HuntedIndex: integer): TAiCommand;
 Var
   eT, bDT: TPoint;
 Begin
@@ -890,6 +1022,9 @@ Begin
   Result.MoveState := amNone;
   If Not AiInfo.PlayerInfos[fIndex].Alive Then exit; // This Ai is dead -> skip
   fAiInfo := @AiInfo;
+  fGameMode := GameMode;
+  fHuntedIndex := HuntedIndex;
+  If (fHuntedIndex < 0) Or (fHuntedIndex > high(AiInfo.PlayerInfos)) Then fHuntedIndex := -1;
   fIsSurvivable_initialized := false;
   fHasBomb_initialized := false;
   fTreatedByOwnBombs_initialized := false;
@@ -905,8 +1040,11 @@ Begin
     result.MoveState := NavigateTo(eT.X, eT.Y, Not fPanik);
     exit;
   End;
+  bDT := NoTarget;
+  // Hunter: Second we try to attack the enemy (AttackAi only returns fields where we can place a bomb and escape)
+  If fGameMode = AiMode_Hunter Then bDT := AttackAi;
   // Second we try to destroy bricks and collect "goods"
-  bDT := BrickDestroyAi;
+  If bDT = NoTarget Then bDT := BrickDestroyAi;
   // 4. Sind wir schon an der Stelle an der wir sein wollen, wenn Ja dann Bombe legen
   // Wir sind wo wir hin wollen, und haben noch bomben übrig -> Bombe Legen
   If (bDT = point(fAix, fAiy)) And (fAiInfo^.PlayerInfos[fIndex].AvailableBombs > 0) Then Begin

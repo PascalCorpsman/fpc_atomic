@@ -57,6 +57,17 @@ Type
    *)
   TAiVersion = Function(): pchar; cdecl;
 
+  (*
+   * Optional (interface version >= 5): Bitmask of the supported game modes, see AiMode_Classic ...
+   *)
+  TAiGameModes = Function(): cuint32; cdecl;
+
+  (*
+   * Optional (interface version >= 5): Like AiHandlePlayer with additional info about the game mode,
+   * if exported it is called instead of AiHandlePlayer
+   *)
+  TAiHandlePlayerEx = Function(PlayerIndex: cuint32; Var AiInfo: TAiInfo; Var ModeInfo: TAiModeInfo): TAiCommand; Cdecl;
+
 Var
   AiInit: TAiInit = Nil;
   AiDeInit: TAiDeInit = Nil;
@@ -64,6 +75,8 @@ Var
   AiHandlePlayer: TAiHandlePlayer = Nil;
   AiInterfaceVersion: TAiInterfaceVersion = Nil;
   AiVersion: TAiVersion = Nil;
+  AiHandlePlayerEx: TAiHandlePlayerEx = Nil; // Nil, wenn die Lib es nicht exportiert
+  AiGameModesMask: cuint32 = 0; // Die unterstützten Spielmodi der geladenen Lib (AiMode_*), 0 = keine Lib geladen
 
 Function LoadAiLib(): Boolean;
 Procedure UnLoadAiLib;
@@ -78,6 +91,7 @@ Var
 Function LoadAiLib(): Boolean;
 Var
   Filename: String;
+  GameModes: TAiGameModes;
 Begin
 {$IFDEF Windows}
   Filename := 'ai.dll';
@@ -86,7 +100,8 @@ Begin
 {$ENDIF}
   Filename := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
   result := false;
-  If lib <> 0 Then UnloadLibrary(lib);
+  // Eine evtl. geladene Lib komplett entladen (mit AiDeInit), sonst zeigen die optionalen Funktionen ggf. noch in die alte Lib
+  UnLoadAiLib;
   If Not FileExists(Filename) Then exit;
   lib := LoadLibrary(Filename);
   If lib = 0 Then exit;
@@ -96,8 +111,9 @@ Begin
     exit;
   End;
 
-  If AiInterfaceVersion() <> AiLibInterfaceVersion Then Begin
-    logshow(format('Error, invalid ai interface version. Got %d need %d', [AiInterfaceVersion(), AiLibInterfaceVersion]), llError);
+  // Ältere Libs ab AiLibMinInterfaceVersion laufen weiter, sie können nur keine neuen Spielmodi
+  If (AiInterfaceVersion() < cuint32(AiLibMinInterfaceVersion)) Or (AiInterfaceVersion() > cuint32(AiLibInterfaceVersion)) Then Begin
+    logshow(format('Error, invalid ai interface version. Got %d need %d..%d', [AiInterfaceVersion(), AiLibMinInterfaceVersion, AiLibInterfaceVersion]), llError);
     UnLoadAiLib;
     exit;
   End;
@@ -131,6 +147,14 @@ Begin
     exit;
   End;
 
+  // Optional: Spielmodi, ohne den Export kann die Lib das normale Spiel und Team play
+  AiGameModesMask := AiMode_Classic Or AiMode_Teamplay;
+  If AiInterfaceVersion() >= 5 Then Begin
+    GameModes := TAiGameModes(GetProcAddress(lib, 'AiGameModes'));
+    If assigned(GameModes) Then AiGameModesMask := GameModes();
+    AiHandlePlayerEx := TAiHandlePlayerEx(GetProcAddress(lib, 'AiHandlePlayerEx'));
+  End;
+
   result := true;
 End;
 
@@ -150,6 +174,8 @@ Begin
   AiHandlePlayer := Nil;
   AiInterfaceVersion := Nil;
   AiVersion := Nil;
+  AiHandlePlayerEx := Nil;
+  AiGameModesMask := 0;
 End;
 
 End.

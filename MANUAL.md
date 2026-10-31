@@ -61,6 +61,9 @@ The key binding can be changed in the options dialog
 ## Game mods
 FPC Atomic has optional game mods (e.g. stun on bomb landing, positive disease, hit points per player, ghosts) and a mod test mode. All of them are off by default and can be set up in the launcher with "Mods...". See the [mods manual](MODS_MANUAL.md) for details ([German version](MODS_MANUAL_DE.md)).
 
+## Game options and game modes
+The game options (team play, scheme, map, play time, ...) are set in the options menu of the game or in the launcher with "Game options...". Besides the classic game there is the game mode **Hunter**: one player is the hunted with (almost) all items, whoever gets him becomes the new hunted. The game mode is chosen in the launcher with "Game mode...". All options and modes are explained in the [game options manual](GAMEOPTIONS_MANUAL.md) ([German version](GAMEOPTIONS_MANUAL_DE.md)).
+
 ## Connecting a Client over the Internet to a local server
 To connect a client to a server over the Internet, follow these steps: 
 

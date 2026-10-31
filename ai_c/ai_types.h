@@ -18,7 +18,22 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define AI_LIB_INTERFACE_VERSION 4u
+/*
+ * History: 4 = ADD: missing info for Diseases
+ *          5 = ADD: optional game modes: AiGameModes and AiHandlePlayerEx (TAiModeInfo_t), both exports are optional.
+ *              Libs with interface version 4 can still be loaded, they only support AiMode_Classic and AiMode_Teamplay.
+ */
+#define AI_LIB_INTERFACE_VERSION 5u
+#define AI_LIB_MIN_INTERFACE_VERSION 4u // The oldest interface version the server can still load
+
+/*
+ * The bit masks for the game modes, returned by the optional AiGameModes export.
+ * If a lib does not export AiGameModes, it supports AiMode_Classic | AiMode_Teamplay.
+ * The server does not allow ai players in a game mode the lib does not support.
+ */
+#define AiMode_Classic 1u  // Free for all
+#define AiMode_Teamplay 2u // Two teams, TAiPlayerInfo_t.Team is relevant
+#define AiMode_Hunter 4u   // One player is the hunted (TAiModeInfo_t.HuntedIndex) with (almost) all items, who kills him becomes the new hunted
 
 #define MAX_PLAYERS 10
 #define FIELD_WIDTH 15
@@ -139,4 +154,15 @@ typedef struct {
     int BombsCount;                         // Number of elements in Bombs.
     TAiBombInfo_t *Bombs;                     // Dynamic array of TAiBombInfo.
 } TAiInfo_t;
+
+/*
+ * Additional info about the game mode, only passed to the optional AiHandlePlayerEx export.
+ * New fields will only be appended, Size tells how many bytes are valid (read only fields that fit into Size).
+ */
+typedef struct {
+    uint32_t Size;           // sizeof(TAiModeInfo) of the server
+    uint32_t GameMode;       // Exactly one of AiMode_*
+    int32_t HuntedIndex;     // AiMode_Hunter: player index of the hunted, -1 = nobody (or not AiMode_Hunter)
+    int32_t RoundTimeLeftMs; // Time left in this round in ms, -1 = infinite
+} TAiModeInfo_t;
 #endif

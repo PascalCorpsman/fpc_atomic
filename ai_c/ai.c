@@ -62,3 +62,20 @@ TAiCommand_t AiHandlePlayer(uint32_t PlayerIndex, TAiInfo_t* AiInfo)
      */
     return res;
 }
+
+uint32_t AiGameModes()
+{
+    /*
+     * Optional: add AiMode_Hunter if your ai knows how to play this mode (see TAiModeInfo_t.HuntedIndex)
+     */
+    return AiMode_Classic | AiMode_Teamplay;
+}
+
+TAiCommand_t AiHandlePlayerEx(uint32_t PlayerIndex, TAiInfo_t* AiInfo, TAiModeInfo_t* ModeInfo)
+{
+    /*
+     * Optional: put your implementation here...
+     * e.g. if (ModeInfo->GameMode == AiMode_Hunter) ... ModeInfo->HuntedIndex ...
+     */
+    return AiHandlePlayer(PlayerIndex, AiInfo);
+}
