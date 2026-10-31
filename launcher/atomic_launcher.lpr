@@ -26,6 +26,7 @@ Uses
   Interfaces, // this includes the LCL widgetset
   Forms, unit1, unit2, unit3, unit4, unit5
 {$IFDEF LCLGTK2}
+{$WARNING 'Don''t use GTK2 compiles anymore, this feature will be removed in near future.'}
   , gtk2
 {$ENDIF}
   ;
