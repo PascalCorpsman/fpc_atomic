@@ -23,7 +23,7 @@ Interface
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
   uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field,
-  uatomic, uopengl_graphikengine, usounds, uloaderdialog;
+  uatomic, uopengl_graphikengine, usounds, uloaderdialog, umessagedialog, uatomic_global;
 
 Type
   TUDPPingData = Record
@@ -153,6 +153,8 @@ Type
 
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
+    fMessageDialog: TMessageDialog; // Meldungen und Ja / Nein Abfragen direkt im Spiel
+    fReclaimFocusUntil: QWord; // Bis zu diesem GetTickCount64 holt sich das Spiel den Fokus von der Server Konsole zurück (StartHost)
 
     Procedure FOnResize(Sender: TObject);
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -231,6 +233,14 @@ Type
     Procedure Join(IP: String; Port: Integer);
     Procedure PingForOpenGames;
     Procedure DoDisconnect();
+
+    Procedure ReclaimFocus();
+    Procedure UpdateViewPort(); // Berechnet fViewPortInfo aus der Größe von fOwner
+    Procedure OnLoaderRender(Sender: TObject); // Gibt dem Lade Dialog den aktuellen Viewport
+    Function ScreenToGame(X, Y: Integer): TPoint; // Fensterkoordinaten -> Spielkoordinaten (GameWidth x GameHeight)
+    Procedure OnMessageDialogOpen(Sender: TObject);
+    Procedure OnApplicationKeyDownBefore(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure OnQuitGameConfirmed(Sender: TObject);
   public
 {$IFDEF DebuggMode}
     fPlayer: TPlayers;
@@ -265,6 +275,13 @@ Type
     Procedure StartPlayingSong(Filename: String);
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
     Procedure Resize();
+
+    (*
+     * Meldungen und Ja / Nein Abfragen direkt im Spiel (statt als LCL-Fenster)
+     *)
+    Function MessageDialogReady: Boolean; // False, solange die Textur des Dialogs nicht geladen ist
+    Procedure ShowMessageDialog(Msg: String; Level: TLogLevel);
+    Procedure AskYesNo(Question: String; OnYes: TNotifyEvent);
   End;
 
 Var
@@ -291,7 +308,6 @@ Uses dglopengl
   , uatomicfont
   , uopengl_spriteengine
   , ugraphics
-  , uatomic_global
   , usdl_input
   , uopengl_shaderprimitives
   ;
@@ -533,19 +549,70 @@ Begin
   LogLeave(EnterID);
 End;
 
+Procedure TGame.OnMessageDialogOpen(Sender: TObject);
+Var
+  k: TKeySet;
+  ak: TAtomicKey;
+Begin
+  // Im Spiel die gehaltenen Tasten los lassen, sonst läuft der Spieler hinter dem Dialog weiter
+  If fgameState <> gs_Gaming Then exit;
+  For k In TKeySet Do Begin
+    If fPlayerIndex[k] = -1 Then Continue;
+    For ak In [akUp, akDown, akLeft, akRight, akSecondAction] Do Begin
+      If fPlayer[fPlayerIndex[k]].KeysPressed[ak] Then CheckKeyUp(ak, k);
+    End;
+  End;
+End;
+
+Procedure TGame.OnApplicationKeyDownBefore(Sender: TObject; Var Key: Word;
+  Shift: TShiftState);
+Begin
+  // Tab nutzt die LCL zum Wechsel des Fokus, noch bevor OnKeyDown kommt, deshalb wird es für einen offenen Dialog hier abgefangen
+  If (Key = VK_TAB) And (Sender = fOwner) And fMessageDialog.Active Then Begin
+    fMessageDialog.HandleKey(Key);
+    Key := VK_UNKNOWN;
+  End;
+End;
+
+Procedure TGame.OnQuitGameConfirmed(Sender: TObject);
+Begin
+  SwitchToScreen(sMainScreen);
+End;
+
+Function TGame.MessageDialogReady: Boolean;
+Begin
+  result := fMessageDialog.Ready;
+End;
+
+Procedure TGame.ShowMessageDialog(Msg: String; Level: TLogLevel);
+Begin
+  fMessageDialog.ShowInfo(Msg, Level);
+End;
+
+Procedure TGame.AskYesNo(Question: String; OnYes: TNotifyEvent);
+Begin
+  fMessageDialog.AskYesNo(Question, OnYes);
+End;
+
 Procedure TGame.Resize;
 Begin
   FOnResize(fOwner);
 End;
 
 Procedure TGame.FOnResize(Sender: TObject);
+Begin
+  UpdateViewPort();
+  If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
+End;
+
+Procedure TGame.UpdateViewPort;
 Var
   ScreenRatio, GameRatio: Single;
 Begin
   fViewPortInfo.TopLeft := point(0, 0);
   If settings.Proportional Then Begin
-    fViewPortInfo.ScreenWidth := TOpenGLControl(sender).Width;
-    fViewPortInfo.ScreenHeight := TOpenGLControl(sender).Height;
+    fViewPortInfo.ScreenWidth := fOwner.Width;
+    fViewPortInfo.ScreenHeight := fOwner.Height;
     (*
      * Do a Proportional Scale like TImage, but from hand ;)
      *)
@@ -565,31 +632,87 @@ Begin
     fViewPortInfo.ScreenHeight := GameHeight;
     fViewPortInfo.Scale := 1;
   End;
-  If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
+End;
+
+{$IFDEF Windows}
+// Nur diese Funktionen, die Unit Windows würde z.B. Point aus Classes überdecken
+Function GetForegroundWindow(): THandle; stdcall; external 'user32.dll';
+Function SetForegroundWindow(hWnd: THandle): LongBool; stdcall; external 'user32.dll';
+Function BringWindowToTop(hWnd: THandle): LongBool; stdcall; external 'user32.dll';
+Function GetWindowThreadProcessId(hWnd: THandle; lpdwProcessId: PDWord): DWord; stdcall; external 'user32.dll';
+Function AttachThreadInput(idAttach, idAttachTo: DWord; fAttach: LongBool): LongBool; stdcall; external 'user32.dll';
+Function GetCurrentThreadId(): DWord; stdcall; external 'kernel32.dll';
+{$ENDIF}
+
+Procedure TGame.OnLoaderRender(Sender: TObject);
+Begin
+  UpdateViewPort(); // Das Fenster kann sich während des Ladens noch ändern (z.B. Vollbild beim Start)
+  fSerialInit.Loader.ScreenWidth := fViewPortInfo.ScreenWidth;
+  fSerialInit.Loader.ScreenHeight := fViewPortInfo.ScreenHeight;
+  fSerialInit.Loader.Left := fViewPortInfo.TopLeft.X;
+  fSerialInit.Loader.Top := fViewPortInfo.TopLeft.Y;
+  fSerialInit.Loader.Scale := fViewPortInfo.Scale;
+End;
+
+Procedure TGame.ReclaimFocus;
+{$IFDEF Windows}
+Var
+  Form: TCustomForm;
+  fg: THandle;
+  fgThread, OwnThread: DWORD;
+{$ENDIF}
+Begin
+{$IFDEF Windows}
+  (*
+   * Ein anderer Prozess (die Konsole des Servers) hat den Vordergrund, dann darf SetForegroundWindow normalerweise nicht.
+   * Hängt man sich kurz an die Eingabe des Vordergrund Threads, geht es.
+   *)
+  Form := GetParentForm(fOwner);
+  If Not assigned(Form) Then exit;
+  fg := GetForegroundWindow();
+  If fg = Form.Handle Then exit;
+  OwnThread := GetCurrentThreadId();
+  fgThread := 0;
+  If fg <> 0 Then fgThread := GetWindowThreadProcessId(fg, Nil);
+  If (fgThread <> 0) And (fgThread <> OwnThread) Then AttachThreadInput(OwnThread, fgThread, true);
+  SetForegroundWindow(Form.Handle);
+  BringWindowToTop(Form.Handle);
+  If (fgThread <> 0) And (fgThread <> OwnThread) Then AttachThreadInput(OwnThread, fgThread, false);
+  If fOwner.CanFocus Then fOwner.SetFocus;
+{$ENDIF}
+End;
+
+Function TGame.ScreenToGame(X, Y: Integer): TPoint;
+Begin
+  // Umrechnen der Echten Koords in die Screencoords
+  If settings.Proportional Then Begin
+    result.x := trunc((x - fViewPortInfo.TopLeft.X) / fViewPortInfo.Scale);
+    result.y := trunc((y - fViewPortInfo.TopLeft.Y) / fViewPortInfo.Scale);
+  End
+  Else Begin
+    result.x := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
+    result.y := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
+  End;
 End;
 
 Procedure TGame.FOnMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 Var
-  xx, yy: Integer;
+  p: TPoint;
 Begin
-  // Umrechnen der Echten Koords in die Screencoords
-  If settings.Proportional Then Begin
-    xx := x - fViewPortInfo.TopLeft.X;
-    yy := y - fViewPortInfo.TopLeft.Y;
-    xx := trunc(xx / fViewPortInfo.Scale);
-    yy := trunc(yy / fViewPortInfo.Scale);
+  p := ScreenToGame(x, y);
+  If fMessageDialog.Active Then Begin
+    // Ein offener Dialog bekommt alle Klicks, der Screen dahinter keine
+    If Button = mbLeft Then fMessageDialog.HandleMouseDown(p.x, p.y);
   End
   Else Begin
-    xx := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
-    yy := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
-  End;
-  Case fgameState Of
-    gs_MainMenu: Begin
-        If assigned(fActualScreen) Then Begin
-          fActualScreen.OnMouseDown(Sender, button, Shift, xx, yy);
+    Case fgameState Of
+      gs_MainMenu: Begin
+          If assigned(fActualScreen) Then Begin
+            fActualScreen.OnMouseDown(Sender, button, Shift, p.x, p.y);
+          End;
         End;
-      End;
+    End;
   End;
   If Assigned(FOnMouseDownCapture) Then Begin
     FOnMouseDownCapture(Sender, Button, Shift, x, y);
@@ -607,7 +730,13 @@ End;
 
 Procedure TGame.FOnMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer
   );
+Var
+  p: TPoint;
 Begin
+  If fMessageDialog.Active Then Begin
+    p := ScreenToGame(x, y);
+    fMessageDialog.HandleMouseMove(p.x, p.y);
+  End;
   // TODO: Prüfen ob das gelöscht werden kann
   If Assigned(FOnMousemoveCapture) Then Begin
     FOnMousemoveCapture(Sender, Shift, x, y);
@@ -633,6 +762,11 @@ Begin
   If (Not fInitialized) And (Key = VK_ESCAPE) Then Begin
     fInitialized := true;
     SwitchToScreen(sExitBomberman);
+    exit;
+  End;
+  // Ein offener Dialog bekommt alle Tasten (außer Alt + Enter für den Vollbild Modus)
+  If fMessageDialog.Active And Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin
+    fMessageDialog.HandleKey(Key);
     exit;
   End;
   If Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin // Sonst wird das VK_Return ggf unsinnig ausgewertet
@@ -672,9 +806,10 @@ Begin
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
 {$IFNDEF Only3Player}
-            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
+            AskYesNo('Do you really want to quit?', @OnQuitGameConfirmed);
+{$ELSE}
+            SwitchToScreen(sMainScreen);
 {$ENDIF}
-              SwitchToScreen(sMainScreen);
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
@@ -858,7 +993,8 @@ End;
 Procedure TGame.FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
   writeln('SDLDown');
-  If fgameState = gs_Gaming Then Begin
+  // Ist ein Dialog offen, wird er auch im Spiel mit dem Gamepad bedient
+  If (fgameState = gs_Gaming) And (Not fMessageDialog.Active) Then Begin
     CheckKeyDown(aKey, aKeyset);
   End
   Else Begin
@@ -934,6 +1070,8 @@ Begin
 {$IFDEF Windows}
     // Windows needs the new console, otherwise the server could lag..
     p.Options := [poNewConsole];
+    // Die Konsole des Servers startet minimiert und ohne Fokus, sonst landen die Eingaben (vor allem im Vollbild) nicht mehr im Spiel
+    p.ShowWindow := swoshowMinNOActive;
 {$ELSE}
     p.Options := [poDetached];
 {$ENDIF}
@@ -959,6 +1097,9 @@ Begin
   // StartClientGame; --> Das Verbinden macht der SwitchToScreen schon ;)
   Application.Restore;
   Application.BringToFront;
+  // Die Konsole des Servers kann den Fokus auch noch nach dem Warten übernehmen (z.B. mit Windows Terminal), deshalb holt OnIdle ihn eine Weile zurück
+  fReclaimFocusUntil := GetTickCount64 + 3000;
+  ReclaimFocus();
   result := true;
   LogLeave(EnterID);
 End;
@@ -2522,6 +2663,9 @@ Begin
   fInitialized := false;
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
+  fMessageDialog := TMessageDialog.Create;
+  fReclaimFocusUntil := 0;
+  fMessageDialog.OnOpen := @OnMessageDialogOpen;
   fUDPPingData.Connection := Nil;
   fUDPPingData.Active := false;
   fLastIdleTick := GetTickCount64;
@@ -2535,6 +2679,7 @@ Var
   j: Integer;
 Begin
   SDL_FreeSticks;
+  Application.RemoveOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -2557,6 +2702,8 @@ Begin
   fHuntedAtomic := Nil;
   setlength(fFields, 0);
   DoDisconnect();
+  fMessageDialog.free;
+  fMessageDialog := Nil;
   fChunkManager.free;
   fChunkManager := Nil;
 End;
@@ -2619,7 +2766,10 @@ Begin
         fSerialInit.t := GetTickCount64;
         fSerialInit.total := fSerialInit.t;
 {$ENDIF}
+        // Der Meldungsdialog nutzt den Rahmen des Lade Dialogs, damit auch Fehler beim Laden schon im Spiel angezeigt werden können
+        fMessageDialog.LoadFromDisk(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png');
         fSerialInit.Loader := TLoaderDialog.create(fOwner);
+        fSerialInit.Loader.OnBeforeRender := @OnLoaderRender;
         (*
          * Lade Prozente
          * 0..10 : Screens
@@ -2655,6 +2805,7 @@ Begin
         fOwner.OnDblClick := @FOnDblClick;
         FOnKeyDownCapture := fOwner.OnKeyDown;
         fOwner.OnKeyDown := @FOnKeyDown;
+        Application.AddOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
         FOnKeyUpCapture := fOwner.OnKeyUp;
         fOwner.OnKeyUp := @FOnKeyUp;
         fOnResizeCapture := fOwner.OnResize;
@@ -3075,6 +3226,7 @@ Begin
       'Error during loading, please restart application.' + LineEnding + LineEnding +
       'If the problem persists try a re run of the cd_data_extractor'
       );
+    fMessageDialog.Render;
     Exit2d();
     exit;
   End;
@@ -3131,6 +3283,7 @@ Begin
         RenderFlash();
       End;
   End;
+  fMessageDialog.Render; // Über allem anderen
   fSoundInfo.Render;
   ResetShaderTransform;
   Exit2d();
@@ -3139,6 +3292,14 @@ End;
 Procedure TGame.OnIdle;
 Begin
   PingForOpenGames;
+  If fReclaimFocusUntil <> 0 Then Begin
+    If GetTickCount64 > fReclaimFocusUntil Then Begin
+      fReclaimFocusUntil := 0;
+    End
+    Else Begin
+      ReclaimFocus();
+    End;
+  End;
   (*
    * Doing the "real" disconnect in the idle handler, is the fastest way to do without risking a endles
    * recursion of disconnects in diconnect.

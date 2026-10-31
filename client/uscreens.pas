@@ -59,6 +59,7 @@ Type
     fSoundFile: String;
     fSoundExitScreen: String;
     fCursorFile: String;
+    Procedure OnQuitConfirmed(Sender: TObject);
   public
 
     PlayerIsFirst: Boolean; // Global Verfügbar, True, wenn der Spieler "Spieler 1" ist !
@@ -74,6 +75,7 @@ Type
 
     Procedure Reset; virtual; // Abstract
     Procedure StartPLaySong(); virtual;
+    Procedure QuitToMainScreen(Ask: Boolean); // Zurück ins Hauptmenü, mit Ask = True wird vorher im Spiel nachgefragt
   End;
 
   { TJoinQuestionForm }
@@ -509,14 +511,7 @@ Procedure TMatchStatistikMenu.OnKeyDown(Sender: TObject; Var Key: Word;
 Begin
   // Mitten im Netzwerkspiel, deshalb nachfragen
   If key = VK_ESCAPE Then Begin
-{$IFNDEF Only3Player}
-    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
-{$ENDIF}
-      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-      TGame(fOwner).SwitchToScreen(sMainScreen);
-{$IFNDEF Only3Player}
-    End;
-{$ENDIF}
+    QuitToMainScreen(true);
   End;
   If PlayerIsFirst Then Begin
     If key = VK_RETURN Then Begin
@@ -595,14 +590,7 @@ Procedure TDrawGameMenu.OnKeyDown(Sender: TObject; Var Key: Word;
 Begin
   // Mitten im Netzwerkspiel, deshalb nachfragen
   If key = VK_ESCAPE Then Begin
-{$IFNDEF Only3Player}
-    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
-{$ENDIF}
-      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-      Tgame(fOwner).SwitchToScreen(sMainScreen);
-{$IFNDEF Only3Player}
-    End;
-{$ENDIF}
+    QuitToMainScreen(true);
   End;
   If PlayerIsFirst Then Begin
     If key = VK_RETURN Then Begin
@@ -727,14 +715,7 @@ Procedure TFieldSetupMenu.OnKeyDown(Sender: TObject; Var Key: Word;
 Begin
   // Mitten im Netzwerkspiel, deshalb nachfragen
   If key = VK_ESCAPE Then Begin
-{$IFNDEF Only3Player}
-    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
-{$ENDIF}
-      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-      TGame(fOwner).SwitchToScreen(sMainScreen);
-{$IFNDEF Only3Player}
-    End;
-{$ENDIF}
+    QuitToMainScreen(true);
   End;
   If PlayerIsFirst Then Begin
     If key = VK_RETURN Then Begin
@@ -858,14 +839,7 @@ Begin
     End;
   End;
   If key = VK_ESCAPE Then Begin
-{$IFNDEF Only3Player}
-    If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then Begin
-{$ENDIF}
-      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-      Tgame(fOwner).SwitchToScreen(sMainScreen);
-{$IFNDEF Only3Player}
-    End;
-{$ENDIF}
+    QuitToMainScreen(true);
   End;
   If key = VK_DOWN Then Begin
     fCursorPos := min(fCursorPos + 1, length(PlayerColors) - 1);
@@ -1028,14 +1002,7 @@ Procedure TJoinMenu.OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState
 Begin
   If (key = VK_ESCAPE) Or (key = VK_BACK) Then Begin
     // Wer schon verbunden ist, verlässt mit ESC die Lobby (und das Netzwerkspiel), deshalb nachfragen
-{$IFNDEF Only3Player}
-    If (Not Connected) Or (ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO)) Then Begin
-{$ENDIF}
-      Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
-      Tgame(fOwner).SwitchToScreen(sMainScreen);
-{$IFNDEF Only3Player}
-    End;
-{$ENDIF}
+    QuitToMainScreen(Connected);
   End;
   If key = VK_RETURN Then Begin // Alle Clients sind da -> Ab in den Spieler Config Dialog..
     If PlayerIsFirst Then Begin
@@ -1241,11 +1208,6 @@ Begin
       11: Begin
           Tgame(fOwner).Settings.Fullscreen := Not Tgame(fOwner).Settings.Fullscreen;
           Form1.SetFullScreen(Tgame(fOwner).Settings.Fullscreen);
-{$IFDEF Windows}
-          If Tgame(fOwner).Settings.Fullscreen Then Begin
-            LogShow('To switch to Fullscreen mode, you need to restart the game.');
-          End;
-{$ENDIF}
         End;
       12: Begin
           Tgame(fOwner).Settings.Proportional := Not Tgame(fOwner).Settings.Proportional;
@@ -1505,6 +1467,23 @@ Procedure TScreen.Reset;
 Begin
   PlayerIsFirst := false;
   StartPLaySong();
+End;
+
+Procedure TScreen.OnQuitConfirmed(Sender: TObject);
+Begin
+  Tgame(fOwner).PlaySoundEffect(fSoundExitScreen);
+  Tgame(fOwner).SwitchToScreen(sMainScreen);
+End;
+
+Procedure TScreen.QuitToMainScreen(Ask: Boolean);
+Begin
+{$IFNDEF Only3Player}
+  If Ask Then Begin
+    Tgame(fOwner).AskYesNo('Do you really want to quit?', @OnQuitConfirmed);
+    exit;
+  End;
+{$ENDIF}
+  OnQuitConfirmed(Nil);
 End;
 
 Procedure TScreen.StartPLaySong();

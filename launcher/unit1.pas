@@ -390,9 +390,13 @@ End;
 Procedure TForm1.FormKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Begin
-  // Der Launch "Knopf" ist ein Panel (nur so lässt er sich blau färben), daher Alt+L und Return / Leertaste (wenn er den Fokus hat) hier von Hand
+  (*
+   * Der Launch "Knopf" ist ein Panel (nur so lässt er sich blau färben), daher Alt+L und Leertaste (wenn er den Fokus hat) hier von Hand.
+   * Return startet im Hauptdialog immer (auch mit Strg / Shift, die wertet Button2Click aus), außer ein anderer Knopf hat den Fokus oder die Sprachauswahl ist aufgeklappt.
+   *)
   If ((ssAlt In Shift) And (key = VK_L)) Or
-    ((ActiveControl = Panel1) And ((key = VK_RETURN) Or (key = VK_SPACE))) Then Begin
+    ((ActiveControl = Panel1) And (key = VK_SPACE)) Or
+    ((key = VK_RETURN) And ((Shift - [ssCtrl, ssShift]) = []) And Not (ActiveControl Is TCustomButton) And Not ComboBox1.DroppedDown) Then Begin
     key := 0;
     Button2Click(Nil);
   End;

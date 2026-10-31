@@ -33,6 +33,11 @@ Type
     fTexture: TGraphikItem; // Die 9 Einzeltextruren des Hintergrunds
   public
     Percent: integer;
+    // Wie TGame.fViewPortInfo, damit der Dialog wie das Spiel skaliert wird (Seitenverhältnis beibehalten)
+    ScreenWidth, ScreenHeight: integer;
+    Left, Top: integer;
+    Scale: Single;
+    OnBeforeRender: TNotifyEvent; // Zum Setzen von ScreenWidth .. Scale vor jedem Render
     Constructor Create(Const Owner: TOpenGLControl);
     Destructor Destroy(); override;
     (*
@@ -53,6 +58,8 @@ Uses
   , uatomic_common
   , uOpenGL_ASCII_Font
   , uopengl_shaderprimitives
+  , umessagedialog
+  , uvectormath
   ;
 
 { TLoaderDialog }
@@ -63,52 +70,41 @@ Begin
   fHeight := 5 * 24;
   fOwner := Owner;
   Percent := 0;
+  ScreenWidth := GameWidth;
+  ScreenHeight := GameHeight;
+  Left := 0;
+  Top := 0;
+  Scale := 1;
+  OnBeforeRender := Nil;
   fTexture := OpenGL_GraphikEngine.LoadGraphikItem(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png', smClamp);
 End;
 
 Destructor TLoaderDialog.Destroy;
-Var
-  i: Integer;
 Begin
-  For i := 0 To 8 Do Begin
-    OpenGL_GraphikEngine.RemoveGraphik(fTexture);
-  End;
-  Inherited Create;
+  // Die Textur wird nicht freigegeben, TMessageDialog nutzt die gleiche Datei (die Engine gibt sie dann als dieselbe Textur zurück)
+  Inherited Destroy;
 End;
 
 Procedure TLoaderDialog.Render;
 Var
-  l, t, x, i, j: Integer;
+  l, t, x: Integer;
   s: String;
+  m: TMatrix4x4;
 Begin
+  If assigned(OnBeforeRender) Then OnBeforeRender(self);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT Or GL_DEPTH_BUFFER_BIT);
   glBindTexture(GL_TEXTURE_2D, 0);
-  Go2d(GameWidth, GameHeight);
+  Go2d(ScreenWidth, ScreenHeight);
+  m := IdentityMatrix4x4;
+  m := TranslateMatrix4x4(m, Left, Top, 0);
+  m := ScaleMatrix4x4(m, Scale, Scale, 1);
+  SetShaderTransform(m);
   l := (GameWidth - fWidth) Div 2;
   t := (GameHeight - fHeight) Div 2;
   UseTextureShader;
   // Die "Dialogbox"
-  // 1. Zeile
-  RenderTiledQuad(l, t, atomic_dialog_Layer, 0, 3, 3, fTexture); // Ecke Oben Links
-  For i := 1 To (fWidth Div 24) - 2 Do Begin
-    RenderTiledQuad(l + i * 24, t, atomic_dialog_Layer, 1, 3, 3, fTexture); // Obere Mittlere Kante
-  End;
-  RenderTiledQuad(l + ((fWidth Div 24) - 1) * 24, t, atomic_dialog_Layer, 2, 3, 3, fTexture); // Ecke Oben Rechts
-  // Zeile 2 bis N -1
-  For j := 1 To (fHeight Div 24) - 2 Do Begin
-    RenderTiledQuad(l, t + j * 24, atomic_dialog_Layer, 3, 3, 3, fTexture); // Linke Kante
-    For i := 1 To (fWidth Div 24) - 2 Do Begin
-      RenderTiledQuad(l + i * 24, t + j * 24, atomic_dialog_Layer, 4, 3, 3, fTexture); // Die Mittelstücke
-    End;
-    RenderTiledQuad(l + ((fWidth Div 24) - 1) * 24, t + j * 24, atomic_dialog_Layer, 5, 3, 3, fTexture); // Rechte Kante
-  End;
-  // Letzte Zeile
-  RenderTiledQuad(l, t + ((fHeight Div 24) - 1) * 24, atomic_dialog_Layer, 6, 3, 3, fTexture); // Ecke unten Links
-  For i := 1 To (fWidth Div 24) - 2 Do Begin
-    RenderTiledQuad(l + i * 24, t + ((fHeight Div 24) - 1) * 24, atomic_dialog_Layer, 7, 3, 3, fTexture); // untere Mittlere Kante
-  End;
-  RenderTiledQuad(l + ((fWidth Div 24) - 1) * 24, t + ((fHeight Div 24) - 1) * 24, atomic_dialog_Layer, 8, 3, 3, fTexture); // Ecke Unten Rechts
+  RenderDialogFrame(l, t, fWidth, fHeight, atomic_dialog_Layer, fTexture);
   // Rendern der Elemente auf dem Dialog
   glBindTexture(GL_TEXTURE_2D, 0);
   // Der Schriftzug "Loading data..."
@@ -145,6 +141,7 @@ Begin
   glShaderVertex(l + fWidth - 24 - 1, t + 82 + 1, atomic_dialog_Layer + atomic_EPSILON);
   glShaderEnd();
   UseTextureShader;
+  ResetShaderTransform;
   Exit2d();
   fOwner.SwapBuffers;
   Application.ProcessMessages;

@@ -74,6 +74,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="umessagedialog.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="../units/uatomic_common.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
