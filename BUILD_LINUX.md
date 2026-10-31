@@ -157,7 +157,7 @@ To narrow it down: Check whether the same happens with `GDK_BACKEND=x11` and on 
 
 ### Windows grow a little right after they are shown
 
-Under GTK3 the launcher window (and a dialog the first time it is opened) gets a few pixels larger about a third of a second after it appeared. This is intended:
+Only under GTK3 the main window of the launcher gets a few pixels wider about a third of a second after it appeared (e.g. 547 -> 556 px in German). Under GTK2 and Windows this does not happen. This is intended:
 
 - Before a button is on the screen, GTK3 reports a preferred width that is 14 px too small: the padding and border of the theme are missing (e.g. `Abbrechen`: 89 instead of 103 px). `FitLayout` is called before the window is shown, so it calculates the buttons too small.
 - Therefore `FitLayout` calculates a window once more when it is on the screen (`gtk_widget_get_mapped`). It also remembers the border of the buttons it measured on the screen and uses it for the dialogs opened later, so these mostly get their final size at once.
