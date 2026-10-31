@@ -155,6 +155,14 @@ If the dialog is left with Alt+Tab, then clicked again and closed, all controls 
 
 To narrow it down: Check whether the same happens with `GDK_BACKEND=x11` and on a native Linux desktop. If it only happens under Wayland / WSLg, it is a compositor topic and can be ignored for the game.
 
+### Windows grow a little right after they are shown
+
+Under GTK3 the launcher window (and a dialog the first time it is opened) gets a few pixels larger about a third of a second after it appeared. This is intended:
+
+- Before a button is on the screen, GTK3 reports a preferred width that is 14 px too small: the padding and border of the theme are missing (e.g. `Abbrechen`: 89 instead of 103 px). `FitLayout` is called before the window is shown, so it calculates the buttons too small.
+- Therefore `FitLayout` calculates a window once more when it is on the screen (`gtk_widget_get_mapped`). It also remembers the border of the buttons it measured on the screen and uses it for the dialogs opened later, so these mostly get their final size at once.
+- It waits 300 ms before that, see the next point.
+
 ### Wayland: a resize right after the window is shown is lost
 
 If a form changes its size within some milliseconds after it appeared on the screen, the new size is not applied under Wayland: the window keeps a smaller size and the right and bottom part is cut off. 200 ms later it works. `FitLayout` therefore waits 300 ms before it calculates a shown window again.
@@ -205,6 +213,8 @@ The dialogs stay as they are designed, with fixed positions. `FitLayout(Form)` f
 - Panels, group boxes, page controls and the window grow until the content fits. A window with a fixed size (`Constraints` min = max) keeps a fixed size, the new one.
 - A label next to a taller control (edit, combo box, ...) is centered vertically to it. A control that ended at the same height as a neighbour in the designer (e.g. the list next to the page control) grows with it.
 - Controls with `Align`, anchored to other controls or anchored right / bottom are not moved, the LCL places them.
+
+Under GTK3 the controls report their final size only when they are on the screen, so `FitLayout` calculates a window once more about 300 ms after it is shown (see [Windows grow a little right after they are shown](#windows-grow-a-little-right-after-they-are-shown)).
 
 `FitLayout` always calculates from the positions of the designer (they are stored on the first call), so it can be called again and again. Where everything already fits (e.g. Windows in English), nothing changes.
 
