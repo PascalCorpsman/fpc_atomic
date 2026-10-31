@@ -1162,6 +1162,9 @@ Begin
     fPLayer[i].FlameThrowerFiring := false;
     fPLayer[i].FlameThrowerExposure := 0;
     fPLayer[i].Info.FlameThrowerLen := 0;
+    fPLayer[i].FirstActionHeld := false;
+    fPLayer[i].CarryTimer := 0;
+    fPLayer[i].Info.Carrying := false;
     // Trefferpunkte Mod, 0 = Mod aus (dann zeigt der Client auch nichts an)
     fPLayer[i].MaxHitPoints := 0;
     If fModSettings.HitPoints Then Begin
@@ -1265,6 +1268,7 @@ Begin
       fPLayer[i].MoveState := msStill;
       fPLayer[i].Action := aaNone;
       fPLayer[i].FlameThrowerFiring := false; // Das Loslassen der zweiten Aktion während der Pause käme sonst nie an
+      fPLayer[i].FirstActionHeld := false; // Dito für die erste Aktion (Mod Bomben tragen: nach der Pause wird geworfen)
     End;
   End;
   m := TMemoryStream.Create;
@@ -1619,6 +1623,7 @@ Begin
     exit;
   End;
   fPLayer[PlayerIndex].HitPoints := fPLayer[PlayerIndex].HitPoints - 1;
+  fActualField.DropCarriedBomb(fPLayer[PlayerIndex], PlayerIndex); // Mod Bomben tragen: Bei einem Treffer fällt die getragene Bombe hin
   If fModSettings.ShowHitPoints Then fPLayer[PlayerIndex].Info.HitPoints := fPLayer[PlayerIndex].HitPoints;
   fPLayer[PlayerIndex].InvulnTimer := max(fPLayer[PlayerIndex].InvulnTimer, fModSettings.InvulnTimeMs);
   HandlePlaySoundEffect(PlayerIndex, seGetBadPowerUp);
@@ -1674,6 +1679,7 @@ Begin
     fPLayer[i].Info.FlameThrowerLen := 0;
     If (Not fPLayer[i].Info.Alive) Or fPLayer[i].Info.Dying Or fPLayer[i].Flying Then Continue;
     If (fPLayer[i].FlameThrowerFuel <= 0) Or (Not fPLayer[i].FlameThrowerFiring) Or (fPLayer[i].StunTimer > 0) Then Continue;
+    If fActualField.CarriedBombIndex(i) <> -1 Then Continue; // Mod Bomben tragen: Mit einer Bombe in den Händen wird nicht gefeuert
     fPLayer[i].FlameThrowerFuel := max(0, fPLayer[i].FlameThrowerFuel - FrameRate);
     dx := 0;
     dy := 0;
@@ -1804,6 +1810,7 @@ Begin
   fPLayer[Index].Info.BrickWalk := false;
   fPLayer[Index].InvulnTimer := InvulnMs;
   fPLayer[Index].RespawnTimer := 0;
+  fPLayer[Index].Action := aaNone; // Eine während des Todes gedrückte Aktion würde sonst sofort ausgeführt (z.B. eine Bombe gelegt)
   // Bomben, die der Spieler vor seinem Tod gelegt hat und die noch liegen, geben beim Explodieren eine Bombe zurück -> SetPlayerPowers
   SetPlayerPowers(Index, PowersFromScheme(fSettings.Scheme));
   For pu In TPowerUps Do Begin
@@ -2291,6 +2298,13 @@ Begin
         HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
         s := 'white bomb';
       End;
+    mtGiveGlove: Begin
+        // Wie das Item, Handschuh und Spooger schließen sich aus
+        fPLayer[PlayerIndex].Powers.CanGrabBombs := true;
+        fPLayer[PlayerIndex].Powers.CanSpooger := false;
+        HandlePlaySoundEffect(PlayerIndex, seGetGoodPowerUp);
+        s := 'glove';
+      End;
   End;
   log('Mod test command for player ' + fPLayer[PlayerIndex].UserName + ': ' + s, llInfo);
   LogLeave(EnterID);
@@ -2377,6 +2391,7 @@ End;
 Procedure TServer.HandleClientKeyEvent(Const Stream: TStream; Uid: integer);
 Var
   Player: integer;
+  p: TPoint;
   Double, State: Boolean;
   Key: TAtomicKey;
 Begin
@@ -2406,6 +2421,18 @@ Begin
       akLeft: fPLayer[Player].MoveState := msLeft;
       akRight: fPLayer[Player].MoveState := msRight;
       akFirstAction: Begin
+          fPLayer[Player].FirstActionHeld := true; // Mod Bomben tragen, so lange bis die Taste los gelassen wird
+          (*
+           * Mod Bomben tragen: Drücken und dann halten ist langsamer als ein Doppelklick, mit dem Handschuh
+           * zählt deshalb auch ein etwas späterer 2. Druck als doppelt (der Spooger bleibt beim Client Wert).
+           *)
+          p := point(trunc(fPLayer[Player].Info.Position.x), trunc(fPLayer[Player].Info.Position.y));
+          // Nur auf dem selben Feld, sonst wird aus schnellem Legen beim Laufen ein Aufheben der gerade gelegten Bombe
+          If fModSettings.CarryBomb And fPLayer[Player].Powers.CanGrabBombs And
+            (GetTickCount64 - fPLayer[Player].LastFirstActionDown < CarryBombDoubleTime) And
+            (p.x = fPLayer[Player].LastFirstActionTile.x) And (p.y = fPLayer[Player].LastFirstActionTile.y) Then Double := true;
+          fPLayer[Player].LastFirstActionDown := GetTickCount64;
+          fPLayer[Player].LastFirstActionTile := p;
           If (Not (dNoBombs In fPLayer[Player].Disease)) Then Begin
             If Double Then Begin
               fPLayer[Player].Action := aaFirstDouble;
@@ -2432,6 +2459,10 @@ Begin
     If key = akSecondAction Then Begin
       // Mod Flammenwerfer: Der Client meldet das Loslassen der zweiten Aktion, das darf die Bewegung nicht stoppen
       fPLayer[Player].FlameThrowerFiring := false;
+    End
+    Else If key = akFirstAction Then Begin
+      // Mod Bomben tragen: Der Client meldet das Loslassen der ersten Aktion, das darf die Bewegung auch nicht stoppen
+      fPLayer[Player].FirstActionHeld := false;
     End
     Else Begin
       // Nur die "Cursor" werden false gemacht -> immer Stillstand
@@ -2495,6 +2526,8 @@ Begin
       End;
       fPLayer[i].UserName := '';
       fPLayer[i].FlameThrowerFiring := false; // Mod Flammenwerfer, das Loslassen der Taste kommt nicht mehr
+      fPLayer[i].FirstActionHeld := false; // Mod Bomben tragen, dito
+      If assigned(fActualField) Then fActualField.DropCarriedBomb(fPLayer[i], i);
       If fPLayer[i].Info.Alive Then Begin // Sollte der Spieler noch am Leben sein -> stirbt er evtl jetzt
         fPLayer[i].Info.Alive := fPLayer[i].UID <> NoPlayer;
       End;
@@ -2921,6 +2954,7 @@ Begin
       End;
     End;
   End;
+  fActualField.UpdateCarriedBombs(fPLayer); // Mod Bomben tragen, vor dem Flammenwerfer (der feuert nicht mit einer Bombe in den Händen)
   HandleFlameThrowers();
   HandleGhosts();
   // Bomben Handeln
@@ -3604,6 +3638,12 @@ Begin
     fFields[i].WrapTopBottom := fModSettings.OpenBorders And fModSettings.OpenBordersTopBottom;
     fFields[i].PortalTopBottom := fModSettings.Teleporters And fModSettings.TeleportersTopBottom;
     fFields[i].PortalLeftRight := fModSettings.Teleporters And fModSettings.TeleportersLeftRight;
+    fFields[i].CarryBomb := fModSettings.CarryBomb;
+    fFields[i].CarryBombControl := fModSettings.CarryBombControl;
+    fFields[i].CarryBombMaxMs := fModSettings.CarryBombMaxMs;
+    fFields[i].CarryBombThrowRange := fModSettings.CarryBombThrowRange;
+    fFields[i].CarryBombOwnOnly := fModSettings.CarryBombOwnOnly;
+    fFields[i].CarryBombMaxExplode := fModSettings.CarryBombMaxExplode;
   End;
 End;
 
@@ -3638,6 +3678,7 @@ Begin
   If fModSettings.HitPoints Then result := result + ', hit points';
   If fModSettings.Ghosts Then result := result + ', ghosts';
   If fModSettings.GloveAtStart Then result := result + ', glove at start';
+  If fModSettings.CarryBomb Then result := result + ', carry bombs';
   If fModSettings.OpenBorders Then result := result + ', open borders';
   If fModSettings.Teleporters Then result := result + ', teleporters';
   If fModSettings.ItemConfig Then result := result + ', items & diseases';

@@ -97,6 +97,7 @@ Type
     fSoundInfo: TSoundInfo;
     fLastIdleTick: QWord;
     fLastKeyDown: Array[TKeySet] Of Array[akFirstAction..akSecondAction] Of QWORD;
+    fLastKeyRepeat: Array[TKeySet] Of Array[akFirstAction..akSecondAction] Of QWORD; // Zeitpunkt des letzten Key Down einer Aktionstaste, auch der vom Autorepeat
     fPlayerIndex: Array[TKeySet] Of integer; // Der Index in Fplayer
     fPlayerdeadTex: TGraphikItem;
     fPowerUpsTex: TPowerTexArray;
@@ -186,7 +187,9 @@ Type
     Procedure RenderFlash();
     Procedure RenderFlameThrowers();
     Procedure RenderFieldHeader();
+    Procedure RenderBomb(Const Bomb: TBombInfo; x, y, Layer: Single);
     Procedure RenderBombs();
+    Procedure RenderCarriedBomb(PlayerIndex: Integer);
 
     Procedure Connection_Connect(aSocket: TLSocket);
     Procedure Connection_Disconnect(aSocket: TLSocket);
@@ -558,7 +561,7 @@ Begin
   If fgameState <> gs_Gaming Then exit;
   For k In TKeySet Do Begin
     If fPlayerIndex[k] = -1 Then Continue;
-    For ak In [akUp, akDown, akLeft, akRight, akSecondAction] Do Begin
+    For ak In [akUp, akDown, akLeft, akRight, akFirstAction, akSecondAction] Do Begin
       If fPlayer[fPlayerIndex[k]].KeysPressed[ak] Then CheckKeyUp(ak, k);
     End;
   End;
@@ -848,6 +851,7 @@ Begin
     VK_F2: Command := mtFlash;
     VK_F1: Command := mtWhiteBomb;
     VK_INSERT: Command := mtSpawnItems;
+    VK_DELETE: Command := mtGiveGlove;
   Else
     exit;
   End;
@@ -869,6 +873,8 @@ Begin
 End;
 
 Procedure TGame.CheckKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
+Const
+  ActionKeyRepeatTime = 1500; // Zeit in ms, länger als die Verzögerung bis zum ersten Autorepeat (Windows: höchstens 1 s)
 Var
   m: TMemoryStream;
   db, b: Boolean;
@@ -877,6 +883,16 @@ Var
 Begin
   If akey = akNone Then exit;
   If fPlayerIndex[aKeyset] = -1 Then exit;
+  (*
+   * Gehaltene Aktionstasten nicht erneut senden, der Autorepeat der Tastatur käme sonst als Doppelt Aktion an.
+   * Nur wenn das letzte Key Down gerade erst war, ging das Key Up verloren (z.B. Alt+Tab), zählt der Druck wieder.
+   *)
+  If aKey In [akFirstAction, akSecondAction] Then Begin
+    n := GetTickCount64;
+    b := fPlayer[fPlayerIndex[aKeyset]].KeysPressed[aKey] And (fLastKeyRepeat[aKeyset][aKey] + ActionKeyRepeatTime > n);
+    fLastKeyRepeat[aKeyset][aKey] := n;
+    If b Then exit;
+  End;
   m := TMemoryStream.Create;
   b := true;
   db := false;
@@ -920,12 +936,18 @@ Begin
     1: ak := akRight;
     2: ak := akUp;
     3: ak := akDown;
-    5: Begin
-        // Mod Flammenwerfer: Der Server muss wissen, wann die zweite Aktion los gelassen wird (nur dafür, die Bewegung bleibt)
+    4, 5: Begin
+        // Der Server muss wissen, wann eine Aktion los gelassen wird (Mod Bomben tragen bzw. Flammenwerfer), die Bewegung bleibt
+        If aKey = akFirstAction Then Begin
+          ak := akFirstAction;
+        End
+        Else Begin
+          ak := akSecondAction;
+        End;
+        fPlayer[fPlayerIndex[aKeyset]].KeysPressed[ak] := false;
         m := TMemoryStream.Create;
         b := false;
         db := false;
-        ak := akSecondAction;
         m.Write(fPlayerIndex[aKeyset], SizeOf(fPlayerIndex[aKeyset]));
         m.Write(b, sizeof(b));
         m.Write(ak, SizeOf(ak));
@@ -1789,6 +1811,8 @@ Begin
     stream.Read(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Read(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
     stream.Read(fBombs[i].WhiteBomb, SizeOf(fBombs[i].WhiteBomb));
+    stream.Read(fBombs[i].Carrier, SizeOf(fBombs[i].Carrier));
+    stream.Read(fBombs[i].Ticking, SizeOf(fBombs[i].Ticking));
   End;
 End;
 
@@ -2463,9 +2487,10 @@ Begin
       AtomicFont.Textout(120, 240, atomic_dialog_Layer + atomic_EPSILON, 'F11 : ' + ModTestCommandToString(mtMaxHitPoints));
       AtomicFont.Textout(120, 260, atomic_dialog_Layer + atomic_EPSILON, 'F12 : ' + ModTestCommandToString(mtBrickWalk));
       AtomicFont.Textout(120, 280, atomic_dialog_Layer + atomic_EPSILON, 'Ins : ' + ModTestCommandToString(mtSpawnItems));
-      AtomicFont.Textout(120, 310, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2nd player on this PC');
-      AtomicFont.Textout(120, 330, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned,');
-      AtomicFont.Textout(120, 350, atomic_dialog_Layer + atomic_EPSILON, 'B = walk through bricks (seconds)');
+      AtomicFont.Textout(120, 300, atomic_dialog_Layer + atomic_EPSILON, 'Del : ' + ModTestCommandToString(mtGiveGlove));
+      AtomicFont.Textout(120, 330, atomic_dialog_Layer + atomic_EPSILON, 'Shift + key: 2nd player on this PC');
+      AtomicFont.Textout(120, 350, atomic_dialog_Layer + atomic_EPSILON, 'I = invulnerable, S = stunned,');
+      AtomicFont.Textout(120, 370, atomic_dialog_Layer + atomic_EPSILON, 'B = walk through bricks (seconds)');
     End;
   End;
   (*
@@ -2474,37 +2499,67 @@ Begin
   AtomicBigFont.Textout(500, 10, atomic_dialog_Layer + atomic_EPSILON, fPlayingTime_s);
 End;
 
-Procedure TGame.RenderBombs;
+Procedure TGame.RenderBomb(Const Bomb: TBombInfo; x, y, Layer: Single);
 Const
   Gray: TVector4 = (x: 0.6; y: 0.6; z: 0.6; w: 1.0); // Mod weiße Bombe: grau, damit man sie nicht mit den Bomben des weißen Spielers verwechselt
 Var
-  i: Integer;
   ani: TAnimation;
 Begin
-  SetShaderAlphaThreshold(0.5);
-  For i := 0 To fBombCount - 1 Do Begin
-    ani.ani := Nil;
-    Case fBombs[i].Animation Of
-      baNormal: ani := fAtomics[fBombs[i].ColorIndex].Bomb;
-      baTimeTriggered: ani := fAtomics[fBombs[i].ColorIndex].Bomb_trigger;
-      baDud: ani := fAtomics[fBombs[i].ColorIndex].Bomb_dud;
-      baWobble: ani := fAtomics[fBombs[i].ColorIndex].Bomb_Wobble;
+  // x, y in Feld Koordinaten
+  ani.ani := Nil;
+  If (Bomb.Carrier <> -1) And (Not Bomb.Ticking) Then Begin
+    // Mod Bomben tragen: In den Händen ist die Bombe ruhig, bis sie bald explodiert
+    Case Bomb.Animation Of
+      baNormal, baWobble: ani := fAtomics[Bomb.ColorIndex].Bomb_still;
+      baTimeTriggered: ani := fAtomics[Bomb.ColorIndex].Bomb_trigger_still;
+      baDud: ani := fAtomics[Bomb.ColorIndex].Bomb_dud_still;
     End;
-    If Not assigned(ani.ani) Then Begin
-      LogShow('Error: TGame.RenderBombs: no Animation found.', llFatal);
-    End;
-    ani.ani.AnimationOffset := fBombs[i].AnimationOffset;
-    If fBombs[i].WhiteBomb Then Begin
-      UseTextureShader(Gray); // Setzt die AlphaThreshold zurück
-      SetShaderAlphaThreshold(0.5);
-    End;
-    ani.ani.Render(Fieldxoff + fBombs[i].Position.x * FieldBlockWidth + ani.OffsetX, FieldyOff + fBombs[i].Position.y * FieldBlockHeight + ani.OffsetY, atomic_Bomb_Layer, 0);
-    If fBombs[i].WhiteBomb Then Begin
-      UseTextureShader();
-      SetShaderAlphaThreshold(0.5);
+  End
+  Else Begin
+    Case Bomb.Animation Of
+      baNormal: ani := fAtomics[Bomb.ColorIndex].Bomb;
+      baTimeTriggered: ani := fAtomics[Bomb.ColorIndex].Bomb_trigger;
+      baDud: ani := fAtomics[Bomb.ColorIndex].Bomb_dud;
+      baWobble: ani := fAtomics[Bomb.ColorIndex].Bomb_Wobble;
     End;
   End;
+  If Not assigned(ani.ani) Then Begin
+    LogShow('Error: TGame.RenderBomb: no Animation found.', llFatal);
+  End;
+  ani.ani.AnimationOffset := Bomb.AnimationOffset;
+  SetShaderAlphaThreshold(0.5);
+  If Bomb.WhiteBomb Then Begin
+    UseTextureShader(Gray); // Setzt die AlphaThreshold zurück
+    SetShaderAlphaThreshold(0.5);
+  End;
+  ani.ani.Render(Fieldxoff + x * FieldBlockWidth + ani.OffsetX, FieldyOff + y * FieldBlockHeight + ani.OffsetY, Layer, 0);
+  If Bomb.WhiteBomb Then Begin
+    UseTextureShader();
+  End;
   SetShaderAlphaThreshold(0);
+End;
+
+Procedure TGame.RenderBombs;
+Var
+  i: Integer;
+Begin
+  For i := 0 To fBombCount - 1 Do Begin
+    If fBombs[i].Carrier <> -1 Then Continue; // Getragene Bomben (Mod) zeichnet RenderCarriedBomb über dem Spieler
+    RenderBomb(fBombs[i], fBombs[i].Position.x, fBombs[i].Position.y, atomic_Bomb_Layer);
+  End;
+End;
+
+Procedure TGame.RenderCarriedBomb(PlayerIndex: Integer);
+Const
+  CarryHeight = 1.4; // in Kacheln, so weit über der Position des Spielers liegt die Bombe in seinen Händen
+Var
+  i: Integer;
+Begin
+  // Mod Bomben tragen: Die Bombe folgt dem Spieler (auch im Flug über das Trampolin), über ihm gezeichnet
+  For i := 0 To fBombCount - 1 Do Begin
+    If fBombs[i].Carrier <> PlayerIndex Then Continue;
+    RenderBomb(fBombs[i], fPlayer[PlayerIndex].Info.Position.x, fPlayer[PlayerIndex].Info.Position.y - CarryHeight, atomic_Layer + 2 * atomic_EPSILON); // Vor dem Spieler (der liegt auf atomic_Layer + atomic_EPSILON)
+  End;
 End;
 
 Procedure TGame.PingForOpenGames;
@@ -3244,6 +3299,7 @@ Begin
             // Wer durch Blöcke laufen kann, wird durchsichtig gezeichnet (nicht in der Pause, nicht beim Sterben und nie auf dem Frame mit der Flanke einer einmaligen Animation)
             If fPause Or fPlayer[i].Info.Dying Or fPlayer[i].Edge Or (Not fPlayer[i].Info.BrickWalk) Or BrickWalkVisible() Then Begin
               RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge, i);
+              RenderCarriedBomb(i);
               fPlayer[i].edge := false;
             End;
           End;

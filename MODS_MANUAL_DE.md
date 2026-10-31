@@ -17,6 +17,7 @@ Welche Mods zu welcher Spielerrunde passen, beantwortet die [Mods-FAQ](MODS_FAQ_
 - [Trefferpunkte (Handicap)](#trefferpunkte-handicap)
 - [Geister](#geister)
 - [Handschuh beim Start](#handschuh-beim-start)
+- [Bomben tragen](#bomben-tragen)
 - [Offene Grenzen](#offene-grenzen)
 - [Teleporter](#teleporter)
 - [Items & Krankheiten](#items--krankheiten)
@@ -230,6 +231,37 @@ Manchmal beginnt eine Runde in einer kleinen Nische zwischen Steinen, und eine v
 |---|---|---|---|
 | Mod an / aus | `GloveAtStart` | 0 (aus) | 0 / 1 |
 
+## Bomben tragen
+
+Mit dem Handschuh ![](data/res/powgrab.png) wirft ein Spieler die Bombe unter sich normalerweise sofort. Mit diesem Mod **hebt er die Bombe auf und trägt sie** stattdessen, und wirft sie später. Solange die Bombe getragen wird, **steht ihr Timer**.
+
+Aufheben geht wie der normale Wurf: Auf einer Bombe stehen und die [erste Aktion](MANUAL_DE.md#erste-aktion-doppelt-gedrückt) zweimal drücken. Mit diesem Mod darf der zweite Druck bis zu 400 ms nach dem ersten kommen (sonst 200 ms), solange der Spieler auf demselben Feld bleibt, weil Drücken und dann Halten langsamer ist als ein Doppelklick. Der Spieler hebt die Arme, die Bombe wird über seinem Kopf gezeichnet. Sie tickt (animiert) nur, wenn sie noch 1 Sekunde oder weniger bis zur Explosion hat oder die max. Tragzeit fast um ist. Wie es weitergeht, hängt von der Steuerung ab:
+
+- **Halten** (Standard): Der Spieler trägt die Bombe, solange die erste Aktion gedrückt bleibt. **Loslassen** wirft die Bombe in Blickrichtung. Ein schnelles Doppeltippen wirft also sofort, wie ohne den Mod.
+- **Umschalten**: Der Spieler kann die Taste loslassen und trägt weiter. Die **erste Aktion** legt die Bombe auf seinem Feld ab (nur wenn das Feld frei ist), die **zweite Aktion** wirft sie.
+
+Regeln:
+
+- Eine geworfene Bombe fliegt die eingestellte Weite (Standard 3 Felder, wie beim normalen Handschuh). Diese Weite gilt für **alle** Würfe mit dem Handschuh, solange der Mod an ist. Wo die Bombe landet, läuft ihr Timer weiter, eine landende Bombe stunnt wie ein normaler Wurf (wenn [Stun bei Bombenlandung](#stun-bei-bombenlandung) an ist).
+- Nach der max. Tragzeit wird die Bombe automatisch geworfen (0 = keine Grenze). Mit „Nach der max. Tragzeit explodieren“ explodiert sie stattdessen in den Händen. In beiden Fällen beginnt sie 2 Sekunden vorher zu ticken (bei einer max. Tragzeit von 2 Sekunden oder weniger tickt sie die ganze Zeit).
+- Beim Tragen boxt, zündet und feuert (mit dem [Flammenwerfer](#flammenwerfer)) die zweite Aktion nicht. Kicken, normal schnell laufen, Trampoline, Löcher, Teleporter und offene Grenzen gehen wie gewohnt, die Bombe kommt mit.
+- Wird der Spieler **gestunnt, getroffen** (auch wenn noch [Trefferpunkte](#trefferpunkte-handicap) übrig sind) **oder getötet**, fällt die Bombe auf sein Feld und ihr Timer läuft weiter. Ist das Feld nicht frei (eine andere Bombe, ein Loch, ein Teleporter), explodiert die Bombe sofort.
+- Flammen und der Flammenwerfer zünden eine getragene Bombe nicht direkt. Trifft eine Flamme aber den Spieler, fällt die Bombe in die Flamme und explodiert dort.
+- Mit „Nur eigene Bomben tragen“ wird eine Bombe eines anderen Spielers sofort geworfen, wie ohne den Mod. Standardmäßig kann jede Bombe getragen werden.
+- Nur Spieler mit dem echten Handschuh-Item tragen. Der [Handschuh beim Start](#handschuh-beim-start) und die KI werfen sofort, die KI sieht eine getragene Bombe wie eine fliegende.
+- Wird die Taste losgelassen, während das Spielfenster keinen Fokus hat (z. B. Alt+Tab), merkt das Spiel das nicht: Mit der Steuerung „Halten“ wird die Bombe erst geworfen, wenn die Taste im Spiel erneut gedrückt und losgelassen wird. Nach einer Pause wird die Bombe geworfen.
+- Die Statistik zählt „Carried bombs“ beim Aufheben und „Thrown bombs“ beim Werfen.
+- Im Mod-Test-Modus gibt Entf den Handschuh.
+
+| Einstellung (Dialog) | ini-Schlüssel | Default | Bereich |
+|---|---|---|---|
+| Mod an / aus | `CarryBomb` | 0 (aus) | 0 / 1 |
+| Steuerung | `CarryBombControl` | 0 (Halten) | 0 = halten, loslassen wirft / 1 = erste Aktion legt ab, zweite wirft |
+| Max. Tragzeit (ms) | `CarryBombMaxMs` | 0 | 0 .. 30000, 0 = unbegrenzt |
+| Wurfweite (Felder) | `CarryBombThrowRange` | 3 | 1 .. 6 |
+| Nur eigene Bomben tragen | `CarryBombOwnOnly` | 0 (aus) | 0 / 1 |
+| Nach der max. Tragzeit explodieren | `CarryBombMaxExplode` | 0 (aus, wird geworfen) | 0 / 1 |
+
 ## Offene Grenzen
 
 Spieler können über den Rand des Spielfelds laufen und kommen auf der Gegenseite heraus, oben <-> unten und / oder links <-> rechts.
@@ -323,6 +355,7 @@ Nur der Spieler, der das Spiel hostet (der Master), kann während einer Runde di
 | F11 | Meine Trefferpunkte auffüllen |
 | F12 | Durch Steine laufen |
 | Einfg | Je 2 Items der Mods auf freie Felder legen: weiße Bombe, Flammenwerfer, Box-Item, Krankheit |
+| Entf | Handschuh (werfen bzw. [Bomben tragen](#bomben-tragen)) |
 
 Mit gehaltener **Shift**-Taste wirkt die Taste auf den zweiten Spieler an diesem PC. F10 wird nicht benutzt, weil Windows damit das Fenstermenü öffnet.
 

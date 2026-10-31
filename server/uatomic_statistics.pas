@@ -68,6 +68,7 @@ Type
     , pssPowerupsDestroyed // -- Fertig
     , pssDiseased // -- Fertig -- Anzahl der Krankheiten die ein Spieler bekommen hat
     , pssDiseaseSpread // -- Fertig -- Anzahl der "Ansteckungen" die ein Spieler an andere übergeben hat
+    , pssCarriedBombs // -- Fertig -- Mit dem Blauen Handschuh aufgehoben und getragen (Mod Bomben tragen)
     );
 
   TPlayerStatSelectorCounts = Array[TPlayerStatSelector] Of uint64;
@@ -138,6 +139,7 @@ Begin
     pssPowerupsDestroyed: result := 'Power-up destroyed';
     pssDiseased: result := 'Diseased';
     pssDiseaseSpread: result := 'Disease spread';
+    pssCarriedBombs: result := 'Carried bombs';
   Else Begin
       Raise exception.Create('Error: PlayerStatSelectorToString, missing implementation.');
     End;

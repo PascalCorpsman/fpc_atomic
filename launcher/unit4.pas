@@ -48,6 +48,10 @@ Type
     CheckBox6: TCheckBox;
     CheckBox7: TCheckBox;
     CheckBox8: TCheckBox;
+    CheckBox24: TCheckBox;
+    CheckBox25: TCheckBox;
+    CheckBox26: TCheckBox;
+    ComboBox1: TComboBox;
     CheckBox9: TCheckBox;
     CheckBox10: TCheckBox;
     CheckBox11: TCheckBox;
@@ -160,6 +164,10 @@ Type
     Label101: TLabel;
     Label102: TLabel;
     Label103: TLabel;
+    Label104: TLabel;
+    Label105: TLabel;
+    Label106: TLabel;
+    Label107: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -174,6 +182,7 @@ Type
     Panel4: TPanel;
     Panel5: TPanel;
     Panel6: TPanel;
+    Panel15: TPanel;
     Panel7: TPanel;
     Panel8: TPanel;
     Panel9: TPanel;
@@ -230,6 +239,8 @@ Type
     SpinEdit53: TSpinEdit;
     SpinEdit54: TSpinEdit;
     SpinEdit55: TSpinEdit;
+    SpinEdit56: TSpinEdit;
+    SpinEdit57: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -253,6 +264,7 @@ Type
     TabSheet12: TTabSheet;
     TabSheet13: TTabSheet;
     TabSheet14: TTabSheet;
+    TabSheet15: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -321,7 +333,7 @@ Begin
   // Der "+" Button fügt Start Items in Edit1 ein (Mod Test Modus)
   TItemsEditMenu.Create(Button6, Edit1);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 14);
+  setlength(fModCheckBoxes, 15);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox16;
   fModCheckBoxes[2] := CheckBox2;
@@ -335,8 +347,9 @@ Begin
   fModCheckBoxes[10] := CheckBox10;
   fModCheckBoxes[11] := CheckBox13;
   fModCheckBoxes[12] := CheckBox23;
-  fModCheckBoxes[13] := CheckBox5;
-  setlength(fModPanels, 14);
+  fModCheckBoxes[13] := CheckBox24;
+  fModCheckBoxes[14] := CheckBox5;
+  setlength(fModPanels, 15);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel10;
   fModPanels[2] := Panel2;
@@ -350,7 +363,8 @@ Begin
   fModPanels[10] := Panel8;
   fModPanels[11] := Panel9;
   fModPanels[12] := Panel14;
-  fModPanels[13] := Panel5;
+  fModPanels[13] := Panel15;
+  fModPanels[14] := Panel5;
   // Mod Items & Krankheiten: Die Zeilen in der Reihenfolge des Dialogs
   For pu In TPowerUps Do Begin
     fItemWeightEdits[pu] := Nil;
@@ -439,6 +453,9 @@ Begin
   SpinEdit14.MaxValue := ModMaxStartInvulnMs;
   SpinEdit37.MaxValue := ModMaxItemChance;
   SpinEdit55.MaxValue := ModMaxSuperBadSwapChance;
+  SpinEdit56.MaxValue := ModMaxCarryBombMs;
+  SpinEdit57.MinValue := 1;
+  SpinEdit57.MaxValue := ModMaxCarryBombThrowRange;
   StringGrid1.Cells[0, 0] := R_PlayerName;
   StringGrid1.Cells[1, 0] := R_HitPoints;
   PageControl1.ActivePageIndex := 0;
@@ -615,6 +632,12 @@ Begin
   SpinEdit12.Value := fSettings.GhostFlickerMs;
 
   CheckBox8.Checked := fSettings.GloveAtStart;
+  CheckBox24.Checked := fSettings.CarryBomb;
+  ComboBox1.ItemIndex := fSettings.CarryBombControl;
+  SpinEdit56.Value := fSettings.CarryBombMaxMs;
+  SpinEdit57.Value := fSettings.CarryBombThrowRange;
+  CheckBox25.Checked := fSettings.CarryBombOwnOnly;
+  CheckBox26.Checked := fSettings.CarryBombMaxExplode;
 
   CheckBox10.Checked := fSettings.OpenBorders;
   CheckBox11.Checked := fSettings.OpenBordersTopBottom;
@@ -755,6 +778,12 @@ Begin
   fSettings.GhostFlickerMs := SpinEdit12.Value;
 
   fSettings.GloveAtStart := CheckBox8.Checked;
+  fSettings.CarryBomb := CheckBox24.Checked;
+  fSettings.CarryBombControl := ComboBox1.ItemIndex;
+  fSettings.CarryBombMaxMs := SpinEdit56.Value;
+  fSettings.CarryBombThrowRange := SpinEdit57.Value;
+  fSettings.CarryBombOwnOnly := CheckBox25.Checked;
+  fSettings.CarryBombMaxExplode := CheckBox26.Checked;
 
   fSettings.OpenBorders := CheckBox10.Checked;
   fSettings.OpenBordersTopBottom := CheckBox11.Checked;
