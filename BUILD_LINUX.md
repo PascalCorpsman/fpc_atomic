@@ -130,6 +130,15 @@ The Linux builds can be tested on Windows with WSL 2. The windows appear on the 
   GDK_BACKEND=x11 ./atomic_launcher
   ```
   This helps to find out whether a problem comes from GTK3 itself or from the Wayland compositor of WSLg (see below). GTK3 opens a window even without `DISPLAY`, it finds the Wayland socket of WSLg by itself.
+- **Testing without windows on the desktop:** A virtual X display (`sudo apt install xvfb xdotool imagemagick`) runs the launcher invisibly, `xdotool` clicks and `import` takes screenshots. For Wayland, run weston inside it as nested compositor (`sudo apt install weston`):
+  ```bash
+  Xvfb :77 -screen 0 1400x1000x24 &
+  DISPLAY=:77 weston --backend=x11 --width=1400 --height=1000 --socket=wl-test &
+  WAYLAND_DISPLAY=wl-test GDK_BACKEND=wayland ./atomic_launcher &
+  DISPLAY=:77 import -window root shot.png      # screenshot
+  DISPLAY=:77 xdotool mousemove 765 271 click 1 # click (weston fills the whole X display)
+  ```
+  The headless backend of weston (`--backend=headless`) has no keyboard, the GTK3 LCL stops with an exception there.
 - **Invisible windows:** If WSLg falls back to copy mode (`rdp_allocate_shared_memory: Failed` in `/mnt/wslg/weston.log`), windows can stay invisible. Fix: `wsl --shutdown` on Windows, then start again.
 
 ## Known GTK3 issues
@@ -145,6 +154,10 @@ Observed with Lazarus trunk 5.99 (commit `0cb3dfab`, 2026-10-31) in WSLg on Wind
 If the dialog is left with Alt+Tab, then clicked again and closed, all controls of the main window stay greyed out. The main window apparently does not get the focus back after the modal dialog ends.
 
 To narrow it down: Check whether the same happens with `GDK_BACKEND=x11` and on a native Linux desktop. If it only happens under Wayland / WSLg, it is a compositor topic and can be ignored for the game.
+
+### Wayland: a resize right after the window is shown is lost
+
+If a form changes its size within some milliseconds after it appeared on the screen, the new size is not applied under Wayland: the window keeps a smaller size and the right and bottom part is cut off. 200 ms later it works. `FitLayout` therefore waits 300 ms before it calculates a shown window again.
 
 ### Wayland: resizing a shown window together with its position
 
