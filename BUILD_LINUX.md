@@ -146,6 +146,12 @@ If the dialog is left with Alt+Tab, then clicked again and closed, all controls 
 
 To narrow it down: Check whether the same happens with `GDK_BACKEND=x11` and on a native Linux desktop. If it only happens under Wayland / WSLg, it is a compositor topic and can be ignored for the game.
 
+### Wayland: the main window does not grow on the first language change
+
+The launcher window grows when a language with longer texts is chosen (see [`FitLayout`](#what-the-launcher-does-fitlayout)). Under Wayland the first resize after the window is shown is not applied: the window keeps a smaller size and the right and bottom part is cut off. All later language changes resize the window correctly.
+
+With `GDK_BACKEND=x11` the window has the correct size on every language change. So the cause is the Wayland support of the GTK3 LCL, which in Lazarus trunk compensates the client side decorations (shadow and title bar) of a window with deferred resizes (`WindowSizeAllocate` in `lcl/interfaces/gtk3/gtk3widgets.pas`). Workaround for testing: start with `GDK_BACKEND=x11`.
+
 ### Lazarus 4.4: window too small
 
 With the GTK3 LCL of Lazarus 4.4 the launcher window is shown smaller than its designed size (about 500 instead of 547 px wide), the right and the bottom part are cut off. Fixed in Lazarus trunk, see [above](#why-the-lazarus-packages-of-the-distribution-are-not-enough).

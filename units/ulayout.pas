@@ -292,6 +292,20 @@ Begin
   result := ((cb >= a.d.Top) And (cb < a.d.Bottom)) Or ((ca >= b.d.Top) And (ca < b.d.Bottom));
 End;
 
+(*
+ * Der Abstand hinter a: Bei Controls, deren Größe vom Text kommt, war schon die Größe im Designer nur die des Textes
+ * beim ersten Aufruf, da zählt nur der Mindestabstand (sonst würde ein längerer Text auch schieben, wenn noch Platz ist)
+ *)
+Function DesignGap(Const a: TItem; Gap, MinGap: integer): integer;
+Begin
+  If a.c.AutoSize Then Begin
+    result := MinGap;
+  End
+  Else Begin
+    result := max(MinGap, Gap);
+  End;
+End;
+
 Function OverlapX(Const a, b: TItem): Boolean;
 Begin
   result := (a.x < b.x + b.w) And (b.x < a.x + a.w);
@@ -424,7 +438,7 @@ Begin
       If (Not Items[i].FreeX) Or (Items[i].d.Left <> Keys[k]) Then Continue;
       For j := 0 To high(Items) Do Begin
         If (Not Items[j].FreeX) Or (Items[j].d.Left >= Keys[k]) Or (Not SameRow(Items[i], Items[j])) Then Continue;
-        v := max(v, Pos[KeyIndex(Keys, Items[j].d.Left)] + Items[j].w + max(MinGapX, Keys[k] - Items[j].d.Right));
+        v := max(v, Pos[KeyIndex(Keys, Items[j].d.Left)] + Items[j].w + DesignGap(Items[j], Keys[k] - Items[j].d.Right, MinGapX));
       End;
     End;
     Pos[k] := v;
@@ -450,7 +464,7 @@ Begin
       For j := 0 To high(Items) Do Begin
         If (Not Items[j].FreeY) Or (Items[j].d.Top >= Keys[k]) Or SameRow(Items[i], Items[j]) Or
           (Not OverlapX(Items[i], Items[j])) Then Continue;
-        v := max(v, Pos[KeyIndex(Keys, Items[j].d.Top)] + Items[j].h + max(MinGapY, Keys[k] - Items[j].d.Bottom));
+        v := max(v, Pos[KeyIndex(Keys, Items[j].d.Top)] + Items[j].h + DesignGap(Items[j], Keys[k] - Items[j].d.Bottom, MinGapY));
       End;
     End;
     Pos[k] := v;
@@ -489,6 +503,12 @@ Begin
       MaxB := max(MaxB, Items[i].y + Items[i].h);
     End;
   End;
+  // Was im Designer rechts bündig mit dem Inhalt war (z.B. GroupBoxen untereinander), bleibt bündig
+  For i := 0 To high(Items) Do Begin
+    If Items[i].FreeX And Items[i].CountsX And (Not Items[i].c.AutoSize) And (Items[i].d.Right >= dMaxR - 1) Then Begin
+      Items[i].w := max(Items[i].w, MaxR - Items[i].x);
+    End;
+  End;
   result.X := max(dc.X, MaxR + max(MinMargin, dc.X - dMaxR));
   result.Y := max(dc.Y, MaxB + max(MinMargin, dc.Y - dMaxB));
   // 6. Übernehmen
@@ -516,13 +536,16 @@ Var
   r: TRect;
   OldW, OldH: integer;
   LockW, LockH: Boolean;
+  w, h: integer;
+  First: Boolean;
 Begin
   db := Nil;
   For i := 0 To Root.ComponentCount - 1 Do Begin
     If Root.Components[i] Is TDesignBounds Then db := TDesignBounds(Root.Components[i]);
   End;
   HandlesNeeded(Root); // Ohne Handle kennen die Controls ihre Größe nicht
-  If db = Nil Then Begin
+  First := db = Nil;
+  If First Then Begin
     db := TDesignBounds.Create(Root);
   End
   Else Begin
@@ -540,32 +563,30 @@ Begin
   // Ein Fenster mit fester Größe (Constraints Min = Max) behält eine feste Größe, nur eben die neue
   LockW := (Root.Constraints.MaxWidth <> 0) And (Root.Constraints.MinWidth = Root.Constraints.MaxWidth);
   LockH := (Root.Constraints.MaxHeight <> 0) And (Root.Constraints.MinHeight = Root.Constraints.MaxHeight);
+  // Die neuen Constraints vor der neuen Größe, sonst ignoriert z.B. Wayland die Größenänderung eines festen Fensters
+  w := Root.Width + max(dc.X, nc.X) - Root.ClientWidth;
+  h := Root.Height + max(dc.Y, nc.Y) - Root.ClientHeight;
   If LockW Then Begin
     Root.Constraints.MinWidth := 0;
-    Root.Constraints.MaxWidth := 0;
+    Root.Constraints.MaxWidth := w;
+    Root.Constraints.MinWidth := w;
   End;
   If LockH Then Begin
     Root.Constraints.MinHeight := 0;
-    Root.Constraints.MaxHeight := 0;
+    Root.Constraints.MaxHeight := h;
+    Root.Constraints.MinHeight := h;
   End;
-  Root.ClientWidth := max(dc.X, nc.X);
-  Root.ClientHeight := max(dc.Y, nc.Y);
-  If LockW Then Begin
-    Root.Constraints.MinWidth := Root.Width;
-    Root.Constraints.MaxWidth := Root.Width;
-  End;
-  If LockH Then Begin
-    Root.Constraints.MinHeight := Root.Height;
-    Root.Constraints.MaxHeight := Root.Height;
-  End;
-  // Ein Dialog, der mittig sein soll, bleibt mittig
-  If (Root Is TCustomForm) And ((Root.Width <> OldW) Or (Root.Height <> OldH)) Then Begin
+  Root.SetBounds(Root.Left, Root.Top, w, h);
+  // Ein Dialog, der mittig sein soll, bleibt mittig, aber nur solange er noch nicht zu sehen ist (der Benutzer hat ihn evtl. verschoben)
+  If (Root Is TCustomForm) And (First Or Not Root.Showing) And ((Root.Width <> OldW) Or (Root.Height <> OldH)) Then Begin
     f := TCustomForm(Root);
     Case f.Position Of
       poMainFormCenter, poOwnerFormCenter: Begin
           If (Application.MainForm <> Nil) And (Application.MainForm <> f) Then Begin
             r := Application.MainForm.BoundsRect;
-            f.SetBounds(r.Left + (r.Right - r.Left - f.Width) Div 2, r.Top + (r.Bottom - r.Top - f.Height) Div 2, f.Width, f.Height);
+            // Aber nicht über den Rand des Bildschirms hinaus, wenn das Hauptfenster am Rand liegt
+            f.SetBounds(EnsureRange(r.Left + (r.Right - r.Left - f.Width) Div 2, 0, max(0, Screen.Width - f.Width)),
+              EnsureRange(r.Top + (r.Bottom - r.Top - f.Height) Div 2, 0, max(0, Screen.Height - f.Height)), f.Width, f.Height);
           End;
         End;
       poScreenCenter, poDesktopCenter: Begin
