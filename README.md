@@ -92,6 +92,8 @@ See the license.md file located at [license.md](license.md) for details about th
 6. Download SDL2-Header from https://github.com/PascalCorpsman/SDL2-for-Pascal and store the content its "units" folder in a new subfolder "sdl2_for_pascal"
 7. Add the paths from 4. and 6. as searchpaths for all .lpi files (at least client, launcher and server) (in the IDE project -> settings -> compilersettings -> paths). Ignore the not resolvable searchpaths.
 
+Linux users: GTK3 is the widgetset to use, GTK2 is deprecated. How to build with GTK3 (Lazarus trunk, WSL) and the known differences are described in [BUILD_LINUX.md](BUILD_LINUX.md).
+
 !! Attention !!
 
 All *.lpi files are configured to create their compilation results into the root folder of the repository. If you do compile the code by your own, do not use the version from the bin folder anymore.

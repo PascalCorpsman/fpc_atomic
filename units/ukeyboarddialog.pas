@@ -86,7 +86,7 @@ Type
 
 Implementation
 
-Uses SDL2, Dialogs, usdlwizzard
+Uses SDL2, Dialogs, usdlwizzard, ulayout
 {$IFDEF Launcher}
   , ulanguage
 {$ENDIF}
@@ -95,8 +95,8 @@ Uses SDL2, Dialogs, usdlwizzard
 {$IFNDEF Launcher}
 Const
   R_KeyboardSettings = 'Keyboard settings';
-  R_Keyboard0 = 'Keyboard 0';
-  R_Keyboard1 = 'Keyboard 1';
+  R_Keyboard0 = 'Keyboard 1';
+  R_Keyboard1 = 'Keyboard 2';
   R_KeyUp = 'Key Up:';
   R_KeyDown = 'Key Down:';
   R_KeyLeft = 'Key Left:';
@@ -154,6 +154,7 @@ Begin
     fkeys[ks1].UseSDL2 := false;
     label26.caption := R_Keyboard1;
   End;
+  FitLayout(self);
 End;
 
 Procedure TKeyboardDialog.OnSetSDLKeyEvent(Sender: TObject);
@@ -268,7 +269,7 @@ Begin
   Position := poScreenCenter;
   Caption := R_KeyboardSettings;
 
-  CreateLabel(label25, 'Label25', R_Keyboard0, 0, 10);
+  CreateLabel(label25, 'Label25', R_Keyboard0, 8, 10);
   CreateLabel(label1, 'Label1', R_KeyUp, 20, 10);
   CreateLabel(label2, 'Label2', R_KeyDown, 50, 10);
   CreateLabel(label3, 'Label3', R_KeyLeft, 80, 10);
@@ -292,7 +293,7 @@ Begin
   CreateButton(Button5, 'Button5', R_UseKeyboard, 200, 190, mrNone);
   button5.Width := 110;
 
-  CreateLabel(label26, 'Label26', R_Keyboard1, 0, 330);
+  CreateLabel(label26, 'Label26', R_Keyboard1, 8, 330);
   CreateLabel(label13, 'Label13', R_KeyUp, 20, 330);
   CreateLabel(label14, 'Label14', R_KeyDown, 50, 330);
   CreateLabel(label15, 'Label15', R_KeyLeft, 80, 330);
@@ -357,6 +358,7 @@ Begin
   label22.Caption := VkKeyToString(fkeys[ks1].KeyRight);
   label23.Caption := VkKeyToString(fkeys[ks1].KeyPrimary);
   label24.Caption := VkKeyToString(fkeys[ks1].KeySecondary);
+  FitLayout(self); // Die Namen der Tasten sind unterschiedlich lang
 End;
 
 Function TKeyboardDialog.GetKeys(Index: TKeySet): TKeys;

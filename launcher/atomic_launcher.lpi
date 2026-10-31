@@ -123,6 +123,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="../units/ulayout.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="../units/usdlwizzard.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

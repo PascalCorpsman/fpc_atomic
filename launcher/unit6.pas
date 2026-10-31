@@ -98,7 +98,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global, ulanguage, uitemsedit;
+Uses uatomic_global, ulanguage, uitemsedit, ulayout;
 
 { TForm6 }
 
@@ -139,6 +139,7 @@ Begin
   // Immer den aktuellen Stand der Datei zeigen, falls sie von Hand oder im Mods Dialog geändert wurde
   LoadModSettingsFromFile(GetAtomicModsIniFile(), fSettings);
   SettingsToControls();
+  FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
 
 Function TForm6.GameModeName(Mode: TGameMode): String;

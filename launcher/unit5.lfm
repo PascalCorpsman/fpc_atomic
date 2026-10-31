@@ -12,6 +12,7 @@ object Form5: TForm5
   LCLVersion = '4.8.0.0'
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnShow = FormShow
   object CheckBox1: TCheckBox
     Hint = 'Players play in two teams (red and white).'
     Left = 12

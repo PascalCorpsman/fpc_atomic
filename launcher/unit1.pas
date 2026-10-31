@@ -114,7 +114,7 @@ Implementation
 {$R *.lfm}
 
 Uses process, Unit2, Unit3, Unit4, Unit5, Unit6, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage
+  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage, ulayout
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -843,6 +843,7 @@ Begin
   Form3.CheckListBox1Click(Nil);
   UpdateModsCaption();
   UpdateGameModeCaption();
+  FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
 
 Procedure TForm1.StoreSettings;
