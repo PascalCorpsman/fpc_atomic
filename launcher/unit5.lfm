@@ -1,12 +1,12 @@
 object Form5: TForm5
   Left = 400
-  Height = 425
+  Height = 445
   Top = 150
-  Width = 676
+  Width = 768
   BorderStyle = bsDialog
   Caption = 'Form5'
-  ClientHeight = 425
-  ClientWidth = 676
+  ClientHeight = 445
+  ClientWidth = 768
   Position = poMainFormCenter
   ShowHint = True
   LCLVersion = '4.8.0.0'
@@ -48,10 +48,10 @@ object Form5: TForm5
   end
   object ComboBox2: TComboBox
     Hint = 'The scheme sets the bricks, the start positions and the items (files in data/schemes).'
-    Left = 180
+    Left = 230
     Height = 23
     Top = 120
-    Width = 148
+    Width = 190
     ItemHeight = 15
     Style = csDropDownList
     OnChange = ComboBox2Change
@@ -64,17 +64,17 @@ object Form5: TForm5
   end
   object ComboBox4: TComboBox
     Hint = 'The map of the next game when hosting (files in data/maps).'
-    Left = 180
+    Left = 230
     Height = 23
     Top = 152
-    Width = 148
+    Width = 190
     ItemHeight = 15
     Style = csDropDownList
     OnChange = ComboBox2Change
   end
   object Image1: TImage
     Hint = 'The map with all bricks of the scheme. In the game some bricks are missing at random, depending on the brick density of the scheme.'
-    Left = 344
+    Left = 436
     Height = 240
     Top = 12
     Width = 320
@@ -87,7 +87,7 @@ object Form5: TForm5
   end
   object ComboBox3: TComboBox
     Hint = 'Time of a round. The hurry starts 80 s before the end. Infinity = no time limit and no hurry.'
-    Left = 180
+    Left = 230
     Height = 23
     Top = 184
     Width = 100
@@ -102,10 +102,10 @@ object Form5: TForm5
   end
   object SpinEdit2: TSpinEdit
     Hint = 'How many rounds a player or team has to win to win the match.'
-    Left = 180
+    Left = 230
     Height = 23
     Top = 216
-    Width = 80
+    Width = 100
     Increment = 1
     MaxValue = 99
     MinValue = 1
@@ -118,7 +118,7 @@ object Form5: TForm5
   end
   object ComboBox1: TComboBox
     Hint = 'Speed of the conveyor belts on maps that have them.'
-    Left = 180
+    Left = 230
     Height = 23
     Top = 248
     Width = 100
@@ -138,10 +138,10 @@ object Form5: TForm5
   end
   object SpinEdit1: TSpinEdit
     Hint = 'TCP port of the server when hosting a game (default 5521).'
-    Left = 180
+    Left = 230
     Height = 23
     Top = 280
-    Width = 80
+    Width = 100
     Increment = 1
     MaxValue = 65535
     MinValue = 1
@@ -154,48 +154,60 @@ object Form5: TForm5
   end
   object SpinEdit3: TSpinEdit
     Hint = 'Sound volume, in the game it can also be changed with + and -.'
-    Left = 180
+    Left = 230
     Height = 23
     Top = 312
-    Width = 80
+    Width = 100
     Increment = 5
     MaxValue = 100
     MinValue = 0
   end
   object Label7: TLabel
     Left = 12
-    Height = 32
+    Height = 52
     Top = 346
-    Width = 316
+    Width = 408
     AutoSize = False
     Caption = 'The same settings as in the options of the game. Field and wins can also be changed in the game when hosting.'
     WordWrap = True
+  end
+  object Label9: TLabel
+    Cursor = crHandPoint
+    Left = 124
+    Height = 15
+    Hint = 'Open the manual of the game options and game modes (GAMEOPTIONS_MANUAL.md, with a link to the German version).'
+    Top = 413
+    Caption = 'Manual'
+    Font.Color = clBlue
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = Label9Click
   end
   object Button1: TButton
     Hint = 'Reset the settings to the defaults of the game. Saved only with OK.'
     Left = 12
     Height = 25
-    Top = 388
-    Width = 80
+    Top = 408
+    Width = 100
     Caption = '&Defaults'
     OnClick = Button1Click
   end
   object Button2: TButton
     Hint = 'Save the settings, they apply to the next start of the game.'
-    Left = 496
+    Left = 576
     Height = 25
-    Top = 388
-    Width = 80
+    Top = 408
+    Width = 85
     Caption = 'OK'
     Default = True
     ModalResult = 1
   end
   object Button3: TButton
     Hint = 'Close without saving.'
-    Left = 584
+    Left = 671
     Height = 25
-    Top = 388
-    Width = 80
+    Top = 408
+    Width = 85
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2

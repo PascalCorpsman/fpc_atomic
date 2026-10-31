@@ -34,4 +34,18 @@ void AiNewRound(uint8_t Strength);
 
 TAiCommand_t AiHandlePlayer(uint32_t PlayerIndex, TAiInfo_t* AiInfo);
 
+// Optional exports (interface version >= 5), remove them if not needed
+
+/*
+ * Bitmask of the supported game modes (AiMode_Classic ...).
+ * If not exported, the server assumes AiMode_Classic | AiMode_Teamplay.
+ */
+uint32_t AiGameModes();
+
+/*
+ * If exported it is called instead of AiHandlePlayer with additional infos about the game mode.
+ * Only read fields of ModeInfo that fit into ModeInfo->Size, newer servers may append fields.
+ */
+TAiCommand_t AiHandlePlayerEx(uint32_t PlayerIndex, TAiInfo_t* AiInfo, TAiModeInfo_t* ModeInfo);
+
 #endif

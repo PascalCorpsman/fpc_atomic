@@ -91,6 +91,18 @@
         <UnitName Value="Unit5"/>
       </Unit>
       <Unit>
+        <Filename Value="unit6.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form6"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="Unit6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uitemsedit.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/DatenSteuerung/uJSON.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

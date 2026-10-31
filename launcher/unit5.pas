@@ -51,6 +51,7 @@ Type
     Label6: TLabel;
     Label7: TLabel;
     Label8: TLabel;
+    Label9: TLabel;
     SpinEdit1: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
@@ -58,6 +59,7 @@ Type
     Procedure ComboBox2Change(Sender: TObject);
     Procedure FormCreate(Sender: TObject);
     Procedure FormDestroy(Sender: TObject);
+    Procedure Label9Click(Sender: TObject);
   private
     fMapDirs: TStringList; // Zu jedem Eintrag in ComboBox4 das Verzeichnis der Karte, '' = Zufallskarte, '?' = gibt es hier nicht
     Procedure SetPlayTime(Value: integer);
@@ -211,6 +213,16 @@ End;
 Procedure TForm5.FormDestroy(Sender: TObject);
 Begin
   fMapDirs.free;
+End;
+
+Procedure TForm5.Label9Click(Sender: TObject);
+Begin
+  If SameText(ExtractFileExt(Language.CurrentLanguage), '.de') Then Begin
+    OpenManual('GAMEOPTIONS_MANUAL_DE.md');
+  End
+  Else Begin
+    OpenManual('GAMEOPTIONS_MANUAL.md');
+  End;
 End;
 
 Procedure TForm5.ReadMaps;

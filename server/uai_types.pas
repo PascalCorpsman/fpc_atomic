@@ -37,8 +37,20 @@ Const
    *                 ADD: Lifetime info to bomb stuct
    *          0.03 = ADD: fHole, fTramp, fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight , fArrowUp, fArrowDown, fArrowLeft, fArrowRight to TAiField
    *          0.04 = ADD: missing info for Diseases
+   *          0.05 = ADD: optional game modes: AiGameModes and AiHandlePlayerEx (TAiModeInfo), both exports are optional.
+   *                 Libs with interface version 4 can still be loaded, they only support AiMode_Classic and AiMode_Teamplay.
    *)
-  AiLibInterfaceVersion: cint32 = 4;
+  AiLibInterfaceVersion: cint32 = 5;
+  AiLibMinInterfaceVersion: cint32 = 4; // The oldest interface version the server can still load
+
+  (*
+   * The bit masks for the game modes, returned by the optional AiGameModes export.
+   * If a lib does not export AiGameModes, it supports AiMode_Classic or AiMode_Teamplay.
+   * The server does not allow ai players in a game mode the lib does not support.
+   *)
+  AiMode_Classic = 1; // Free for all
+  AiMode_Teamplay = 2; // Two teams, TAiPlayerInfo.Team is relevant
+  AiMode_Hunter = 4; // One player is the hunted (TAiModeInfo.HuntedIndex) with (almost) all items, who kills him becomes the new hunted
 
   (*
    * The bit masks for the TAiPlayerInfo.Abilities value
@@ -154,6 +166,17 @@ Type
     Field: Array[0..14, 0..10] Of TAiField;
     BombsCount: cint32; // Number of elements in Bombs.
     Bombs: Array Of TAiBombInfo;
+  End;
+
+  (*
+   * Additional info about the game mode, only passed to the optional AiHandlePlayerEx export.
+   * New fields will only be appended, Size tells how many bytes are valid (read only fields that fit into Size).
+   *)
+  TAiModeInfo = Record
+    Size: cuint32; // sizeof(TAiModeInfo) of the server
+    GameMode: cuint32; // Exactly one of AiMode_*
+    HuntedIndex: cint32; // AiMode_Hunter: player index of the hunted, -1 = nobody (or not AiMode_Hunter)
+    RoundTimeLeftMs: cint32; // Time left in this round in ms, -1 = infinite
   End;
 
 Implementation

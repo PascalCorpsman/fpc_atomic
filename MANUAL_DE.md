@@ -61,6 +61,9 @@ Die Tastenbelegung lässt sich im Optionen-Dialog ändern.
 ## Spiel-Mods
 FPC Atomic hat optionale Spiel-Mods (z. B. Stun bei Bombenlandung, positive Krankheit, Trefferpunkte pro Spieler, Geister) und einen Mod-Test-Modus. Alle sind standardmäßig aus und lassen sich im Launcher unter **Mods...** einstellen. Details stehen in der [Anleitung der Mods](MODS_MANUAL_DE.md) ([englische Version](MODS_MANUAL.md)).
 
+## Spieloptionen und Spielmodi
+Die Spieloptionen (Teamspiel, Schema, Karte, Spielzeit, ...) lassen sich im Optionen-Menü des Spiels oder im Launcher unter **Spieloptionen...** einstellen. Neben dem klassischen Spiel gibt es den Spielmodus **Hunter**: Ein Spieler ist der Gejagte mit (fast) allen Items, wer ihn erwischt, wird der neue Gejagte. Den Spielmodus wählt man im Launcher unter **Spielmodus...**. Alle Optionen und Modi erklärt die [Anleitung der Spieloptionen](GAMEOPTIONS_MANUAL_DE.md) ([englische Version](GAMEOPTIONS_MANUAL.md)).
+
 ## Einen Client über das Internet mit einem lokalen Server verbinden
 So verbindet man einen Client über das Internet mit einem Server:
 

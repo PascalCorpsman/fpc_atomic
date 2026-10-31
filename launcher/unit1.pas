@@ -33,6 +33,7 @@ Type
     Button5: TButton;
     Button7: TButton;
     Button8: TButton;
+    Button9: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -56,6 +57,7 @@ Type
     Label7: TLabel;
     Label8: TLabel;
     Label9: TLabel;
+    Label10: TLabel;
     ComboBox1: TComboBox;
     Panel1: TPanel;
     Timer1: TTimer;
@@ -66,6 +68,7 @@ Type
     Procedure Button5Click(Sender: TObject);
     Procedure Button7Click(Sender: TObject);
     Procedure Button8Click(Sender: TObject);
+    Procedure Button9Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
@@ -92,6 +95,7 @@ Type
     Procedure LoadSettings();
     Procedure UpdateStatus();
     Procedure UpdateModsCaption();
+    Procedure UpdateGameModeCaption();
     Procedure StoreSettings();
     Procedure ApplyLanguage();
 
@@ -109,7 +113,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses process, Unit2, Unit3, Unit4, Unit5, LCLType, lclintf
+Uses process, Unit2, Unit3, Unit4, Unit5, Unit6, LCLType, lclintf
   , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage
 {$IFDEF Windows}
   , LResources
@@ -333,6 +337,14 @@ Begin
   End;
 End;
 
+Procedure TForm1.Button9Click(Sender: TObject);
+Begin
+  // Spielmodus, der Dialog liest und schreibt atomic_mods.ini selbst, Team play nur für seinen Hinweis
+  form6.TeamPlay := ini.ReadBool(FPC_AtomicIniSection, 'TeamPlay', false);
+  form6.ShowModal;
+  UpdateGameModeCaption();
+End;
+
 Procedure TForm1.Label8Click(Sender: TObject);
 Begin
   If SameText(ExtractFileExt(Language.CurrentLanguage), '.de') Then Begin
@@ -378,9 +390,13 @@ End;
 Procedure TForm1.FormKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Begin
-  // Der Launch "Knopf" ist ein Panel (nur so lässt er sich blau färben), daher Alt+L und Return / Leertaste (wenn er den Fokus hat) hier von Hand
+  (*
+   * Der Launch "Knopf" ist ein Panel (nur so lässt er sich blau färben), daher Alt+L und Leertaste (wenn er den Fokus hat) hier von Hand.
+   * Return startet im Hauptdialog immer (auch mit Strg / Shift, die wertet Button2Click aus), außer ein anderer Knopf hat den Fokus oder die Sprachauswahl ist aufgeklappt.
+   *)
   If ((ssAlt In Shift) And (key = VK_L)) Or
-    ((ActiveControl = Panel1) And ((key = VK_RETURN) Or (key = VK_SPACE))) Then Begin
+    ((ActiveControl = Panel1) And (key = VK_SPACE)) Or
+    ((key = VK_RETURN) And ((Shift - [ssCtrl, ssShift]) = []) And Not (ActiveControl Is TCustomButton) And Not ComboBox1.DroppedDown) Then Begin
     key := 0;
     Button2Click(Nil);
   End;
@@ -731,7 +747,7 @@ Begin
     ord(Settings.BrickWalk) + ord(Settings.FlashDisease) + ord(Settings.WhiteBomb) +
     ord(Settings.FlameThrower) + ord(Settings.HitPoints) + ord(Settings.Ghosts) +
     ord(Settings.GloveAtStart) + ord(Settings.OpenBorders) + ord(Settings.Teleporters) +
-    ord(Settings.ModTestMode);
+    ord(Settings.ItemConfig) + ord(Settings.ModTestMode);
   Settings.Handicap.free;
   If Count = 0 Then Begin
     Button7.Caption := R_Mods;
@@ -739,6 +755,17 @@ Begin
   Else Begin
     Button7.Caption := format(RF_ModsCount, [Count]);
   End;
+End;
+
+Procedure TForm1.UpdateGameModeCaption;
+Var
+  Settings: TModSettings;
+Begin
+  // Der aktive Spielmodus steht neben dem Knopf, der Name ist der übersetzte aus dem Dialog
+  Settings.Handicap := Nil;
+  LoadModSettingsFromFile(GetAtomicModsIniFile(), Settings);
+  Settings.Handicap.free;
+  Label10.Caption := form6.Caption + ': ' + form6.GameModeName(Settings.GameMode);
 End;
 
 Procedure TForm1.FormShow(Sender: TObject);
@@ -760,12 +787,19 @@ Begin
   Language.AddIgnoredIdentifier('Form1.Label5.Caption');
   Language.AddIgnoredIdentifier('Form1.Label5.Hint');
   Language.AddIgnoredIdentifier('Form1.Label6.Caption');
+  Language.AddIgnoredIdentifier('Form1.Label10.Caption'); // Setzt UpdateGameModeCaption
   Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
   Language.AddIgnoredComponent(Form3.CheckListBox1);
   Language.AddIgnoredComponent(Form3.CheckListBox2);
   Language.AddIgnoredIdentifier('Form3.Label3.Caption');
   Language.AddIgnoredIdentifier('Form3.Label5.Caption');
   Language.AddIgnoredComponent(Form4.StringGrid1);
+  For i := 80 To 92 Do Begin // Form4: Anteile der Items und Krankheiten, setzt UpdateItemShares
+    Language.AddIgnoredIdentifier('Form4.Label' + inttostr(i) + '.Caption');
+  End;
+  For i := 100 To 103 Do Begin
+    Language.AddIgnoredIdentifier('Form4.Label' + inttostr(i) + '.Caption');
+  End;
   Language.AddIgnoredIdentifier('Form5.ComboBox2.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox4.Items');
   ApplyLanguage();
@@ -808,6 +842,7 @@ Begin
   UpdateStatus();
   Form3.CheckListBox1Click(Nil);
   UpdateModsCaption();
+  UpdateGameModeCaption();
 End;
 
 Procedure TForm1.StoreSettings;

@@ -1,12 +1,12 @@
 object Form4: TForm4
   Left = 400
-  Height = 395
+  Height = 411
   Top = 150
-  Width = 564
+  Width = 754
   BorderStyle = bsDialog
   Caption = 'Form4'
-  ClientHeight = 395
-  ClientWidth = 564
+  ClientHeight = 411
+  ClientWidth = 754
   Position = poMainFormCenter
   ShowHint = True
   LCLVersion = '5.99.0.0'
@@ -15,10 +15,10 @@ object Form4: TForm4
   OnShow = FormShow
   object CheckListBox1: TCheckListBox
     Left = 8
-    Height = 316
+    Height = 332
     Hint = 'Check a mod to switch it on, click its name to see its settings.'
     Top = 8
-    Width = 160
+    Width = 250
     Items.Strings = (
       'Stun on bomb landing'
       'Boxing glove'
@@ -32,6 +32,7 @@ object Form4: TForm4
       'Glove at start'
       'Open borders'
       'Teleporters'
+      'Items & diseases'
       'Mod test mode'
     )
     ItemHeight = 22
@@ -39,22 +40,22 @@ object Form4: TForm4
     OnClickCheck = CheckListBox1ClickCheck
     OnSelectionChange = CheckListBox1SelectionChange
     Data = {
-      0D00000000000000000000000000000000
+      0E0000000000000000000000000000000000
     }
   end
   object PageControl1: TPageControl
-    Left = 176
-    Height = 316
+    Left = 266
+    Height = 332
     Top = 8
-    Width = 380
+    Width = 480
     ActivePage = TabSheet5
     ShowTabs = False
     TabIndex = 12
     TabOrder = 1
     object TabSheet1: TTabSheet
       Caption = 'TabSheet1'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox1: TCheckBox
         Left = 8
         Height = 21
@@ -69,9 +70,9 @@ object Form4: TForm4
       end
       object Label1: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'A thrown bomb (glove or ghost) that lands on a player stuns everyone on that tile. Punched bombs do not stun.'
         WordWrap = True
@@ -79,11 +80,11 @@ object Form4: TForm4
       object Panel1: TPanel
         Left = 8
         Height = 236
-        Top = 72
-        Width = 360
+        Top = 88
+        Width = 460
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 360
+        ClientWidth = 460
         TabOrder = 1
         object Label2: TLabel
           Left = 8
@@ -93,7 +94,7 @@ object Form4: TForm4
           Caption = 'Min. stun time (ms)'
         end
         object SpinEdit1: TSpinEdit
-          Left = 256
+          Left = 356
           Height = 30
           Hint = 'Shortest stun time. The stun time is random between min. and max.'
           Top = 8
@@ -109,7 +110,7 @@ object Form4: TForm4
           Caption = 'Max. stun time (ms)'
         end
         object SpinEdit2: TSpinEdit
-          Left = 256
+          Left = 356
           Height = 30
           Hint = 'Longest stun time. The stun time is random between min. and max.'
           Top = 38
@@ -121,8 +122,8 @@ object Form4: TForm4
     end
     object TabSheet10: TTabSheet
       Caption = 'TabSheet10'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox16: TCheckBox
         Left = 8
         Height = 21
@@ -137,9 +138,9 @@ object Form4: TForm4
       end
       object Label39: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'With the punch item the second action stuns an opponent standing on the tile in front of the player.'
         WordWrap = True
@@ -147,11 +148,11 @@ object Form4: TForm4
       object Panel10: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label40: TLabel
           Left = 8
@@ -161,7 +162,7 @@ object Form4: TForm4
           Caption = 'Min. stun time (ms)'
         end
         object SpinEdit21: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Shortest stun time. The stun time is random between min. and max.'
           Top = 8
@@ -177,7 +178,7 @@ object Form4: TForm4
           Caption = 'Max. stun time (ms)'
         end
         object SpinEdit22: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Longest stun time. The stun time is random between min. and max.'
           Top = 38
@@ -193,7 +194,7 @@ object Form4: TForm4
           Caption = 'Wait before next punch (ms)'
         end
         object SpinEdit23: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'After a punch the same player cannot punch again for this time, so nobody can be stunned all the time.'
           Top = 68
@@ -205,7 +206,7 @@ object Form4: TForm4
           Left = 8
           Height = 96
           Top = 104
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = 'Works also while standing still. A bomb on the same tile stays where it is. Team mates and invulnerable players are not stunned.'
           WordWrap = True
@@ -214,8 +215,8 @@ object Form4: TForm4
     end
     object TabSheet2: TTabSheet
       Caption = 'TabSheet2'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox2: TCheckBox
         Left = 8
         Height = 21
@@ -230,9 +231,9 @@ object Form4: TForm4
       end
       object Label4: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Some disease items make the player invulnerable for a random time instead of sick (not during hurry).'
         WordWrap = True
@@ -240,11 +241,11 @@ object Form4: TForm4
       object Panel2: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label5: TLabel
           Left = 8
@@ -254,7 +255,7 @@ object Form4: TForm4
           Caption = 'Chance of a disease item (%)'
         end
         object SpinEdit3: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Share of the disease items that make the player invulnerable instead of sick.'
           Top = 8
@@ -270,7 +271,7 @@ object Form4: TForm4
           Caption = 'Min. invulnerable time (ms)'
         end
         object SpinEdit4: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Shortest invulnerable time. The time is random between min. and max.'
           Top = 38
@@ -286,7 +287,7 @@ object Form4: TForm4
           Caption = 'Max. invulnerable time (ms)'
         end
         object SpinEdit5: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Longest invulnerable time. The time is random between min. and max.'
           Top = 68
@@ -298,8 +299,8 @@ object Form4: TForm4
     end
     object TabSheet7: TTabSheet
       Caption = 'TabSheet7'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox9: TCheckBox
         Left = 8
         Height = 21
@@ -314,9 +315,9 @@ object Form4: TForm4
       end
       object Label27: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Some disease items let the player walk through destructible bricks for a random time (not during hurry).'
         WordWrap = True
@@ -324,11 +325,11 @@ object Form4: TForm4
       object Panel7: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label28: TLabel
           Left = 8
@@ -338,7 +339,7 @@ object Form4: TForm4
           Caption = 'Chance of a disease item (%)'
         end
         object SpinEdit15: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Share of the disease items that let the player walk through bricks. Rolled after the positive disease.'
           Top = 8
@@ -354,7 +355,7 @@ object Form4: TForm4
           Caption = 'Min. time (ms)'
         end
         object SpinEdit16: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Shortest time. The time is random between min. and max.'
           Top = 38
@@ -370,7 +371,7 @@ object Form4: TForm4
           Caption = 'Max. time (ms)'
         end
         object SpinEdit17: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Longest time. The time is random between min. and max.'
           Top = 68
@@ -386,7 +387,7 @@ object Form4: TForm4
           Caption = 'See-through (%)'
         end
         object SpinEdit18: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How see-through the player is drawn: 0 = normal, 100 = invisible.'
           Top = 98
@@ -398,7 +399,7 @@ object Form4: TForm4
           Left = 8
           Height = 96
           Top = 128
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = 'If the time ends inside a brick, the player can only walk out of it (through further bricks only while there is no free tile next to the player). No bombs can be placed inside a brick, and the player is hit when the brick explodes.'
           WordWrap = True
@@ -407,8 +408,8 @@ object Form4: TForm4
     end
     object TabSheet11: TTabSheet
       Caption = 'TabSheet11'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox17: TCheckBox
         Left = 8
         Height = 21
@@ -423,9 +424,9 @@ object Form4: TForm4
       end
       object Label44: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Some disease items turn the screen of the player white for a while.'
         WordWrap = True
@@ -433,11 +434,11 @@ object Form4: TForm4
       object Panel11: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label45: TLabel
           Left = 8
@@ -447,7 +448,7 @@ object Form4: TForm4
           Caption = 'Chance of a disease item (%)'
         end
         object SpinEdit24: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Share of the disease items that turn the screen white. Rolled after the positive effects.'
           Top = 8
@@ -463,7 +464,7 @@ object Form4: TForm4
           Caption = 'Strength (%)'
         end
         object SpinEdit25: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How white the screen gets: 100 = nothing can be seen any more.'
           Top = 38
@@ -479,7 +480,7 @@ object Form4: TForm4
           Caption = 'Duration (ms)'
         end
         object SpinEdit26: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How long the screen stays white.'
           Top = 68
@@ -495,7 +496,7 @@ object Form4: TForm4
           Caption = 'Fade back (ms)'
         end
         object SpinEdit27: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How long it takes until the screen is normal again.'
           Top = 98
@@ -507,7 +508,7 @@ object Form4: TForm4
           Left = 8
           Height = 96
           Top = 128
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = 'AI players are not affected. If two players play on one PC, that PC shows no white screen, because both share the screen.'
           WordWrap = True
@@ -516,8 +517,8 @@ object Form4: TForm4
     end
     object TabSheet12: TTabSheet
       Caption = 'TabSheet12'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox18: TCheckBox
         Left = 8
         Height = 21
@@ -532,9 +533,9 @@ object Form4: TForm4
       end
       object Label50: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'A white bomb item: the next bomb explodes without flames and turns the screens of all opponents white.'
         WordWrap = True
@@ -542,11 +543,11 @@ object Form4: TForm4
       object Panel12: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label51: TLabel
           Left = 8
@@ -556,7 +557,7 @@ object Form4: TForm4
           Caption = 'Share of the items (%)'
         end
         object SpinEdit28: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Share of the items below the bricks that become a white bomb at the start of a round.'
           Top = 8
@@ -572,7 +573,7 @@ object Form4: TForm4
           Caption = 'Strength (%)'
         end
         object SpinEdit29: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How white the screens get: 100 = nothing can be seen any more.'
           Top = 38
@@ -588,7 +589,7 @@ object Form4: TForm4
           Caption = 'Duration (ms)'
         end
         object SpinEdit30: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How long the screens stay white.'
           Top = 68
@@ -604,7 +605,7 @@ object Form4: TForm4
           Caption = 'Fade back (ms)'
         end
         object SpinEdit31: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How long it takes until the screens are normal again.'
           Top = 98
@@ -616,7 +617,7 @@ object Form4: TForm4
           Left = 8
           Height = 96
           Top = 128
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = 'Team mates and the player who placed it are not affected. The white bomb is an extra bomb, afterwards the player places normal bombs again.'
           WordWrap = True
@@ -625,8 +626,8 @@ object Form4: TForm4
     end
     object TabSheet13: TTabSheet
       Caption = 'TabSheet13'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox19: TCheckBox
         Left = 8
         Height = 21
@@ -641,9 +642,9 @@ object Form4: TForm4
       end
       object Label56: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Hold the second action to fire in the direction you look. With fuel it does not trigger or punch bombs.'
         WordWrap = True
@@ -651,11 +652,11 @@ object Form4: TForm4
       object Panel13: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label57: TLabel
           Left = 8
@@ -665,7 +666,7 @@ object Form4: TForm4
           Caption = 'Share of the items (%)'
         end
         object SpinEdit32: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Share of the items below the bricks that become a flamethrower at the start of a round.'
           Top = 8
@@ -681,7 +682,7 @@ object Form4: TForm4
           Caption = 'Fuel per item (ms)'
         end
         object SpinEdit33: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How long a player can fire with one item. Only used up while firing, more items add fuel.'
           Top = 38
@@ -697,7 +698,7 @@ object Form4: TForm4
           Caption = 'Range (tiles)'
         end
         object SpinEdit34: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How far the beam reaches. It stops at bricks, solid blocks and bombs.'
           Top = 68
@@ -712,7 +713,7 @@ object Form4: TForm4
           Caption = 'Time to kill (ms)'
         end
         object SpinEdit35: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How long an opponent has to stay in the beam without a break until being hit.'
           Top = 98
@@ -755,7 +756,7 @@ object Form4: TForm4
           Caption = 'Time to ignite (ms)'
         end
         object SpinEdit36: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How long a bomb has to stay in the beam without a break until it is ignited. 0 = at once.'
           Top = 200
@@ -767,8 +768,8 @@ object Form4: TForm4
     end
     object TabSheet3: TTabSheet
       Caption = 'TabSheet3'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox3: TCheckBox
         Left = 8
         Height = 21
@@ -783,9 +784,9 @@ object Form4: TForm4
       end
       object Label8: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Players survive several hits, set per player name. During hurry every hit is lethal.'
         WordWrap = True
@@ -793,11 +794,11 @@ object Form4: TForm4
       object Panel3: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label9: TLabel
           Left = 8
@@ -807,7 +808,7 @@ object Form4: TForm4
           Caption = 'Invulnerable after a hit (ms)'
         end
         object SpinEdit6: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'After a hit that is not lethal the player is invulnerable for this time, so the same flame does not hit twice.'
           Top = 8
@@ -823,7 +824,7 @@ object Form4: TForm4
           Caption = 'Default hit points'
         end
         object SpinEdit7: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Hit points of all players that are not in the handicap table.'
           Top = 38
@@ -851,7 +852,7 @@ object Form4: TForm4
           Height = 88
           Hint = 'Hit points per player name, e.g. more for weaker players. Name~2 is the second player on the same PC.'
           Top = 118
-          Width = 312
+          Width = 412
           ColCount = 2
           DefaultRowHeight = 20
           FixedCols = 0
@@ -860,12 +861,12 @@ object Form4: TForm4
           TabOrder = 3
           OnPrepareCanvas = StringGrid1PrepareCanvas
           ColWidths = (
-            180
-            86
+            260
+            130
           )
         end
         object Button4: TButton
-          Left = 332
+          Left = 432
           Height = 25
           Hint = 'Add a line.'
           Top = 118
@@ -875,7 +876,7 @@ object Form4: TForm4
           OnClick = Button4Click
         end
         object Button5: TButton
-          Left = 332
+          Left = 432
           Height = 25
           Hint = 'Delete the selected line.'
           Top = 148
@@ -888,7 +889,7 @@ object Form4: TForm4
           Left = 8
           Height = 16
           Top = 210
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = 'Name~2 = second player on the same PC.'
           WordWrap = True
@@ -897,8 +898,8 @@ object Form4: TForm4
     end
     object TabSheet4: TTabSheet
       Caption = 'TabSheet4'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox4: TCheckBox
         Left = 8
         Height = 21
@@ -913,9 +914,9 @@ object Form4: TForm4
       end
       object Label13: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Dead players walk around the field as ghosts until hurry. A ghost bomb that hits an opponent brings the ghost back.'
         WordWrap = True
@@ -923,11 +924,11 @@ object Form4: TForm4
       object Panel4: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label14: TLabel
           Left = 8
@@ -937,7 +938,7 @@ object Form4: TForm4
           Caption = 'Flame length of the ghost bomb'
         end
         object SpinEdit8: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Flame length of the bomb a ghost throws.'
           Top = 8
@@ -952,7 +953,7 @@ object Form4: TForm4
           Caption = 'Invulnerable after return (ms)'
         end
         object SpinEdit9: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'A ghost that comes back is invulnerable for this time.'
           Top = 38
@@ -968,7 +969,7 @@ object Form4: TForm4
           Caption = 'Max. times ghost per round'
         end
         object SpinEdit10: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'How often a player can become a ghost per round, 0 = unlimited.'
           Top = 68
@@ -983,7 +984,7 @@ object Form4: TForm4
           Caption = 'Max. time as ghost (ms)'
         end
         object SpinEdit11: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'A ghost that hits no opponent within this time vanishes, 0 = unlimited.'
           Top = 98
@@ -999,7 +1000,7 @@ object Form4: TForm4
           Caption = 'Flicker time (ms)'
         end
         object SpinEdit12: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Ghosts are visible for 3 ticks and invisible for 1 tick, this is the length of a tick. 0 = no flicker.'
           Top = 128
@@ -1011,7 +1012,7 @@ object Form4: TForm4
           Left = 8
           Height = 32
           Top = 162
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = '0 = unlimited, flicker time 0 = no flicker. In the last 5 s before a ghost vanishes it flickers faster.'
           WordWrap = True
@@ -1020,8 +1021,8 @@ object Form4: TForm4
     end
     object TabSheet6: TTabSheet
       Caption = 'TabSheet6'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox8: TCheckBox
         Left = 8
         Height = 21
@@ -1038,7 +1039,7 @@ object Form4: TForm4
         Left = 8
         Height = 128
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Until the first step of a round every player can throw the bomb below the player like with the glove (press the first action twice). Pressing against a wall only turns, so you can aim before throwing.'
         WordWrap = True
@@ -1046,16 +1047,16 @@ object Form4: TForm4
       object Panel6: TPanel
         Left = 0
         Height = 204
-        Top = 104
-        Width = 328
+        Top = 120
+        Width = 428
         BevelOuter = bvNone
         TabOrder = 1
       end
     end
     object TabSheet8: TTabSheet
       Caption = 'TabSheet8'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox10: TCheckBox
         Left = 8
         Height = 21
@@ -1070,9 +1071,9 @@ object Form4: TForm4
       end
       object Label33: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Players can walk over the border of the field and come out on the opposite side.'
         WordWrap = True
@@ -1080,11 +1081,11 @@ object Form4: TForm4
       object Panel8: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object CheckBox11: TCheckBox
           Left = 8
@@ -1112,7 +1113,7 @@ object Form4: TForm4
           Caption = 'Open after (s)'
         end
         object SpinEdit20: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Seconds after the start of a round until the borders open, so nobody flees from the start corner at once. 0 = from the start.'
           Top = 68
@@ -1124,7 +1125,7 @@ object Form4: TForm4
           Left = 8
           Height = 96
           Top = 104
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = 'Arrows on the frame show the open borders, they blink 3 s before the borders open and disappear 10 s after. If the tile on the opposite side is blocked (brick, bomb), the border works like a wall. Only players go over the border.'
           WordWrap = True
@@ -1133,8 +1134,8 @@ object Form4: TForm4
     end
     object TabSheet9: TTabSheet
       Caption = 'TabSheet9'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox13: TCheckBox
         Left = 8
         Height = 21
@@ -1149,9 +1150,9 @@ object Form4: TForm4
       end
       object Label35: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Teleporters in the middle of the borders bring the player to the opposite border (not during hurry).'
         WordWrap = True
@@ -1159,11 +1160,11 @@ object Form4: TForm4
       object Panel9: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object CheckBox14: TCheckBox
           Left = 8
@@ -1191,7 +1192,7 @@ object Form4: TForm4
           Caption = 'Appear after (s)'
         end
         object SpinEdit19: TSpinEdit
-          Left = 264
+          Left = 364
           Height = 30
           Hint = 'Seconds after the start of a round until the teleporters appear and work, 0 = from the start.'
           Top = 68
@@ -1203,17 +1204,518 @@ object Form4: TForm4
           Left = 8
           Height = 96
           Top = 104
-          Width = 352
+          Width = 452
           AutoSize = False
           Caption = 'The teleporter tiles and the tiles next to them stay free of bricks from the start. No bombs can be placed on a teleporter, rolling bombs stop in front of it.'
           WordWrap = True
         end
       end
     end
+    object TabSheet14: TTabSheet
+      Caption = 'TabSheet14'
+      ClientHeight = 330
+      ClientWidth = 478
+      object CheckBox23: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: the weights below decide how often each item and each disease appears.'
+        Top = 8
+        Width = 140
+        Caption = 'Items && diseases'
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 0
+        OnChange = CheckBox1Change
+      end
+      object Label64: TLabel
+        Left = 8
+        Height = 48
+        Top = 34
+        Width = 460
+        AutoSize = False
+        Caption = 'How often the items below the bricks and the diseases appear. Share = weight / sum of all weights.'
+        WordWrap = True
+      end
+      object ScrollBox1: TScrollBox
+        Left = 0
+        Height = 240
+        Top = 88
+        Width = 476
+        HorzScrollBar.Visible = False
+        VertScrollBar.Increment = 28
+        VertScrollBar.Tracking = True
+        BorderStyle = bsNone
+        TabOrder = 1
+        object Panel14: TPanel
+          Left = 0
+          Height = 724
+          Top = 0
+          Width = 452
+          BevelOuter = bvNone
+          ClientHeight = 724
+          ClientWidth = 452
+          TabOrder = 0
+          object Label65: TLabel
+            Left = 8
+            Height = 16
+            Top = 12
+            Width = 160
+            Caption = 'Bricks with an item (%)'
+          end
+          object SpinEdit37: TSpinEdit
+            Left = 276
+            Height = 26
+            Hint = 'Share of the destructible bricks that have an item below them. 93 is like without the mod.'
+            Top = 8
+            Width = 80
+            Increment = 5
+            TabOrder = 0
+            OnChange = SpinEdit38Change
+          end
+          object Label66: TLabel
+            Left = 8
+            Height = 32
+            Top = 42
+            Width = 430
+            AutoSize = False
+            Caption = 'Weight of the items (0 = never), share of the bricks'
+            Font.Style = [fsBold]
+            ParentFont = False
+            WordWrap = True
+          end
+          object Label67: TLabel
+            Left = 8
+            Height = 16
+            Top = 82
+            Width = 160
+            Caption = 'Extra bomb'
+          end
+          object SpinEdit38: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 78
+            Width = 80
+            Increment = 5
+            TabOrder = 1
+            OnChange = SpinEdit38Change
+          end
+          object Label80: TLabel
+            Left = 364
+            Height = 16
+            Top = 82
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label68: TLabel
+            Left = 8
+            Height = 16
+            Top = 110
+            Width = 160
+            Caption = 'Longer flame'
+          end
+          object SpinEdit39: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 106
+            Width = 80
+            Increment = 5
+            TabOrder = 2
+            OnChange = SpinEdit38Change
+          end
+          object Label81: TLabel
+            Left = 364
+            Height = 16
+            Top = 110
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label69: TLabel
+            Left = 8
+            Height = 16
+            Top = 138
+            Width = 160
+            Caption = 'Gold flame'
+          end
+          object SpinEdit40: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 134
+            Width = 80
+            Increment = 5
+            TabOrder = 3
+            OnChange = SpinEdit38Change
+          end
+          object Label82: TLabel
+            Left = 364
+            Height = 16
+            Top = 138
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label70: TLabel
+            Left = 8
+            Height = 16
+            Top = 166
+            Width = 160
+            Caption = 'Extra speed'
+          end
+          object SpinEdit41: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 162
+            Width = 80
+            Increment = 5
+            TabOrder = 4
+            OnChange = SpinEdit38Change
+          end
+          object Label83: TLabel
+            Left = 364
+            Height = 16
+            Top = 166
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label71: TLabel
+            Left = 8
+            Height = 16
+            Top = 194
+            Width = 160
+            Caption = 'Kick'
+          end
+          object SpinEdit42: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 190
+            Width = 80
+            Increment = 5
+            TabOrder = 5
+            OnChange = SpinEdit38Change
+          end
+          object Label84: TLabel
+            Left = 364
+            Height = 16
+            Top = 194
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label72: TLabel
+            Left = 8
+            Height = 16
+            Top = 222
+            Width = 160
+            Caption = 'Punch'
+          end
+          object SpinEdit43: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 218
+            Width = 80
+            Increment = 5
+            TabOrder = 6
+            OnChange = SpinEdit38Change
+          end
+          object Label85: TLabel
+            Left = 364
+            Height = 16
+            Top = 222
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label73: TLabel
+            Left = 8
+            Height = 16
+            Top = 250
+            Width = 160
+            Caption = 'Grab'
+          end
+          object SpinEdit44: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 246
+            Width = 80
+            Increment = 5
+            TabOrder = 7
+            OnChange = SpinEdit38Change
+          end
+          object Label86: TLabel
+            Left = 364
+            Height = 16
+            Top = 250
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label74: TLabel
+            Left = 8
+            Height = 16
+            Top = 278
+            Width = 160
+            Caption = 'Spooger'
+          end
+          object SpinEdit45: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 274
+            Width = 80
+            Increment = 5
+            TabOrder = 8
+            OnChange = SpinEdit38Change
+          end
+          object Label87: TLabel
+            Left = 364
+            Height = 16
+            Top = 278
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label75: TLabel
+            Left = 8
+            Height = 16
+            Top = 306
+            Width = 160
+            Caption = 'Trigger'
+          end
+          object SpinEdit46: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 302
+            Width = 80
+            Increment = 5
+            TabOrder = 9
+            OnChange = SpinEdit38Change
+          end
+          object Label88: TLabel
+            Left = 364
+            Height = 16
+            Top = 306
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label76: TLabel
+            Left = 8
+            Height = 16
+            Top = 334
+            Width = 160
+            Caption = 'Jelly bombs'
+          end
+          object SpinEdit47: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 330
+            Width = 80
+            Increment = 5
+            TabOrder = 10
+            OnChange = SpinEdit38Change
+          end
+          object Label89: TLabel
+            Left = 364
+            Height = 16
+            Top = 334
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label77: TLabel
+            Left = 8
+            Height = 16
+            Top = 362
+            Width = 160
+            Caption = 'Disease'
+          end
+          object SpinEdit48: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 358
+            Width = 80
+            Increment = 5
+            TabOrder = 11
+            OnChange = SpinEdit38Change
+          end
+          object Label90: TLabel
+            Left = 364
+            Height = 16
+            Top = 362
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label78: TLabel
+            Left = 8
+            Height = 16
+            Top = 390
+            Width = 160
+            Caption = 'Super bad disease'
+          end
+          object SpinEdit49: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 386
+            Width = 80
+            Increment = 5
+            TabOrder = 12
+            OnChange = SpinEdit38Change
+          end
+          object Label91: TLabel
+            Left = 364
+            Height = 16
+            Top = 390
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label79: TLabel
+            Left = 8
+            Height = 16
+            Top = 418
+            Width = 160
+            Caption = 'Slow'
+          end
+          object SpinEdit50: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 414
+            Width = 80
+            Increment = 5
+            TabOrder = 13
+            OnChange = SpinEdit38Change
+          end
+          object Label92: TLabel
+            Left = 364
+            Height = 16
+            Top = 418
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label93: TLabel
+            Left = 8
+            Height = 16
+            Top = 448
+            Width = 430
+            Caption = 'Weight of the diseases (0 = never)'
+            Font.Style = [fsBold]
+            ParentFont = False
+          end
+          object Label94: TLabel
+            Left = 8
+            Height = 16
+            Top = 476
+            Width = 160
+            Caption = 'Inverted keys'
+          end
+          object SpinEdit51: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 472
+            Width = 80
+            Increment = 5
+            TabOrder = 14
+            OnChange = SpinEdit38Change
+          end
+          object Label100: TLabel
+            Left = 364
+            Height = 16
+            Top = 476
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label95: TLabel
+            Left = 8
+            Height = 16
+            Top = 504
+            Width = 160
+            Caption = 'No bombs'
+          end
+          object SpinEdit52: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 500
+            Width = 80
+            Increment = 5
+            TabOrder = 15
+            OnChange = SpinEdit38Change
+          end
+          object Label101: TLabel
+            Left = 364
+            Height = 16
+            Top = 504
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label96: TLabel
+            Left = 8
+            Height = 16
+            Top = 532
+            Width = 160
+            Caption = 'Dud bombs'
+          end
+          object SpinEdit53: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 528
+            Width = 80
+            Increment = 5
+            TabOrder = 16
+            OnChange = SpinEdit38Change
+          end
+          object Label102: TLabel
+            Left = 364
+            Height = 16
+            Top = 532
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label97: TLabel
+            Left = 8
+            Height = 16
+            Top = 560
+            Width = 160
+            Caption = 'Super slow'
+          end
+          object SpinEdit54: TSpinEdit
+            Left = 276
+            Height = 26
+            Top = 556
+            Width = 80
+            Increment = 5
+            TabOrder = 17
+            OnChange = SpinEdit38Change
+          end
+          object Label103: TLabel
+            Left = 364
+            Height = 16
+            Top = 560
+            Width = 72
+            Caption = '0 %'
+          end
+          object Label98: TLabel
+            Left = 8
+            Height = 16
+            Top = 594
+            Width = 160
+            Caption = 'Super bad: swap places (%)'
+          end
+          object SpinEdit55: TSpinEdit
+            Left = 276
+            Height = 26
+            Hint = 'How often the super bad disease swaps the places with another player instead of making the player place bombs all the time.'
+            Top = 590
+            Width = 80
+            Increment = 5
+            TabOrder = 18
+            OnChange = SpinEdit38Change
+          end
+          object Label99: TLabel
+            Left = 8
+            Height = 96
+            Top = 624
+            Width = 430
+            AutoSize = False
+            Caption = 'Items that the map (scheme) forbids do not appear, the share of the bricks with an item stays the same. If all diseases are 0, there is no disease item. White bomb and flamethrower replace a part of these items afterwards.'
+            WordWrap = True
+          end
+        end
+      end
+    end
     object TabSheet5: TTabSheet
       Caption = 'TabSheet5'
-      ClientHeight = 314
-      ClientWidth = 378
+      ClientHeight = 330
+      ClientWidth = 478
       object CheckBox5: TCheckBox
         Left = 8
         Height = 21
@@ -1228,9 +1730,9 @@ object Form4: TForm4
       end
       object Label20: TLabel
         Left = 8
-        Height = 32
+        Height = 48
         Top = 34
-        Width = 360
+        Width = 460
         AutoSize = False
         Caption = 'Only for testing, shows a hint to all players. In game F3 shows the test keys (only for the master).'
         Font.Color = clRed
@@ -1240,11 +1742,11 @@ object Form4: TForm4
       object Panel5: TPanel
         Left = 0
         Height = 236
-        Top = 72
-        Width = 368
+        Top = 88
+        Width = 468
         BevelOuter = bvNone
         ClientHeight = 236
-        ClientWidth = 368
+        ClientWidth = 468
         TabOrder = 1
         object Label21: TLabel
           Left = 8
@@ -1254,15 +1756,31 @@ object Form4: TForm4
           Caption = 'Start items'
         end
         object Edit1: TEdit
-          Left = 120
+          Left = 220
           Height = 30
           Hint = 'Items every player gets at round start, comma separated, *n = n times. Possible: bomb, flame, goldflame, speed, kick, punch, grab, spooger, jelly, trigger.'
           Top = 8
-          Width = 196
+          Width = 166
           TabOrder = 0
         end
+        object Button6: TButton
+          AnchorSideLeft.Control = Edit1
+          AnchorSideLeft.Side = asrBottom
+          AnchorSideTop.Control = Edit1
+          AnchorSideBottom.Control = Edit1
+          AnchorSideBottom.Side = asrBottom
+          Left = 390
+          Height = 30
+          Hint = 'Add an item. Items that are already in the list are greyed out, grab and spooger replace each other.'
+          Top = 8
+          Width = 26
+          Anchors = [akTop, akLeft, akBottom]
+          BorderSpacing.Left = 4
+          Caption = '+'
+          TabOrder = 5
+        end
         object Label22: TLabel
-          Left = 120
+          Left = 220
           Height = 16
           Top = 40
           Width = 165
@@ -1276,7 +1794,7 @@ object Form4: TForm4
           Caption = 'Round time (s, 0 = normal)'
         end
         object SpinEdit13: TSpinEdit
-          Left = 220
+          Left = 320
           Height = 30
           Hint = 'Round time in seconds, hurry starts at 80 s remaining. 0 = time from the game settings.'
           Top = 68
@@ -1292,7 +1810,7 @@ object Form4: TForm4
           Caption = 'Invulnerable at start (ms)'
         end
         object SpinEdit14: TSpinEdit
-          Left = 220
+          Left = 320
           Height = 30
           Hint = 'All players are invulnerable for this time at round start.'
           Top = 104
@@ -1315,16 +1833,16 @@ object Form4: TForm4
   object Label25: TLabel
     Left = 8
     Height = 16
-    Top = 334
-    Width = 296
+    Top = 350
+    Width = 486
     Caption = 'Changes apply to the next game started on this PC.'
   end
   object Label62: TLabel
     Cursor = crHandPoint
-    Left = 100
+    Left = 110
     Height = 16
     Hint = 'Open the mods manual (MODS_MANUAL.md, with a link to the German version).'
-    Top = 365
+    Top = 381
     Width = 78
     Caption = 'Mods manual'
     Font.Color = clBlue
@@ -1336,17 +1854,17 @@ object Form4: TForm4
     Left = 8
     Height = 25
     Hint = 'Reset all mods to their default values (all off). Saved only with OK.'
-    Top = 360
-    Width = 80
+    Top = 376
+    Width = 90
     Caption = '&Defaults'
     TabOrder = 2
     OnClick = Button1Click
   end
   object Button2: TButton
-    Left = 388
+    Left = 578
     Height = 25
     Hint = 'Save the settings to atomic_mods.ini. They apply to the next game this PC joins as first player, also on another server.'
-    Top = 360
+    Top = 376
     Width = 80
     Caption = 'OK'
     Default = True
@@ -1354,10 +1872,10 @@ object Form4: TForm4
     OnClick = Button2Click
   end
   object Button3: TButton
-    Left = 476
+    Left = 666
     Height = 25
     Hint = 'Close without saving.'
-    Top = 360
+    Top = 376
     Width = 80
     Cancel = True
     Caption = 'Cancel'

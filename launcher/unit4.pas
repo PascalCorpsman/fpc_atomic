@@ -39,6 +39,7 @@ Type
     Button3: TButton;
     Button4: TButton;
     Button5: TButton;
+    Button6: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -61,6 +62,7 @@ Type
     CheckBox20: TCheckBox;
     CheckBox21: TCheckBox;
     CheckBox22: TCheckBox;
+    CheckBox23: TCheckBox;
     CheckListBox1: TCheckListBox;
     Edit1: TEdit;
     Label1: TLabel;
@@ -118,6 +120,46 @@ Type
     Label60: TLabel;
     Label62: TLabel;
     Label63: TLabel;
+    Label64: TLabel;
+    Label65: TLabel;
+    Label66: TLabel;
+    Label67: TLabel;
+    Label68: TLabel;
+    Label69: TLabel;
+    Label70: TLabel;
+    Label71: TLabel;
+    Label72: TLabel;
+    Label73: TLabel;
+    Label74: TLabel;
+    Label75: TLabel;
+    Label76: TLabel;
+    Label77: TLabel;
+    Label78: TLabel;
+    Label79: TLabel;
+    Label80: TLabel;
+    Label81: TLabel;
+    Label82: TLabel;
+    Label83: TLabel;
+    Label84: TLabel;
+    Label85: TLabel;
+    Label86: TLabel;
+    Label87: TLabel;
+    Label88: TLabel;
+    Label89: TLabel;
+    Label90: TLabel;
+    Label91: TLabel;
+    Label92: TLabel;
+    Label93: TLabel;
+    Label94: TLabel;
+    Label95: TLabel;
+    Label96: TLabel;
+    Label97: TLabel;
+    Label98: TLabel;
+    Label99: TLabel;
+    Label100: TLabel;
+    Label101: TLabel;
+    Label102: TLabel;
+    Label103: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -139,6 +181,8 @@ Type
     Panel11: TPanel;
     Panel12: TPanel;
     Panel13: TPanel;
+    Panel14: TPanel;
+    ScrollBox1: TScrollBox;
     SpinEdit1: TSpinEdit;
     SpinEdit10: TSpinEdit;
     SpinEdit11: TSpinEdit;
@@ -167,6 +211,25 @@ Type
     SpinEdit34: TSpinEdit;
     SpinEdit35: TSpinEdit;
     SpinEdit36: TSpinEdit;
+    SpinEdit37: TSpinEdit;
+    SpinEdit38: TSpinEdit;
+    SpinEdit39: TSpinEdit;
+    SpinEdit40: TSpinEdit;
+    SpinEdit41: TSpinEdit;
+    SpinEdit42: TSpinEdit;
+    SpinEdit43: TSpinEdit;
+    SpinEdit44: TSpinEdit;
+    SpinEdit45: TSpinEdit;
+    SpinEdit46: TSpinEdit;
+    SpinEdit47: TSpinEdit;
+    SpinEdit48: TSpinEdit;
+    SpinEdit49: TSpinEdit;
+    SpinEdit50: TSpinEdit;
+    SpinEdit51: TSpinEdit;
+    SpinEdit52: TSpinEdit;
+    SpinEdit53: TSpinEdit;
+    SpinEdit54: TSpinEdit;
+    SpinEdit55: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
     SpinEdit4: TSpinEdit;
@@ -189,6 +252,7 @@ Type
     TabSheet11: TTabSheet;
     TabSheet12: TTabSheet;
     TabSheet13: TTabSheet;
+    TabSheet14: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -200,12 +264,18 @@ Type
     Procedure FormCreate(Sender: TObject);
     Procedure FormDestroy(Sender: TObject);
     Procedure FormShow(Sender: TObject);
+    Procedure SpinEdit38Change(Sender: TObject);
     Procedure StringGrid1PrepareCanvas(Sender: TObject; aCol, aRow: Integer;
       aState: TGridDrawState);
   private
     fSettings: TModSettings;
     fModCheckBoxes: Array Of TCheckBox; // Pro Mod die Checkbox oben auf seiner Seite, Index = Index in CheckListBox1 und PageControl1
     fModPanels: Array Of TPanel; // Pro Mod seine Einstellungen, die sind nur aktiv wenn die Checkbox an ist
+    fItemWeightEdits: Array[TPowerUps] Of TSpinEdit; // Mod Items & Krankheiten, Nil = nicht einstellbar
+    fItemShareLabels: Array[TPowerUps] Of TLabel;
+    fDiseaseWeightEdits: Array[dSuperSlow..dDudBombs] Of TSpinEdit;
+    fDiseaseShareLabels: Array[dSuperSlow..dDudBombs] Of TLabel;
+    Procedure UpdateItemShares();
     Procedure SettingsToControls();
     Function ControlsToSettings(): Boolean; // False, wenn eine Eingabe ungültig ist (dann wurde schon eine Meldung angezeigt)
     Procedure UpdateModEnabled();
@@ -222,7 +292,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global, ulanguage;
+Uses uatomic_global, ulanguage, uitemsedit;
 
 Function ValidHandicapName(aName: String): Boolean;
 Begin
@@ -237,12 +307,21 @@ End;
 { TForm4 }
 
 Procedure TForm4.FormCreate(Sender: TObject);
+Var
+  pu: TPowerUps;
+  d: TDisease;
 Begin
   caption := 'Mods';
+{$IFDEF Windows}
+  // Ohne Tabs zeichnet Windows den Rahmen von PageControl1 2 px innerhalb seiner Grenzen, die Liste daran ausrichten
+  CheckListBox1.SetBounds(CheckListBox1.Left, PageControl1.Top + 2, CheckListBox1.Width, PageControl1.Height - 3);
+{$ENDIF}
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
+  // Der "+" Button fügt Start Items in Edit1 ein (Mod Test Modus)
+  TItemsEditMenu.Create(Button6, Edit1);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
-  setlength(fModCheckBoxes, 13);
+  setlength(fModCheckBoxes, 14);
   fModCheckBoxes[0] := CheckBox1;
   fModCheckBoxes[1] := CheckBox16;
   fModCheckBoxes[2] := CheckBox2;
@@ -255,8 +334,9 @@ Begin
   fModCheckBoxes[9] := CheckBox8;
   fModCheckBoxes[10] := CheckBox10;
   fModCheckBoxes[11] := CheckBox13;
-  fModCheckBoxes[12] := CheckBox5;
-  setlength(fModPanels, 13);
+  fModCheckBoxes[12] := CheckBox23;
+  fModCheckBoxes[13] := CheckBox5;
+  setlength(fModPanels, 14);
   fModPanels[0] := Panel1;
   fModPanels[1] := Panel10;
   fModPanels[2] := Panel2;
@@ -269,7 +349,53 @@ Begin
   fModPanels[9] := Panel6;
   fModPanels[10] := Panel8;
   fModPanels[11] := Panel9;
-  fModPanels[12] := Panel5;
+  fModPanels[12] := Panel14;
+  fModPanels[13] := Panel5;
+  // Mod Items & Krankheiten: Die Zeilen in der Reihenfolge des Dialogs
+  For pu In TPowerUps Do Begin
+    fItemWeightEdits[pu] := Nil;
+    fItemShareLabels[pu] := Nil;
+  End;
+  fItemWeightEdits[puExtraBomb] := SpinEdit38;
+  fItemWeightEdits[puLongerFlameLength] := SpinEdit39;
+  fItemWeightEdits[puGoldFlame] := SpinEdit40;
+  fItemWeightEdits[puExtraSpeed] := SpinEdit41;
+  fItemWeightEdits[puCanCick] := SpinEdit42;
+  fItemWeightEdits[puCanPunch] := SpinEdit43;
+  fItemWeightEdits[puCanGrab] := SpinEdit44;
+  fItemWeightEdits[puCanSpooger] := SpinEdit45;
+  fItemWeightEdits[puTrigger] := SpinEdit46;
+  fItemWeightEdits[puCanJelly] := SpinEdit47;
+  fItemWeightEdits[puDisease] := SpinEdit48;
+  fItemWeightEdits[puSuperBadDisease] := SpinEdit49;
+  fItemWeightEdits[puSlow] := SpinEdit50;
+  fItemShareLabels[puExtraBomb] := Label80;
+  fItemShareLabels[puLongerFlameLength] := Label81;
+  fItemShareLabels[puGoldFlame] := Label82;
+  fItemShareLabels[puExtraSpeed] := Label83;
+  fItemShareLabels[puCanCick] := Label84;
+  fItemShareLabels[puCanPunch] := Label85;
+  fItemShareLabels[puCanGrab] := Label86;
+  fItemShareLabels[puCanSpooger] := Label87;
+  fItemShareLabels[puTrigger] := Label88;
+  fItemShareLabels[puCanJelly] := Label89;
+  fItemShareLabels[puDisease] := Label90;
+  fItemShareLabels[puSuperBadDisease] := Label91;
+  fItemShareLabels[puSlow] := Label92;
+  fDiseaseWeightEdits[dInvertedKeyboard] := SpinEdit51;
+  fDiseaseWeightEdits[dNoBombs] := SpinEdit52;
+  fDiseaseWeightEdits[dDudBombs] := SpinEdit53;
+  fDiseaseWeightEdits[dSuperSlow] := SpinEdit54;
+  fDiseaseShareLabels[dInvertedKeyboard] := Label100;
+  fDiseaseShareLabels[dNoBombs] := Label101;
+  fDiseaseShareLabels[dDudBombs] := Label102;
+  fDiseaseShareLabels[dSuperSlow] := Label103;
+  For pu In TPowerUps Do Begin
+    If assigned(fItemWeightEdits[pu]) Then fItemWeightEdits[pu].MaxValue := ModMaxItemWeight;
+  End;
+  For d := low(fDiseaseWeightEdits) To high(fDiseaseWeightEdits) Do Begin
+    fDiseaseWeightEdits[d].MaxValue := ModMaxItemWeight;
+  End;
   // Die Grenzen sind die selben, die auch der Server beim Laden nutzt
   SpinEdit1.MaxValue := ModMaxStunMs;
   SpinEdit2.MaxValue := ModMaxStunMs;
@@ -311,6 +437,8 @@ Begin
   SpinEdit12.MaxValue := ModMaxGhostFlickerMs;
   SpinEdit13.MaxValue := ModMaxRoundTimeSec;
   SpinEdit14.MaxValue := ModMaxStartInvulnMs;
+  SpinEdit37.MaxValue := ModMaxItemChance;
+  SpinEdit55.MaxValue := ModMaxSuperBadSwapChance;
   StringGrid1.Cells[0, 0] := R_PlayerName;
   StringGrid1.Cells[1, 0] := R_HitPoints;
   PageControl1.ActivePageIndex := 0;
@@ -331,9 +459,13 @@ Begin
 End;
 
 Procedure TForm4.Button1Click(Sender: TObject);
+Var
+  Keep: TModSettings;
 Begin
-  // Defaults
+  // Defaults, aber nur für die Mods, der Spielmodus in der selben Datei (Dialog Spielmodus) bleibt wie er ist
+  Keep := fSettings;
   ModSettingsDefaults(fSettings);
+  CopyGameModeSettings(Keep, fSettings);
   SettingsToControls();
 End;
 
@@ -399,6 +531,12 @@ Begin
   End;
 End;
 
+Procedure TForm4.SpinEdit38Change(Sender: TObject);
+Begin
+  // Gemeinsam für alle Eingaben des Mods Items & Krankheiten
+  UpdateItemShares();
+End;
+
 Procedure TForm4.StringGrid1PrepareCanvas(Sender: TObject; aCol,
   aRow: Integer; aState: TGridDrawState);
 Begin
@@ -411,6 +549,8 @@ End;
 Procedure TForm4.SettingsToControls;
 Var
   i: integer;
+  pu: TPowerUps;
+  d: TDisease;
 Begin
   StringGrid1.Cells[0, 0] := R_PlayerName;
   StringGrid1.Cells[1, 0] := R_HitPoints;
@@ -485,6 +625,17 @@ Begin
   CheckBox15.Checked := fSettings.TeleportersLeftRight;
   SpinEdit19.Value := fSettings.TeleportersActiveSec;
 
+  CheckBox23.Checked := fSettings.ItemConfig;
+  SpinEdit37.Value := fSettings.ItemChance;
+  For pu In TPowerUps Do Begin
+    If assigned(fItemWeightEdits[pu]) Then fItemWeightEdits[pu].Value := fSettings.ItemWeights[pu];
+  End;
+  For d := low(fDiseaseWeightEdits) To high(fDiseaseWeightEdits) Do Begin
+    fDiseaseWeightEdits[d].Value := fSettings.DiseaseWeights[d];
+  End;
+  SpinEdit55.Value := fSettings.SuperBadSwapChance;
+  UpdateItemShares();
+
   CheckBox5.Checked := fSettings.ModTestMode;
   Edit1.Text := fSettings.StartItems;
   SpinEdit13.Value := fSettings.RoundTimeSec;
@@ -497,6 +648,8 @@ Function TForm4.ControlsToSettings: Boolean;
 Var
   i, j: integer;
   n: String;
+  pu: TPowerUps;
+  d: TDisease;
 Begin
   result := false;
   If SpinEdit2.Value < SpinEdit1.Value Then Begin
@@ -612,6 +765,16 @@ Begin
   fSettings.TeleportersLeftRight := CheckBox15.Checked;
   fSettings.TeleportersActiveSec := SpinEdit19.Value;
 
+  fSettings.ItemConfig := CheckBox23.Checked;
+  fSettings.ItemChance := SpinEdit37.Value;
+  For pu In TPowerUps Do Begin
+    If assigned(fItemWeightEdits[pu]) Then fSettings.ItemWeights[pu] := fItemWeightEdits[pu].Value;
+  End;
+  For d := low(fDiseaseWeightEdits) To high(fDiseaseWeightEdits) Do Begin
+    fSettings.DiseaseWeights[d] := fDiseaseWeightEdits[d].Value;
+  End;
+  fSettings.SuperBadSwapChance := SpinEdit55.Value;
+
   fSettings.ModTestMode := CheckBox5.Checked;
   fSettings.StartItems := trim(Edit1.Text);
   fSettings.RoundTimeSec := SpinEdit13.Value;
@@ -629,6 +792,42 @@ Begin
     CheckListBox1.Checked[i] := fModCheckBoxes[i].Checked;
     For j := 0 To fModPanels[i].ControlCount - 1 Do Begin
       fModPanels[i].Controls[j].Enabled := fModCheckBoxes[i].Checked;
+    End;
+  End;
+End;
+
+Procedure TForm4.UpdateItemShares;
+Var
+  pu: TPowerUps;
+  d: TDisease;
+  sum, dsum: integer;
+Begin
+  // Pro Item der Anteil an allen Steinen, pro Krankheit der Anteil an den normalen Krankheiten
+  dsum := 0;
+  For d := low(fDiseaseWeightEdits) To high(fDiseaseWeightEdits) Do Begin
+    dsum := dsum + fDiseaseWeightEdits[d].Value;
+  End;
+  sum := 0;
+  For pu In TPowerUps Do Begin
+    If Not assigned(fItemWeightEdits[pu]) Then Continue;
+    If (pu = puDisease) And (dsum = 0) Then Continue; // Ohne Krankheit gibt es das Item nicht (wie im Server)
+    sum := sum + fItemWeightEdits[pu].Value;
+  End;
+  For pu In TPowerUps Do Begin
+    If Not assigned(fItemWeightEdits[pu]) Then Continue;
+    If (sum = 0) Or ((pu = puDisease) And (dsum = 0)) Then Begin
+      fItemShareLabels[pu].Caption := '0 %';
+    End
+    Else Begin
+      fItemShareLabels[pu].Caption := format('%0.1f %%', [SpinEdit37.Value * fItemWeightEdits[pu].Value / sum]);
+    End;
+  End;
+  For d := low(fDiseaseWeightEdits) To high(fDiseaseWeightEdits) Do Begin
+    If dsum = 0 Then Begin
+      fDiseaseShareLabels[d].Caption := '0 %';
+    End
+    Else Begin
+      fDiseaseShareLabels[d].Caption := format('%0.1f %%', [100 * fDiseaseWeightEdits[d].Value / dsum]);
     End;
   End;
 End;

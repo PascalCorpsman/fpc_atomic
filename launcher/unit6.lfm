@@ -1,0 +1,367 @@
+object Form6: TForm6
+  Left = 400
+  Height = 575
+  Top = 120
+  Width = 664
+  BorderStyle = bsDialog
+  Caption = 'Game mode'
+  ClientHeight = 575
+  ClientWidth = 664
+  Position = poMainFormCenter
+  ShowHint = True
+  LCLVersion = '5.99.0.0'
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  object ListBox1: TListBox
+    Left = 8
+    Height = 460
+    Hint = 'Click a game mode to play it. Exactly one mode is always active.'
+    Top = 8
+    Width = 160
+    ItemHeight = 22
+    TabOrder = 0
+    OnSelectionChange = ListBox1SelectionChange
+  end
+  object PageControl1: TPageControl
+    Left = 176
+    Height = 460
+    Top = 8
+    Width = 480
+    ActivePage = TabSheet2
+    ShowTabs = False
+    TabIndex = 1
+    TabOrder = 1
+    object TabSheet1: TTabSheet
+      Caption = 'Classic'
+      ClientHeight = 458
+      ClientWidth = 478
+      object Label1: TLabel
+        Left = 8
+        Height = 16
+        Top = 10
+        Width = 47
+        Caption = 'Classic'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object Label2: TLabel
+        Left = 8
+        Height = 96
+        Top = 34
+        Width = 460
+        AutoSize = False
+        Caption = 'The normal game: the last player alive wins the round. Team play is switched on in Game options... and is only played in this mode.'
+        WordWrap = True
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = 'Hunter'
+      ClientHeight = 458
+      ClientWidth = 478
+      object Label3: TLabel
+        Left = 8
+        Height = 16
+        Top = 10
+        Width = 45
+        Caption = 'Hunter'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object Label4: TLabel
+        Left = 8
+        Height = 48
+        Top = 34
+        Width = 460
+        AutoSize = False
+        Caption = 'One player is the hunted and has (almost) all items, all others hunt him. Whoever gets the hunted becomes the new hunted.'
+        WordWrap = True
+      end
+      object Label5: TLabel
+        Left = 8
+        Height = 16
+        Top = 92
+        Width = 112
+        Caption = 'Items of the hunted'
+      end
+      object Edit1: TEdit
+        Left = 250
+        Height = 30
+        Hint = 'Items the hunted gets on top of the scheme, comma separated, *n = n times. Possible: bomb, flame, goldflame, speed, kick, punch, grab, spooger, jelly, trigger.'
+        Top = 88
+        Width = 180
+        TabOrder = 0
+      end
+      object Button4: TButton
+        AnchorSideLeft.Control = Edit1
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = Edit1
+        AnchorSideBottom.Control = Edit1
+        AnchorSideBottom.Side = asrBottom
+        Left = 434
+        Height = 30
+        Hint = 'Add an item. Items that are already in the list are greyed out, grab and spooger replace each other.'
+        Top = 88
+        Width = 26
+        Anchors = [akTop, akLeft, akBottom]
+        BorderSpacing.Left = 4
+        Caption = '+'
+        TabOrder = 13
+      end
+      object Label6: TLabel
+        Left = 8
+        Height = 16
+        Top = 124
+        Width = 129
+        Caption = 'Hunted at round start'
+      end
+      object ComboBox1: TComboBox
+        Left = 250
+        Height = 30
+        Hint = 'Who is the hunted when a round starts. Leader = the player with the most won rounds, random on a tie.'
+        Top = 120
+        Width = 210
+        ItemHeight = 0
+        Items.Strings = (
+          'Random player'
+          'Leader (most wins)'
+        )
+        Style = csDropDownList
+        TabOrder = 1
+      end
+      object Label7: TLabel
+        Left = 8
+        Height = 16
+        Top = 156
+        Width = 165
+        Caption = 'Hunted dies without a killer'
+      end
+      object ComboBox2: TComboBox
+        Left = 250
+        Height = 30
+        Hint = 'The hunted kills himself or dies in the hurry. "He stays the hunted" only works with respawn, without respawn a random other player becomes the hunted.'
+        Top = 152
+        Width = 210
+        ItemHeight = 0
+        Items.Strings = (
+          'Random other player'
+          'He stays the hunted'
+        )
+        Style = csDropDownList
+        TabOrder = 2
+      end
+      object Label8: TLabel
+        Left = 8
+        Height = 16
+        Top = 188
+        Width = 81
+        Caption = 'Round winner'
+      end
+      object ComboBox3: TComboBox
+        Left = 250
+        Height = 30
+        Hint = 'Who wins the round. A tie is a draw.'
+        Top = 184
+        Width = 210
+        ItemHeight = 0
+        Items.Strings = (
+          'Longest time as hunted'
+          'Most kills of the hunted'
+          'Hunted at round end'
+        )
+        Style = csDropDownList
+        TabOrder = 3
+      end
+      object Label9: TLabel
+        Left = 8
+        Height = 16
+        Top = 220
+        Width = 120
+        Caption = 'The old hunted gets'
+      end
+      object ComboBox4: TComboBox
+        Left = 250
+        Height = 30
+        Hint = 'What the old hunted starts with after his respawn: his items from before he became the hunted (they are not spread on the field when he dies), or only the start values of the scheme.'
+        Top = 216
+        Width = 210
+        ItemHeight = 0
+        Items.Strings = (
+          'His items from before'
+          'No items (scheme)'
+        )
+        Style = csDropDownList
+        TabOrder = 4
+      end
+      object Label10: TLabel
+        Left = 8
+        Height = 16
+        Top = 252
+        Width = 196
+        Caption = 'Invulnerable as new hunted (ms)'
+      end
+      object SpinEdit1: TSpinEdit
+        Left = 364
+        Height = 30
+        Hint = 'A player who becomes the hunted blinks and is invulnerable for this time, 0 = not at all.'
+        Top = 248
+        Width = 96
+        Increment = 500
+        TabOrder = 5
+      end
+      object CheckBox1: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: dead players come back after the waiting time, the round ends when the play time is over. There is no hurry then.'#13#10'Off: the normal rules, the round ends when only one player is left.'
+        Top = 284
+        Width = 216
+        Caption = 'Respawn: dead players come back'
+        TabOrder = 6
+        OnChange = CheckBox1Change
+      end
+      object Label11: TLabel
+        Left = 28
+        Height = 16
+        Top = 314
+        Width = 116
+        Caption = 'Respawn after (ms)'
+      end
+      object SpinEdit2: TSpinEdit
+        Left = 364
+        Height = 30
+        Hint = 'Waiting time until a dead player comes back.'
+        Top = 310
+        Width = 96
+        Increment = 500
+        TabOrder = 7
+      end
+      object Label12: TLabel
+        Left = 28
+        Height = 16
+        Top = 346
+        Width = 192
+        Caption = 'Invulnerable after respawn (ms)'
+      end
+      object SpinEdit3: TSpinEdit
+        Left = 364
+        Height = 30
+        Hint = 'A player who comes back blinks and is invulnerable for this time.'
+        Top = 342
+        Width = 96
+        Increment = 500
+        TabOrder = 8
+      end
+      object CheckBox2: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: diseases, slow and swap have no effect on the hunted, he does not get infected.'
+        Top = 380
+        Width = 192
+        Caption = 'The hunted gets no diseases'
+        TabOrder = 9
+      end
+      object CheckBox3: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: the hunted is drawn in gold.'
+        Top = 406
+        Width = 98
+        Caption = 'Gold color'
+        TabOrder = 10
+      end
+      object CheckBox4: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: a pulsing aura is drawn around the hunted.'
+        Top = 432
+        Width = 56
+        Caption = 'Aura'
+        TabOrder = 11
+        OnChange = CheckBox1Change
+      end
+      object CheckBox5: TCheckBox
+        Left = 250
+        Height = 21
+        Hint = 'On: the hunted also sees his own aura. Off: only the hunters see it (two players on one PC always see it).'
+        Top = 432
+        Width = 176
+        Caption = 'The hunted sees his aura'
+        TabOrder = 12
+      end
+    end
+  end
+  object Label13: TLabel
+    Left = 8
+    Height = 16
+    Top = 476
+    Width = 648
+    AutoSize = False
+    Caption = 'Team play is on, the hunter mode is ignored in team play.'
+    Font.Color = clMaroon
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object Label14: TLabel
+    Left = 8
+    Height = 16
+    Top = 496
+    Width = 648
+    AutoSize = False
+    Caption = 'Ghosts only work without respawn.'
+    Font.Color = clMaroon
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object Label15: TLabel
+    Left = 8
+    Height = 16
+    Top = 516
+    Width = 486
+    Caption = 'Changes apply to the next game started on this PC.'
+  end
+  object Label16: TLabel
+    Cursor = crHandPoint
+    Left = 110
+    Height = 16
+    Hint = 'Open the manual of the game options and game modes (GAMEOPTIONS_MANUAL.md, with a link to the German version).'
+    Top = 547
+    Width = 44
+    Caption = 'Manual'
+    Font.Color = clBlue
+    Font.Style = [fsUnderline]
+    ParentFont = False
+    OnClick = Label16Click
+  end
+  object Button1: TButton
+    Left = 8
+    Height = 25
+    Hint = 'Reset the game mode to its default values (Classic). The mods stay as they are. Saved only with OK.'
+    Top = 542
+    Width = 90
+    Caption = '&Defaults'
+    TabOrder = 2
+    OnClick = Button1Click
+  end
+  object Button2: TButton
+    Left = 488
+    Height = 25
+    Hint = 'Save the game mode to atomic_mods.ini. It applies to the next game this PC joins as first player, also on another server.'
+    Top = 542
+    Width = 80
+    Caption = 'OK'
+    Default = True
+    TabOrder = 3
+    OnClick = Button2Click
+  end
+  object Button3: TButton
+    Left = 576
+    Height = 25
+    Hint = 'Close without saving.'
+    Top = 542
+    Width = 80
+    Cancel = True
+    Caption = 'Cancel'
+    ModalResult = 2
+    TabOrder = 4
+  end
+end

@@ -23,7 +23,7 @@ Interface
 Uses
   Classes, SysUtils, controls, OpenGLContext, lNetComponents, lnet,
   uatomic_common, uopengl_animation, uscreens, uChunkmanager, uatomic_field,
-  uatomic, uopengl_graphikengine, usounds, uloaderdialog;
+  uatomic, uopengl_graphikengine, usounds, uloaderdialog, umessagedialog, uatomic_global;
 
 Type
   TUDPPingData = Record
@@ -111,6 +111,8 @@ Type
     fNeedDisconnect: Boolean; // Wenn True, dann wird ein Disconnect via Idle Handler durchgeführt (das darf nach LNet nicht im Socket Event gemacht werden da es sonst eine AV-Gibt)
     fActualField: TAtomicField;
     fAtomics: TAtomics;
+    fHuntedAtomic: TAtomic; // Spielmodus Hunter: Der Sprite Satz in Gold für den Gejagten (HuntedGold)
+    fHuntedAuraTex: TGraphikItem; // Spielmodus Hunter: Radialer Verlauf (weiß, Alpha nicht invertiert) für die Aura, wird im Code erzeugt
     fBackupSettings: TAtomicSettings; // Sind wir nicht der Master Spieler, dann müssen wir unsere Settings Sichern
     fInitialized: Boolean; // True, wenn Initialize erfolgreich durchgelaufen wurde
     fFields: Array Of TAtomicField;
@@ -118,6 +120,11 @@ Type
     fModTestMode: Boolean; // True, wenn der Server den Mod Test Modus erlaubt (miModInfo), nur dann reagieren die F-Tasten
     fGhostFlickerMs: Integer; // Zeit in ms eines Flacker Taktes der Geister (miModInfo), 0 = kein Flackern
     fBrickWalkTransparency: Integer; // in %, so durchsichtig werden Spieler gezeichnet, die durch Blöcke laufen (miModInfo)
+    fGameMode: TGameMode; // Der eingestellte Spielmodus (miModInfo), im Team play wird gmHunter ignoriert (siehe EffectiveGameMode)
+    fHuntedGold: Boolean; // Spielmodus Hunter: Gejagten in Gold zeichnen (miModInfo)
+    fHuntedAura: Boolean; // Spielmodus Hunter: Aura um den Gejagten zeichnen (miModInfo)
+    fHuntedAuraSelf: Boolean; // Spielmodus Hunter: Der Gejagte sieht seine eigene Aura auch (miModInfo)
+    fAiGameModes: UInt32; // Bitmaske AiMode_* der Spielmodi, die die KI des Servers kann, 0 = keine KI geladen (miModInfo)
     fRenderFrame: Int64; // Zähler der gerenderten Spiel Frames, für die Durchsichtigkeit (BrickWalkVisible)
     fFlashTimeStamp: QWord; // Mod weißer Bildschirm: Beginn des Flashs, 0 = kein Flash
     fFlashIntensity: Integer; // in %
@@ -146,6 +153,8 @@ Type
 
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
+    fMessageDialog: TMessageDialog; // Meldungen und Ja / Nein Abfragen direkt im Spiel
+    fReclaimFocusUntil: QWord; // Bis zu diesem GetTickCount64 holt sich das Spiel den Fokus von der Server Konsole zurück (StartHost)
 
     Procedure FOnResize(Sender: TObject);
     Procedure FOnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -167,7 +176,10 @@ Type
     Function LoadSchemeFromFile(Const SchemeFileName: String): Boolean;
     Procedure OnQuitGameSoundFinished(Sender: TObject);
 
-    Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
+    Procedure RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean; PlayerIndex: Integer);
+    Function HunterActive(): Boolean;
+    Procedure CreateHuntedAuraTexture();
+    Procedure RenderHuntedAuras();
     Procedure RenderGhost(Const Info: TAtomicInfo);
     Function BrickWalkVisible(): Boolean;
     Procedure RenderOpenBorders();
@@ -221,6 +233,14 @@ Type
     Procedure Join(IP: String; Port: Integer);
     Procedure PingForOpenGames;
     Procedure DoDisconnect();
+
+    Procedure ReclaimFocus();
+    Procedure UpdateViewPort(); // Berechnet fViewPortInfo aus der Größe von fOwner
+    Procedure OnLoaderRender(Sender: TObject); // Gibt dem Lade Dialog den aktuellen Viewport
+    Function ScreenToGame(X, Y: Integer): TPoint; // Fensterkoordinaten -> Spielkoordinaten (GameWidth x GameHeight)
+    Procedure OnMessageDialogOpen(Sender: TObject);
+    Procedure OnApplicationKeyDownBefore(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure OnQuitGameConfirmed(Sender: TObject);
   public
 {$IFDEF DebuggMode}
     fPlayer: TPlayers;
@@ -255,6 +275,13 @@ Type
     Procedure StartPlayingSong(Filename: String);
     Procedure PlaySoundEffect(Filename: String; EndCallback: TNotifyEvent = Nil);
     Procedure Resize();
+
+    (*
+     * Meldungen und Ja / Nein Abfragen direkt im Spiel (statt als LCL-Fenster)
+     *)
+    Function MessageDialogReady: Boolean; // False, solange die Textur des Dialogs nicht geladen ist
+    Procedure ShowMessageDialog(Msg: String; Level: TLogLevel);
+    Procedure AskYesNo(Question: String; OnYes: TNotifyEvent);
   End;
 
 Var
@@ -281,7 +308,6 @@ Uses dglopengl
   , uatomicfont
   , uopengl_spriteengine
   , ugraphics
-  , uatomic_global
   , usdl_input
   , uopengl_shaderprimitives
   ;
@@ -431,6 +457,8 @@ Begin
     sPlayerSetup: Begin
         // Den Screen mit den Aktuellsten Daten versorgen
         TPlayerSetupMenu(fScreens[sPlayerSetup]).TeamPlay := Settings.TeamPlay;
+        TPlayerSetupMenu(fScreens[sPlayerSetup]).GameMode := fGameMode;
+        TPlayerSetupMenu(fScreens[sPlayerSetup]).AiGameModes := fAiGameModes;
         TPlayerSetupMenu(fScreens[sPlayerSetup]).LoadPlayerdata(fPlayer, fUserID);
       End;
     sEditFieldSetupRequest: Begin
@@ -521,19 +549,70 @@ Begin
   LogLeave(EnterID);
 End;
 
+Procedure TGame.OnMessageDialogOpen(Sender: TObject);
+Var
+  k: TKeySet;
+  ak: TAtomicKey;
+Begin
+  // Im Spiel die gehaltenen Tasten los lassen, sonst läuft der Spieler hinter dem Dialog weiter
+  If fgameState <> gs_Gaming Then exit;
+  For k In TKeySet Do Begin
+    If fPlayerIndex[k] = -1 Then Continue;
+    For ak In [akUp, akDown, akLeft, akRight, akSecondAction] Do Begin
+      If fPlayer[fPlayerIndex[k]].KeysPressed[ak] Then CheckKeyUp(ak, k);
+    End;
+  End;
+End;
+
+Procedure TGame.OnApplicationKeyDownBefore(Sender: TObject; Var Key: Word;
+  Shift: TShiftState);
+Begin
+  // Tab nutzt die LCL zum Wechsel des Fokus, noch bevor OnKeyDown kommt, deshalb wird es für einen offenen Dialog hier abgefangen
+  If (Key = VK_TAB) And (Sender = fOwner) And fMessageDialog.Active Then Begin
+    fMessageDialog.HandleKey(Key);
+    Key := VK_UNKNOWN;
+  End;
+End;
+
+Procedure TGame.OnQuitGameConfirmed(Sender: TObject);
+Begin
+  SwitchToScreen(sMainScreen);
+End;
+
+Function TGame.MessageDialogReady: Boolean;
+Begin
+  result := fMessageDialog.Ready;
+End;
+
+Procedure TGame.ShowMessageDialog(Msg: String; Level: TLogLevel);
+Begin
+  fMessageDialog.ShowInfo(Msg, Level);
+End;
+
+Procedure TGame.AskYesNo(Question: String; OnYes: TNotifyEvent);
+Begin
+  fMessageDialog.AskYesNo(Question, OnYes);
+End;
+
 Procedure TGame.Resize;
 Begin
   FOnResize(fOwner);
 End;
 
 Procedure TGame.FOnResize(Sender: TObject);
+Begin
+  UpdateViewPort();
+  If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
+End;
+
+Procedure TGame.UpdateViewPort;
 Var
   ScreenRatio, GameRatio: Single;
 Begin
   fViewPortInfo.TopLeft := point(0, 0);
   If settings.Proportional Then Begin
-    fViewPortInfo.ScreenWidth := TOpenGLControl(sender).Width;
-    fViewPortInfo.ScreenHeight := TOpenGLControl(sender).Height;
+    fViewPortInfo.ScreenWidth := fOwner.Width;
+    fViewPortInfo.ScreenHeight := fOwner.Height;
     (*
      * Do a Proportional Scale like TImage, but from hand ;)
      *)
@@ -553,31 +632,87 @@ Begin
     fViewPortInfo.ScreenHeight := GameHeight;
     fViewPortInfo.Scale := 1;
   End;
-  If assigned(fOnResizeCapture) Then fOnResizeCapture(sender);
+End;
+
+{$IFDEF Windows}
+// Nur diese Funktionen, die Unit Windows würde z.B. Point aus Classes überdecken
+Function GetForegroundWindow(): THandle; stdcall; external 'user32.dll';
+Function SetForegroundWindow(hWnd: THandle): LongBool; stdcall; external 'user32.dll';
+Function BringWindowToTop(hWnd: THandle): LongBool; stdcall; external 'user32.dll';
+Function GetWindowThreadProcessId(hWnd: THandle; lpdwProcessId: PDWord): DWord; stdcall; external 'user32.dll';
+Function AttachThreadInput(idAttach, idAttachTo: DWord; fAttach: LongBool): LongBool; stdcall; external 'user32.dll';
+Function GetCurrentThreadId(): DWord; stdcall; external 'kernel32.dll';
+{$ENDIF}
+
+Procedure TGame.OnLoaderRender(Sender: TObject);
+Begin
+  UpdateViewPort(); // Das Fenster kann sich während des Ladens noch ändern (z.B. Vollbild beim Start)
+  fSerialInit.Loader.ScreenWidth := fViewPortInfo.ScreenWidth;
+  fSerialInit.Loader.ScreenHeight := fViewPortInfo.ScreenHeight;
+  fSerialInit.Loader.Left := fViewPortInfo.TopLeft.X;
+  fSerialInit.Loader.Top := fViewPortInfo.TopLeft.Y;
+  fSerialInit.Loader.Scale := fViewPortInfo.Scale;
+End;
+
+Procedure TGame.ReclaimFocus;
+{$IFDEF Windows}
+Var
+  Form: TCustomForm;
+  fg: THandle;
+  fgThread, OwnThread: DWORD;
+{$ENDIF}
+Begin
+{$IFDEF Windows}
+  (*
+   * Ein anderer Prozess (die Konsole des Servers) hat den Vordergrund, dann darf SetForegroundWindow normalerweise nicht.
+   * Hängt man sich kurz an die Eingabe des Vordergrund Threads, geht es.
+   *)
+  Form := GetParentForm(fOwner);
+  If Not assigned(Form) Then exit;
+  fg := GetForegroundWindow();
+  If fg = Form.Handle Then exit;
+  OwnThread := GetCurrentThreadId();
+  fgThread := 0;
+  If fg <> 0 Then fgThread := GetWindowThreadProcessId(fg, Nil);
+  If (fgThread <> 0) And (fgThread <> OwnThread) Then AttachThreadInput(OwnThread, fgThread, true);
+  SetForegroundWindow(Form.Handle);
+  BringWindowToTop(Form.Handle);
+  If (fgThread <> 0) And (fgThread <> OwnThread) Then AttachThreadInput(OwnThread, fgThread, false);
+  If fOwner.CanFocus Then fOwner.SetFocus;
+{$ENDIF}
+End;
+
+Function TGame.ScreenToGame(X, Y: Integer): TPoint;
+Begin
+  // Umrechnen der Echten Koords in die Screencoords
+  If settings.Proportional Then Begin
+    result.x := trunc((x - fViewPortInfo.TopLeft.X) / fViewPortInfo.Scale);
+    result.y := trunc((y - fViewPortInfo.TopLeft.Y) / fViewPortInfo.Scale);
+  End
+  Else Begin
+    result.x := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
+    result.y := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
+  End;
 End;
 
 Procedure TGame.FOnMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 Var
-  xx, yy: Integer;
+  p: TPoint;
 Begin
-  // Umrechnen der Echten Koords in die Screencoords
-  If settings.Proportional Then Begin
-    xx := x - fViewPortInfo.TopLeft.X;
-    yy := y - fViewPortInfo.TopLeft.Y;
-    xx := trunc(xx / fViewPortInfo.Scale);
-    yy := trunc(yy / fViewPortInfo.Scale);
+  p := ScreenToGame(x, y);
+  If fMessageDialog.Active Then Begin
+    // Ein offener Dialog bekommt alle Klicks, der Screen dahinter keine
+    If Button = mbLeft Then fMessageDialog.HandleMouseDown(p.x, p.y);
   End
   Else Begin
-    xx := round(ConvertDimension(0, fOwner.ClientWidth, x, 0, GameWidth));
-    yy := round(ConvertDimension(0, fOwner.ClientHeight, y, 0, GameHeight));
-  End;
-  Case fgameState Of
-    gs_MainMenu: Begin
-        If assigned(fActualScreen) Then Begin
-          fActualScreen.OnMouseDown(Sender, button, Shift, xx, yy);
+    Case fgameState Of
+      gs_MainMenu: Begin
+          If assigned(fActualScreen) Then Begin
+            fActualScreen.OnMouseDown(Sender, button, Shift, p.x, p.y);
+          End;
         End;
-      End;
+    End;
   End;
   If Assigned(FOnMouseDownCapture) Then Begin
     FOnMouseDownCapture(Sender, Button, Shift, x, y);
@@ -595,7 +730,13 @@ End;
 
 Procedure TGame.FOnMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer
   );
+Var
+  p: TPoint;
 Begin
+  If fMessageDialog.Active Then Begin
+    p := ScreenToGame(x, y);
+    fMessageDialog.HandleMouseMove(p.x, p.y);
+  End;
   // TODO: Prüfen ob das gelöscht werden kann
   If Assigned(FOnMousemoveCapture) Then Begin
     FOnMousemoveCapture(Sender, Shift, x, y);
@@ -621,6 +762,11 @@ Begin
   If (Not fInitialized) And (Key = VK_ESCAPE) Then Begin
     fInitialized := true;
     SwitchToScreen(sExitBomberman);
+    exit;
+  End;
+  // Ein offener Dialog bekommt alle Tasten (außer Alt + Enter für den Vollbild Modus)
+  If fMessageDialog.Active And Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin
+    fMessageDialog.HandleKey(Key);
     exit;
   End;
   If Not ((ssalt In Shift) And (key = VK_RETURN)) Then Begin // Sonst wird das VK_Return ggf unsinnig ausgewertet
@@ -660,9 +806,10 @@ Begin
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
 {$IFNDEF Only3Player}
-            If ID_YES = Application.MessageBox('Do you really want to quit?', 'Question', MB_ICONQUESTION Or MB_YESNO) Then
+            AskYesNo('Do you really want to quit?', @OnQuitGameConfirmed);
+{$ELSE}
+            SwitchToScreen(sMainScreen);
 {$ENDIF}
-              SwitchToScreen(sMainScreen);
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
@@ -846,7 +993,8 @@ End;
 Procedure TGame.FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
   writeln('SDLDown');
-  If fgameState = gs_Gaming Then Begin
+  // Ist ein Dialog offen, wird er auch im Spiel mit dem Gamepad bedient
+  If (fgameState = gs_Gaming) And (Not fMessageDialog.Active) Then Begin
     CheckKeyDown(aKey, aKeyset);
   End
   Else Begin
@@ -922,6 +1070,8 @@ Begin
 {$IFDEF Windows}
     // Windows needs the new console, otherwise the server could lag..
     p.Options := [poNewConsole];
+    // Die Konsole des Servers startet minimiert und ohne Fokus, sonst landen die Eingaben (vor allem im Vollbild) nicht mehr im Spiel
+    p.ShowWindow := swoshowMinNOActive;
 {$ELSE}
     p.Options := [poDetached];
 {$ENDIF}
@@ -947,6 +1097,9 @@ Begin
   // StartClientGame; --> Das Verbinden macht der SwitchToScreen schon ;)
   Application.Restore;
   Application.BringToFront;
+  // Die Konsole des Servers kann den Fokus auch noch nach dem Warten übernehmen (z.B. mit Windows Terminal), deshalb holt OnIdle ihn eine Weile zurück
+  fReclaimFocusUntil := GetTickCount64 + 3000;
+  ReclaimFocus();
   result := true;
   LogLeave(EnterID);
 End;
@@ -1248,6 +1401,22 @@ Begin
         Chunk.Data.Read(fGhostFlickerMs, sizeof(fGhostFlickerMs));
         fBrickWalkTransparency := 0;
         Chunk.Data.Read(fBrickWalkTransparency, sizeof(fBrickWalkTransparency));
+        // Spielmodus Hunter (Reihenfolge siehe TServer.SendModInfo)
+        fGameMode := gmClassic;
+        Chunk.Data.Read(fGameMode, sizeof(fGameMode));
+        fHuntedGold := false;
+        Chunk.Data.Read(fHuntedGold, sizeof(fHuntedGold));
+        fHuntedAura := false;
+        Chunk.Data.Read(fHuntedAura, sizeof(fHuntedAura));
+        fHuntedAuraSelf := false;
+        Chunk.Data.Read(fHuntedAuraSelf, sizeof(fHuntedAuraSelf));
+        fAiGameModes := 0;
+        Chunk.Data.Read(fAiGameModes, sizeof(fAiGameModes));
+        // Die Mods können auch noch kommen, wenn das Player Setup schon angezeigt wird
+        If assigned(fScreens[sPlayerSetup]) Then Begin
+          TPlayerSetupMenu(fScreens[sPlayerSetup]).GameMode := fGameMode;
+          TPlayerSetupMenu(fScreens[sPlayerSetup]).AiGameModes := fAiGameModes;
+        End;
       End;
     miStartGame: Begin
         HandleStartGame();
@@ -1601,7 +1770,10 @@ Begin
     (*
      * Wenn die Alte Animation eine einmal ablaufen Animation ist.
      * Ein Geist (Mod) beginnt ohne die Todesanimation, sonst würde diese hier nochmal abgespielt.
+     * Die Todesanimation gilt nur so lange der Spieler stirbt, kommt er wieder ins Spiel (Respawn im Spielmodus Hunter)
+     * ist sie sofort vorbei (der Server setzt dabei den Counter zurück, sie würde sonst weiter laufen).
      *)
+    If (OldAnim = raDie) And (Not fPlayer[i].Info.Dying) Then OldAnim := raStandStill;
     If (OldAnim In OneTimeAnimations) And (Not fPlayer[i].Info.Ghost) Then Begin
       If fPlayer[i].Info.Counter < fAtomics[0].GetAnimTimeInMs(OldAnim, OldValue) Then Begin
         fPlayer[i].Info.Animation := OldAnim;
@@ -1935,9 +2107,124 @@ Begin
   End;
 End;
 
-Procedure TGame.RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean);
+Procedure TGame.RenderPlayerbyInfo(Const Info: TAtomicInfo; Edge: Boolean; PlayerIndex: Integer);
 Begin
-  fAtomics[info.ColorIndex].Render(Info, Edge);
+  (*
+   * Spielmodus Hunter: Der Gejagte wird in Gold gezeichnet, aber nur wenn ColorIndex seine echte Farbe ist
+   * (= der Slot Index, siehe Rundenstart im Server). Sonst blinkt er gerade (Stun / Unverwundbarkeit) und das
+   * Blinken soll sichtbar bleiben. Im Team play ändern sich die Farben, da gibt es aber keinen Hunter.
+   *)
+  If Info.Hunted And fHuntedGold And (Info.ColorIndex = PlayerIndex) And assigned(fHuntedAtomic) Then Begin
+    fHuntedAtomic.Render(Info, Edge);
+  End
+  Else Begin
+    fAtomics[info.ColorIndex].Render(Info, Edge);
+  End;
+End;
+
+Function TGame.HunterActive: Boolean;
+Begin
+  // Wie EffectiveGameMode: Im Team play wird Hunter ignoriert
+  result := (fGameMode = gmHunter) And (Not Settings.TeamPlay);
+End;
+
+Procedure TGame.CreateHuntedAuraTexture;
+Const
+  AuraSize = 64; // Kantenlänge der Textur in Pixel (Zweierpotenz)
+Var
+  Data: Array Of Array[0..3] Of Byte;
+  i, j, c: Integer;
+  d, a: Single;
+  tex: GLuint;
+Begin
+  (*
+   * Spielmodus Hunter: Ein radialer Verlauf weiß -> durchsichtig für die Aura.
+   * Die Textur wird direkt erzeugt (und nicht über die Graphik Engine geladen), weil deren Texturen ein
+   * invertiertes Alpha haben, damit ließe sich die Aura über uColor nicht stufenlos ausblenden.
+   * Hier ist das Alpha normal, gezeichnet wird mit glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) (siehe RenderHuntedAuras).
+   * Die Textur lebt so lange wie der OpenGL Kontext (wie die Texturen der Graphik Engine).
+   *)
+  Data := Nil;
+  setlength(Data, AuraSize * AuraSize);
+  c := 0;
+  For j := 0 To AuraSize - 1 Do Begin
+    For i := 0 To AuraSize - 1 Do Begin
+      d := sqrt(sqr(i + 0.5 - AuraSize / 2) + sqr(j + 0.5 - AuraSize / 2)) / (AuraSize / 2); // 0 = Mitte, 1 = Rand
+      a := max(0, 1 - d);
+      a := a * a * (3 - 2 * a); // Weicher Rand (Smoothstep)
+      Data[c, 0] := 255;
+      Data[c, 1] := 255;
+      Data[c, 2] := 255;
+      Data[c, 3] := round(255 * a);
+      inc(c);
+    End;
+  End;
+  tex := 0;
+  glGenTextures(1, @tex);
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, AuraSize, AuraSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, @Data[0]);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  fHuntedAuraTex := Default(TGraphikItem);
+  fHuntedAuraTex.Image := tex;
+  fHuntedAuraTex.Name := 'HuntedAura';
+  fHuntedAuraTex.IsAlphaImage := true;
+  fHuntedAuraTex.Stretched := smNone;
+  fHuntedAuraTex.OrigWidth := AuraSize;
+  fHuntedAuraTex.OrigHeight := AuraSize;
+  fHuntedAuraTex.StretchedWidth := AuraSize;
+  fHuntedAuraTex.StretchedHeight := AuraSize;
+End;
+
+Procedure TGame.RenderHuntedAuras;
+Const
+  AuraTiles = 1.6; // Durchmesser der Aura in Kacheln
+  AuraPeriodMs = 800; // Dauer eines Puls Taktes
+  AuraAlphaMin = 0.35;
+  AuraAlphaMax = 0.7;
+Var
+  i: Integer;
+  TwoLocal: Boolean;
+  w, h, x, y, a: Single;
+  c: TVector4;
+Begin
+  (*
+   * Spielmodus Hunter: Eine pulsierende, halbtransparente Aura in Gold unter dem Gejagten.
+   * Wird nach dem Feld und vor den Bomben / Spielern gezeichnet und schreibt nicht in den Tiefenpuffer,
+   * dadurch liegt alles was danach kommt darüber.
+   *)
+  If (Not fHuntedAura) Or (fHuntedAuraTex.Image = 0) Then exit;
+  // Spielen 2 an diesem PC, dann sieht der Jäger am selben Bildschirm die Aura auch -> immer zeichnen
+  TwoLocal := (fPlayerIndex[ks0] <> -1) And (fPlayerIndex[ks1] <> -1);
+  w := AuraTiles * FieldBlockWidth;
+  h := AuraTiles * FieldBlockHeight;
+  // Sinus Puls zwischen AuraAlphaMin und AuraAlphaMax
+  a := AuraAlphaMin + (AuraAlphaMax - AuraAlphaMin) * (0.5 + 0.5 * sin(2 * pi * (GetTickCount64 Mod AuraPeriodMs) / AuraPeriodMs));
+  c.x := HuntedGoldColor.r / 100;
+  c.y := HuntedGoldColor.g / 100;
+  c.z := HuntedGoldColor.b / 100;
+  c.w := a;
+  // Normales Alpha Blending wie bei RenderFlash (die Textur hat ein nicht invertiertes Alpha)
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glDepthMask(GL_FALSE);
+  UseTextureShader(c);
+  For i := 0 To high(fPlayer) Do Begin
+    If (Not fPlayer[i].Info.Alive) Or fPlayer[i].Info.Dying Or (Not fPlayer[i].Info.Hunted) Then Continue;
+    // Der Gejagte selbst sieht seine Aura nur bei HuntedAuraSelf
+    If (Not fHuntedAuraSelf) And (Not TwoLocal) And
+      ((i = fPlayerIndex[ks0]) Or (i = fPlayerIndex[ks1])) Then Continue;
+    // Mittelpunkt = da wo TAtomic.Render den Schatten (die Füße) zeichnet
+    x := fPlayer[i].Info.Position.x * FieldBlockWidth + FieldxOff;
+    y := (fPlayer[i].Info.Position.y + 0.25) * FieldBlockHeight + FieldyOff;
+    RenderQuad(x - w / 2, y - h / 2, atomic_Map_Layer + 3 * atomic_EPSILON, w, h, fHuntedAuraTex);
+  End;
+  UseTextureShader();
+  glDepthMask(GL_TRUE);
+  glDisable(GL_BLEND);
 End;
 
 Procedure TGame.RenderGhost(Const Info: TAtomicInfo);
@@ -2106,7 +2393,13 @@ Begin
         AtomicFont.BackColor := clBlack;
       End;
       AtomicFont.Color := AtomicPlayerColorToColor(PlayerColors[i]);
-      s := format('S:%d K:%d', [fPlayer[i].Score, fPlayer[i].Kills]);
+      If HunterActive() Then Begin
+        // Spielmodus Hunter: Die Zeit als Gejagter statt der Kills, sonst passt es nicht in die 100 Pixel (10 Zeichen) breite Spalte
+        s := format('S:%d H:%d', [fPlayer[i].Score, fPlayer[i].Info.HuntedTime]);
+      End
+      Else Begin
+        s := format('S:%d K:%d', [fPlayer[i].Score, fPlayer[i].Kills]);
+      End;
       x := (i Div 2) * 100 + 10;
       y := (i Mod 2) * 16 + 10;
       glBindTexture(GL_TEXTURE_2D, 0);
@@ -2370,6 +2663,9 @@ Begin
   fInitialized := false;
   fActualScreen := Nil;
   fChunkManager := TChunkManager.create;
+  fMessageDialog := TMessageDialog.Create;
+  fReclaimFocusUntil := 0;
+  fMessageDialog.OnOpen := @OnMessageDialogOpen;
   fUDPPingData.Connection := Nil;
   fUDPPingData.Active := false;
   fLastIdleTick := GetTickCount64;
@@ -2383,6 +2679,7 @@ Var
   j: Integer;
 Begin
   SDL_FreeSticks;
+  Application.RemoveOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -2401,8 +2698,12 @@ Begin
   For j := 0 To high(fAtomics) Do Begin
     fAtomics[j].Free;
   End;
+  fHuntedAtomic.Free;
+  fHuntedAtomic := Nil;
   setlength(fFields, 0);
   DoDisconnect();
+  fMessageDialog.free;
+  fMessageDialog := Nil;
   fChunkManager.free;
   fChunkManager := Nil;
 End;
@@ -2465,7 +2766,10 @@ Begin
         fSerialInit.t := GetTickCount64;
         fSerialInit.total := fSerialInit.t;
 {$ENDIF}
+        // Der Meldungsdialog nutzt den Rahmen des Lade Dialogs, damit auch Fehler beim Laden schon im Spiel angezeigt werden können
+        fMessageDialog.LoadFromDisk(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png');
         fSerialInit.Loader := TLoaderDialog.create(fOwner);
+        fSerialInit.Loader.OnBeforeRender := @OnLoaderRender;
         (*
          * Lade Prozente
          * 0..10 : Screens
@@ -2501,6 +2805,7 @@ Begin
         fOwner.OnDblClick := @FOnDblClick;
         FOnKeyDownCapture := fOwner.OnKeyDown;
         fOwner.OnKeyDown := @FOnKeyDown;
+        Application.AddOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
         FOnKeyUpCapture := fOwner.OnKeyUp;
         fOwner.OnKeyUp := @FOnKeyUp;
         fOnResizeCapture := fOwner.OnResize;
@@ -2807,8 +3112,9 @@ Begin
       End;
     5: Begin
         // Laden aller Atomic's in ihren Farben --> Das ist was Ladetechnisch richtig weh tut, alles andere ist eigentlich "erträglich"
+        // + 1, als letztes kommt der Gold Satz für den Gejagten (Spielmodus Hunter)
         If fSerialInit.j <= high(fAtomics) Then Begin
-          fSerialInit.Loader.Percent := 50 + round(50 * fSerialInit.j / length(fAtomics));
+          fSerialInit.Loader.Percent := 50 + round(50 * fSerialInit.j / (length(fAtomics) + 1));
           fSerialInit.Loader.Render();
           fAtomics[fSerialInit.j] := TAtomic.Create;
           If Not fAtomics[fSerialInit.j].InitAsColor(fSerialInit.p + 'data' + PathDelim + 'atomic' + PathDelim, PlayerColors[fSerialInit.j]) Then Begin
@@ -2821,6 +3127,20 @@ Begin
 {$IFDEF ShowInitTime}
           TimePoint(21 + fSerialInit.j);
 {$ENDIF}
+          inc(fSerialInit.j);
+        End
+        Else If fSerialInit.j = length(fAtomics) Then Begin
+          fSerialInit.Loader.Percent := 50 + round(50 * fSerialInit.j / (length(fAtomics) + 1));
+          fSerialInit.Loader.Render();
+          fHuntedAtomic := TAtomic.Create;
+          If Not fHuntedAtomic.InitAsColor(fSerialInit.p + 'data' + PathDelim + 'atomic' + PathDelim, HuntedGoldColor) Then Begin
+            LogShow('Error, unable to load atomic.', llFatal);
+            fSerialInit.aStep := 1000;
+            result := true;
+            LogLeave(EnterID);
+            exit;
+          End;
+          CreateHuntedAuraTexture();
           inc(fSerialInit.j);
         End
         Else Begin
@@ -2906,6 +3226,7 @@ Begin
       'Error during loading, please restart application.' + LineEnding + LineEnding +
       'If the problem persists try a re run of the cd_data_extractor'
       );
+    fMessageDialog.Render;
     Exit2d();
     exit;
   End;
@@ -2915,6 +3236,7 @@ Begin
       End;
     gs_Gaming: Begin
         fActualField.render(fAtomics, fPowerUpsTex);
+        RenderHuntedAuras(); // Nach dem Feld und vor den Bomben, damit die Aura unter Bomben und Spielern liegt
         RenderBombs;
         RenderOpenBorders(); // Vor den Spielern, damit die Pfeile unter ihnen (und unter den Geistern auf dem Rahmen) liegen
         RenderFlameThrowers();
@@ -2923,7 +3245,7 @@ Begin
           If fPlayer[i].Info.Alive Then Begin
             // Wer durch Blöcke laufen kann, wird durchsichtig gezeichnet (nicht in der Pause, nicht beim Sterben und nie auf dem Frame mit der Flanke einer einmaligen Animation)
             If fPause Or fPlayer[i].Info.Dying Or fPlayer[i].Edge Or (Not fPlayer[i].Info.BrickWalk) Or BrickWalkVisible() Then Begin
-              RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge);
+              RenderPlayerbyInfo(fPlayer[i].Info, fPlayer[i].edge, i);
               fPlayer[i].edge := false;
             End;
           End;
@@ -2961,6 +3283,7 @@ Begin
         RenderFlash();
       End;
   End;
+  fMessageDialog.Render; // Über allem anderen
   fSoundInfo.Render;
   ResetShaderTransform;
   Exit2d();
@@ -2969,6 +3292,14 @@ End;
 Procedure TGame.OnIdle;
 Begin
   PingForOpenGames;
+  If fReclaimFocusUntil <> 0 Then Begin
+    If GetTickCount64 > fReclaimFocusUntil Then Begin
+      fReclaimFocusUntil := 0;
+    End
+    Else Begin
+      ReclaimFocus();
+    End;
+  End;
   (*
    * Doing the "real" disconnect in the idle handler, is the fastest way to do without risking a endles
    * recursion of disconnects in diconnect.
