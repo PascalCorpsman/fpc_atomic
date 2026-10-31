@@ -2,12 +2,12 @@ object Form1: TForm1
   Left = 347
   Height = 581
   Top = 107
-  Width = 467
+  Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Form1'
   ClientHeight = 581
-  ClientWidth = 467
+  ClientWidth = 547
   KeyPreview = True
   Position = poScreenCenter
   ShowHint = True
@@ -28,10 +28,10 @@ object Form1: TForm1
     Left = 208
     Height = 112
     Top = 8
-    Width = 248
+    Width = 328
     Caption = ' Player '
     ClientHeight = 94
-    ClientWidth = 246
+    ClientWidth = 326
     TabOrder = 0
     object Label1: TLabel
       Left = 8
@@ -42,19 +42,19 @@ object Form1: TForm1
       FocusControl = Edit1
     end
     object Edit1: TEdit
-      Left = 88
+      Left = 120
       Height = 30
       Top = 4
-      Width = 150
+      Width = 198
       TabOrder = 0
       Text = 'Edit1'
       OnChange = Edit1Change
     end
     object Label4: TLabel
-      Left = 88
+      Left = 120
       Height = 15
       Top = 32
-      Width = 150
+      Width = 198
       AutoSize = False
       Caption = 'Label4'
       ParentFont = False
@@ -64,7 +64,7 @@ object Form1: TForm1
       Height = 25
       Hint = 'Choose the keys or a gamepad for the 1st and 2nd player on this PC.'
       Top = 56
-      Width = 230
+      Width = 310
       Caption = '&Key assignment...'
       TabOrder = 1
       OnClick = Button5Click
@@ -74,10 +74,10 @@ object Form1: TForm1
     Left = 208
     Height = 104
     Top = 128
-    Width = 248
+    Width = 328
     Caption = ' Game settings '
     ClientHeight = 86
-    ClientWidth = 246
+    ClientWidth = 326
     TabOrder = 1
     object CheckBox2: TCheckBox
       Left = 8
@@ -89,7 +89,7 @@ object Form1: TForm1
       TabOrder = 0
     end
     object CheckBox4: TCheckBox
-      Left = 124
+      Left = 164
       Height = 21
       Hint = 'Play the music. The sound effects can be switched off in Game options...'
       Top = 4
@@ -107,7 +107,7 @@ object Form1: TForm1
       TabOrder = 2
     end
     object CheckBox1: TCheckBox
-      Left = 124
+      Left = 164
       Height = 21
       Hint = 'Show the frames per second in the game.'
       Top = 28
@@ -120,17 +120,17 @@ object Form1: TForm1
       Height = 25
       Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
       Top = 56
-      Width = 138
+      Width = 178
       Caption = '&Game options...'
       TabOrder = 4
       OnClick = Button8Click
     end
     object Button7: TButton
-      Left = 152
+      Left = 192
       Height = 25
       Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
       Top = 56
-      Width = 86
+      Width = 126
       Caption = '&Mods...'
       TabOrder = 5
       OnClick = Button7Click
@@ -140,10 +140,10 @@ object Form1: TForm1
     Left = 208
     Height = 120
     Top = 240
-    Width = 248
+    Width = 328
     Caption = ' Internet game (optional) '
     ClientHeight = 102
-    ClientWidth = 246
+    ClientWidth = 326
     TabOrder = 2
     object CheckBox3: TCheckBox
       Left = 8
@@ -164,11 +164,11 @@ object Form1: TForm1
       FocusControl = Edit2
     end
     object Edit2: TEdit
-      Left = 88
+      Left = 120
       Height = 30
       Hint = 'IP address of the router of the player who hosts the game.'
       Top = 28
-      Width = 150
+      Width = 198
       TabOrder = 1
       Text = 'Edit2'
     end
@@ -181,11 +181,11 @@ object Form1: TForm1
       FocusControl = Edit3
     end
     object Edit3: TEdit
-      Left = 88
+      Left = 120
       Height = 30
       Hint = 'Port the router forwards to the server of the host (default 5521).'
       Top = 64
-      Width = 150
+      Width = 198
       TabOrder = 2
       Text = 'Edit3'
     end
@@ -194,26 +194,26 @@ object Form1: TForm1
     Left = 8
     Height = 80
     Top = 368
-    Width = 448
+    Width = 528
     Caption = ' Installation '
     ClientHeight = 62
-    ClientWidth = 446
+    ClientWidth = 526
     TabOrder = 3
     object Label5: TLabel
       Left = 8
       Height = 15
       Top = 7
-      Width = 292
+      Width = 352
       AutoSize = False
       Caption = 'Label5'
       ParentFont = False
     end
     object Button4: TButton
-      Left = 308
+      Left = 368
       Height = 25
       Hint = 'Extract the game data from the original Atomic Bomberman CD.'
       Top = 2
-      Width = 130
+      Width = 150
       Caption = 'CD e&xtractor...'
       TabOrder = 0
       OnClick = Button4Click
@@ -223,16 +223,16 @@ object Form1: TForm1
       Height = 15
       Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
       Top = 36
-      Width = 292
+      Width = 352
       AutoSize = False
       Caption = 'Label6'
     end
     object Button1: TButton
-      Left = 308
+      Left = 368
       Height = 25
       Hint = 'Check online for a new version and download it.'
       Top = 31
-      Width = 130
+      Width = 150
       Caption = '&Updates...'
       TabOrder = 1
       OnClick = Button1Click
@@ -253,10 +253,10 @@ object Form1: TForm1
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
     Top = 482
-    Width = 448
+    Width = 528
     BevelOuter = bvNone
     ClientHeight = 50
-    ClientWidth = 448
+    ClientWidth = 528
     ParentBackground = False
     ParentColor = False
     TabOrder = 5
@@ -271,7 +271,7 @@ object Form1: TForm1
       Height = 50
       Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
       Top = 0
-      Width = 448
+      Width = 528
       Align = alClient
       Alignment = taCenter
       AutoSize = False
@@ -317,7 +317,7 @@ object Form1: TForm1
     OnClick = Label9Click
   end
   object Button3: TButton
-    Left = 366
+    Left = 446
     Height = 30
     Top = 542
     Width = 90
@@ -328,7 +328,7 @@ object Form1: TForm1
   end
   object ComboBox1: TComboBox
     AnchorSideRight.Control = Button3
-    Left = 246
+    Left = 326
     Height = 30
     Hint = 'The language of the launcher.'
     Top = 542

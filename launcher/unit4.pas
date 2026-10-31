@@ -239,6 +239,10 @@ End;
 Procedure TForm4.FormCreate(Sender: TObject);
 Begin
   caption := 'Mods';
+{$IFDEF Windows}
+  // Ohne Tabs zeichnet Windows den Rahmen von PageControl1 2 px innerhalb seiner Grenzen, die Liste daran ausrichten
+  CheckListBox1.SetBounds(CheckListBox1.Left, PageControl1.Top + 2, CheckListBox1.Width, PageControl1.Height - 3);
+{$ENDIF}
   fSettings.Handicap := Nil;
   ModSettingsDefaults(fSettings);
   // Die Reihenfolge muss der in CheckListBox1 und PageControl1 entsprechen, der Mod Test Modus ist immer der letzte
