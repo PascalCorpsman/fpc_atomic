@@ -35,9 +35,10 @@ The steps shown here are only needed to be done once (for installation).
    >
    > sudo aptitude install libssl-dev
    >
-4. click "run cd data extractor"<br>
-   4.1 Click "set atomic cd root folder"<br>
-   4.2 Click "start extraction"  
+4. click "run cd data extractor", a wizard guides you through 4 steps, "Next" is only possible when the step is valid<br>
+   4.1 CD content: select the folder that contains the "DATA" folder (it is searched automatically next to the game and on the CD drives), the wizard shows if the expansion pack (ani.zip) is missing<br>
+   4.2 FPC Atomic folder: usually already set (the folder of the extractor)<br>
+   4.3 choose "Only create missing files" or "Create all files again" and click "Start extraction"  
 5. read the [manual](MANUAL.md)<br>
    5.5 if you are a Linux user run the "Linux_sound_install_script.sh"
 6. start the game by executing "atomic_launcher" and enjoy
