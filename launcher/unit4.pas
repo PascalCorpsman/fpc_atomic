@@ -292,7 +292,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global, ulanguage, uitemsedit;
+Uses uatomic_global, ulanguage, uitemsedit, ulayout;
 
 Function ValidHandicapName(aName: String): Boolean;
 Begin
@@ -456,6 +456,7 @@ Begin
   LoadModSettingsFromFile(GetAtomicModsIniFile(), fSettings);
   SettingsToControls();
   ShowModPage(PageControl1.ActivePage);
+  FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
 
 Procedure TForm4.Button1Click(Sender: TObject);

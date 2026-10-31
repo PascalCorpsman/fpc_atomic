@@ -59,6 +59,7 @@ Type
     Procedure ComboBox2Change(Sender: TObject);
     Procedure FormCreate(Sender: TObject);
     Procedure FormDestroy(Sender: TObject);
+    Procedure FormShow(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
   private
     fMapDirs: TStringList; // Zu jedem Eintrag in ComboBox4 das Verzeichnis der Karte, '' = Zufallskarte, '?' = gibt es hier nicht
@@ -81,7 +82,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage;
+Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage, ulayout;
 
 Const
   MapFiles: Array[0..5] Of String = ('brick.png', 'field.png', 'info.txt', 'solid.png', 'sound.wav', 'xbrick.ani'); // In der Reihenfolge, in der TAtomicField.Create sie hasht
@@ -213,6 +214,11 @@ End;
 Procedure TForm5.FormDestroy(Sender: TObject);
 Begin
   fMapDirs.free;
+End;
+
+Procedure TForm5.FormShow(Sender: TObject);
+Begin
+  FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
 
 Procedure TForm5.Label9Click(Sender: TObject);

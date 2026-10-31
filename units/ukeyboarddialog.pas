@@ -86,7 +86,7 @@ Type
 
 Implementation
 
-Uses SDL2, Dialogs, usdlwizzard
+Uses SDL2, Dialogs, usdlwizzard, ulayout
 {$IFDEF Launcher}
   , ulanguage
 {$ENDIF}
@@ -154,6 +154,7 @@ Begin
     fkeys[ks1].UseSDL2 := false;
     label26.caption := R_Keyboard1;
   End;
+  FitLayout(self);
 End;
 
 Procedure TKeyboardDialog.OnSetSDLKeyEvent(Sender: TObject);
@@ -357,6 +358,7 @@ Begin
   label22.Caption := VkKeyToString(fkeys[ks1].KeyRight);
   label23.Caption := VkKeyToString(fkeys[ks1].KeyPrimary);
   label24.Caption := VkKeyToString(fkeys[ks1].KeySecondary);
+  FitLayout(self); // Die Namen der Tasten sind unterschiedlich lang
 End;
 
 Function TKeyboardDialog.GetKeys(Index: TKeySet): TKeys;
