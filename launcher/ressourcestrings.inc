@@ -33,8 +33,8 @@ Resourcestring
   R_RandomMap = 'Random each game';
   R_NoMapGraphics = 'No map graphics, extract the CD data first.';
   R_KeyboardSettings = 'Keyboard settings';
-  R_Keyboard0 = 'Keyboard 0';
-  R_Keyboard1 = 'Keyboard 1';
+  R_Keyboard0 = 'Keyboard 1';
+  R_Keyboard1 = 'Keyboard 2';
   R_KeyUp = 'Key Up:';
   R_KeyDown = 'Key Down:';
   R_KeyLeft = 'Key Left:';
