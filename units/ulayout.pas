@@ -66,6 +66,7 @@ Type
     fRects: Array Of TRect;
     fClients: Array Of TPoint; // ClientWidth / ClientHeight
     Procedure Add(c: TControl);
+    Procedure Refit(Data: PtrInt);
   public
     Constructor Create(aRoot: TWinControl); reintroduce;
     Destructor Destroy; override;
@@ -116,6 +117,7 @@ End;
 
 Destructor TDesignBounds.Destroy;
 Begin
+  Application.RemoveAsyncCalls(self);
   fControls.Free;
   Inherited Destroy;
 End;
@@ -134,6 +136,11 @@ Begin
       Add(TWinControl(c).Controls[i]);
     End;
   End;
+End;
+
+Procedure TDesignBounds.Refit(Data: PtrInt);
+Begin
+  If TWinControl(Owner).Showing Then FitLayout(TWinControl(Owner));
 End;
 
 Function TDesignBounds.IndexOf(c: TControl): integer;
@@ -534,13 +541,15 @@ Var
   nc, dc: TPoint;
   LockW, LockH: Boolean;
   w, h: integer;
+  First: Boolean;
 Begin
   db := Nil;
   For i := 0 To Root.ComponentCount - 1 Do Begin
     If Root.Components[i] Is TDesignBounds Then db := TDesignBounds(Root.Components[i]);
   End;
   HandlesNeeded(Root); // Ohne Handle kennen die Controls ihre Größe nicht
-  If db = Nil Then Begin
+  First := db = Nil;
+  If First Then Begin
     db := TDesignBounds.Create(Root);
   End
   Else Begin
@@ -556,6 +565,13 @@ Begin
   // Ein Fenster mit fester Größe (Constraints Min = Max) behält eine feste Größe, nur eben die neue
   LockW := (Root.Constraints.MaxWidth <> 0) And (Root.Constraints.MinWidth = Root.Constraints.MaxWidth);
   LockH := (Root.Constraints.MaxHeight <> 0) And (Root.Constraints.MinHeight = Root.Constraints.MaxHeight);
+  (*
+   * Beim ersten Mal (bevor ein Fenster richtig zu sehen ist) liefern die Controls unter GTK3 noch nicht ganz ihre
+   * endgültige Größe, deshalb einmal nachrechnen, sobald es angezeigt wird (sonst ändert sie sich erst beim nächsten Aufruf)
+   *)
+  If First And (Root Is TCustomForm) Then Begin
+    Application.QueueAsyncCall(@db.Refit, 0);
+  End;
   // Nur die Größe, die Position bleibt Sache der LCL (Position beim Anzeigen) und des Benutzers
   w := Root.Width + max(dc.X, nc.X) - Root.ClientWidth;
   h := Root.Height + max(dc.Y, nc.Y) - Root.ClientHeight;
