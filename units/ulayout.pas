@@ -532,27 +532,20 @@ Var
   db: TDesignBounds;
   i: integer;
   nc, dc: TPoint;
-  f: TCustomForm;
-  r: TRect;
-  OldW, OldH: integer;
   LockW, LockH: Boolean;
   w, h: integer;
-  First: Boolean;
 Begin
   db := Nil;
   For i := 0 To Root.ComponentCount - 1 Do Begin
     If Root.Components[i] Is TDesignBounds Then db := TDesignBounds(Root.Components[i]);
   End;
   HandlesNeeded(Root); // Ohne Handle kennen die Controls ihre Größe nicht
-  First := db = Nil;
-  If First Then Begin
+  If db = Nil Then Begin
     db := TDesignBounds.Create(Root);
   End
   Else Begin
     db.Restore();
   End;
-  OldW := Root.Width;
-  OldH := Root.Height;
   Root.DisableAutoSizing;
   Try
     nc := LayoutChildren(Root, db);
@@ -563,36 +556,27 @@ Begin
   // Ein Fenster mit fester Größe (Constraints Min = Max) behält eine feste Größe, nur eben die neue
   LockW := (Root.Constraints.MaxWidth <> 0) And (Root.Constraints.MinWidth = Root.Constraints.MaxWidth);
   LockH := (Root.Constraints.MaxHeight <> 0) And (Root.Constraints.MinHeight = Root.Constraints.MaxHeight);
-  // Die neuen Constraints vor der neuen Größe, sonst ignoriert z.B. Wayland die Größenänderung eines festen Fensters
+  // Nur die Größe, die Position bleibt Sache der LCL (Position beim Anzeigen) und des Benutzers
   w := Root.Width + max(dc.X, nc.X) - Root.ClientWidth;
   h := Root.Height + max(dc.Y, nc.Y) - Root.ClientHeight;
+  If (w = Root.Width) And (h = Root.Height) Then exit;
   If LockW Then Begin
     Root.Constraints.MinWidth := 0;
-    Root.Constraints.MaxWidth := w;
-    Root.Constraints.MinWidth := w;
+    Root.Constraints.MaxWidth := 0;
   End;
   If LockH Then Begin
     Root.Constraints.MinHeight := 0;
-    Root.Constraints.MaxHeight := h;
-    Root.Constraints.MinHeight := h;
+    Root.Constraints.MaxHeight := 0;
   End;
-  Root.SetBounds(Root.Left, Root.Top, w, h);
-  // Ein Dialog, der mittig sein soll, bleibt mittig, aber nur solange er noch nicht zu sehen ist (der Benutzer hat ihn evtl. verschoben)
-  If (Root Is TCustomForm) And (First Or Not Root.Showing) And ((Root.Width <> OldW) Or (Root.Height <> OldH)) Then Begin
-    f := TCustomForm(Root);
-    Case f.Position Of
-      poMainFormCenter, poOwnerFormCenter: Begin
-          If (Application.MainForm <> Nil) And (Application.MainForm <> f) Then Begin
-            r := Application.MainForm.BoundsRect;
-            // Aber nicht über den Rand des Bildschirms hinaus, wenn das Hauptfenster am Rand liegt
-            f.SetBounds(EnsureRange(r.Left + (r.Right - r.Left - f.Width) Div 2, 0, max(0, Screen.Width - f.Width)),
-              EnsureRange(r.Top + (r.Bottom - r.Top - f.Height) Div 2, 0, max(0, Screen.Height - f.Height)), f.Width, f.Height);
-          End;
-        End;
-      poScreenCenter, poDesktopCenter: Begin
-          f.SetBounds((Screen.Width - f.Width) Div 2, (Screen.Height - f.Height) Div 2, f.Width, f.Height);
-        End;
-    End;
+  Root.ClientWidth := max(dc.X, nc.X);
+  Root.ClientHeight := max(dc.Y, nc.Y);
+  If LockW Then Begin
+    Root.Constraints.MinWidth := Root.Width;
+    Root.Constraints.MaxWidth := Root.Width;
+  End;
+  If LockH Then Begin
+    Root.Constraints.MinHeight := Root.Height;
+    Root.Constraints.MaxHeight := Root.Height;
   End;
 End;
 
