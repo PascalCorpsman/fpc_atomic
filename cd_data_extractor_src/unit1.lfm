@@ -1,123 +1,469 @@
 object Form1: TForm1
   Left = 347
-  Height = 491
+  Height = 480
   Top = 109
-  Width = 451
-  Caption = 'Form1'
-  ClientHeight = 491
-  ClientWidth = 451
+  Width = 580
+  Caption = 'FPC Atomic data extractor'
+  ClientHeight = 480
+  ClientWidth = 580
   Position = poScreenCenter
   LCLVersion = '4.99.0.0'
+  OnActivate = FormActivate
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
-  object Button1: TButton
-    Left = 8
-    Height = 25
-    Top = 40
-    Width = 432
-    Anchors = [akTop, akLeft, akRight]
-    Caption = 'Set atomic cd root folder'
-    TabOrder = 1
-    OnClick = Button1Click
-  end
-  object Button2: TButton
-    Left = 8
-    Height = 25
-    Top = 453
-    Width = 432
-    Anchors = [akLeft, akRight, akBottom]
-    Caption = 'Close'
-    TabOrder = 6
-    OnClick = Button2Click
-  end
-  object Label1: TLabel
-    Left = 16
-    Height = 16
-    Top = 72
-    Width = 40
-    Caption = 'Label1'
-  end
-  object Button3: TButton
-    Left = 365
-    Height = 25
+  OnShow = FormShow
+  object LabelStep: TLabel
+    Left = 12
+    Height = 1
     Top = 8
-    Width = 75
-    Anchors = [akTop, akRight]
-    Caption = 'help'
+    Width = 556
+    Align = alTop
+    BorderSpacing.Left = 12
+    BorderSpacing.Top = 8
+    BorderSpacing.Right = 12
+    Font.Color = clGrayText
+    ParentFont = False
+  end
+  object PanelButtons: TPanel
+    Left = 0
+    Height = 41
+    Top = 439
+    Width = 580
+    Align = alBottom
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 41
+    ClientWidth = 580
+    TabOrder = 1
+    object ButtonClose: TButton
+      Left = 482
+      Height = 25
+      Top = 8
+      Width = 90
+      Align = alRight
+      AutoSize = True
+      BorderSpacing.Around = 8
+      Caption = '&Close'
+      Constraints.MinWidth = 90
+      TabOrder = 2
+      OnClick = ButtonCloseClick
+    end
+    object ButtonNext: TButton
+      Left = 384
+      Height = 25
+      Top = 8
+      Width = 90
+      Align = alRight
+      AutoSize = True
+      BorderSpacing.Around = 8
+      Constraints.MinWidth = 90
+      Default = True
+      TabOrder = 1
+      OnClick = ButtonNextClick
+    end
+    object ButtonBack: TButton
+      Left = 286
+      Height = 25
+      Top = 8
+      Width = 90
+      Align = alRight
+      AutoSize = True
+      BorderSpacing.Around = 8
+      Caption = '< &Back'
+      Constraints.MinWidth = 90
+      TabOrder = 0
+      OnClick = ButtonBackClick
+    end
+    object Button6: TButton
+      Left = 8
+      Height = 25
+      Top = 8
+      Width = 120
+      Align = alLeft
+      BorderSpacing.Around = 8
+      Caption = 'ani job creator'
+      TabOrder = 3
+      Visible = False
+      OnClick = Button6Click
+    end
+  end
+  object Notebook1: TNotebook
+    Left = 12
+    Height = 422
+    Top = 17
+    Width = 556
+    PageIndex = 0
+    Align = alClient
+    BorderSpacing.Left = 12
+    BorderSpacing.Right = 12
     TabOrder = 0
-    OnClick = Button3Click
-  end
-  object Button4: TButton
-    Left = 8
-    Height = 25
-    Top = 96
-    Width = 432
-    Anchors = [akTop, akLeft, akRight]
-    Caption = 'set fpc atomic folder'
-    TabOrder = 2
-    OnClick = Button4Click
-  end
-  object Label2: TLabel
-    Left = 16
-    Height = 16
-    Top = 128
-    Width = 40
-    Caption = 'Label2'
-  end
-  object Label3: TLabel
-    Left = 8
-    Height = 16
-    Top = 160
-    Width = 86
-    Caption = 'extraction log:'
-  end
-  object Memo1: TMemo
-    Left = 8
-    Height = 210
-    Top = 176
-    Width = 432
-    Anchors = [akTop, akLeft, akRight, akBottom]
-    Lines.Strings = (
-      'Memo1'
-    )
-    ReadOnly = True
-    ScrollBars = ssAutoBoth
-    TabOrder = 4
-    WordWrap = False
-  end
-  object Button5: TButton
-    Left = 8
-    Height = 25
-    Top = 422
-    Width = 432
-    Anchors = [akLeft, akRight, akBottom]
-    Caption = 'Start extraction'
-    TabOrder = 5
-    OnClick = Button5Click
-  end
-  object Button6: TButton
-    Left = 264
-    Height = 25
-    Top = 144
-    Width = 176
-    Anchors = [akTop, akRight]
-    Caption = 'ani job creator'
-    TabOrder = 3
-    OnClick = Button6Click
-  end
-  object CheckBox1: TCheckBox
-    Left = 8
-    Height = 22
-    Hint = 'When selected, only new files where created (faster), '#13#10'uncheck if you want to overwrite existing files too.'
-    Top = 391
-    Width = 72
-    Anchors = [akLeft, akBottom]
-    Caption = 'iterative'
-    Checked = True
-    ParentShowHint = False
-    ShowHint = True
-    State = cbChecked
-    TabOrder = 7
+    object Page1: TPage
+      object Label11: TLabel
+        Left = 0
+        Height = 16
+        Top = 4
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+        Caption = 'Atomic Bomberman CD content'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object Label12: TLabel
+        Left = 0
+        Height = 32
+        Top = 28
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = 'Select the folder with the content of your Atomic Bomberman CD. That is the folder that contains the DATA folder with the subfolders ANI, RES, SCHEMES and SOUND.'
+        WordWrap = True
+      end
+      object Panel11: TPanel
+        Left = 0
+        Height = 25
+        Top = 68
+        Width = 556
+        Align = alTop
+        AutoSize = True
+        BorderSpacing.Top = 8
+        BevelOuter = bvNone
+        ClientHeight = 25
+        ClientWidth = 556
+        TabOrder = 0
+        object Edit1: TEdit
+          Left = 0
+          Height = 25
+          Top = 0
+          Width = 372
+          Align = alClient
+          TabOrder = 0
+          OnChange = Edit1Change
+        end
+        object Button11: TButton
+          Left = 378
+          Height = 25
+          Top = 0
+          Width = 85
+          Align = alRight
+          AutoSize = True
+          BorderSpacing.Left = 6
+          Caption = 'Browse...'
+          TabOrder = 1
+          OnClick = Button11Click
+        end
+        object Button12: TButton
+          Left = 469
+          Height = 25
+          Top = 0
+          Width = 87
+          Align = alRight
+          AutoSize = True
+          BorderSpacing.Left = 6
+          Caption = 'Search'
+          TabOrder = 2
+          OnClick = Button12Click
+        end
+      end
+      object Label13: TLabel
+        Left = 0
+        Height = 1
+        Top = 105
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 12
+      end
+      object Label14: TLabel
+        Left = 0
+        Height = 1
+        Top = 110
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+      end
+      object Label15: TLabel
+        Left = 0
+        Height = 1
+        Top = 115
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+      end
+      object Label16: TLabel
+        Left = 0
+        Height = 1
+        Top = 120
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+      end
+      object Label17: TLabel
+        Left = 0
+        Height = 1
+        Top = 125
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 12
+      end
+      object Label18: TLabel
+        Left = 0
+        Height = 1
+        Top = 130
+        Width = 556
+        Align = alTop
+        BorderSpacing.Left = 16
+        BorderSpacing.Top = 4
+        WordWrap = True
+      end
+      object Panel12: TPanel
+        Left = 16
+        Height = 25
+        Top = 135
+        Width = 540
+        Align = alTop
+        AutoSize = True
+        BorderSpacing.Left = 16
+        BorderSpacing.Top = 6
+        BevelOuter = bvNone
+        ClientHeight = 25
+        ClientWidth = 540
+        TabOrder = 1
+        object Button13: TButton
+          Left = 0
+          Height = 25
+          Top = 0
+          Width = 160
+          Align = alLeft
+          AutoSize = True
+          Caption = 'Download ani.zip'
+          TabOrder = 0
+          OnClick = Button13Click
+        end
+      end
+      object Label19: TLabel
+        Left = 0
+        Height = 1
+        Top = 172
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 12
+        Font.Style = [fsBold]
+        ParentFont = False
+        WordWrap = True
+      end
+    end
+    object Page2: TPage
+      object Label21: TLabel
+        Left = 0
+        Height = 16
+        Top = 4
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+        Caption = 'FPC Atomic folder'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object Label22: TLabel
+        Left = 0
+        Height = 32
+        Top = 28
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = 'Select the folder of FPC Atomic, that is the folder with the fpc_atomic program. The converted files are written into its data folder. Usually this is the folder of this extractor.'
+        WordWrap = True
+      end
+      object Panel21: TPanel
+        Left = 0
+        Height = 25
+        Top = 68
+        Width = 556
+        Align = alTop
+        AutoSize = True
+        BorderSpacing.Top = 8
+        BevelOuter = bvNone
+        ClientHeight = 25
+        ClientWidth = 556
+        TabOrder = 0
+        object Edit2: TEdit
+          Left = 0
+          Height = 25
+          Top = 0
+          Width = 465
+          Align = alClient
+          TabOrder = 0
+          OnChange = Edit2Change
+        end
+        object Button21: TButton
+          Left = 471
+          Height = 25
+          Top = 0
+          Width = 85
+          Align = alRight
+          AutoSize = True
+          BorderSpacing.Left = 6
+          Caption = 'Browse...'
+          TabOrder = 1
+          OnClick = Button21Click
+        end
+      end
+      object Label23: TLabel
+        Left = 0
+        Height = 1
+        Top = 105
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 12
+        WordWrap = True
+      end
+      object Label24: TLabel
+        Left = 0
+        Height = 1
+        Top = 118
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 12
+        WordWrap = True
+      end
+      object Label25: TLabel
+        Left = 0
+        Height = 1
+        Top = 123
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+        WordWrap = True
+      end
+    end
+    object Page3: TPage
+      object Label31: TLabel
+        Left = 0
+        Height = 16
+        Top = 4
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+        Caption = 'What should be done?'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object RadioButton1: TRadioButton
+        Left = 0
+        Height = 22
+        Top = 32
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 12
+        Caption = 'Only create missing files (fast)'
+        Checked = True
+        TabOrder = 0
+        TabStop = True
+        OnChange = RadioButtonChange
+      end
+      object Label32: TLabel
+        Left = 24
+        Height = 1
+        Top = 56
+        Width = 532
+        Align = alTop
+        BorderSpacing.Left = 24
+        BorderSpacing.Top = 2
+        WordWrap = True
+      end
+      object RadioButton2: TRadioButton
+        Left = 0
+        Height = 22
+        Top = 69
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 12
+        Caption = 'Create all files again'
+        TabOrder = 1
+        OnChange = RadioButtonChange
+      end
+      object Label33: TLabel
+        Left = 24
+        Height = 1
+        Top = 93
+        Width = 532
+        Align = alTop
+        BorderSpacing.Left = 24
+        BorderSpacing.Top = 2
+        WordWrap = True
+      end
+      object Label34: TLabel
+        Left = 0
+        Height = 1
+        Top = 114
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 20
+        WordWrap = True
+      end
+    end
+    object Page4: TPage
+      object Label41: TLabel
+        Left = 0
+        Height = 16
+        Top = 4
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+        Caption = 'Extraction'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object Label42: TLabel
+        Left = 0
+        Height = 1
+        Top = 28
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 8
+      end
+      object ProgressBar1: TProgressBar
+        Left = 0
+        Height = 20
+        Top = 33
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 4
+        TabOrder = 0
+      end
+      object Label43: TLabel
+        Left = 0
+        Height = 1
+        Top = 61
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 8
+        Font.Style = [fsBold]
+        ParentFont = False
+        WordWrap = True
+      end
+      object Label44: TLabel
+        Left = 0
+        Height = 16
+        Top = 70
+        Width = 556
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = 'Log:'
+      end
+      object Memo1: TMemo
+        Left = 0
+        Height = 336
+        Top = 86
+        Width = 556
+        Align = alClient
+        BorderSpacing.Bottom = 4
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        WordWrap = False
+      end
+    end
   end
   object IniPropStorage1: TIniPropStorage
     StoredValues = <>

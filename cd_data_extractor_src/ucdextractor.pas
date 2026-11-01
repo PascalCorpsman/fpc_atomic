@@ -31,9 +31,12 @@ Uses
  *          0.05 = Speedup Sound extraction by factor of 8
  *          0.06 = ADD: "Iterative" mode
  *          0.07 = Set titles for select dialogs
+ *          0.08 = ADD: step by step wizard, folders are checked at once, progress, translation
+ *                 ADD: search for the CD folder, the DATA folder itself can be selected
+ *                 FIX: CD folder check only accepts DATA directly below the selected folder
  *)
 Const
-  DefCaption = 'FPC Atomic data extractor ver. 0.07';
+  DefCaption = 'FPC Atomic data extractor ver. 0.08';
 
 Type
   TTransparentMode = (
@@ -60,6 +63,20 @@ Type
   TLogCallback = Procedure(Logtext: String) Of Object;
 
   (*
+   * Callback for the progress of DoExtraction, Done = Total when finished
+   *)
+  TProgressCallback = Procedure(Done, Total: integer) Of Object;
+
+  (*
+   * Result of CheckCDRootFolderDetails, one entry per needed subfolder
+   *)
+  TCDFolder = (cdAni, cdRes, cdSchemes, cdSound);
+  TCDFolderCheck = Array[TCDFolder] Of Boolean;
+
+Const
+  CDFolderNames: Array[TCDFolder] Of String = ('ani', 'res', 'schemes', 'sound');
+
+  (*
    * Partly separated to be able to use it in the ani job creator ;)
    *)
 Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
@@ -69,6 +86,13 @@ Function DoAniJob(CDFolder: String; Job: TAniJob): TBitmap;
  *)
 Function CheckCDRootFolder(aFolder: String): boolean; // True, if aFolder seems to be a correct Atomic Bomberman CD Root folder
 Function CheckFPCAtomicFolder(aFolder: String): boolean; // True, if fpc_atomic binary is part of
+Function CheckCDRootFolderDetails(aFolder: String): TCDFolderCheck; // Which of DATA/ANI, DATA/RES, DATA/SCHEMES, DATA/SOUND exist
+Function GetCDRootFolder(aFolder: String): String; // If aFolder is the DATA folder (or one below) of a CD root folder, its CD root folder, otherwise aFolder
+Function FindCDRootFolder(StartFolder: String): String; // Searches StartFolder, its neighbours and the CD drives for a CD root folder, '' if none found
+Function GetMissingOptionalAnis(CDFolder: String): TStringArray; // The files of the expansion pack (ani.zip) that are missing in CDFolder
+Function GetOptionalAniCount(): integer; // Number of files in the expansion pack (ani.zip)
+Function GetMissingFiles(AtomicFolder: String; Optional: Boolean): TStringArray; // Missing extracted files, Optional = false -> needed ones, true -> only the ones from the expansion pack
+Procedure SetProgressCallback(Callback: TProgressCallback);
 
 (*
  * This is the routine that does all the work, it handles everyting what needs to be done
@@ -305,6 +329,20 @@ Var
   AniJobs: Array Of TAniJob; // All the .ani jobs will be set in the initialization part of the unit.
   CascadeJobs: Array Of TCascadeJob; // All jobs that where merged into one image.
   AniToAniJobs: Array Of TAniToAniJob; // All the jobs where a Atomic Bomberman Ani directly is converted into a FPC_Atomic.ani file
+  ProgressCallback: TProgressCallback = Nil;
+  ProgressDone: integer = 0; // Jobs done in DoExtraction
+  ProgressTotal: integer = 0; // All jobs of DoExtraction
+
+Const
+  (*
+   * The files of the Atomic Bomberman expansion pack (ani.zip), not part of the CD
+   *)
+  AniZipContent: Array Of String = (
+    'XPLODE21.ANI', 'Trig_sbm.ani', 'XPLODE20.ANI', 'xplode18.ani', 'Powerna.ani',
+    'pwr_sbm.ani', 'lit_dud.ani', 'conv_sbm.ani', 'pwa_sbm2.ani', 'rth_dud.ani',
+    'XPLODE19.ANI', 'Powera.ani', 'pwr_sbm2.ani', 'rth_bomb.ani', 'rth_trig.ani',
+    'lit_trig.ani', 'lit_bomb.ani', 'Powern.ani', 'pwa_sbm.ani', 'rth_flam.ani',
+    'lit_flam.ani');
 
 {$IFDEF Linux}
   (*
@@ -467,22 +505,15 @@ Begin
 End;
 
 Function GetOptionalFilesToCheck: TStringArray;
-Const
-  ani_zip_content: Array Of String = (
-    'XPLODE21.ANI', 'Trig_sbm.ani', 'XPLODE20.ANI', 'xplode18.ani', 'Powerna.ani',
-    'pwr_sbm.ani', 'lit_dud.ani', 'conv_sbm.ani', 'pwa_sbm2.ani', 'rth_dud.ani',
-    'XPLODE19.ANI', 'Powera.ani', 'pwr_sbm2.ani', 'rth_bomb.ani', 'rth_trig.ani',
-    'lit_trig.ani', 'lit_bomb.ani', 'Powern.ani', 'pwa_sbm.ani', 'rth_flam.ani',
-    'lit_flam.ani');
 Var
   c, i, j: Integer;
 Begin
   result := Nil;
   setlength(result, 1024);
   c := 0;
-  For i := 0 To high(ani_zip_content) Do Begin
+  For i := 0 To high(AniZipContent) Do Begin
     For j := 0 To high(AniJobs) Do Begin
-      If pos(uppercase(ani_zip_content[i]), uppercase(AniJobs[j].SourceAni)) <> 0 Then Begin
+      If pos(uppercase(AniZipContent[i]), uppercase(AniJobs[j].SourceAni)) <> 0 Then Begin
         result[c] := AniJobs[j].DestPng;
         inc(c);
       End;
@@ -494,27 +525,228 @@ Begin
   setlength(result, c);
 End;
 
-Function CheckCDRootFolder(aFolder: String): boolean;
+(*
+ * Returns the subfolder Name of Folder (case insensitive), '' if it does not exist
+ *)
+
+Function FindSubFolder(Folder, Name: String): String;
 Var
   sl: TStringList;
-  checks: Array[0..3] Of Boolean;
   i: integer;
 Begin
-  result := true;
-  sl := FindAllDirectories(aFolder, True);
-  For i := 0 To high(checks) Do Begin
-    checks[i] := false;
-  End;
+  result := '';
+  If (Folder = '') Or (Not DirectoryExists(Folder)) Then exit;
+  sl := FindAllDirectories(Folder, false);
   For i := 0 To sl.Count - 1 Do Begin
-    If pos('data' + PathDelim + 'ani', lowercase(sl[i])) <> 0 Then checks[0] := true;
-    If pos('data' + PathDelim + 'res', lowercase(sl[i])) <> 0 Then checks[1] := true;
-    If pos('data' + PathDelim + 'schemes', lowercase(sl[i])) <> 0 Then checks[2] := true;
-    If pos('data' + PathDelim + 'sound', lowercase(sl[i])) <> 0 Then checks[3] := true;
-  End;
-  For i := 0 To high(checks) Do Begin
-    result := result And checks[i];
+    If lowercase(ExtractFileName(ExcludeTrailingPathDelimiter(sl[i]))) = lowercase(Name) Then Begin
+      result := IncludeTrailingPathDelimiter(sl[i]);
+      break;
+    End;
   End;
   sl.free;
+End;
+
+Function CheckCDRootFolderDetails(aFolder: String): TCDFolderCheck;
+Var
+  DataFolder: String;
+  f: TCDFolder;
+Begin
+  (*
+   * The extraction reads <aFolder>/data/<subfolder>/..., so data has to be
+   * directly below aFolder (any casing).
+   *)
+  DataFolder := FindSubFolder(aFolder, 'data');
+  For f In TCDFolder Do Begin
+    result[f] := (DataFolder <> '') And (FindSubFolder(DataFolder, CDFolderNames[f]) <> '');
+  End;
+End;
+
+Function CheckCDRootFolder(aFolder: String): boolean;
+Var
+  checks: TCDFolderCheck;
+  f: TCDFolder;
+Begin
+  checks := CheckCDRootFolderDetails(aFolder);
+  result := true;
+  For f In TCDFolder Do Begin
+    result := result And checks[f];
+  End;
+End;
+
+Function GetCDRootFolder(aFolder: String): String;
+Var
+  i: integer;
+  s: String;
+Begin
+  result := aFolder;
+  If CheckCDRootFolder(aFolder) Then exit;
+  // The user selected DATA or DATA/ANI .. -> go up
+  s := ExcludeTrailingPathDelimiter(aFolder);
+  For i := 0 To 1 Do Begin
+    s := ExcludeTrailingPathDelimiter(ExtractFilePath(s));
+    If s = '' Then exit;
+    If CheckCDRootFolder(s) Then Begin
+      result := s;
+      exit;
+    End;
+  End;
+End;
+
+{$IFDEF Windows}
+Function GetDriveTypeW(lpRootPathName: PWideChar): LongWord; stdcall; external 'kernel32' name 'GetDriveTypeW';
+{$ENDIF}
+
+Function FindCDRootFolder(StartFolder: String): String;
+Var
+  Checked: TStringList;
+  Found: String;
+
+  Function Check(Folder: String): Boolean;
+  Begin
+    result := false;
+    Folder := ExcludeTrailingPathDelimiter(Folder);
+    If (Folder = '') Or (Checked.IndexOf(lowercase(Folder)) <> -1) Then exit;
+    Checked.Add(lowercase(Folder));
+    If CheckCDRootFolder(Folder) Then Begin
+      Found := Folder;
+      result := true;
+    End;
+  End;
+
+  // Folder itself and its subfolders up to 2 levels
+  Function Search(Folder: String): Boolean;
+  Var
+    sl, sl2: TStringList;
+    i, j: integer;
+  Begin
+    result := Check(Folder);
+    If result Or (Not DirectoryExists(Folder)) Then exit;
+    sl := FindAllDirectories(Folder, false);
+    For i := 0 To sl.Count - 1 Do Begin
+      If Check(sl[i]) Then Begin
+        result := true;
+        break;
+      End;
+      sl2 := FindAllDirectories(sl[i], false);
+      For j := 0 To sl2.Count - 1 Do Begin
+        If Check(sl2[j]) Then Begin
+          result := true;
+          break;
+        End;
+      End;
+      sl2.free;
+      If result Then break;
+    End;
+    sl.free;
+  End;
+
+Var
+  Parent: String;
+{$IFDEF Windows}
+  c: Char;
+  Drive: WideString;
+{$ENDIF}
+Begin
+  Found := '';
+  Checked := TStringList.Create;
+  Try
+    StartFolder := ExcludeTrailingPathDelimiter(StartFolder);
+    If Search(StartFolder) Then exit;
+    // Neighbours, e.g. the game is in Games\fpc_atomic and the CD content in Games\atomic\bomber
+    Parent := ExcludeTrailingPathDelimiter(ExtractFilePath(StartFolder));
+    If (Parent <> '') And (Parent <> StartFolder) Then Begin
+      If Search(Parent) Then exit;
+    End;
+{$IFDEF Windows}
+    // The CD itself
+    For c := 'A' To 'Z' Do Begin
+      Drive := WideString(c + ':\');
+      If GetDriveTypeW(PWideChar(Drive)) = 5 Then Begin // DRIVE_CDROM
+        If Check(c + ':') Then exit;
+      End;
+    End;
+{$ENDIF}
+  Finally
+    Checked.Free;
+    result := Found;
+  End;
+End;
+
+Function GetMissingOptionalAnis(CDFolder: String): TStringArray;
+Var
+  AniFolder: String;
+  sl, Names: TStringList;
+  i, c: integer;
+Begin
+  result := Nil;
+  setlength(result, length(AniZipContent));
+  c := 0;
+  Names := TStringList.Create;
+  AniFolder := FindSubFolder(FindSubFolder(CDFolder, 'data'), 'ani');
+  If AniFolder <> '' Then Begin
+    sl := FindAllFiles(AniFolder, '*', false);
+    For i := 0 To sl.Count - 1 Do Begin
+      Names.Add(lowercase(ExtractFileName(sl[i])));
+    End;
+    sl.free;
+  End;
+  For i := 0 To high(AniZipContent) Do Begin
+    If Names.IndexOf(lowercase(AniZipContent[i])) = -1 Then Begin
+      result[c] := AniZipContent[i];
+      inc(c);
+    End;
+  End;
+  Names.free;
+  setlength(result, c);
+End;
+
+Function GetOptionalAniCount: integer;
+Begin
+  result := length(AniZipContent);
+End;
+
+Function GetMissingFiles(AtomicFolder: String; Optional: Boolean): TStringArray;
+Var
+  Files, Optionals: TStringArray;
+  i, j, c: integer;
+  IsOptional: Boolean;
+Begin
+  result := Nil;
+  AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
+  Files := GetAllFilesToCheck();
+  Optionals := GetOptionalFilesToCheck();
+  setlength(result, length(Files));
+  c := 0;
+  For i := 0 To high(Files) Do Begin
+    If FileExists(AtomicFolder + Files[i]) Then Continue;
+    IsOptional := false;
+    For j := 0 To high(Optionals) Do Begin
+      If Optionals[j] = Files[i] Then Begin
+        IsOptional := true;
+        break;
+      End;
+    End;
+    If IsOptional = Optional Then Begin
+      result[c] := Files[i];
+      inc(c);
+    End;
+  End;
+  setlength(result, c);
+End;
+
+Procedure SetProgressCallback(Callback: TProgressCallback);
+Begin
+  ProgressCallback := Callback;
+End;
+
+(*
+ * Called once per job of DoExtraction
+ *)
+
+Procedure StepProgress();
+Begin
+  inc(ProgressDone);
+  If assigned(ProgressCallback) Then ProgressCallback(ProgressDone, ProgressTotal);
 End;
 
 Function CheckFPCAtomicFolder(aFolder: String): boolean;
@@ -718,6 +950,7 @@ Begin
   AniWarning := false;
   // The Normal Jobs
   For i := 0 To high(AniJobs) Do Begin
+    StepProgress();
     If Iterative And FileExists(AtomicFolder + AniJobs[i].DestPng) Then Continue;
     b := DoAniJob(CDFolder, AniJobs[i]);
     If Not assigned(b) Then Begin
@@ -735,6 +968,7 @@ Begin
   // The Cascade Jobs
   bmps := Nil;
   For i := 0 To high(CascadeJobs) Do Begin
+    StepProgress();
     If Iterative And FileExists(AtomicFolder + CascadeJobs[i, high(CascadeJobs[i])].DestPng) Then Continue;
     setlength(bmps, length(CascadeJobs[i]));
     For j := 0 To high(CascadeJobs[i]) Do Begin
@@ -786,6 +1020,7 @@ Begin
   CDFolder := IncludeTrailingPathDelimiter(CDFolder);
   AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
   For i := 0 To high(AniToAniJobs) Do Begin
+    StepProgress();
     targetAniFile := AtomicFolder + AniToAniJobs[i].AniJob.DestPng;
     If iterative And FileExists(targetAniFile) Then Continue;
     b := DoAniJob(CDFolder, AniToAniJobs[i].AniJob);
@@ -852,6 +1087,7 @@ Begin
   CDFolder := IncludeTrailingPathDelimiter(CDFolder);
   AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
   For i := 0 To high(PCXJobs) Do Begin
+    StepProgress();
     sPCXFile := GetFileByMatch(ExtractFilePath(CDFolder + PCXJobs[i].Sourcefile), PCXJobs[i].Sourcefile);
     If sPCXFile = '' Then Begin
       Log('  Error could not locate: ' + PCXJobs[i].Sourcefile);
@@ -913,6 +1149,7 @@ Begin
   CDFolder := IncludeTrailingPathDelimiter(CDFolder);
   AtomicFolder := IncludeTrailingPathDelimiter(AtomicFolder);
   For i := 0 To high(SoundJobs) Do Begin
+    StepProgress();
     tSoundFile := AtomicFolder + SoundJobs[i].Destname;
     If iterative And FileExists(tSoundFile) Then Continue;
     // Find the source file
@@ -1012,6 +1249,8 @@ Begin
     Log('Error, could not create data folder.');
     exit;
   End;
+  ProgressDone := 0;
+  ProgressTotal := length(PCXJobs) + length(AniJobs) + length(CascadeJobs) + length(AniToAniJobs) + length(SoundJobs) + 1; // + 1 = schemes
   Log('PCXs');
   ExtractAtomicPCXs(CDFolder, AtomicFolder, Iterative);
   Log('ANIs');
@@ -1021,6 +1260,7 @@ Begin
   ExtractAtomicSounds(CDFolder, AtomicFolder, Iterative);
   Log('Shemes');
   ExtractAtomicShemes(CDFolder, AtomicFolder, Iterative);
+  StepProgress();
   n := GetTickCount64() - n;
   Log('Extraction took: ' + inttostr(n Div 1000) + 's');
   Log('Done, please check results.');

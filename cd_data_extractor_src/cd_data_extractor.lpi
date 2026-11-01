@@ -104,7 +104,7 @@
       <Filename Value="../cd_data_extractor"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
+      <IncludeFiles Value="$(ProjOutDir);$(ProjPath)"/>
       <OtherUnitFiles Value="../../Sample/Sound;../../Sample/Graphik;../../Sample/DatenSteuerung;../../Sample/OpenGL;../units"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
