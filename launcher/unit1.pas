@@ -40,6 +40,7 @@ Type
     CheckBox4: TCheckBox;
     CheckBox5: TCheckBox;
     CheckBox6: TCheckBox;
+    CheckBox7: TCheckBox;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
@@ -692,6 +693,7 @@ Begin
   CheckBox3.Checked := false;
   CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySounds', true);
   CheckBox5.Checked := Not ini.ReadBool(FPC_AtomicIniSection, 'Proportional', true);
+  CheckBox7.Checked := ini.ReadBool(FPC_AtomicIniSection, 'RememberWindow', true);
   edit1.text := ini.ReadString(FPC_AtomicIniSection, 'NodeName', 'Player 1');
   ProtocollVersion := ini.ReadInteger(FPC_AtomicIniSection, 'ProtocollVersion', -1);
   Version := strtofloatdef(ini.ReadString(FPC_AtomicIniSection, 'Version', '-1'), -1, fm);
@@ -873,6 +875,7 @@ Begin
 
   ini.WriteBool(FPC_AtomicIniSection, 'PlaySounds', CheckBox4.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'Proportional', Not CheckBox5.Checked);
+  ini.WriteBool(FPC_AtomicIniSection, 'RememberWindow', CheckBox7.Checked);
   ini.WriteString(FPC_AtomicIniSection, 'NodeName', trim(edit1.text));
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);
