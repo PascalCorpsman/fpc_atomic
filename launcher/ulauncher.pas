@@ -53,6 +53,10 @@ Const
    *                   FIX: Versionsnummer im Titel mit Komma (0,11)
    *                   ADD: Option, nach dem Spiel wieder den Launcher anzeigen
    *                   ADD: Launcher auf Englisch oder Deutsch (Link unten rechts), auf Deutsch öffnen die Links die deutschen Handbücher
+   *                   ADD: Updates: ein Dialog mit Phasen (Prüfen, Übersicht mit Status und Größe, Fortschritt mit Abbrechen, Ergebnis)
+   *                   ADD: Updates: beim Start im Hintergrund prüfen, "Update verfügbar" neben "Updates..." (abschaltbar)
+   *                   FIX: Updates: Downloads erst über .part, ein Fehler lässt die alte Datei stehen, Release-Dateien werden per Hash geprüft
+   *                   FIX: Updates: der Launcher wurde doppelt heruntergeladen
    * Known Bugs :
    *)
   {

@@ -1,12 +1,39 @@
 object Form1: TForm1
   Left = 333
-  Height = 99
+  Height = 90
   Top = 115
-  Width = 273
-  Caption = 'Form1'
+  Width = 380
+  BorderIcons = [biSystemMenu]
+  Caption = 'Updater'
+  ClientHeight = 90
+  ClientWidth = 380
+  Position = poScreenCenter
   LCLVersion = '3.99.0.0'
   OnCreate = FormCreate
   OnShow = FormShow
+  object Label1: TLabel
+    Left = 16
+    Height = 1
+    Top = 16
+    Width = 348
+    Align = alTop
+    BorderSpacing.Left = 16
+    BorderSpacing.Top = 16
+    BorderSpacing.Right = 16
+    WordWrap = True
+  end
+  object ProgressBar1: TProgressBar
+    Left = 16
+    Height = 20
+    Top = 29
+    Width = 348
+    Align = alTop
+    BorderSpacing.Left = 16
+    BorderSpacing.Top = 12
+    BorderSpacing.Right = 16
+    Style = pbstMarquee
+    TabOrder = 0
+  end
   object Timer1: TTimer
     Enabled = False
     Interval = 100
