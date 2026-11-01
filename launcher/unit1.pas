@@ -248,6 +248,11 @@ Begin
     Keys[ks0].AchsisIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
     Keys[ks0].AchsisIdle[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
     Keys[ks0].AchsisDirection[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
+    Keys[ks0].UseAnalogStick := ini.ReadBool(FPC_AtomicIniSection, 'SDL_AnalogStick', Keys[ks0].UseAnalogStick);
+    Keys[ks0].UseHat := ini.ReadBool(FPC_AtomicIniSection, 'SDL_Hat', Keys[ks0].UseHat);
+    Keys[ks0].UseHysteresis := ini.ReadBool(FPC_AtomicIniSection, 'SDL_Hysteresis', Keys[ks0].UseHysteresis);
+    Keys[ks0].UseDominantAxis := ini.ReadBool(FPC_AtomicIniSection, 'SDL_DominantAxis', Keys[ks0].UseDominantAxis);
+    Keys[ks0].MappingVersion := ini.ReadInteger(FPC_AtomicIniSection, 'SDL_MappingVersion', Keys[ks0].MappingVersion);
   End;
   Keys[ks1] := AtomicDefaultKeys(ks1);
   Keys[ks1].KeyUp := ini.ReadInteger(FPC_AtomicIniSection, 'KeyUp2', Keys[ks1].KeyUp);
@@ -271,6 +276,11 @@ Begin
     Keys[ks1].AchsisIndex[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
     Keys[ks1].AchsisIdle[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
     Keys[ks1].AchsisDirection[1] := ini.readInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
+    Keys[ks1].UseAnalogStick := ini.ReadBool(FPC_AtomicIniSection, 'SDL_AnalogStick2', Keys[ks1].UseAnalogStick);
+    Keys[ks1].UseHat := ini.ReadBool(FPC_AtomicIniSection, 'SDL_Hat2', Keys[ks1].UseHat);
+    Keys[ks1].UseHysteresis := ini.ReadBool(FPC_AtomicIniSection, 'SDL_Hysteresis2', Keys[ks1].UseHysteresis);
+    Keys[ks1].UseDominantAxis := ini.ReadBool(FPC_AtomicIniSection, 'SDL_DominantAxis2', Keys[ks1].UseDominantAxis);
+    Keys[ks1].MappingVersion := ini.ReadInteger(FPC_AtomicIniSection, 'SDL_MappingVersion2', Keys[ks1].MappingVersion);
   End;
   Dialog.LoadKeys(Keys[ks0], Keys[ks1]);
   If Dialog.Execute() Then Begin
@@ -296,6 +306,11 @@ Begin
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRight', Keys[ks0].AchsisIndex[1]);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle', Keys[ks0].AchsisIdle[1]);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection', Keys[ks0].AchsisDirection[1]);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_AnalogStick', Keys[ks0].UseAnalogStick);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_Hat', Keys[ks0].UseHat);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_Hysteresis', Keys[ks0].UseHysteresis);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_DominantAxis', Keys[ks0].UseDominantAxis);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_MappingVersion', Keys[ks0].MappingVersion);
     ini.WriteInteger(FPC_AtomicIniSection, 'KeyUp2', Keys[ks1].KeyUp);
     ini.WriteInteger(FPC_AtomicIniSection, 'KeyDown2', Keys[ks1].KeyDown);
     ini.WriteInteger(FPC_AtomicIniSection, 'KeyLeft2', Keys[ks1].KeyLeft);
@@ -316,6 +331,11 @@ Begin
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRight2', Keys[ks1].AchsisIndex[1]);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightIdle2', Keys[ks1].AchsisIdle[1]);
     ini.WriteInteger(FPC_AtomicIniSection, 'SDL_LeftRightDirection2', Keys[ks1].AchsisDirection[1]);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_AnalogStick2', Keys[ks1].UseAnalogStick);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_Hat2', Keys[ks1].UseHat);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_Hysteresis2', Keys[ks1].UseHysteresis);
+    ini.WriteBool(FPC_AtomicIniSection, 'SDL_DominantAxis2', Keys[ks1].UseDominantAxis);
+    ini.WriteInteger(FPC_AtomicIniSection, 'SDL_MappingVersion2', Keys[ks1].MappingVersion);
   End;
   dialog.free;
 End;

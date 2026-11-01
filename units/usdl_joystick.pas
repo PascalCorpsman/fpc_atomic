@@ -50,15 +50,25 @@ Type
   private
     fAxisCount: integer;
     fButtonCount: integer;
+    fHatCount: integer;
   protected
     fInstance: Pointer;
+    fInstanceID: integer;
+    Procedure InitDeviceInfo(Index: integer); // Muss von jedem Constructor nach dem Öffnen aufgerufen werden
     Function GetAxisCount: integer; virtual;
     Function GetAxisValue(index: integer): integer; virtual;
     Function GetButtonCount: integer; virtual;
     Function GetButtonValue(index: integer): boolean; virtual;
+    Function GetHatCount: integer; virtual;
+    Function GetHatValue(index: integer): integer; virtual;
   public
+    Property InstanceID: integer read fInstanceID; // = "which" in den SDL Joystick und Gamecontroller Events, -1 wenn unbekannt
+
     Property ButtonCount: integer read getButtonCount;
     Property Button[index: integer]: boolean read GetButtonValue;
+
+    Property HatCount: integer read GetHatCount;
+    Property Hat[index: integer]: integer read GetHatValue; // Bitmaske aus SDL_HAT_UP, SDL_HAT_RIGHT, SDL_HAT_DOWN, SDL_HAT_LEFT
 
     Property AxisCount: integer read getAxisCount;
     Property Axis[index: integer]: integer read GetAxisValue; // ranging from -32768 to 32767
@@ -70,6 +80,34 @@ Type
 Function ResolveJoystickNameToIndex(Const aName: String; aIndex: integer = 0): integer; // -1 wenn nicht gefunden
 
 Implementation
+
+Uses dynlibs, math, ctypes;
+
+(*
+ * Die folgenden Funktionen sind in sdl2_for_pascal auch mit SDL_RUNTIME_LOADING
+ * statisch gebunden, ein direkter Aufruf würde die SDL2 Lib zur Pflicht machen.
+ * Deswegen werden sie hier selbst dynamisch geladen.
+ *)
+Type
+  TJoystickNumHats = Function(joystick: Pointer): cint; cdecl;
+  TJoystickGetHat = Function(joystick: Pointer; hat: cint): cuint8; cdecl;
+  TJoystickGetDeviceInstanceID = Function(device_index: cint): cint32; cdecl;
+
+Var
+  ExtraLib: TLibHandle = NilHandle;
+  JoystickNumHats: TJoystickNumHats = Nil;
+  JoystickGetHat: TJoystickGetHat = Nil;
+  JoystickGetDeviceInstanceID: TJoystickGetDeviceInstanceID = Nil;
+
+Procedure LoadExtraFunctions;
+Begin
+  If ExtraLib <> NilHandle Then exit;
+  ExtraLib := LoadLibrary(SDL_LibName);
+  If ExtraLib = NilHandle Then exit;
+  JoystickNumHats := TJoystickNumHats(GetProcAddress(ExtraLib, 'SDL_JoystickNumHats'));
+  JoystickGetHat := TJoystickGetHat(GetProcAddress(ExtraLib, 'SDL_JoystickGetHat'));
+  JoystickGetDeviceInstanceID := TJoystickGetDeviceInstanceID(GetProcAddress(ExtraLib, 'SDL_JoystickGetDeviceInstanceID'));
+End;
 
 Function ResolveJoystickNameToIndex(Const aName: String; aIndex: integer): integer;
 Var
@@ -115,6 +153,30 @@ Begin
   result := SDL_JoystickGetButton(fInstance, index) = SDL_PRESSED;
 End;
 
+Function TSDL_Joystick.GetHatCount: integer;
+Begin
+  result := fHatCount;
+End;
+
+Function TSDL_Joystick.GetHatValue(index: integer): integer;
+Begin
+  result := SDL_HAT_CENTERED;
+  If (index < 0) Or (index >= fHatCount) Or (Not assigned(JoystickGetHat)) Then exit;
+  result := JoystickGetHat(fInstance, index);
+End;
+
+Procedure TSDL_Joystick.InitDeviceInfo(Index: integer);
+Begin
+  LoadExtraFunctions;
+  fInstanceID := -1;
+  If assigned(JoystickGetDeviceInstanceID) Then fInstanceID := JoystickGetDeviceInstanceID(Index);
+  fHatCount := 0;
+  // Bei abgeleiteten Klassen (Gamecontroller) ist fInstance kein SDL_Joystick, dort gibt es auch keine Hats
+  If assigned(JoystickNumHats) And (ClassType = TSDL_Joystick) Then Begin
+    fHatCount := max(0, JoystickNumHats(fInstance));
+  End;
+End;
+
 Constructor TSDL_Joystick.Create(Index: integer);
 Begin
   Inherited create;
@@ -128,6 +190,7 @@ Begin
   End;
   fAxisCount := SDL_JoystickNumAxes(fInstance);
   fButtonCount := SDL_JoystickNumButtons(fInstance);
+  InitDeviceInfo(Index);
 End;
 
 Destructor TSDL_Joystick.Destroy;
@@ -137,6 +200,9 @@ Begin
     fInstance := Nil;
   End;
 End;
+
+Finalization
+  If ExtraLib <> NilHandle Then UnloadLibrary(ExtraLib);
 
 End.
 

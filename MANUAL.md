@@ -41,7 +41,7 @@ Here are the powerups available in the game:
 ![](data/res/powebola.png) Get a random super bad disease  
 
 ## In Game key commands
-The key binding can be changed in the options dialog
+The keys for both players on this PC are set up in the launcher with **Controls...** (or in the game in the options menu). Each player can use the keyboard, a gamecontroller or a joystick. See the [controls manual](CONTROLS_MANUAL.md) for details ([German version](CONTROLS_MANUAL_DE.md)).
 
 ### Direction keys
 - move the player in then desired direction.

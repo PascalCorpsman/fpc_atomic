@@ -423,6 +423,9 @@ Const
   GameModeDebug = 2;
 
   Achsistrigger = 32767 Div 4; // Wert um den sich eine "Move" Achse auf dem Joystick von der Mittelstellung weg bewegen muss, damit ein "Hit" erkannt wird
+  AchsisReleaseTrigger = 32767 Div 7; // Mit Hysterese wird eine gedrückte Richtung erst wieder los gelassen, wenn die Achse näher als dieser Wert an der Mittelstellung ist
+  DominantAxisMargin = 125; // in %, so viel stärker muss die andere Achse eines diagonal gehaltenen Sticks sein, bis sie die Richtung übernimmt
+  SDLMappingVersion = 2; // Ab Version 2 speichert der Wizard bei Gamecontrollern die SDL Gamecontroller Button Indizes (vorher die rohen Joystick Indizes)
 
 Type
 
@@ -899,6 +902,11 @@ Type
     ButtonsIdle: Array[0..1] Of Boolean; // 0 = First, 1 = Second
     ButtonIndex: Array[0..1] Of integer; // 0 = First, 1 = Second
     IsGameController: Boolean; // Wenn True, dann werden anstadt der Achsen die D_Pads verwendet
+    UseAnalogStick: Boolean; // Nur Gamecontroller: Zusätzlich zum D-Pad steuert der linke Analogstick
+    UseHat: Boolean; // Nur Joystick: Zusätzlich zu den Achsen steuert der erste Hat (Coolie Hat / D-Pad)
+    UseHysteresis: Boolean; // Achsen lassen eine Richtung erst unter AchsisReleaseTrigger wieder los, verhindert Flackern an der Schwelle
+    UseDominantAxis: Boolean; // Diagonal gehaltener Stick: nur die stärkere Achse zählt (sonst gewinnt die zuletzt gedrückte Richtung)
+    MappingVersion: Integer; // < SDLMappingVersion = mit einem alten Wizard eingerichtet, Gamecontroller müssen neu eingerichtet werden
     // if not UseSDL2 then this key's are valid
     KeyUp: Word;
     KeyDown: Word;
@@ -1126,6 +1134,11 @@ Begin
   result.ButtonIndex[1] := -1;
   result.ButtonsIdle[0] := false;
   result.ButtonsIdle[1] := false;
+  result.UseAnalogStick := true;
+  result.UseHat := true;
+  result.UseHysteresis := true;
+  result.UseDominantAxis := true;
+  result.MappingVersion := 1;
   If Index = ks0 Then Begin
     result.KeyUp := VK_UP;
     result.KeyDown := VK_DOWN;

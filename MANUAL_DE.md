@@ -41,7 +41,7 @@ Diese Powerups gibt es im Spiel:
 ![](data/res/powebola.png) Eine zufällige, besonders schlimme Krankheit  
 
 ## Tasten im Spiel
-Die Tastenbelegung lässt sich im Optionen-Dialog ändern.
+Die Tasten für beide Spieler an diesem PC stellt man im Launcher unter **Steuerung...** ein (oder im Spiel im Optionen-Menü). Jeder Spieler kann mit der Tastatur, einem Gamecontroller oder einem Joystick spielen. Details stehen in der [Anleitung der Steuerung](CONTROLS_MANUAL_DE.md) ([englische Version](CONTROLS_MANUAL.md)).
 
 ### Richtungstasten
 - bewegen den Spieler in die gewünschte Richtung.

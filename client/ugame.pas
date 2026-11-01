@@ -992,7 +992,6 @@ End;
 
 Procedure TGame.FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
-  writeln('SDLDown');
   // Ist ein Dialog offen, wird er auch im Spiel mit dem Gamepad bedient
   If (fgameState = gs_Gaming) And (Not fMessageDialog.Active) Then Begin
     CheckKeyDown(aKey, aKeyset);
@@ -1004,7 +1003,6 @@ End;
 
 Procedure TGame.FOnSDLKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
-  writeln('SDLUP');
   If fgameState = gs_Gaming Then Begin
     CheckKeyUp(aKey, aKeyset);
   End

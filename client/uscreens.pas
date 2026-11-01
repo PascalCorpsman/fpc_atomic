@@ -258,6 +258,7 @@ Uses LCLType, Math, Graphics, Dialogs, fileutil, StrUtils
   , ukeyboarddialog
   , uatomic_global
   , uopengl_shaderprimitives
+  , usdl_input
   ;
 
 Type
@@ -1182,6 +1183,8 @@ Begin
       7: Tgame(fOwner).Settings.PlaySounds := Not Tgame(fOwner).Settings.PlaySounds;
       8: Begin
           key := 0;
+          // Der Dialog und der Wizzard initialisieren SDL selbst neu, dabei würden die offenen Controller ungültig
+          SDL_Quit;
           KeyboardDialog := TKeyboardDialog.CreateNew(Nil);
           TKeyboardDialog(KeyboardDialog).LoadKeys(Tgame(fOwner).Settings.Keys[ks0], Tgame(fOwner).Settings.Keys[ks1]);
           If TKeyboardDialog(KeyboardDialog).Execute() Then Begin
@@ -1190,6 +1193,11 @@ Begin
           End;
           KeyboardDialog.Free;
           KeyboardDialog := Nil;
+          // Mit der neuen Belegung wieder öffnen, so geht ein neu eingerichteter Controller sofort und nicht erst nach einem Neustart
+          If Tgame(fOwner).Settings.Keys[ks0].UseSDL2 Or Tgame(fOwner).Settings.Keys[ks1].UseSDL2 Then Begin
+            SDL_Init;
+            SDL_CreateSticks(Tgame(fOwner).Settings.Keys);
+          End;
         End;
       9: Begin
           key := 0;

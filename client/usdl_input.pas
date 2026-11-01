@@ -94,17 +94,22 @@ Begin
   fkeys := akeys;
   For i In TKeySet Do Begin
     If fKeys[i].UseSDL2 Then Begin
-      If fKeys[i].IsGameController Then Begin
-        index := ResolveGameControllerNameToIndex(fKeys[i].Name, fKeys[i].NameIndex);
-        If index <> -1 Then Begin
-          fsdlJoysticks[i] := TSDL_GameController.create(index);
+      // Das Gerät kann zwischen dem Auflösen und dem Öffnen verschwinden, dann bleibt der Spieler ohne Gerät, bis es wieder eingesteckt wird
+      Try
+        If fKeys[i].IsGameController Then Begin
+          index := ResolveGameControllerNameToIndex(fKeys[i].Name, fKeys[i].NameIndex);
+          If index <> -1 Then Begin
+            fsdlJoysticks[i] := TSDL_GameController.create(index);
+          End;
+        End
+        Else Begin
+          index := ResolveJoystickNameToIndex(fKeys[i].Name, fKeys[i].NameIndex);
+          If index <> -1 Then Begin
+            fsdlJoysticks[i] := TSDL_Joystick.Create(index);
+          End;
         End;
-      End
-      Else Begin
-        index := ResolveJoystickNameToIndex(fKeys[i].Name, fKeys[i].NameIndex);
-        If index <> -1 Then Begin
-          fsdlJoysticks[i] := TSDL_Joystick.Create(index);
-        End;
+      Except
+        fsdlJoysticks[i] := Nil;
       End;
     End;
   End;
@@ -125,45 +130,112 @@ Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TAtomicKeyEvent);
     End;
   End;
 
+  (*
+   * True, wenn die Achse mit dem Abstand d zur Ruhestellung in Richtung aSign ausgelenkt ist.
+   * Mit Hysterese bleibt eine bereits gedrückte Richtung bis AchsisReleaseTrigger gedrückt.
+   *)
+  Function Deflected(d, aSign: Integer; WasPressed, Hysteresis: Boolean): Boolean;
+  Var
+    t: Integer;
+  Begin
+    t := Achsistrigger;
+    If WasPressed And Hysteresis Then t := AchsisReleaseTrigger;
+    result := (abs(d) > t) And (sign(d) = aSign);
+  End;
+
+  (*
+   * Diagonal gehaltener Stick: True, wenn die senkrechte Achse gewinnt. Die bisherige Achse behält die Richtung,
+   * bis die andere um DominantAxisMargin stärker ist, sonst würde die Richtung bei 45° hin und her springen.
+   *)
+  Function VerticalWins(mv, mh: Integer; Const Last: TKeyState): Boolean;
+  Begin
+    If (Last.Up Or Last.Down) And Not (Last.Left Or Last.Right) Then Begin
+      result := mh * 100 <= mv * DominantAxisMargin;
+    End
+    Else If (Last.Left Or Last.Right) And Not (Last.Up Or Last.Down) Then Begin
+      result := mv * 100 > mh * DominantAxisMargin;
+    End
+    Else Begin
+      result := mv >= mh;
+    End;
+  End;
+
   Procedure CheckKeys(Keys: TKeySet);
   Var
-    d: Integer;
-    up, down, left, right, first, second: Boolean;
+    d, h, mv, mh: Integer;
+    up, down, left, right, aUp, aDown, aLeft, aRight, first, second, hyst: Boolean;
+    gc: TSDL_GameController;
   Begin
     If Not assigned(fsdlJoysticks[keys]) Then exit;
-    // 1. Ermitteln des Aktuellen "Gedrückt" stati
+    hyst := fKeys[keys].UseHysteresis;
+    // 1. Ermitteln des Aktuellen "Gedrückt" stati, getrennt nach digital (Steuerkreuz, Hat) und analog (Stick, Achsen)
     up := false;
     down := false;
     left := false;
     right := false;
+    aUp := false;
+    aDown := false;
+    aLeft := false;
+    aRight := false;
+    mv := 0;
+    mh := 0;
     If fsdlJoysticks[keys] Is TSDL_GameController Then Begin
-      up := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_UP];
-      down := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_DOWN];
-      left := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_LEFT];
-      right := TSDL_GameController(fsdlJoysticks[keys]).Button[SDL_CONTROLLER_BUTTON_DPAD_RIGHT];
+      gc := TSDL_GameController(fsdlJoysticks[keys]);
+      up := gc.Button[SDL_CONTROLLER_BUTTON_DPAD_UP];
+      down := gc.Button[SDL_CONTROLLER_BUTTON_DPAD_DOWN];
+      left := gc.Button[SDL_CONTROLLER_BUTTON_DPAD_LEFT];
+      right := gc.Button[SDL_CONTROLLER_BUTTON_DPAD_RIGHT];
+      If fKeys[keys].UseAnalogStick Then Begin
+        // Negative Werte sind oben bzw. links
+        d := -gc.Axis[SDL_CONTROLLER_AXIS_LEFTY];
+        aUp := Deflected(d, 1, LastKeyState[Keys].Up, hyst);
+        aDown := Deflected(d, -1, LastKeyState[Keys].Down, hyst);
+        mv := abs(d);
+        d := -gc.Axis[SDL_CONTROLLER_AXIS_LEFTX];
+        aLeft := Deflected(d, 1, LastKeyState[Keys].Left, hyst);
+        aRight := Deflected(d, -1, LastKeyState[Keys].Right, hyst);
+        mh := abs(d);
+      End;
     End
     Else Begin
-      d := fKeys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[0]];
-      If abs(d) > achsistrigger Then Begin
-        If sign(d) = fKeys[keys].AchsisDirection[0] Then Begin
-          up := true;
-        End
-        Else Begin
-          down := true;
-        End;
+      If fKeys[keys].AchsisIndex[0] >= 0 Then Begin
+        d := fKeys[keys].AchsisIdle[0] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[0]];
+        aUp := Deflected(d, fKeys[keys].AchsisDirection[0], LastKeyState[Keys].Up, hyst);
+        aDown := Deflected(d, -fKeys[keys].AchsisDirection[0], LastKeyState[Keys].Down, hyst);
+        mv := abs(d);
       End;
-      d := fKeys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[1]];
-      If abs(d) > achsistrigger Then Begin
-        If sign(d) = fKeys[keys].AchsisDirection[1] Then Begin
-          left := true;
-        End
-        Else Begin
-          right := true;
-        End;
+      If fKeys[keys].AchsisIndex[1] >= 0 Then Begin
+        d := fKeys[keys].AchsisIdle[1] - fsdlJoysticks[keys].Axis[fKeys[keys].AchsisIndex[1]];
+        aLeft := Deflected(d, fKeys[keys].AchsisDirection[1], LastKeyState[Keys].Left, hyst);
+        aRight := Deflected(d, -fKeys[keys].AchsisDirection[1], LastKeyState[Keys].Right, hyst);
+        mh := abs(d);
+      End;
+      If fKeys[keys].UseHat And (fsdlJoysticks[keys].HatCount > 0) Then Begin
+        h := fsdlJoysticks[keys].Hat[0];
+        up := (h And SDL_HAT_UP) <> 0;
+        down := (h And SDL_HAT_DOWN) <> 0;
+        left := (h And SDL_HAT_LEFT) <> 0;
+        right := (h And SDL_HAT_RIGHT) <> 0;
       End;
     End;
-    first := fKeys[keys].ButtonsIdle[0] = fsdlJoysticks[keys].Button[fKeys[keys].ButtonIndex[0]];
-    second := fKeys[keys].ButtonsIdle[1] = fsdlJoysticks[keys].Button[fKeys[keys].ButtonIndex[1]];
+    // Diagonal gehaltener Stick: nur die stärkere Achse zählt, sonst gewinnt die zuletzt über die Schwelle gegangene Richtung
+    If fKeys[keys].UseDominantAxis And (aUp Or aDown) And (aLeft Or aRight) Then Begin
+      If VerticalWins(mv, mh, LastKeyState[Keys]) Then Begin
+        aLeft := false;
+        aRight := false;
+      End
+      Else Begin
+        aUp := false;
+        aDown := false;
+      End;
+    End;
+    up := up Or aUp;
+    down := down Or aDown;
+    left := left Or aLeft;
+    right := right Or aRight;
+    // Gedrückt ist ein Button, sobald er nicht mehr im Ruhezustand ist
+    first := fKeys[keys].ButtonsIdle[0] <> fsdlJoysticks[keys].Button[fKeys[keys].ButtonIndex[0]];
+    second := fKeys[keys].ButtonsIdle[1] <> fsdlJoysticks[keys].Button[fKeys[keys].ButtonIndex[1]];
     // 2. Rauskriegen ob ein Event abgeleitet werden muss
     If Not LastKeyState[Keys].Initialized Then Begin
       LastKeyState[Keys].Initialized := true;
@@ -184,12 +256,38 @@ Procedure SDL_SticksToKeyEvent(Const OnKeyDown, OnKeyUp: TAtomicKeyEvent);
     End;
   End;
 
+  // Lässt alles los, was noch als gedrückt gilt, sonst läuft die Figur nach dem Abziehen des Controllers weiter
+  Procedure ReleaseKeys(Keys: TKeySet);
+  Begin
+    If Not LastKeyState[Keys].Initialized Then exit;
+    Call(LastKeyState[Keys].Up, false, akUp, keys);
+    Call(LastKeyState[Keys].Down, false, akDown, keys);
+    Call(LastKeyState[Keys].Left, false, akLeft, keys);
+    Call(LastKeyState[Keys].Right, false, akRight, keys);
+    Call(LastKeyState[Keys].first, false, akFirstAction, keys);
+    Call(LastKeyState[Keys].second, false, akSecondAction, keys);
+  End;
+
 Var
   event: TSDL_Event;
+  DevicesChanged: Boolean;
 Begin
   If Not fsdl_Loaded Then exit;
   SDL_PumpEvents();
-  While SDL_PollEvent(@event) <> 0 Do Begin // TODO: Braucht man das wirklich ?
+  DevicesChanged := false;
+  While SDL_PollEvent(@event) <> 0 Do Begin
+    Case event.type_ Of
+      SDL_JOYDEVICEADDED,
+        SDL_JOYDEVICEREMOVED,
+        SDL_CONTROLLERDEVICEADDED,
+        SDL_CONTROLLERDEVICEREMOVED: DevicesChanged := true;
+    End;
+  End;
+  If DevicesChanged Then Begin
+    // Ein Controller wurde ein- oder ausgesteckt (Funk-Pads z.B. bei leerem Akku), also alle Geräte neu öffnen
+    ReleaseKeys(ks0);
+    ReleaseKeys(ks1);
+    SDL_CreateSticks(fkeys);
   End;
   CheckKeys(ks0);
   CheckKeys(ks1);

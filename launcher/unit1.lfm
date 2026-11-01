@@ -65,7 +65,7 @@ object Form1: TForm1
       Hint = 'Choose the keys or a gamepad for the 1st and 2nd player on this PC.'
       Top = 56
       Width = 310
-      Caption = '&Key assignment...'
+      Caption = '&Controls...'
       TabOrder = 1
       OnClick = Button5Click
     end

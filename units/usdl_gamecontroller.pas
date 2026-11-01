@@ -66,8 +66,24 @@ Type
   End;
 
 Function ResolveGameControllerNameToIndex(Const aName: String; aIndex: integer = 0): integer; // -1 wenn nicht gefunden
+Function GameControllerButtonToString(aButton: integer): String; // Name des SDL Gamecontroller Buttons im Xbox Layout
 
 Implementation
+
+Function GameControllerButtonToString(aButton: integer): String;
+Const
+  Names: Array[0..20] Of String = (
+    'A', 'B', 'X', 'Y', 'Back', 'Guide', 'Start', 'Left stick', 'Right stick',
+    'LB', 'RB', 'D-Pad up', 'D-Pad down', 'D-Pad left', 'D-Pad right',
+    'Misc', 'Paddle 1', 'Paddle 2', 'Paddle 3', 'Paddle 4', 'Touchpad');
+Begin
+  If (aButton >= low(Names)) And (aButton <= high(Names)) Then Begin
+    result := Names[aButton];
+  End
+  Else Begin
+    result := 'Button ' + inttostr(aButton);
+  End;
+End;
 
 Function ResolveGameControllerNameToIndex(Const aName: String; aIndex: integer): integer;
 Var
@@ -151,6 +167,7 @@ Begin
   For i := low(fAxisAvailable) To high(fAxisAvailable) Do Begin
     fAxisAvailable[i] := SDL_GameControllerHasAxis(fInstance, i);
   End;
+  InitDeviceInfo(Index);
 End;
 
 Destructor TSDL_GameController.Destroy;
