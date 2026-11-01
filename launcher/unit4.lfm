@@ -33,6 +33,7 @@ object Form4: TForm4
       'Open borders'
       'Teleporters'
       'Items & diseases'
+      'Carry bombs'
       'Mod test mode'
     )
     ItemHeight = 22
@@ -40,7 +41,7 @@ object Form4: TForm4
     OnClickCheck = CheckListBox1ClickCheck
     OnSelectionChange = CheckListBox1SelectionChange
     Data = {
-      0E0000000000000000000000000000000000
+      0F000000000000000000000000000000000000
     }
   end
   object PageControl1: TPageControl
@@ -1709,6 +1710,112 @@ object Form4: TForm4
             Caption = 'Items that the map (scheme) forbids do not appear, the share of the bricks with an item stays the same. If all diseases are 0, there is no disease item. White bomb and flamethrower replace a part of these items afterwards.'
             WordWrap = True
           end
+        end
+      end
+    end
+    object TabSheet15: TTabSheet
+      Caption = 'TabSheet15'
+      ClientHeight = 330
+      ClientWidth = 478
+      object CheckBox24: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: with the glove a player picks up the bomb below and carries it, the timer of the bomb stops meanwhile.'
+        Top = 8
+        Width = 105
+        Caption = 'Carry bombs'
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 0
+        OnChange = CheckBox1Change
+      end
+      object Label104: TLabel
+        Left = 8
+        Height = 64
+        Top = 34
+        Width = 460
+        AutoSize = False
+        Caption = 'With the glove a player picks up the bomb below (press the first action twice) and carries it, its timer stops meanwhile. Stunned, hit or killed, the player drops the bomb. The AI and the glove at start throw at once.'
+        WordWrap = True
+      end
+      object Panel15: TPanel
+        Left = 0
+        Height = 220
+        Top = 104
+        Width = 468
+        BevelOuter = bvNone
+        ClientHeight = 220
+        ClientWidth = 468
+        TabOrder = 1
+        object Label105: TLabel
+          Left = 8
+          Height = 16
+          Top = 12
+          Width = 44
+          Caption = 'Control'
+        end
+        object ComboBox1: TComboBox
+          Left = 160
+          Height = 30
+          Hint = 'Hold: carry while the first action is held, release to throw. Toggle: the first action puts the bomb down, the second action throws it.'
+          Top = 8
+          Width = 300
+          ItemHeight = 0
+          Items.Strings = (
+            'Hold the first action, release to throw'
+            'First action puts down, second throws'
+          )
+          Style = csDropDownList
+          TabOrder = 0
+        end
+        object Label106: TLabel
+          Left = 8
+          Height = 16
+          Top = 46
+          Width = 123
+          Caption = 'Max. carry time (ms)'
+        end
+        object SpinEdit56: TSpinEdit
+          Left = 364
+          Height = 30
+          Hint = 'After this time the bomb is thrown automatically, 0 = unlimited.'
+          Top = 42
+          Width = 96
+          Increment = 500
+          TabOrder = 1
+        end
+        object Label107: TLabel
+          Left = 8
+          Height = 16
+          Top = 80
+          Width = 112
+          Caption = 'Throw range (tiles)'
+        end
+        object SpinEdit57: TSpinEdit
+          Left = 364
+          Height = 30
+          Hint = 'How far all throws with the glove fly while this mod is on (normal: 3).'
+          Top = 76
+          Width = 96
+          TabOrder = 2
+        end
+        object CheckBox25: TCheckBox
+          Left = 8
+          Height = 21
+          Hint = 'On: only own bombs are carried, bombs of other players are thrown at once. Off: every bomb can be carried.'
+          Top = 112
+          Width = 164
+          Caption = 'Carry only own bombs'
+          TabOrder = 3
+        end
+        object CheckBox26: TCheckBox
+          Left = 8
+          Height = 21
+          Hint = 'On: after the max. carry time the bomb explodes in the hands. Off: it is thrown. 2 seconds before, the bomb starts ticking.'
+          Top = 140
+          Width = 250
+          Caption = 'Explode after the max. carry time'
+          TabOrder = 4
         end
       end
     end

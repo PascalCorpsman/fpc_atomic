@@ -17,6 +17,7 @@ Which mods fit which group of players is answered in the [mods FAQ](MODS_FAQ.md)
 - [Hit points (handicap)](#hit-points-handicap)
 - [Ghosts](#ghosts)
 - [Glove at start](#glove-at-start)
+- [Carry bombs](#carry-bombs)
 - [Open borders](#open-borders)
 - [Teleporters](#teleporters)
 - [Items & diseases](#items--diseases)
@@ -228,6 +229,37 @@ Sometimes a round starts in a small pocket between bricks, and a bomb placed by 
 |---|---|---|---|
 | Mod on / off | `GloveAtStart` | 0 (off) | 0 / 1 |
 
+## Carry bombs
+
+With the glove ![](data/res/powgrab.png) a player normally throws the bomb below at once. With this mod the player **picks the bomb up and carries it** instead, and throws it later. While the bomb is carried, **its timer stops**.
+
+Picking up works like the normal throw: stand on a bomb and press the [first action](MANUAL.md#first-action-double-pressed) twice. With this mod the second press may come up to 400 ms after the first one (otherwise 200 ms) as long as the player stays on the same tile, because pressing and then holding is slower than a double click. The player raises the arms, the bomb is drawn above the head. It only ticks (animated) when it has 1 second or less left until it explodes, or when the max. carry time is almost over. What happens next depends on the control:
+
+- **Hold** (default): the player carries the bomb as long as the first action is held. **Releasing** it throws the bomb in the direction the player looks. A quick double tap therefore throws at once, like without the mod.
+- **Toggle**: the player can release the key and keeps carrying. The **first action** puts the bomb down on the tile of the player (only if the tile is free), the **second action** throws it.
+
+Rules:
+
+- A thrown bomb flies the set range (default 3 tiles, like the normal glove). This range applies to **all** throws with the glove while the mod is on. The bomb starts its timer again where it lands, a landing bomb stuns like a normal throw (if [stun on bomb landing](#stun-on-bomb-landing) is on).
+- After the max. carry time the bomb is thrown automatically (0 = no limit). With "Explode after the max. carry time" it explodes in the hands instead. Either way it starts ticking 2 seconds before (with a max. carry time of 2 seconds or less it ticks all the time).
+- While carrying, the second action does not punch, trigger or fire the [flamethrower](#flamethrower). Kicking, walking at normal speed, trampolines, holes, teleporters and open borders work as usual, the bomb comes along.
+- If the player is **stunned, hit** (also when [hit points](#hit-points-handicap) are left) **or killed**, the bomb drops on the tile of the player and its timer runs on. If the tile is not free (another bomb, a hole, a teleporter), the bomb explodes at once.
+- Flames and the flamethrower do not ignite a carried bomb directly. But a flame that hits the player makes the bomb drop into the flame, where it explodes.
+- With "Carry only own bombs" a bomb of another player is thrown at once, like without the mod. By default every bomb can be carried.
+- Only players with the real glove item carry. The [glove at start](#glove-at-start) and the AI throw at once, the AI sees a carried bomb like a flying one.
+- If the key is released while the game window has no focus (e.g. Alt+Tab), the game does not notice it: with the control "Hold" the bomb is only thrown when the key is pressed and released again in the game. After a pause the bomb is thrown.
+- The statistics count "Carried bombs" when a bomb is picked up and "Thrown bombs" when it is thrown.
+- In the mod test mode Del gives the glove.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `CarryBomb` | 0 (off) | 0 / 1 |
+| Control | `CarryBombControl` | 0 (hold) | 0 = hold, release to throw / 1 = first action puts down, second throws |
+| Max. carry time (ms) | `CarryBombMaxMs` | 0 | 0 .. 30000, 0 = unlimited |
+| Throw range (tiles) | `CarryBombThrowRange` | 3 | 1 .. 6 |
+| Carry only own bombs | `CarryBombOwnOnly` | 0 (off) | 0 / 1 |
+| Explode after the max. carry time | `CarryBombMaxExplode` | 0 (off, thrown) | 0 / 1 |
+
 ## Open borders
 
 Players can walk over the border of the field and come out on the opposite side, top <-> bottom and / or left <-> right.
@@ -321,6 +353,7 @@ Only the player who hosts the game (the master) can use the test keys during a r
 | F2 | White screen |
 | F1 | Next bomb is a white bomb |
 | Ins | Spawn 2 of each mod item on free tiles: white bomb, flamethrower, punch, disease |
+| Del | Glove (throw or [carry bombs](#carry-bombs)) |
 
 Hold **Shift** to use the key on the second player of this PC. F10 is not used, because Windows uses it for the window menu.
 

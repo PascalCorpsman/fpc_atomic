@@ -51,7 +51,7 @@ The keys for both players on this PC are set up in the launcher with **Controls.
 - place bomb
   
 ### First action (double pressed)
-- Grab and throw bomb (if powerup was collected)
+- Grab and throw bomb (if powerup was collected), with the mod [carry bombs](MODS_MANUAL.md#carry-bombs) pick it up and carry it
 - Spooge all available bombs (if powerup was collected)
   
 ### Second action

@@ -40,7 +40,9 @@ Type
     aaWalk,
     aaKick, // Kicken
     aaPunch, // Weg schlagen (Roter Handschu)
-    aaPup // Die Pupserkrankheit
+    aaPup, // Die Pupserkrankheit
+    aaCarryWalk, // Mod Bomben tragen: Laufen mit erhobenen Armen (bwalk.png, optional)
+    aaCarryStandStill // Mod Bomben tragen: Stehen mit erhobenen Armen (1. Frame von bwalk.png, optional)
     );
 
   TAnimation = Record
@@ -66,6 +68,7 @@ Type
     Bomb_dud: TAnimation;
     Bomb_trigger: TAnimation;
     Bomb_Wobble: TAnimation;
+    Bomb_still, Bomb_dud_still, Bomb_trigger_still: TAnimation; // Mod Bomben tragen: Nur der 1. Frame, für die getragene Bombe
 
     Constructor Create(); virtual;
     Destructor Destroy(); override;
@@ -221,6 +224,9 @@ Begin
   Bomb_dud.ani.free;
   Bomb_trigger.ani.free;
   Bomb_Wobble.ani.free;
+  Bomb_still.ani.free;
+  Bomb_dud_still.ani.free;
+  Bomb_trigger_still.ani.free;
   FlameCross.free;
   FlameMiddle.free;
   FlameEnd.free;
@@ -379,6 +385,14 @@ Begin
   fAnimations[aaPup].OffsetY := 90;
   If Not assigned(fAnimations[aaPup].ani) Then exit;
 
+  // Mod Bomben tragen: bwalk.png gibt es erst mit einem neuen cd_data_extractor, fehlt sie, wird normal gelaufen (siehe Render)
+  fAnimations[aaCarryWalk].ani := CreateAnimation(path + 'bwalk.png', 45, 50, 110, 110, 15, 4, 15, [0, 15, 45, 30]);
+  fAnimations[aaCarryWalk].OffsetX := 55;
+  fAnimations[aaCarryWalk].OffsetY := 90;
+  fAnimations[aaCarryStandStill].ani := CreateAnimation(path + 'bwalk.png', 45, 100, 110, 110, 15, 4, 1, [0, 15, 45, 30]);
+  fAnimations[aaCarryStandStill].OffsetX := 55;
+  fAnimations[aaCarryStandStill].OffsetY := 90;
+
 
   Bomb.ani := CreateAnimation(path + 'bomb.png', 0, 50, 40, 37, 5, 4, 18, [0]);
   Bomb.OffsetX := -20;
@@ -396,6 +410,19 @@ Begin
   Bomb_Wobble.OffsetX := -20;
   Bomb_Wobble.OffsetY := -37 Div 2;
   If Not assigned(Bomb_Wobble.ani) Then exit;
+  // Mod Bomben tragen: Die selben Bilder, aber nur 1 Frame (= keine Animation)
+  Bomb_still.ani := CreateAnimation(path + 'bomb.png', 0, 50, 40, 37, 5, 4, 1, [0]);
+  Bomb_still.OffsetX := Bomb.OffsetX;
+  Bomb_still.OffsetY := Bomb.OffsetY;
+  If Not assigned(Bomb_still.ani) Then exit;
+  Bomb_dud_still.ani := CreateAnimation(path + 'bomb_dud.png', 0, 750, 40, 40, 1, 2, 1, [0]);
+  Bomb_dud_still.OffsetX := Bomb_dud.OffsetX;
+  Bomb_dud_still.OffsetY := Bomb_dud.OffsetY;
+  If Not assigned(Bomb_dud_still.ani) Then exit;
+  Bomb_trigger_still.ani := CreateAnimation(path + 'bomb_trigger.png', 0, 50, 40, 40, 5, 4, 1, [0]);
+  Bomb_trigger_still.OffsetX := Bomb_trigger.OffsetX;
+  Bomb_trigger_still.OffsetY := Bomb_trigger.OffsetY;
+  If Not assigned(Bomb_trigger_still.ani) Then exit;
   // Grid is 5 columns x 9 rows, each frame is 41x37 pixels
   // Each row is a 5-frame animation of one flame element:
   // Row 0 (frames 0-4): FlameCross - 5-frame animation of cross pattern
@@ -453,8 +480,14 @@ Begin
     RenderAlphaQuad(info.Position.x * FieldBlockWidth + xOff - fShadowTex.OrigWidth / 2, (info.Position.y + 0.25) * FieldBlockHeight + yOff - fShadowTex.OrigHeight / 2, atomic_Layer, fShadowTex);
     // anhand der Info die Passende Animation wählen !
     Case Info.Animation Of
-      raStandStill: fAnimation := fAnimations[aaStandStill];
-      raWalk: fAnimation := fAnimations[aaWalk];
+      raStandStill: Begin
+          fAnimation := fAnimations[aaStandStill];
+          If Info.Carrying And assigned(fAnimations[aaCarryStandStill].ani) Then fAnimation := fAnimations[aaCarryStandStill];
+        End;
+      raWalk: Begin
+          fAnimation := fAnimations[aaWalk];
+          If Info.Carrying And assigned(fAnimations[aaCarryWalk].ani) Then fAnimation := fAnimations[aaCarryWalk];
+        End;
       raKick: fAnimation := fAnimations[aaKick];
       raPunch: fAnimation := fAnimations[aaPunch];
       raPup: fAnimation := fAnimations[aaPup];
@@ -464,6 +497,7 @@ Begin
       raTeleport: Begin
           // Die Idee, dass die Animation alle 50 ms um 90 Grad weiter dreht, denn dem Atomic soll schwindelig werden !
           fAnimation := fAnimations[aaWalk];
+          If Info.Carrying And assigned(fAnimations[aaCarryWalk].ani) Then fAnimation := fAnimations[aaCarryWalk];
           aDirection := ((Info.Counter Mod 200) Div 50) * 90;
           Edge := True; // Der User soll immer das 1. Frame sehen, denn der Atomic steht ja wenn er sich dreht
         End;

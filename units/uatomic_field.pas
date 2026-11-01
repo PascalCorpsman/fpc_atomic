@@ -122,6 +122,9 @@ Type
     Function FielWalkable(x, y: integer; AlsoCheckPowerUps: Boolean): Boolean;
     Function PlayerWalkable(Const Player: TPlayer; x, y: integer): Boolean; // Wie FielWalkable, aber mit "durch Blöcke laufen" (Mod)
     Function IsPortalCell(x, y: integer): Boolean; // True, wenn auf x, y ein Teleporter am Rand liegt, auch wenn er (noch) nicht aktiv ist (Mod)
+    Function OffGround(Const Bomb: TBombInfo): Boolean; // True, die Bombe fliegt oder wird getragen (Mod) und liegt damit nicht auf dem Feld
+    Procedure ThrowBomb(Index, PlayerIndex: integer; Direction: Single; Range: integer); // Wurf mit dem Handschuh, Range Kacheln in Blickrichtung
+    Function PutDownCarriedBomb(Index, x, y: integer; Forced: Boolean): Boolean; // Mod Bomben tragen: Bombe auf x, y ablegen, Forced = auch wenn das Feld nicht frei ist (dann explodiert sie sofort)
 {$ENDIF}
   public
     Name: String;
@@ -147,6 +150,12 @@ Type
     WrapTopBottom: Boolean; // Mod offene Grenzen: Die Karte ist oben / unten offen, sobald UpdateOpenBorders sie öffnet
     PortalTopBottom: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter oben / unten (deren Felder bleiben frei)
     PortalLeftRight: Boolean; // Mod Teleporter am Rand: Die Karte hat Teleporter links / rechts
+    CarryBomb: Boolean; // Mod Bomben tragen: True, mit dem Handschuh heben Menschen eine Bombe auf statt sie sofort zu werfen
+    CarryBombControl: Integer; // Mod Bomben tragen: Steuerung, siehe CarryBombControl*
+    CarryBombMaxMs: Integer; // Mod Bomben tragen: Zeit in ms bis zum automatischen Wurf, 0 = unbegrenzt
+    CarryBombThrowRange: Integer; // Mod Bomben tragen: Wurfweite aller Würfe mit dem Handschuh
+    CarryBombOwnOnly: Boolean; // Mod Bomben tragen: True, nur eigene Bomben werden getragen
+    CarryBombMaxExplode: Boolean; // Mod Bomben tragen: True, nach CarryBombMaxMs explodiert die Bombe statt geworfen zu werden
     Procedure UpdatePortals(Active: Boolean); // Wird vom Server jeden Frame aufgerufen, Active = die Zeit bis zum Erscheinen ist um
     Procedure UpdateOpenBorders(Active, Warning: Boolean); // Wird vom Server jeden Frame aufgerufen, Warning = die Grenzen öffnen in Kürze
     Function FlameThrowerBeam(x, y, dx, dy, Range: integer): integer; // Mod Flammenwerfer: Länge des Strahls ab x, y in Richtung dx, dy, markiert eine Bombe am Ende
@@ -156,6 +165,9 @@ Type
     Function FindFreeField(x, y: integer): TPoint; // Liefert das zu x, y nächste Feld ohne Stein, Bombe, Flamme und Loch
     Function FindRespawnField(AvoidPos: TPoint): TPoint; // Spielmodus Hunter: Zufälliges sicheres freies Feld mit Abstand zu AvoidPos (dem Gejagten)
     Function SpawnTestItem(Const Players: TPlayers; PowerUp: TPowerUps; WhiteBomb, FlameThrower: Boolean): Boolean; // Mod Test Modus: Item auf ein zufälliges freies Feld legen
+    Function CarriedBombIndex(PlayerIndex: integer): integer; // Mod Bomben tragen: Index der Bombe die der Spieler trägt, -1 = keine
+    Procedure DropCarriedBomb(Const Player: TPlayer; PlayerIndex: integer); // Mod Bomben tragen: Die getragene Bombe fällt auf das Feld des Spielers (Treffer, Disconnect)
+    Procedure UpdateCarriedBombs(Var Players: TPlayers); // Mod Bomben tragen: jeden Frame, Position, Wurf beim Loslassen / nach der Zeit, fallen lassen bei Stun / Tod
 {$ENDIF}
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
     Property OpenTopBottom: Boolean read fWrapTopBottom; // Mod offene Grenzen, für die Pfeile im Client
@@ -439,6 +451,12 @@ Begin
   WrapTopBottom := false;
   PortalTopBottom := false;
   PortalLeftRight := false;
+  CarryBomb := false;
+  CarryBombControl := CarryBombControlHold;
+  CarryBombMaxMs := 0;
+  CarryBombThrowRange := 3;
+  CarryBombOwnOnly := false;
+  CarryBombMaxExplode := false;
   fPortalTopBottom := false;
   fPortalLeftRight := false;
   fPlaySoundEffect := PlaySoundEffectCallback;
@@ -644,7 +662,7 @@ Begin
   End;
   // Auslösen von Kettenreaktionen
   For i := 0 To fBombCount - 1 Do Begin
-    If Not fBombs[i].Detonated Then Begin
+    If (Not fBombs[i].Detonated) And (fBombs[i].MoveDir <> bmCarried) Then Begin // Getragene Bomben (Mod) fallen erst hin, wenn der Träger getroffen wird
       If (trunc(fBombs[i].Position.x) = x) And (trunc(fBombs[i].Position.y) = y) Then Begin
         // Derjenige der die Kettenreaktion auslöst, der bekommt den Kill
         fBombs[i].TriggerPlayerindex := TriggerPlayerindex;
@@ -676,7 +694,7 @@ Begin
   For i := 0 To fBombCount - 1 Do Begin
     If (x = trunc(fBombs[i].Position.x)) And
       (y = trunc(fBombs[i].Position.y)) And
-      (fBombs[i].MoveDir <> bmFly) Then Begin
+      (Not OffGround(fBombs[i])) Then Begin
       result := false;
       exit;
     End;
@@ -706,7 +724,7 @@ Begin
       fField[x, y].FlameThrowerItem := false;
     End;
     For j := 0 To fBombCount - 1 Do Begin
-      If (trunc(fBombs[j].Position.x) = x) And (trunc(fBombs[j].Position.y) = y) And (fBombs[j].MoveDir <> bmFly) Then Begin
+      If (trunc(fBombs[j].Position.x) = x) And (trunc(fBombs[j].Position.y) = y) And (Not OffGround(fBombs[j])) Then Begin
         // Auch wenn mehrere Strahlen die Bombe treffen, zählt das nur einmal pro Frame
         fBombs[j].FlameThrowerHit := true;
         exit;
@@ -754,7 +772,7 @@ Begin
   If (x < 0) Or (x > FieldWidth - 1) Or (y < 0) Or (y > FieldHeight - 1) Then exit;
   If fField[x, y].BrickData <> bdBrick Then exit;
   For i := 0 To fBombCount - 1 Do Begin
-    If (x = trunc(fBombs[i].Position.x)) And (y = trunc(fBombs[i].Position.y)) And (fBombs[i].MoveDir <> bmFly) Then exit;
+    If (x = trunc(fBombs[i].Position.x)) And (y = trunc(fBombs[i].Position.y)) And (Not OffGround(fBombs[i])) Then exit;
   End;
   If Player.BrickWalkTimer <= 0 Then Begin
     (*
@@ -1002,6 +1020,9 @@ Begin
     stream.Write(fBombs[i].Animation, SizeOf(fBombs[i].Animation));
     stream.Write(fBombs[i].AnimationOffset, SizeOf(fBombs[i].AnimationOffset));
     stream.Write(fBombs[i].WhiteBomb, SizeOf(fBombs[i].WhiteBomb));
+    stream.Write(fBombs[i].Carrier, SizeOf(fBombs[i].Carrier));
+    If fBombs[i].MoveDir <> bmCarried Then fBombs[i].Ticking := false; // Getragene setzt UpdateCarriedBombs
+    stream.Write(fBombs[i].Ticking, SizeOf(fBombs[i].Ticking));
   End;
 {$ENDIF}
 End;
@@ -1016,7 +1037,7 @@ Function TAtomicField.HandleMovePlayer(Var Players: TPlayers; PlayerIndex: integ
     For i := 0 To fBombCount - 1 Do Begin
       If (trunc(fBombs[i].Position.x) = x) And
         (trunc(fBombs[i].Position.y) = y) And
-        (fBombs[i].MoveDir <> bmFly) Then Begin // Fliegende Bomben haben keine Kollisionen !
+        (Not OffGround(fBombs[i])) Then Begin // Fliegende Bomben haben keine Kollisionen !
         result := i;
         exit;
       End;
@@ -1371,6 +1392,145 @@ Begin
   result := fField[x, y].BrickData = bdSolid;
 End;
 
+Function TAtomicField.OffGround(Const Bomb: TBombInfo): Boolean;
+Begin
+  result := Bomb.MoveDir In [bmFly, bmCarried];
+End;
+
+Procedure TAtomicField.ThrowBomb(Index, PlayerIndex: integer;
+  Direction: Single; Range: integer);
+Var
+  bx, by, dx, dy: Integer;
+Begin
+  bx := trunc(fBombs[Index].Position.x);
+  by := trunc(fBombs[Index].Position.y);
+  dx := 0;
+  dy := 0;
+  Case (trunc(Direction) Div 90) Of
+    0: dx := 1;
+    1: dy := -1;
+    2: dx := -1;
+    3: dy := 1;
+  End;
+  fBombs[Index].FlyStart := v2(bx + 0.5, by + 0.5);
+  fBombs[Index].FlyTarget := v2(bx + 0.5 + Range * dx, by + 0.5 + Range * dy);
+  fBombs[Index].MoveDir := bmFly;
+  fBombs[Index].Carrier := -1;
+  fBombs[Index].FlyTime := 0;
+  fBombs[Index].FlyFinTime := (AtomicBombBigFlyTime * max(Range, 3)) Div 3; // Weitere Würfe (Mod Bomben tragen) fliegen entsprechend länger
+  fBombs[Index].StunOnLand := true; // Nur geworfene Bomben stunnen, gepunchte nicht
+  fPlaySoundEffect(PlayerIndex, seBombGrab);
+  fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssThrownBombs);
+End;
+
+Function TAtomicField.PutDownCarriedBomb(Index, x, y: integer; Forced: Boolean
+  ): Boolean;
+Var
+  i: Integer;
+  IsFree: Boolean;
+Begin
+  result := false;
+  IsFree := (x >= 0) And (x <= FieldWidth - 1) And (y >= 0) And (y <= FieldHeight - 1);
+  If IsFree Then Begin
+    IsFree := (fField[x, y].BrickData = bdBlank) And (Not IsPortal(x, y));
+    If fHasHoles And (fHurryIndex = -1) And fHoles[x, y] Then IsFree := false;
+    For i := 0 To fBombCount - 1 Do Begin
+      If (i <> Index) And (Not OffGround(fBombs[i])) And
+        (trunc(fBombs[i].Position.x) = x) And (trunc(fBombs[i].Position.y) = y) Then IsFree := false;
+    End;
+  End;
+  If (Not IsFree) And (Not Forced) Then exit;
+  x := max(0, min(FieldWidth - 1, x));
+  y := max(0, min(FieldHeight - 1, y));
+  fBombs[Index].Position := v2(x + 0.5, y + 0.5);
+  fBombs[Index].MoveDir := bmNone;
+  fBombs[Index].Carrier := -1;
+  If Not IsFree Then Begin
+    // Hier kann sie nicht liegen bleiben (Bombe, Loch, Teleporter, Block) -> sie explodiert sofort
+    fBombs[Index].Animation := baNormal;
+    fBombs[Index].Lifetime := AtomicBombDetonateTime;
+  End;
+  result := true;
+End;
+
+Function TAtomicField.CarriedBombIndex(PlayerIndex: integer): integer;
+Var
+  i: Integer;
+Begin
+  result := -1;
+  For i := 0 To fBombCount - 1 Do Begin
+    If (fBombs[i].MoveDir = bmCarried) And (fBombs[i].Carrier = PlayerIndex) Then Begin
+      result := i;
+      exit;
+    End;
+  End;
+End;
+
+Procedure TAtomicField.DropCarriedBomb(Const Player: TPlayer;
+  PlayerIndex: integer);
+Var
+  i: Integer;
+Begin
+  i := CarriedBombIndex(PlayerIndex);
+  If i = -1 Then exit;
+  If Player.Flying Then Begin
+    PutDownCarriedBomb(i, trunc(Player.FlyTarget.x), trunc(Player.FlyTarget.y), true);
+  End
+  Else Begin
+    PutDownCarriedBomb(i, trunc(Player.Info.Position.x), trunc(Player.Info.Position.y), true);
+  End;
+End;
+
+Procedure TAtomicField.UpdateCarriedBombs(Var Players: TPlayers);
+Var
+  i, k: Integer;
+  Throw: Boolean;
+Begin
+  For k := 0 To high(Players) Do Begin
+    Players[k].Info.Carrying := false;
+  End;
+  For i := 0 To fBombCount - 1 Do Begin
+    If fBombs[i].MoveDir <> bmCarried Then Continue;
+    k := fBombs[i].Carrier;
+    If (k < 0) Or (k > high(Players)) Then Begin
+      PutDownCarriedBomb(i, trunc(fBombs[i].Position.x), trunc(fBombs[i].Position.y), true);
+      Continue;
+    End;
+    // Gestunnt, getroffen (tot, Geist) oder kein Spieler mehr -> die Bombe fällt auf sein Feld, der Timer läuft weiter
+    If (Players[k].UID = NoPlayer) Or (Not Players[k].Info.Alive) Or Players[k].Info.Dying Or (Players[k].StunTimer > 0) Then Begin
+      DropCarriedBomb(Players[k], k);
+      Continue;
+    End;
+    // Im Flug (Trampolin) bleibt die Bombe beim Spieler, der Client zeichnet sie über ihm
+    If Not Players[k].Flying Then Begin
+      fBombs[i].Position := v2(trunc(Players[k].Info.Position.x) + 0.5, trunc(Players[k].Info.Position.y) + 0.5);
+    End;
+    Players[k].Info.Carrying := true;
+    Players[k].CarryTimer := Players[k].CarryTimer + FrameRate;
+    // Animiert (= tickend) wird sie gezeichnet, wenn sie bald explodiert oder die max. Tragzeit bald um ist
+    fBombs[i].Ticking := ((fBombs[i].Animation In [baNormal, baWobble]) And (AtomicBombDetonateTime - fBombs[i].Lifetime <= CarryBombTickingTime)) Or
+      ((CarryBombMaxMs > 0) And (CarryBombMaxMs - Players[k].CarryTimer <= CarryBombMaxTickingTime));
+    If Players[k].Flying Or (Not fBombsEnabled) Then Continue;
+    Throw := (CarryBombMaxMs > 0) And (Players[k].CarryTimer >= CarryBombMaxMs);
+    If Throw And CarryBombMaxExplode Then Begin
+      // Zu lange getragen: Die Bombe explodiert in den Händen
+      PutDownCarriedBomb(i, trunc(Players[k].Info.Position.x), trunc(Players[k].Info.Position.y), true);
+      fBombs[i].Animation := baNormal;
+      fBombs[i].Lifetime := AtomicBombDetonateTime;
+      Players[k].Info.Carrying := false;
+      Continue;
+    End;
+    If (CarryBombControl = CarryBombControlHold) And (Not Players[k].FirstActionHeld) Then Throw := true;
+    If Players[k].UID = AIPlayer Then Throw := true; // Die KI kann keine Taste halten (z.B. wenn ein Spieler das Spiel verlassen hat)
+    If Throw Then Begin
+      ThrowBomb(i, k, Players[k].Info.Direction, CarryBombThrowRange);
+      Players[k].Info.Carrying := false;
+      Players[k].Info.Animation := raPup;
+      Players[k].Info.Counter := 0;
+    End;
+  End;
+End;
+
 Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
   PlayerIndex: integer);
 
@@ -1420,6 +1580,7 @@ Procedure TAtomicField.HandleActionPlayer(Var Player: TPlayer;
     fBombs[fBombCount].FireLen := player.Powers.FlameLen;
     fBombs[fBombCount].Jelly := false; // Das wird vom "Kickenden" Spieler übernommen
     fBombs[fBombCount].MoveDir := bmNone;
+    fBombs[fBombCount].Carrier := -1;
     fBombs[fBombCount].StunOnLand := false;
     fBombs[fBombCount].FlameThrowerHit := false;
     fBombs[fBombCount].FlameThrowerExposure := 0;
@@ -1445,6 +1606,28 @@ Var
   handled: Boolean;
 Begin
   If Player.Flying Then exit; // Im Flug darf der Spieler natürlich nichts machen ;)
+  (*
+   * Mod Bomben tragen: Mit einer Bombe in den Händen kann man sie nur ablegen bzw. werfen.
+   * Bei der Steuerung Halten wirft UpdateCarriedBombs beim Loslassen der ersten Aktion.
+   *)
+  i := CarriedBombIndex(PlayerIndex);
+  If i <> -1 Then Begin
+    If CarryBombControl = CarryBombControlToggle Then Begin
+      Case player.Action Of
+        aaFirst, aaFirstDouble: Begin
+            If PutDownCarriedBomb(i, trunc(player.Info.Position.x), trunc(player.Info.Position.y), false) Then Begin
+              fPlaySoundEffect(PlayerIndex, seBombDrop);
+            End;
+          End;
+        aaSecond, aaSecondDouble: Begin
+            ThrowBomb(i, PlayerIndex, player.Info.Direction, CarryBombThrowRange);
+            Player.Info.Animation := raPup;
+            Player.Info.Counter := 0;
+          End;
+      End;
+    End;
+    exit;
+  End;
   Case player.Action Of
     aaFirstDouble: Begin
         (* Jeder Doppelt action geht eine Einfach Aktion vorraus ! *)
@@ -1483,29 +1666,32 @@ Begin
           // Gibt es eine Bombe zum Graben ?
           x := trunc(player.Info.Position.x);
           y := trunc(player.Info.Position.y);
-          For i := 0 To high(fBombs) Do Begin
-            If fBombs[i].MoveDir = bmFly Then Continue; // Fliegende Bomben dürfen nicht gegriffen werden.
+          For i := 0 To fBombCount - 1 Do Begin
+            If OffGround(fBombs[i]) Then Continue; // Fliegende Bomben dürfen nicht gegriffen werden.
             bx := trunc(fBombs[i].Position.x);
             by := trunc(fBombs[i].Position.y);
             If (x = bx) And (y = by) Then Begin
-              dx := 0;
-              dy := 0;
-              Case (trunc(player.info.Direction) Div 90) Of
-                0: dx := 1;
-                1: dy := -1;
-                2: dx := -1;
-                3: dy := 1;
+              If CarryBomb And Player.Powers.CanGrabBombs And (Player.UID <> AIPlayer) And
+                ((Not CarryBombOwnOnly) Or (fBombs[i].PlayerIndex = PlayerIndex)) Then Begin
+                // Mod Bomben tragen: Aufheben statt werfen, der Timer steht so lange
+                fBombs[i].MoveDir := bmCarried;
+                fBombs[i].Carrier := PlayerIndex;
+                fBombs[i].Position := v2(bx + 0.5, by + 0.5);
+                Player.CarryTimer := 0;
+                fPlaySoundEffect(PlayerIndex, seBombGrab);
+                fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssCarriedBombs);
+              End
+              Else Begin
+                // Die Wurfweite der Mod gilt nur für den echten Handschuh, nicht für den Handschuh beim Start
+                If CarryBomb And Player.Powers.CanGrabBombs Then Begin
+                  ThrowBomb(i, PlayerIndex, player.Info.Direction, CarryBombThrowRange);
+                End
+                Else Begin
+                  ThrowBomb(i, PlayerIndex, player.Info.Direction, 3);
+                End;
+                Player.Info.Animation := raPup; // Die Wurf Animation, beim Tragen erst wenn geworfen wird
+                Player.Info.Counter := 0;
               End;
-              fBombs[i].FlyStart := v2(bx + 0.5, by + 0.5);
-              fBombs[i].FlyTarget := v2(bx + 0.5 + 3 * dx, by + 0.5 + 3 * dy);
-              fBombs[i].MoveDir := bmFly;
-              fBombs[i].FlyTime := 0;
-              fBombs[i].FlyFinTime := AtomicBombBigFlyTime;
-              fBombs[i].StunOnLand := true; // Nur geworfene Bomben stunnen, gepunchte nicht
-              fPlaySoundEffect(PlayerIndex, seBombGrab);
-              fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssThrownBombs);
-              Player.Info.Animation := raPup;
-              Player.Info.Counter := 0;
               break;
             End;
           End;
@@ -1554,8 +1740,8 @@ Begin
             2: dx := -1;
             3: dy := 1;
           End;
-          For i := 0 To high(fBombs) Do Begin
-            If fBombs[i].MoveDir = bmFly Then Continue; // Fliegende Bomben dürfen nicht gepuncht werden.
+          For i := 0 To fBombCount - 1 Do Begin
+            If OffGround(fBombs[i]) Then Continue; // Fliegende Bomben dürfen nicht gepuncht werden.
             bx := trunc(fBombs[i].Position.x);
             by := trunc(fBombs[i].Position.y);
             If (x + dx = bx) And (y + dy = by) Then Begin
@@ -1580,7 +1766,7 @@ Begin
            * Zünden der eigenen Time Triggered Bomben, das geht irgendwie immer ...
            *)
           For i := 0 To fBombCount - 1 Do Begin
-            If (fBombs[i].PlayerIndex = PlayerIndex) And (fBombs[i].Animation = baTimeTriggered) And (fBombs[i].MoveDir <> bmFly) Then Begin
+            If (fBombs[i].PlayerIndex = PlayerIndex) And (fBombs[i].Animation = baTimeTriggered) And (Not OffGround(fBombs[i])) Then Begin
               fBombs[i].Animation := baNormal;
               fBombs[i].Lifetime := AtomicBombDetonateTime;
               fPlayerStatistics.UpdatePlayerID(PlayerIndex, pssTriggeredBombs);
@@ -1764,6 +1950,9 @@ Begin
       End;
     End;
     Case fBombs[i].MoveDir Of
+      bmCarried: Begin // Mod Bomben tragen: Der Timer steht, die Position führt UpdateCarriedBombs nach
+          fBombs[i].Lifetime := fBombs[i].Lifetime - FrameRate;
+        End;
       bmFly: Begin
           fBombs[i].Lifetime := fBombs[i].Lifetime - FrameRate; // Countdown bis zur Detonation wieder Rückgängig machen
           fBombs[i].FlyTime := fBombs[i].FlyTime + FrameRate;
@@ -1949,7 +2138,7 @@ Begin
     // (dass kann nur bei sich bewegenden Bomben passieren, da die Liegenden in Detonate schon berücksichtigt werden.)
     x := trunc(fBombs[i].Position.x);
     y := trunc(fBombs[i].Position.y);
-    If (y > 0) And (fBombs[i].MoveDir <> bmFly) Then Begin // Eine Fliegende Bombe kann Negative Koordinaten kriegen
+    If (y > 0) And (Not OffGround(fBombs[i])) Then Begin // Eine Fliegende Bombe kann Negative Koordinaten kriegen
       If (fField[x, y].Flame <> []) Then Begin
         fBombs[i].Position.x := x + 0.5;
         fBombs[i].Position.y := y + 0.5;
@@ -1960,7 +2149,7 @@ Begin
     (*
      * Die Bombe muss explodieren bevor sie unter dem Stein begraben wird !
      *)
-    If PreHurry Then Begin
+    If PreHurry And (fBombs[i].MoveDir <> bmCarried) Then Begin
       If (fHurryIndex + 1 >= 0) And (fHurryIndex + 1 <= high(HurryCoords)) Then Begin
         p := HurryCoords[fHurryIndex + 1];
         If (x = p.x) And (y = p.y) Then Begin
@@ -2435,7 +2624,7 @@ Begin
     If result.Bombs[i].Position.y < 0 Then result.Bombs[i].Position.y := result.Bombs[i].Position.y + FieldHeight - 1;
     If result.Bombs[i].Position.y >= FieldWidth Then result.Bombs[i].Position.y := result.Bombs[i].Position.y - FieldHeight;
     result.Bombs[i].FlameLength := fBombs[i].FireLen;
-    result.Bombs[i].Flying := fBombs[i].MoveDir = bmFly;
+    result.Bombs[i].Flying := OffGround(fBombs[i]); // Getragene Bomben (Mod) liegen auch nicht auf dem Feld
     result.Bombs[i].Owner := fBombs[i].PlayerIndex;
     result.Bombs[i].ManualTrigger := fBombs[i].Animation = baTimeTriggered;
     result.Bombs[i].Jelly := fBombs[i].Jelly;
@@ -2489,6 +2678,7 @@ Begin
   fBombs[fBombCount].FlyStart := fBombs[fBombCount].Position;
   fBombs[fBombCount].FlyTarget := v2(Target.x + 0.5, Target.y + 0.5);
   fBombs[fBombCount].MoveDir := bmFly;
+  fBombs[fBombCount].Carrier := -1;
   fBombs[fBombCount].FlyTime := 0;
   fBombs[fBombCount].FlyFinTime := AtomicBombBigFlyTime;
   fBombs[fBombCount].StunOnLand := true;
@@ -2713,7 +2903,7 @@ Begin
           // Verhindern, das ein Powerup da generiert wird wo eine Bombe liegt
           If b Then Begin
             For j := 0 To fBombCount - 1 Do Begin
-              If fBombs[j].MoveDir = bmFly Then Continue;
+              If OffGround(fBombs[j]) Then Continue;
               If (x = trunc(fBombs[j].Position.x)) And
                 (y = trunc(fBombs[j].Position.y)) Then Begin
                 b := false;

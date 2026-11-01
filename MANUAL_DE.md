@@ -51,7 +51,7 @@ Die Tasten für beide Spieler an diesem PC stellt man im Launcher unter **Steuer
 - Bombe legen
 
 ### Erste Aktion (doppelt gedrückt)
-- Bombe greifen und werfen (wenn der Spieler das Powerup eingesammelt hat)
+- Bombe greifen und werfen (wenn der Spieler das Powerup eingesammelt hat), mit dem Mod [Bomben tragen](MODS_MANUAL_DE.md#bomben-tragen) aufheben und tragen
 - Alle verfügbaren Bomben legen (wenn der Spieler das Powerup eingesammelt hat)
 
 ### Zweite Aktion

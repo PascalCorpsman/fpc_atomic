@@ -177,10 +177,15 @@ Const
    *                       ADD: optional items & diseases, weights for how often each item and each disease appears and the share of bricks with an item
    *                       ADD: game mode hunter, one player is the hunted with (almost) all items, who gets him becomes the new hunted -> need change in ProtocollVersion
    *                       ADD: ai interface version 5 (optional game modes, version 4 libs can still be loaded)
+   *             0.14001 = ADD: optional carry bombs, with the glove a player picks up a bomb, carries it (timer frozen) and throws it (hold action 1 or toggle) -> need change in ProtocollVersion
+   *                       ADD: the release of the first action is sent to the server
+   *                       FIX: keyboard auto repeat of the action keys was sent as double press
+   *                       FIX: grab and punch could find bombs that already exploded
+   *                       ADD: statistic "Carried bombs"
    *)
 
-  ProtocollVersion: uint32 = 16; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.14000';
+  ProtocollVersion: uint32 = 17; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  Version = '0.14001';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
@@ -298,6 +303,11 @@ Const
   ModMaxFlameThrowerRange = FieldWidth - 1; // untere Grenze 1
   ModMaxFlameThrowerKillMs = 10000; // Zeit in ms, FlameThrowerKillMs
   ModMaxFlameThrowerIgniteMs = 10000; // Zeit in ms, FlameThrowerIgniteMs
+  ModMaxCarryBombMs = 30000; // Zeit in ms, CarryBombMaxMs
+  ModMaxCarryBombThrowRange = 6; // untere Grenze 1
+  CarryBombMaxTickingTime = 2000; // Zeit in ms, Mod Bomben tragen: So lange vor dem Ende der max. Tragzeit wird die Bombe animiert gezeichnet
+  CarryBombTickingTime = 1000; // Zeit in ms, Mod Bomben tragen: Hat die getragene Bombe weniger Zeit bis zur Explosion, wird sie animiert gezeichnet
+  CarryBombDoubleTime = 400; // Zeit in ms, Mod Bomben tragen: So spät darf der 2. Druck der ersten Aktion zum Aufheben kommen (sonst AtomicActionDoubleTime)
   ModMaxItemChance = 100; // in %, ItemChance
   ModMaxItemWeight = 100; // ItemWeight*, DiseaseWeight*
   ModMaxSuperBadSwapChance = 100; // in %
@@ -311,6 +321,12 @@ Const
    * Spielmodus Hunter: Einer ist der Gejagte und hat (fast) alle Items, wer ihn erwischt wird der neue Gejagte.
    * Die Werte der Einstellungen (atomic_mods.ini, Abschnitt [Hunter])
    *)
+  (*
+   * Mod Bomben tragen: Die Steuerung (atomic_mods.ini, CarryBombControl)
+   *)
+  CarryBombControlHold = 0; // Tragen so lange die erste Aktion gehalten wird, beim Loslassen wird geworfen
+  CarryBombControlToggle = 1; // Die erste Aktion legt die Bombe ab, die zweite Aktion wirft sie
+
   HuntedStartRandom = 0; // HuntedStart: zufälliger Spieler wird zu Rundenbeginn der Gejagte
   HuntedStartLeader = 1; // HuntedStart: der Spieler mit dem höchsten Score (bei Gleichstand zufällig)
   HuntedLostRandom = 0; // HuntedLost: stirbt der Gejagte ohne fremden Killer, wird ein zufälliger anderer lebender Spieler der Gejagte
@@ -436,7 +452,7 @@ Type
     baWobble // Prallt eine Bombe ab, ist sie ab dann im Wobble Mode -> nur bei Jelly Bombem
     );
 
-  TBombMoveDir = (bmNone, bmUp, bmDown, bmLeft, bmRight, bmFly);
+  TBombMoveDir = (bmNone, bmUp, bmDown, bmLeft, bmRight, bmFly, bmCarried);
 
   TBombInfo = Record
     ColorIndex: integer; // 0..9 Farbe in der der Client die Bombe Rendern soll
@@ -444,6 +460,8 @@ Type
     Animation: TBombAnimation; // Die Jeweilige Animation
     AnimationOffset: uint16; // Damit nicht alle "Gleich" aussehen
     WhiteBomb: Boolean; // Mod weiße Bombe: explodiert ohne Flammen und flasht alle Gegner (zählt nicht zu den Bomben des Spielers), der Client zeichnet sie grau
+    Carrier: ShortInt; // Mod Bomben tragen: Index des Spielers der die Bombe trägt, -1 = liegt / fliegt (der Client zeichnet sie über dem Spieler)
+    Ticking: Boolean; // Mod Bomben tragen: True, die getragene Bombe explodiert bald (CarryBombTickingTime), nur dann ist sie im Client animiert
 {$IFDEF Server}
     FlyStart, FlyTarget: TVector2;
     FlyTime: integer; // Zeit In ms Seit derer die Bombe Fliegt
@@ -643,6 +661,7 @@ Type
     FlameThrowerColor: uint8; // Mod Flammenwerfer: Farbe des Strahls (die echte Farbe des Spielers, ColorIndex blinkt ggf.)
     Hunted: Boolean; // Spielmodus Hunter: True, der Spieler ist gerade der Gejagte (Gold / Aura im Client)
     HuntedTime: uint16; // Spielmodus Hunter: Zeit in s, die der Spieler in dieser Runde schon der Gejagte war (Anzeige im Client)
+    Carrying: Boolean; // Mod Bomben tragen: True, der Spieler trägt eine Bombe (der Client nimmt die Laufanimation mit erhobenen Armen)
   End;
 
   (*
@@ -660,6 +679,7 @@ Type
     , mtFlash // F2, weißer Bildschirm
     , mtWhiteBomb // F1, die nächste gelegte Bombe ist weiß
     , mtSpawnItems // Einfg, die Items der neuen Mods auf freie Felder verteilen
+    , mtGiveGlove // Entf, Handschuh (Bomben werfen bzw. tragen)
     );
 
   TAtomicKey = (
@@ -736,6 +756,10 @@ Type
     WhiteBombs: Integer; // Mod weiße Bombe: So viele der nächsten gelegten Bomben sind weiß
     FlameThrowerFuel: Integer; // Mod Flammenwerfer: Zeit in ms, so lange kann der Spieler noch feuern (0 = kein Flammenwerfer)
     FlameThrowerFiring: Boolean; // Mod Flammenwerfer: True, so lange die zweite Aktion gedrückt ist
+    FirstActionHeld: Boolean; // True, so lange die erste Aktion gedrückt ist (Mod Bomben tragen, Steuerung Halten)
+    CarryTimer: Integer; // Mod Bomben tragen: Zeit in ms, so lange trägt der Spieler seine Bombe schon
+    LastFirstActionDown: QWord; // Mod Bomben tragen: Zeitpunkt des letzten Drucks der ersten Aktion (für CarryBombDoubleTime)
+    LastFirstActionTile: TPoint; // Mod Bomben tragen: Feld des Spielers beim letzten Druck der ersten Aktion
     FlameThrowerExposure: Integer; // Mod Flammenwerfer: Zeit in ms, so lange steht der Spieler schon am Stück in einem Strahl
     StartPosition: TVector2; // Mod Geister: Startposition der Runde, dort kommt ein Geist wieder ins Spiel
     HuntedTimeMs: Integer; // Spielmodus Hunter: Zeit in ms, die der Spieler in dieser Runde schon der Gejagte war
@@ -789,6 +813,12 @@ Type
     FlameThrowerRange: Integer; // Reichweite des Strahls in Kacheln
     FlameThrowerKillMs: Integer; // Zeit in ms, so lange muss ein Gegner am Stück im Strahl stehen, bis er getroffen ist
     FlameThrowerBurnItems: Boolean; // True, Items im Strahl verbrennen sofort (wie bei einer Flamme), sonst geht der Strahl darüber hinweg
+    CarryBomb: Boolean; // True, mit dem Handschuh wird eine Bombe aufgehoben und getragen statt sofort geworfen
+    CarryBombControl: Integer; // Steuerung beim Tragen, siehe CarryBombControl*
+    CarryBombMaxMs: Integer; // Zeit in ms, nach derer eine getragene Bombe automatisch geworfen wird, 0 = unbegrenzt
+    CarryBombThrowRange: Integer; // Wurfweite in Kacheln aller Würfe mit dem Handschuh (nur wenn CarryBomb aktiv)
+    CarryBombOwnOnly: Boolean; // True, nur eigene Bomben werden getragen, fremde wirft der Handschuh sofort
+    CarryBombMaxExplode: Boolean; // True, nach CarryBombMaxMs explodiert die Bombe in den Händen, statt geworfen zu werden
     FlameThrowerIgniteBombs: Boolean; // True, Bomben im Strahl werden gezündet (ein Blindgänger verschwindet), sonst endet der Strahl nur an ihnen
     FlameThrowerIgniteMs: Integer; // Zeit in ms, so lange muss eine Bombe am Stück im Strahl liegen, bis sie gezündet wird (0 = sofort)
     FlameThrowerFriendlyFire: Boolean; // True, im Teamspiel verletzt der Strahl auch Teamkollegen
@@ -1350,6 +1380,12 @@ Begin
   Settings.FlameThrowerRange := 3;
   Settings.FlameThrowerKillMs := 2000;
   Settings.FlameThrowerBurnItems := true;
+  Settings.CarryBomb := false;
+  Settings.CarryBombControl := CarryBombControlHold;
+  Settings.CarryBombMaxMs := 0;
+  Settings.CarryBombThrowRange := 3;
+  Settings.CarryBombOwnOnly := false;
+  Settings.CarryBombMaxExplode := false;
   Settings.FlameThrowerIgniteBombs := true;
   Settings.FlameThrowerIgniteMs := 1000;
   Settings.FlameThrowerFriendlyFire := false;
@@ -1467,6 +1503,12 @@ Begin
   WriteI('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
   WriteI('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
   WriteB('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
+  WriteB('Mods', 'CarryBomb', Settings.CarryBomb);
+  WriteI('Mods', 'CarryBombControl', Settings.CarryBombControl);
+  WriteI('Mods', 'CarryBombMaxMs', Settings.CarryBombMaxMs);
+  WriteI('Mods', 'CarryBombThrowRange', Settings.CarryBombThrowRange);
+  WriteB('Mods', 'CarryBombOwnOnly', Settings.CarryBombOwnOnly);
+  WriteB('Mods', 'CarryBombMaxExplode', Settings.CarryBombMaxExplode);
   WriteB('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
   WriteI('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
   WriteB('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
@@ -1587,6 +1629,12 @@ Begin
   Settings.FlameThrowerRange := ini.ReadInteger('Mods', 'FlameThrowerRange', Settings.FlameThrowerRange);
   Settings.FlameThrowerKillMs := ini.ReadInteger('Mods', 'FlameThrowerKillMs', Settings.FlameThrowerKillMs);
   Settings.FlameThrowerBurnItems := ini.ReadBool('Mods', 'FlameThrowerBurnItems', Settings.FlameThrowerBurnItems);
+  Settings.CarryBomb := ini.ReadBool('Mods', 'CarryBomb', Settings.CarryBomb);
+  Settings.CarryBombControl := ini.ReadInteger('Mods', 'CarryBombControl', Settings.CarryBombControl);
+  Settings.CarryBombMaxMs := ini.ReadInteger('Mods', 'CarryBombMaxMs', Settings.CarryBombMaxMs);
+  Settings.CarryBombThrowRange := ini.ReadInteger('Mods', 'CarryBombThrowRange', Settings.CarryBombThrowRange);
+  Settings.CarryBombOwnOnly := ini.ReadBool('Mods', 'CarryBombOwnOnly', Settings.CarryBombOwnOnly);
+  Settings.CarryBombMaxExplode := ini.ReadBool('Mods', 'CarryBombMaxExplode', Settings.CarryBombMaxExplode);
   Settings.FlameThrowerIgniteBombs := ini.ReadBool('Mods', 'FlameThrowerIgniteBombs', Settings.FlameThrowerIgniteBombs);
   Settings.FlameThrowerIgniteMs := ini.ReadInteger('Mods', 'FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs);
   Settings.FlameThrowerFriendlyFire := ini.ReadBool('Mods', 'FlameThrowerFriendlyFire', Settings.FlameThrowerFriendlyFire);
@@ -1690,6 +1738,9 @@ Begin
   Clamp('FlameThrowerRange', Settings.FlameThrowerRange, 1, ModMaxFlameThrowerRange);
   Clamp('FlameThrowerKillMs', Settings.FlameThrowerKillMs, 0, ModMaxFlameThrowerKillMs);
   Clamp('FlameThrowerIgniteMs', Settings.FlameThrowerIgniteMs, 0, ModMaxFlameThrowerIgniteMs);
+  Clamp('CarryBombControl', Settings.CarryBombControl, CarryBombControlHold, CarryBombControlToggle);
+  Clamp('CarryBombMaxMs', Settings.CarryBombMaxMs, 0, ModMaxCarryBombMs);
+  Clamp('CarryBombThrowRange', Settings.CarryBombThrowRange, 1, ModMaxCarryBombThrowRange);
   Clamp('GhostReviveInvulnMs', Settings.GhostReviveInvulnMs, 0, ModMaxGhostReviveInvulnMs);
   Clamp('GhostFlameLen', Settings.GhostFlameLen, 1, ModMaxGhostFlameLen);
   Clamp('GhostFlickerMs', Settings.GhostFlickerMs, 0, ModMaxGhostFlickerMs);
@@ -1870,6 +1921,7 @@ Begin
     mtFlash: result := 'white screen';
     mtWhiteBomb: result := 'white bomb';
     mtSpawnItems: result := 'spawn mod items';
+    mtGiveGlove: result := 'glove';
   End;
 End;
 
