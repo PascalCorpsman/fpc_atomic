@@ -90,6 +90,7 @@ Type
     Procedure Button17Click(Sender: TObject);
     Procedure Image1Click(Sender: TObject);
     Procedure LabelNewsClick(Sender: TObject);
+    Procedure ShiftLeftColumn(Delta: Integer); // verschiebt Bild und die Zeilen darunter, merkt sich die Summe in fLeftColumnShift
     Procedure ButtonNewsCloseClick(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
@@ -104,6 +105,7 @@ Type
     Procedure Timer1Timer(Sender: TObject);
     Procedure Panel1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
   private
+    fLeftColumnShift: Integer; // um so viel ist die linke Spalte ohne Hinweis nach oben gerückt (negativ)
     ini: TIniFile;
     OnlineVersion: Single; // Von der Prüfung beim Start, -1 = unbekannt
     OnlineLauncherVersion: integer; // Von der Prüfung beim Start, -1 = unbekannt
@@ -604,6 +606,30 @@ Begin
     sl.free;
   End;
   PanelNews.Visible := ShowNews;
+  // Ohne Hinweis rückt die linke Spalte (Bild, Satz- und Sound-Zeile, Probehören) nach oben bündig zu den Gruppen rechts
+  If ShowNews Then
+    ShiftLeftColumn(-fLeftColumnShift)
+  Else
+    ShiftLeftColumn(GroupBox1.Top - Image1.Top);
+End;
+
+Procedure TForm1.ShiftLeftColumn(Delta: Integer);
+Var
+  c: Array[0..7] Of TControl;
+  i: Integer;
+Begin
+  If Delta = 0 Then exit;
+  c[0] := Image1;
+  c[1] := Button10;
+  c[2] := Label11;
+  c[3] := Button11;
+  c[4] := Button14;
+  c[5] := Label12;
+  c[6] := Button15;
+  c[7] := Button16;
+  For i := 0 To high(c) Do
+    c[i].Top := c[i].Top + Delta;
+  fLeftColumnShift := fLeftColumnShift + Delta;
 End;
 
 Procedure TForm1.Button9Click(Sender: TObject);
