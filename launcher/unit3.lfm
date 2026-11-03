@@ -7,24 +7,24 @@ object Form3: TForm3
   ClientHeight = 560
   ClientWidth = 720
   Position = poScreenCenter
-  LCLVersion = '4.99.0.0'
+  LCLVersion = '5.99.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   object PanelButtons: TPanel
     Left = 0
-    Height = 41
-    Top = 519
+    Height = 44
+    Top = 516
     Width = 720
     Align = alBottom
     AutoSize = True
     BevelOuter = bvNone
-    ClientHeight = 41
+    ClientHeight = 44
     ClientWidth = 720
     TabOrder = 1
     object ButtonClose: TButton
       Left = 622
-      Height = 25
+      Height = 28
       Top = 8
       Width = 90
       Align = alRight
@@ -36,7 +36,7 @@ object Form3: TForm3
     end
     object ButtonMain: TButton
       Left = 524
-      Height = 25
+      Height = 28
       Top = 8
       Width = 90
       Align = alRight
@@ -50,7 +50,7 @@ object Form3: TForm3
   end
   object Notebook1: TNotebook
     Left = 12
-    Height = 507
+    Height = 504
     Top = 12
     Width = 696
     PageIndex = 0
@@ -91,7 +91,7 @@ object Form3: TForm3
       end
       object MemoCheck: TMemo
         Left = 0
-        Height = 462
+        Height = 458
         Top = 46
         Width = 696
         Align = alClient
@@ -160,13 +160,13 @@ object Form3: TForm3
         Align = alClient
         BorderSpacing.Top = 4
         Checkboxes = True
-        Columns = <
+        Columns = <        
           item
             Width = 360
-          end
+          end        
           item
             Width = 220
-          end
+          end        
           item
             Alignment = taRightJustify
             Width = 90

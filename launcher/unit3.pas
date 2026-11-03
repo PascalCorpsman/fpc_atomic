@@ -546,10 +546,29 @@ Var
   Indices: Array Of integer;
   i: integer;
   Updater: String;
+  LauncherSelected: Boolean;
 Begin
+  Updater := 'updater'{$IFDEF Windows} + '.exe'{$ENDIF};
   Case TUpdatePage(Notebook1.PageIndex) Of
     upCheck: StartCheck();
     upOverview: Begin
+        LauncherSelected := false;
+        For i := 0 To high(fItems) Do Begin
+          If fItems[i].Checked And (fItems[i].Status In [usLauncherNew, usLauncherCurrent]) Then Begin
+            LauncherSelected := true;
+            break;
+          End;
+        End;
+        If LauncherSelected Then Begin
+          For i := 0 To high(fItems) Do Begin
+            If (fItems[i].FileContainer.Kind = fkExecutable) And
+              (fItems[i].Status In [usNew, usChanged]) And
+              SameText(ExtractFileName(fItems[i].Target), Updater) Then Begin
+              fItems[i].Checked := true;
+              break;
+            End;
+          End;
+        End;
         Indices := Nil;
         For i := 0 To high(fItems) Do Begin
           If fItems[i].Checked Then Begin
@@ -564,7 +583,6 @@ Begin
           RunUpdate(fFailed);
         End
         Else If fLauncherFile <> '' Then Begin
-          Updater := 'updater'{$IFDEF Windows} + '.exe'{$ENDIF};
           If Not FileExists(Updater) Then Begin
             showmessage(format(RF_UpdaterMissing, [Updater]));
             exit;
@@ -883,3 +901,4 @@ Begin
 End;
 
 End.
+

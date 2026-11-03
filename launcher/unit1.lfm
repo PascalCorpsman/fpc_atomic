@@ -4,7 +4,6 @@ object Form1: TForm1
   Top = 107
   Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
-  BorderStyle = bsSingle
   Caption = 'Form1'
   ClientHeight = 635
   ClientWidth = 547
@@ -30,20 +29,20 @@ object Form1: TForm1
     Top = 8
     Width = 328
     Caption = ' Player '
-    ClientHeight = 94
+    ClientHeight = 95
     ClientWidth = 326
     TabOrder = 0
     object Label1: TLabel
       Left = 8
       Height = 16
       Top = 8
-      Width = 71
+      Width = 74
       Caption = '&Player name'
       FocusControl = Edit1
     end
     object Edit1: TEdit
       Left = 120
-      Height = 30
+      Height = 26
       Top = 4
       Width = 198
       TabOrder = 0
@@ -76,51 +75,51 @@ object Form1: TForm1
     Top = 128
     Width = 328
     Caption = ' Game settings '
-    ClientHeight = 140
+    ClientHeight = 141
     ClientWidth = 326
     TabOrder = 1
     object CheckBox2: TCheckBox
       Left = 8
-      Height = 21
+      Height = 22
       Hint = 'Start the game in fullscreen mode.'
       Top = 4
-      Width = 88
+      Width = 84
       Caption = '&Fullscreen'
       TabOrder = 0
     end
     object CheckBox4: TCheckBox
       Left = 164
-      Height = 21
+      Height = 22
       Hint = 'Play the music. The sound effects can be switched off in Game options...'
       Top = 4
-      Width = 91
+      Width = 87
       Caption = 'Play mu&sic'
       TabOrder = 1
     end
     object CheckBox5: TCheckBox
       Left = 8
-      Height = 21
+      Height = 22
       Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
       Top = 28
-      Width = 94
+      Width = 90
       Caption = 'Fill &window'
       TabOrder = 2
     end
     object CheckBox1: TCheckBox
       Left = 164
-      Height = 21
+      Height = 22
       Hint = 'Show the frames per second in the game.'
       Top = 28
-      Width = 86
+      Width = 82
       Caption = 'S&how FPS'
       TabOrder = 3
     end
     object CheckBox7: TCheckBox
       Left = 8
-      Height = 21
+      Height = 22
       Hint = 'Start the game window with the size and position of the last game. Off: centered with 640x480 (helps with several monitors or when the window is no longer visible).'
       Top = 52
-      Width = 180
+      Width = 192
       Caption = 'Re&member window position'
       TabOrder = 4
     end
@@ -170,15 +169,15 @@ object Form1: TForm1
     Top = 294
     Width = 328
     Caption = ' Internet game (optional) '
-    ClientHeight = 102
+    ClientHeight = 103
     ClientWidth = 326
     TabOrder = 2
     object CheckBox3: TCheckBox
       Left = 8
-      Height = 21
+      Height = 22
       Hint = 'Join a game over the internet: the game connects to the router IP and port below. Not needed in the local network.'
       Top = 2
-      Width = 158
+      Width = 154
       Caption = '&Join through a router'
       TabOrder = 0
       OnChange = CheckBox3Change
@@ -187,13 +186,13 @@ object Form1: TForm1
       Left = 8
       Height = 16
       Top = 28
-      Width = 54
+      Width = 55
       Caption = 'Router &IP'
       FocusControl = Edit2
     end
     object Edit2: TEdit
       Left = 120
-      Height = 30
+      Height = 26
       Hint = 'IP address of the router of the player who hosts the game.'
       Top = 28
       Width = 198
@@ -210,7 +209,7 @@ object Form1: TForm1
     end
     object Edit3: TEdit
       Left = 120
-      Height = 30
+      Height = 26
       Hint = 'Port the router forwards to the server of the host (default 5521).'
       Top = 64
       Width = 198
@@ -224,7 +223,7 @@ object Form1: TForm1
     Top = 422
     Width = 528
     Caption = ' Installation '
-    ClientHeight = 62
+    ClientHeight = 63
     ClientWidth = 526
     TabOrder = 3
     object Label5: TLabel
@@ -268,10 +267,10 @@ object Form1: TForm1
   end
   object CheckBox6: TCheckBox
     Left = 10
-    Height = 21
+    Height = 22
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
     Top = 510
-    Width = 268
+    Width = 264
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
   end
@@ -320,7 +319,7 @@ object Form1: TForm1
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
     Top = 603
-    Width = 42
+    Width = 45
     Caption = 'Manual'
     Font.Color = clBlue
     Font.Style = [fsUnderline]
@@ -332,11 +331,11 @@ object Form1: TForm1
     AnchorSideLeft.Side = asrBottom
     AnchorSideTop.Control = Label8
     Cursor = crHandPoint
-    Left = 68
+    Left = 71
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
     Top = 603
-    Width = 80
+    Width = 79
     BorderSpacing.Left = 16
     Caption = 'Config folder'
     Font.Color = clBlue
@@ -357,7 +356,7 @@ object Form1: TForm1
   object ComboBox1: TComboBox
     AnchorSideRight.Control = Button3
     Left = 326
-    Height = 30
+    Height = 26
     Hint = 'The language of the launcher.'
     Top = 596
     Width = 110
