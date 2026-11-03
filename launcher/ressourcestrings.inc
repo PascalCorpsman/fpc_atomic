@@ -72,16 +72,16 @@ Resourcestring
   R_SoundSetAuto = 'Automatic';
   R_SoundSetOriginal = 'Original (CD)';
   R_NoSounds = '(no sounds)';
-  R_NoSoundsHint = 'The game has no sounds: the CD sounds are missing and the selected graphics set has none. Choose the sounds in the game options or create a graphics set with sounds.';
+  R_NoSoundsHint = 'The game has no sounds: the CD sounds are missing and the selected sound source has none. Choose "Automatic" with a graphics set with sounds or such a set below the image (or in the game options), or create a graphics set with sounds.';
   RF_SoundSet = 'Sounds: %s';
-  R_SoundSetHint = 'The sounds of the game: Original (from the CD) or the sounds of a set from the graphics generator. Automatic = the sounds of the selected graphics set if the CD sounds are missing, else the original. What a set lacks comes from the original.';
+  R_SoundSetHint = 'The sounds of the game. Automatic: the sounds of the selected graphics set (with "Original" the sounds from the CD). Original (CD): always the sounds from the CD. Or the sounds of a set from the graphics generator. What a set lacks comes from the original.';
+  RF_SoundSetAutoShort = 'Sounds: Auto (%s)'; // Automatisch mit der tatsächlichen Quelle, nur wenn es zwischen die Pfeile passt
   RF_SoundSetPlays = 'Plays: %s';
   R_SoundTest = '♪  Test sounds';
   R_SoundTestStop = '■  Stop';
-  R_SoundTestHint = 'Listen to the selected sounds: an explosion, a voice and the start of the menu music. Click again to stop.';
+  R_SoundTestHint = 'Listen to the selected sounds: an explosion, a voice and the start of the menu music (also when music or sounds are switched off). Click again to stop.';
   R_SoundTestUnavailable = 'The sound test needs the BASS library (bass.dll / libbass.so) like the game, it could not be loaded.';
   R_SoundTestNothing = 'Nothing to play: the selected sounds have none of the test sounds and the CD sounds are missing.';
-  R_SoundTestMuted = 'Music and sound effects are switched off ("Play music" and Game options...).';
   R_KeyboardSettings = 'Configure controls';
   R_Player0 = 'Player 1';
   R_Player1 = 'Player 2';

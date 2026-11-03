@@ -37,13 +37,17 @@ Every set contains its own game sounds: explosions, kicks, bounces, teleporters 
 
 The sound fits the style: flat sounds clear and punchy, soft warm with a little reverb, pixel like a 16-bit console with echo, retro rough like 8-bit. The seed changes pitch, length and timbre, so two sets of the same style sound different.
 
-In the launcher the sounds are shown below the image on the left in a second row: `◀  Sounds: Name  ▶`. **Test sounds** plays an explosion, a callout and the start of the menu music of the selected source.
+In the launcher the sounds are shown below the image on the left in a second row: `◀  Sounds: Name  ▶`. **Test sounds** plays an explosion, a callout and the start of the menu music of the selected source, even if music or sounds are switched off.
 
 Which sounds the game plays is set there or under **Game options...** with **Sounds**:
 
-- **Automatic** (default): the sounds from the CD if there are any, else those of the selected graphics set.
-- **Original (CD)**: always the sounds from the CD.
-- **a set**: the sounds of this set, even if the CD sounds are there. If a sound is missing in the set, it comes from the CD.
+- **Automatic** (default): the sounds of the selected graphics set. With "Original" (or a set without sounds) the sounds from the CD. So switching the graphics set also switches to its sounds. If it fits between the arrows, the actual source is shown, e.g. `Sounds: Auto (Name)`, else the tooltip shows it.
+- **Original (CD)**: always the sounds from the CD, also with a generated graphics set.
+- **a set**: the sounds of this set, independent of the graphics set and even if the CD sounds are there.
+
+If a sound is missing in the selected source, it comes from the CD. If there are neither CD sounds nor sounds in the selected source, the game is silent, the launcher shows "(no sounds)" then.
+
+The sounds are switched on and off in the launcher under **Game settings**: **Play music** (menu and game) and **Play sounds** (the game sounds, the same setting as **Play sound effects** in the game options).
 
 ## The graphics generator
 

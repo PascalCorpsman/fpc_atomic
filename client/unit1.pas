@@ -338,7 +338,8 @@ Begin
   End;
   (*
    * Sounds: -sounds <Ordner unter assets/>, leer oder unbekannt (oder ohne Parameter) = die Originalsounds aus data/,
-   * "auto" = die des Grafiksatzes, wenn es keine Originalsounds gibt. Fehlende Sounds des Satzes kommen aus data/.
+   * "auto" = die des Grafiksatzes (-assets), wenn er Sounds hat, sonst (Originalgrafik) die Originalsounds.
+   * Fehlende Sounds des Satzes kommen aus data/.
    *)
   SoundSet := '';
   For i := 1 To Paramcount - 1 Do Begin

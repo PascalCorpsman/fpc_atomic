@@ -1,11 +1,11 @@
 object Form1: TForm1
   Left = 347
-  Height = 635
+  Height = 659
   Top = 107
   Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Form1'
-  ClientHeight = 635
+  ClientHeight = 659
   ClientWidth = 547
   KeyPreview = True
   Position = poScreenCenter
@@ -68,7 +68,7 @@ object Form1: TForm1
     AnchorSideLeft.Control = Image1
     Left = 8
     Height = 25
-    Hint = 'Previous sound source.'
+    Hint = 'Previous sound source.'#13#10'Automatic: the sounds of the selected graphics set (with "Original" the sounds from the CD).'
     Top = 363
     Width = 28
     Caption = #9664
@@ -95,7 +95,7 @@ object Form1: TForm1
     AnchorSideRight.Side = asrBottom
     Left = 172
     Height = 25
-    Hint = 'Next sound source.'
+    Hint = 'Next sound source.'#13#10'Automatic: the sounds of the selected graphics set (with "Original" the sounds from the CD).'
     Top = 363
     Width = 28
     Anchors = [akTop, akRight]
@@ -160,83 +160,92 @@ object Form1: TForm1
   end
   object GroupBox3: TGroupBox
     Left = 208
-    Height = 158
+    Height = 182
     Top = 128
     Width = 328
     Caption = ' Game settings '
-    ClientHeight = 141
+    ClientHeight = 165
     ClientWidth = 326
     TabOrder = 1
+    object CheckBox4: TCheckBox
+      Left = 8
+      Height = 22
+      Hint = 'Play the music (menu and game).'
+      Top = 4
+      Width = 87
+      Caption = 'Play mu&sic'
+      TabOrder = 0
+    end
+    object CheckBox8: TCheckBox
+      Left = 164
+      Height = 22
+      Hint = 'Play the sound effects (explosions, items, voices, ...). The same as "Play sound effects" in Game options...'
+      Top = 4
+      Width = 92
+      Caption = 'Pla&y sounds'
+      TabOrder = 1
+    end
     object CheckBox2: TCheckBox
       Left = 8
       Height = 22
       Hint = 'Start the game in fullscreen mode.'
-      Top = 4
+      Top = 28
       Width = 84
       Caption = '&Fullscreen'
-      TabOrder = 0
-    end
-    object CheckBox4: TCheckBox
-      Left = 164
-      Height = 22
-      Hint = 'Play the music. The sound effects can be switched off in Game options...'
-      Top = 4
-      Width = 87
-      Caption = 'Play mu&sic'
-      TabOrder = 1
+      TabOrder = 2
     end
     object CheckBox5: TCheckBox
-      Left = 8
+      Left = 164
       Height = 22
       Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
       Top = 28
       Width = 90
       Caption = 'Fill &window'
-      TabOrder = 2
+      TabOrder = 3
     end
     object CheckBox1: TCheckBox
-      Left = 164
+      Left = 8
       Height = 22
       Hint = 'Show the frames per second in the game.'
-      Top = 28
+      Top = 52
       Width = 82
       Caption = 'S&how FPS'
-      TabOrder = 3
+      TabOrder = 4
     end
     object CheckBox7: TCheckBox
       Left = 8
       Height = 22
       Hint = 'Start the game window with the size and position of the last game. Off: centered with 640x480 (helps with several monitors or when the window is no longer visible).'
-      Top = 52
+      Top = 76
       Width = 192
       Caption = 'Re&member window position'
-      TabOrder = 4
+      TabOrder = 5
     end
     object Button8: TButton
       Left = 8
       Height = 25
       Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
-      Top = 80
+      Top = 104
       Width = 178
       Caption = '&Game options...'
-      TabOrder = 5
+      TabOrder = 6
       OnClick = Button8Click
     end
     object Button7: TButton
       Left = 192
       Height = 25
       Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
-      Top = 80
+      Top = 104
       Width = 126
       Caption = '&Mods...'
-      TabOrder = 6
+      TabOrder = 7
       OnClick = Button7Click
     end
     object Label10: TLabel
       Left = 8
       Height = 16
       Hint = 'The game mode of the next game hosted on this PC.'
-      Top = 115
+      Top = 139
       Width = 178
       AutoSize = False
       Caption = 'Label10'
@@ -245,17 +254,17 @@ object Form1: TForm1
       Left = 192
       Height = 25
       Hint = 'Choose the game mode (Classic or Hunter) and its settings. It applies when a game is hosted on this PC.'
-      Top = 110
+      Top = 134
       Width = 126
       Caption = 'Game mo&de...'
-      TabOrder = 7
+      TabOrder = 8
       OnClick = Button9Click
     end
   end
   object GroupBox2: TGroupBox
     Left = 208
     Height = 120
-    Top = 294
+    Top = 318
     Width = 328
     Caption = ' Internet game (optional) '
     ClientHeight = 103
@@ -309,7 +318,7 @@ object Form1: TForm1
   object GroupBox4: TGroupBox
     Left = 8
     Height = 80
-    Top = 422
+    Top = 446
     Width = 528
     Caption = ' Installation '
     ClientHeight = 63
@@ -379,7 +388,7 @@ object Form1: TForm1
     Left = 10
     Height = 22
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 510
+    Top = 534
     Width = 264
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
@@ -389,7 +398,7 @@ object Form1: TForm1
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 536
+    Top = 560
     Width = 528
     BevelOuter = bvNone
     ClientHeight = 50
@@ -428,7 +437,7 @@ object Form1: TForm1
     Left = 10
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 603
+    Top = 627
     Width = 45
     Caption = 'Manual'
     Font.Color = clBlue
@@ -444,7 +453,7 @@ object Form1: TForm1
     Left = 71
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
-    Top = 603
+    Top = 627
     Width = 79
     BorderSpacing.Left = 16
     Caption = 'Config folder'
@@ -456,7 +465,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 446
     Height = 30
-    Top = 596
+    Top = 620
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
@@ -468,7 +477,7 @@ object Form1: TForm1
     Left = 326
     Height = 26
     Hint = 'The language of the launcher.'
-    Top = 596
+    Top = 620
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10

@@ -48,6 +48,7 @@ Type
     CheckBox5: TCheckBox;
     CheckBox6: TCheckBox;
     CheckBox7: TCheckBox;
+    CheckBox8: TCheckBox;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
@@ -414,10 +415,13 @@ End;
 Procedure TForm1.Button8Click(Sender: TObject);
 Begin
   // Spiel Optionen, die selben Schlüssel wie im Optionen Menü des Spiels
+  // "Sounds abspielen" ist die selbe Einstellung wie "Soundeffekte abspielen" im Dialog, also vorher speichern und danach lesen
+  ini.WriteBool(FPC_AtomicIniSection, 'PlaySoundEffects', CheckBox8.Checked);
   form5.LoadFromIni(ini);
   If form5.ShowModal = mrOK Then Begin
     form5.SaveToIni(ini);
     ini.UpdateFile;
+    CheckBox8.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
     ReadAssetSets(); // Der Grafiksatz kann sich im Dialog geändert haben
   End;
 End;
@@ -454,7 +458,6 @@ Const
   MusicMs = 8000; // Nur der Anfang der Menümusik
 Var
   Steps: TSoundTestSteps;
-  Effects, Music: Boolean;
   Folder: String;
 
   Procedure Add(Const aFile: String; MaxMs: integer);
@@ -482,20 +485,12 @@ Begin
     StopSoundTest();
     exit;
   End;
-  // Die Schalter des Spiels gelten auch hier: Musik (Hauptfenster) und Soundeffekte (Spieloptionen)
-  Effects := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
-  Music := CheckBox4.Checked;
-  If Not (Effects Or Music) Then Begin
-    showmessage(R_SoundTestMuted);
-    exit;
-  End;
+  // Ein ausdrücklicher Test: spielt immer alles, auch wenn "Musik abspielen" oder "Sounds abspielen" aus sind
   Folder := SelectedSoundSet();
   Steps := Nil;
-  If Effects Then Begin
-    Add(InSounds(Explosions), 0);
-    Add(InSounds(Voices), 0);
-  End;
-  If Music Then Add(FirstSoundFile(Folder, ['res' + PathDelim + 'mainmenu_sound.wav']), MusicMs);
+  Add(InSounds(Explosions), 0);
+  Add(InSounds(Voices), 0);
+  Add(FirstSoundFile(Folder, ['res' + PathDelim + 'mainmenu_sound.wav']), MusicMs);
   If length(Steps) = 0 Then Begin
     showmessage(R_SoundTestNothing);
     exit;
@@ -912,11 +907,11 @@ End;
 
 Procedure TForm1.UpdateSoundCaption;
 Var
-  Folder, Plays: String;
+  Folder, Plays, s: String;
 Begin
   If (Not assigned(fSoundFolders)) Or (fSoundIndex < 0) Or (fSoundIndex >= fSoundFolders.Count) Then exit;
   Label12.Caption := format(RF_SoundSet, [fSoundNames[fSoundIndex]]);
-  // Im Tooltip, was tatsächlich gespielt wird (Automatisch hängt vom Grafiksatz und den CD-Sounds ab)
+  // Im Tooltip, was tatsächlich gespielt wird (Automatisch hängt vom Grafiksatz ab)
   Folder := SelectedSoundSet();
   If Folder <> '' Then Begin
     Plays := AssetSetName(Folder);
@@ -926,6 +921,16 @@ Begin
   End
   Else Begin
     Plays := R_NoSounds;
+  End;
+  // Bei Automatisch steht die tatsächliche Quelle kurz dabei, wenn das zwischen die Pfeile passt (sonst nur im Tooltip)
+  If (fSoundIndex = 0) And HandleAllocated And ((Folder <> '') Or HasOriginalSounds()) Then Begin
+    If Folder <> '' Then Begin
+      s := format(RF_SoundSetAutoShort, [AssetSetName(Folder)]);
+    End
+    Else Begin
+      s := format(RF_SoundSetAutoShort, [R_AssetSetOriginal]);
+    End;
+    If Label12.Canvas.TextWidth(s) <= Label12.Width Then Label12.Caption := s;
   End;
   Label12.Hint := R_SoundSetHint + LineEnding + LineEnding + format(RF_SoundSetPlays, [Plays]);
   // Hört man gerade eine andere Quelle probe, dann aufhören
@@ -1314,7 +1319,8 @@ Begin
   CheckBox1.Checked := ini.ReadBool(FPC_AtomicIniSection, 'ShowFPS', false);
   CheckBox2.Checked := ini.ReadBool(FPC_AtomicIniSection, 'Fullscreen', false);
   CheckBox3.Checked := false;
-  CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySounds', true);
+  CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySounds', true); // Nur die Musik
+  CheckBox8.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true); // Wie "Soundeffekte abspielen" in den Spieloptionen
   CheckBox5.Checked := Not ini.ReadBool(FPC_AtomicIniSection, 'Proportional', true);
   CheckBox7.Checked := ini.ReadBool(FPC_AtomicIniSection, 'RememberWindow', true);
   edit1.text := ini.ReadString(FPC_AtomicIniSection, 'NodeName', 'Player 1');
@@ -1551,6 +1557,7 @@ Begin
   ini.WriteBool(FPC_AtomicIniSection, 'Fullscreen', CheckBox2.Checked);
 
   ini.WriteBool(FPC_AtomicIniSection, 'PlaySounds', CheckBox4.Checked);
+  ini.WriteBool(FPC_AtomicIniSection, 'PlaySoundEffects', CheckBox8.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'Proportional', Not CheckBox5.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'RememberWindow', CheckBox7.Checked);
   ini.WriteString(FPC_AtomicIniSection, 'NodeName', trim(edit1.text));

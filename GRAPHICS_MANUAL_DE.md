@@ -37,13 +37,17 @@ Jeder Satz enthält eigene Spielgeräusche: Explosionen, Kicks, Abpraller, Telep
 
 Der Klang passt zum Stil: Flach klingt klar und knackig, Weich warm mit etwas Hall, Pixel nach 16-Bit-Konsole mit Echo, Retro rau nach 8-Bit. Der Seed verändert Tonhöhe, Länge und Klangfarbe, zwei Sätze im selben Stil klingen also unterschiedlich.
 
-Im Launcher stehen die Töne unter dem Bild links in einer zweiten Zeile: `◀  Sounds: Name  ▶`. **Töne testen** spielt eine Explosion, einen Spruch und den Anfang der Menü-Musik der gewählten Quelle.
+Im Launcher stehen die Töne unter dem Bild links in einer zweiten Zeile: `◀  Sounds: Name  ▶`. **Probehören** spielt eine Explosion, einen Spruch und den Anfang der Menü-Musik der gewählten Quelle, auch wenn Musik oder Sounds ausgeschaltet sind.
 
 Welche Töne das Spiel spielt, stellt man dort oder unter **Spieloptionen...** bei **Sounds** ein:
 
-- **Automatisch** (Standard): die Töne von der CD, wenn es sie gibt, sonst die des gewählten Grafiksatzes.
-- **Original (CD)**: immer die Töne von der CD.
-- **ein Satz**: die Töne dieses Satzes, auch wenn die CD-Töne da sind. Fehlt dem Satz ein Ton, kommt er von der CD.
+- **Automatisch** (Standard): die Töne des gewählten Grafiksatzes. Bei „Original“ (oder einem Satz ohne Töne) die Töne von der CD. Wer den Grafiksatz wechselt, hört also auch dessen Töne. Passt es neben die Pfeile, steht die tatsächliche Quelle dabei, z.B. `Sounds: Auto (Name)`, sonst zeigt sie der Tooltip.
+- **Original (CD)**: immer die Töne von der CD, auch zu einem erzeugten Grafiksatz.
+- **ein Satz**: die Töne dieses Satzes, unabhängig vom Grafiksatz und auch wenn die CD-Töne da sind.
+
+Fehlt der gewählten Quelle ein Ton, kommt er von der CD. Gibt es weder CD-Töne noch Töne in der gewählten Quelle, bleibt das Spiel stumm, der Launcher zeigt dann „(ohne Sounds)“.
+
+Ein- und ausschalten lassen sich die Töne im Launcher unter **Spieleinstellungen**: **Musik abspielen** (Menü und Spiel) und **Sounds abspielen** (die Spielgeräusche, dieselbe Einstellung wie **Soundeffekte abspielen** in den Spieloptionen).
 
 ## Der Grafik-Generator
 

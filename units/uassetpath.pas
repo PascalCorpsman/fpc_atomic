@@ -36,7 +36,9 @@ Interface
  * The sound source is selected independently of the graphics set (SoundSet, client parameter -sounds <Folder>):
  * '' = the original sounds from data/ (CD), '<Folder>' = the sounds of that set (sounds/*.wav, res/*.wav with the same
  * file names as in data/). A sound that is missing in the set is taken from data/ (see SoundFile).
- * The launcher setting [Launcher] SoundSet has the additional value SoundSetAuto (default), see ResolveSoundSet.
+ * The launcher setting [Launcher] SoundSet has the additional value SoundSetAuto (default, client -sounds auto): the
+ * sounds of the selected graphics set, with the original graphics (or a set without sounds) the original sounds, see
+ * ResolveSoundSet.
  *)
 
 Uses
@@ -46,7 +48,7 @@ Const
   AssetProfileFile = 'profile.ini';
   AssetPreviewFile = 'preview.png';
 
-  SoundSetAuto = 'auto'; // [Launcher] SoundSet: the sounds of the graphics set, if the CD sounds are missing
+  SoundSetAuto = 'auto'; // [Launcher] SoundSet: the sounds of the graphics set (original graphics -> original sounds)
 
 Var
   AssetSet: String = ''; // Folder name below assets/, '' = original graphics from data/
@@ -107,7 +109,7 @@ Function SetHasSounds(Const Folder: String): Boolean; // True if assets/<Folder>
 (*
  * The sound set to use for the setting Setting ([Launcher] SoundSet) and the selected graphics set GraphicsSet:
  *   ''           -> '' (original)
- *   SoundSetAuto -> GraphicsSet, if it has sounds and the CD sounds are missing, else ''
+ *   SoundSetAuto -> GraphicsSet, if it has sounds, else '' (the original graphics or a set without sounds -> original)
  *   '<Folder>'   -> Folder, if that set has sounds, else ''
  *)
 Function ResolveSoundSet(Const Setting, GraphicsSet: String): String;
@@ -307,7 +309,8 @@ Function ResolveSoundSet(Const Setting, GraphicsSet: String): String;
 Begin
   result := '';
   If SameText(trim(Setting), SoundSetAuto) Then Begin
-    If (trim(GraphicsSet) <> '') And (Not HasOriginalSounds()) And SetHasSounds(GraphicsSet) Then Begin
+    // The sounds belong to the graphics: a set with sounds plays its own, also when the CD sounds are there
+    If SetHasSounds(GraphicsSet) Then Begin
       result := trim(GraphicsSet);
     End;
   End
