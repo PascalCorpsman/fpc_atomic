@@ -24,11 +24,19 @@ Interface
  * A graphics set lives in assets/<Folder>/ next to the executable and has the same sub layout as data/
  * (atomic/, atomic/die/, atomic/idle/, atomic/locked_in/, maps/FieldXX/, res/), plus profile.ini ([General] Name=...)
  * and preview.png. A set may be incomplete, every graphic that is missing in the set is taken from data/.
- * Sounds, schemes and maps/FieldXX/info.txt are never part of a set, they always come from data/.
+ * Schemes and maps/FieldXX/info.txt are never part of a set, they always come from data/. Sounds of a set are
+ * selected separately (see below).
  * A generated set brings its own schemes in schemes/*.SCH, they are copied to data/schemes/ when there are none
  * (no CD data), so server and clients always read the schemes from data/schemes/ (see CopySetSchemes).
  *
  * Without a selected set (AssetSet = '') everything is loaded from data/ as before.
+ *
+ * Sounds
+ *
+ * The sound source is selected independently of the graphics set (SoundSet, client parameter -sounds <Folder>):
+ * '' = the original sounds from data/ (CD), '<Folder>' = the sounds of that set (sounds/*.wav, res/*.wav with the same
+ * file names as in data/). A sound that is missing in the set is taken from data/ (see SoundFile).
+ * The launcher setting [Launcher] SoundSet has the additional value SoundSetAuto (default), see ResolveSoundSet.
  *)
 
 Uses
@@ -38,8 +46,11 @@ Const
   AssetProfileFile = 'profile.ini';
   AssetPreviewFile = 'preview.png';
 
+  SoundSetAuto = 'auto'; // [Launcher] SoundSet: the sounds of the graphics set, if the CD sounds are missing
+
 Var
   AssetSet: String = ''; // Folder name below assets/, '' = original graphics from data/
+  SoundSet: String = ''; // Folder name below assets/, '' = original sounds from data/
 
 (*
  * Selects the set by its folder name, returns false (and selects the original) if there is no such set.
@@ -77,6 +88,35 @@ Function AtomicDirs(Const SubDir: String): TStringArray;
  * Folders gets the folder names, Names the names from profile.ini (the folder name if there is none).
  *)
 Procedure ListAssetSets(Const Folders, Names: TStrings);
+
+(*
+ * Selects the sound set by its folder name, returns false (and selects the original) if there is no such set
+ * or it has no sounds.
+ *)
+Function SetSoundSet(Const Folder: String): Boolean;
+
+(*
+ * RelPath is relative to data/ (e.g. 'sounds' + PathDelim + 'bmdrop1.wav').
+ * Result is assets/<SoundSet>/<RelPath> if that file exists, else data/<RelPath> (both with AppDir in front).
+ *)
+Function SoundFile(Const RelPath: String): String;
+
+Function HasOriginalSounds(): Boolean; // True if data/sounds/ contains at least one *.wav (CD data)
+Function SetHasSounds(Const Folder: String): Boolean; // True if assets/<Folder>/sounds/ contains at least one *.wav
+
+(*
+ * The sound set to use for the setting Setting ([Launcher] SoundSet) and the selected graphics set GraphicsSet:
+ *   ''           -> '' (original)
+ *   SoundSetAuto -> GraphicsSet, if it has sounds and the CD sounds are missing, else ''
+ *   '<Folder>'   -> Folder, if that set has sounds, else ''
+ *)
+Function ResolveSoundSet(Const Setting, GraphicsSet: String): String;
+
+(*
+ * Like ListAssetSets, but only the sets that have sounds (SetHasSounds).
+ *)
+Procedure ListSoundSets(Const Folders, Names: TStrings);
+
 Function AssetSetName(Const Folder: String): String; // Name from profile.ini, '' = Folder
 
 Function SchemesDir(): String; // <AppDir>data/schemes/
@@ -181,6 +221,88 @@ Begin
   End;
   setlength(result, length(result) + 1);
   result[high(result)] := AssetDataDir() + 'atomic' + PathDelim;
+End;
+
+// True if Dir contains at least one *.wav (case insensitive, Linux)
+Function HasWavFiles(Const Dir: String): Boolean;
+Var
+  sr: TSearchRec;
+Begin
+  result := false;
+  If FindFirst(IncludeTrailingPathDelimiter(Dir) + '*', faAnyFile, sr) = 0 Then Begin
+    Try
+      Repeat
+        If (sr.Attr And faDirectory) <> 0 Then Continue;
+        If SameText(ExtractFileExt(sr.Name), '.wav') Then Begin
+          result := true;
+          break;
+        End;
+      Until FindNext(sr) <> 0;
+    Finally
+      FindClose(sr);
+    End;
+  End;
+End;
+
+Function HasOriginalSounds(): Boolean;
+Begin
+  result := HasWavFiles(AssetDataDir() + 'sounds');
+End;
+
+Function SetHasSounds(Const Folder: String): Boolean;
+Var
+  f: String;
+Begin
+  // Only a plain folder name below assets/, no way out of it
+  f := trim(Folder);
+  result := (f <> '') And (f <> '.') And (f <> '..') And (pos('/', f) = 0) And (pos('\', f) = 0) And
+    HasWavFiles(AssetSetsDir() + f + PathDelim + 'sounds');
+End;
+
+Function SetSoundSet(Const Folder: String): Boolean;
+Begin
+  result := SetHasSounds(Folder);
+  If result Then Begin
+    SoundSet := trim(Folder);
+  End
+  Else Begin
+    SoundSet := '';
+  End;
+End;
+
+Function SoundFile(Const RelPath: String): String;
+Begin
+  If SoundSet <> '' Then Begin
+    result := AssetSetsDir() + SoundSet + PathDelim + RelPath;
+    If FileExists(result) Then exit;
+  End;
+  result := AssetDataDir() + RelPath;
+End;
+
+Function ResolveSoundSet(Const Setting, GraphicsSet: String): String;
+Begin
+  result := '';
+  If SameText(trim(Setting), SoundSetAuto) Then Begin
+    If (trim(GraphicsSet) <> '') And (Not HasOriginalSounds()) And SetHasSounds(GraphicsSet) Then Begin
+      result := trim(GraphicsSet);
+    End;
+  End
+  Else If SetHasSounds(Setting) Then Begin
+    result := trim(Setting);
+  End;
+End;
+
+Procedure ListSoundSets(Const Folders, Names: TStrings);
+Var
+  i: integer;
+Begin
+  ListAssetSets(Folders, Names);
+  For i := Folders.Count - 1 Downto 0 Do Begin
+    If Not SetHasSounds(Folders[i]) Then Begin
+      Folders.Delete(i);
+      Names.Delete(i);
+    End;
+  End;
 End;
 
 Function AssetSetName(Const Folder: String): String;
@@ -309,7 +431,7 @@ Begin
       Try
         Repeat
           If (sr.Attr And faDirectory) = 0 Then Continue;
-          If (sr.Name = '.') Or (sr.Name = '..') Then Continue;
+          If (sr.Name = '') Or (sr.Name[1] = '.') Then Continue; // also temporary folders of the asset generator (.<set>.tmp-<n>)
           If Not FileExists(AssetSetsDir() + sr.Name + PathDelim + AssetProfileFile) Then Continue;
           sl.Add(sr.Name);
         Until FindNext(sr) <> 0;

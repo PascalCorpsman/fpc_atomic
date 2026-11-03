@@ -40,7 +40,7 @@ Der aktuelle Satz steht im Launcher **unter dem Bild links**: `◀  Name  ▶`. 
 - **Rechts:** die Einstellungen des Bereichs als Schieberegler (Größe, Proportionen, Farbton, ...), jeweils mit **Zurück**. **Neuer Seed** würfelt nur diesen Bereich neu, **Seed sperren** hält ihn fest, wenn oben neu gewürfelt wird.
 - **Speichern** schreibt den Satz, **Als Satz speichern...** legt einen neuen an.
 
-Beim Speichern wird der Satz komplett neu erzeugt. Erst wenn alles fertig ist, ersetzt er den alten Satz. Bricht man ab oder läuft das Spiel gerade mit diesem Satz, bleibt der alte Satz unverändert. Eigene Dateien sollte man deshalb nicht in einen Satz-Ordner legen.
+Beim Speichern wird der Satz komplett neu erzeugt. Erst wenn alles fertig ist, ersetzt er den alten Satz. Bricht man ab, bleibt der alte Satz unverändert. Ist eine Datei des Satzes gerade von einem anderen Programm geöffnet, kommt eine Meldung, und der alte Satz bleibt ebenfalls erhalten. Ein laufendes Spiel sieht die neuen Grafiken erst beim nächsten Start. Eigene Dateien sollte man nicht in einen Satz-Ordner legen, sie gehen beim nächsten Speichern verloren.
 
 ## Die Stile
 

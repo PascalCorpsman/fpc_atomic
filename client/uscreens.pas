@@ -1460,9 +1460,10 @@ End;
 
 Procedure TScreen.LoadFromDisk(ResPath: String);
 Begin
-  fSoundExitScreen := ResPath + 'menuexit.wav';
+  // Die Sounds aus dem gewählten Soundsatz, wenn er sie hat, sonst aus data/res (ResPath)
+  fSoundExitScreen := SoundFile('res' + PathDelim + 'menuexit.wav');
   If fSoundFile <> '' Then Begin
-    fSoundFile := ResPath + fSoundFile;
+    fSoundFile := SoundFile('res' + PathDelim + fSoundFile);
   End;
   If fBackFile <> '' Then Begin
     fBackTex := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + fBackFile), smClamp);

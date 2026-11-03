@@ -43,6 +43,7 @@ Type
     ComboBox3: TComboBox;
     ComboBox4: TComboBox;
     ComboBox5: TComboBox;
+    ComboBox6: TComboBox;
     Image1: TImage;
     Label1: TLabel;
     Label2: TLabel;
@@ -54,6 +55,7 @@ Type
     Label8: TLabel;
     Label9: TLabel;
     Label10: TLabel;
+    Label11: TLabel;
     SpinEdit1: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
@@ -66,12 +68,14 @@ Type
   private
     fMapDirs: TStringList; // Zu jedem Eintrag in ComboBox4 das Verzeichnis der Karte, '' = Zufallskarte, '?' = gibt es hier nicht
     fAssetFolders: TStringList; // Zu jedem Eintrag in ComboBox5 der Ordner des Grafiksatzes unter assets/, '' = Original
+    fSoundFolders: TStringList; // Zu jedem Eintrag in ComboBox6 der Wert von [Launcher] SoundSet: SoundSetAuto, '' = Original, sonst der Ordner
     Procedure SetPlayTime(Value: integer);
     Function GetPlayTime(): integer;
     Procedure SetScheme(Const Value: String);
     Procedure ReadSchemes();
     Procedure ReadMaps();
     Procedure ReadAssetSets(Const Selected: String);
+    Procedure ReadSoundSets(Const Selected: String);
     Function MapGfx(Const Dir, Filename: String): String;
     Procedure SetMap(Const Value: String);
     Procedure UpdatePreview();
@@ -189,6 +193,7 @@ Begin
   caption := 'Game options';
   fMapDirs := TStringList.Create;
   fAssetFolders := TStringList.Create;
+  fSoundFolders := TStringList.Create;
   // Die Spielzeit wie im Spiel: unendlich oder 90 .. 600 s in 30 s Schritten
   ComboBox3.Items.Clear;
   ComboBox3.Items.Add('Infinity');
@@ -219,6 +224,7 @@ Procedure TForm5.FormDestroy(Sender: TObject);
 Begin
   fMapDirs.free;
   fAssetFolders.free;
+  fSoundFolders.free;
 End;
 
 Procedure TForm5.ReadAssetSets(Const Selected: String);
@@ -236,6 +242,27 @@ Begin
   ComboBox5.ItemIndex := 0;
   For i := 1 To fAssetFolders.Count - 1 Do Begin
     If SameText(fAssetFolders[i], Selected) Then ComboBox5.ItemIndex := i;
+  End;
+End;
+
+Procedure TForm5.ReadSoundSets(Const Selected: String);
+Var
+  Names: TStringList;
+  i: integer;
+Begin
+  // Automatisch, Original und alle Sätze in assets/, die Sounds haben
+  Names := TStringList.Create;
+  ListSoundSets(fSoundFolders, Names);
+  fSoundFolders.Insert(0, '');
+  Names.Insert(0, R_SoundSetOriginal);
+  fSoundFolders.Insert(0, SoundSetAuto);
+  Names.Insert(0, R_SoundSetAuto);
+  ComboBox6.Items.Assign(Names);
+  Names.free;
+  ComboBox6.ItemIndex := 1; // Ein unbekannter Satz (gelöscht oder ohne Sounds) ist im Spiel auch Original
+  If SameText(trim(Selected), SoundSetAuto) Then ComboBox6.ItemIndex := 0;
+  For i := 2 To fSoundFolders.Count - 1 Do Begin
+    If SameText(fSoundFolders[i], trim(Selected)) Then ComboBox6.ItemIndex := i;
   End;
 End;
 
@@ -426,6 +453,7 @@ Begin
   SpinEdit3.Value := 100;
   CheckBox4.Checked := true;
   ComboBox5.ItemIndex := 0;
+  ComboBox6.ItemIndex := 0; // Automatisch
   UpdatePreview();
 End;
 
@@ -473,6 +501,7 @@ Begin
   SpinEdit3.Value := ini.ReadInteger(FPC_AtomicIniSection, 'Volume', 10000) Div 100;
   CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
   ReadAssetSets(ini.ReadString('Launcher', 'AssetSet', ''));
+  ReadSoundSets(ini.ReadString('Launcher', 'SoundSet', SoundSetAuto));
   UpdatePreview();
 End;
 
@@ -506,6 +535,10 @@ Begin
   // Der Grafiksatz, die selbe Einstellung wie die Pfeile unter dem Bild im Hauptfenster
   If (ComboBox5.ItemIndex >= 0) And (ComboBox5.ItemIndex < fAssetFolders.Count) Then Begin
     ini.WriteString('Launcher', 'AssetSet', fAssetFolders[ComboBox5.ItemIndex]);
+  End;
+  // Die Sounds, unabhängig vom Grafiksatz (SoundSetAuto, '' = Original oder ein Ordner unter assets/)
+  If (ComboBox6.ItemIndex >= 0) And (ComboBox6.ItemIndex < fSoundFolders.Count) Then Begin
+    ini.WriteString('Launcher', 'SoundSet', fSoundFolders[ComboBox6.ItemIndex]);
   End;
 End;
 

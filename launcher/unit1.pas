@@ -121,6 +121,7 @@ Type
     Function AssetGeneratorCliExe(): String;
     Procedure StartAssetGenerator();
     Function SelectedAssetFolder(): String;
+    Function SelectedSoundSet(): String;
     Function MissingGameData(): TStringList;
     Function SelectUsableAssetSet(): Boolean;
     Procedure PrepareSchemes();
@@ -598,6 +599,11 @@ Begin
     p.Parameters.Add('-assets');
     p.Parameters.Add(fAssetFolders[fAssetIndex]);
   End;
+  // Die Sounds, ohne den Parameter nimmt das Spiel die Originalsounds aus data
+  If SelectedSoundSet() <> '' Then Begin
+    p.Parameters.Add('-sounds');
+    p.Parameters.Add(SelectedSoundSet());
+  End;
   If CheckBox6.Checked Then Begin
     // Der Launcher wartet versteckt, bis das Spiel beendet ist, und erscheint dann wieder (siehe Timer1Timer)
     p.Options := [];
@@ -754,6 +760,12 @@ Function TForm1.SelectedAssetFolder: String;
 Begin
   result := '';
   If (fAssetIndex > 0) And (fAssetIndex < fAssetFolders.Count) Then result := fAssetFolders[fAssetIndex];
+End;
+
+Function TForm1.SelectedSoundSet: String;
+Begin
+  // [Launcher] SoundSet (Standard Automatisch) zum gewählten Grafiksatz aufgelöst, '' = Originalsounds aus data
+  result := ResolveSoundSet(ini.ReadString('Launcher', 'SoundSet', SoundSetAuto), SelectedAssetFolder());
 End;
 
 Function TForm1.MissingGameData: TStringList;
@@ -1129,6 +1141,8 @@ Begin
   If sl.Count = 0 Then Begin
     Label5.Caption := R_GameDataFound;
     Label5.Font.Color := clGreen;
+    // Spielbar, aber stumm: weder CD-Sounds noch Sounds im gewählten Satz (siehe Spieloptionen, Sounds)
+    If (Not HasOriginalSounds()) And (SelectedSoundSet() = '') Then Label5.Caption := Label5.Caption + ' ' + R_NoSounds;
   End
   Else Begin
     Label5.Caption := R_GameDataMissing;
@@ -1148,6 +1162,10 @@ Begin
   // Die fehlenden Dateien stehen im Tooltip
   Label5.Hint := trim(sl.Text);
   Label5.ShowHint := sl.Count <> 0;
+  If (sl.Count = 0) And (Not HasOriginalSounds()) And (SelectedSoundSet() = '') Then Begin
+    Label5.Hint := R_NoSoundsHint;
+    Label5.ShowHint := true;
+  End;
   GameDataFound := sl.Count = 0;
   sl.free;
   Panel1MouseEnter(Nil);
@@ -1257,6 +1275,7 @@ Begin
   Language.AddIgnoredIdentifier('Form5.ComboBox2.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox4.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox5.Items');
+  Language.AddIgnoredIdentifier('Form5.ComboBox6.Items');
   ApplyLanguage();
   // Nur ein Hinweis neben "Updates...", ohne Klick wird nichts heruntergeladen
   If CheckUpdatesOnStart Then Begin

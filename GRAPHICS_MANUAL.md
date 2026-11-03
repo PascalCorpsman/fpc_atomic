@@ -40,7 +40,7 @@ The current set is shown in the launcher **below the image on the left**: `◀  
 - **Right:** the settings of the area as sliders (size, proportions, hue, ...), each with **Reset**. **New seed** rolls only this area again, **Lock seed** keeps it when the seed at the top is rolled.
 - **Save** writes the set, **Save as set...** creates a new one.
 
-When saving, the set is generated completely. Only when everything is done does it replace the old set. If the save is cancelled, or the game is running with this set at the moment, the old set stays unchanged. So do not put your own files into a set folder.
+When saving, the set is generated completely. Only when everything is done does it replace the old set. If the save is cancelled, the old set stays unchanged. If a file of the set is open in another program, a message is shown and the old set is kept as well. A running game shows the new graphics only after its next start. Do not put your own files into a set folder, they are lost on the next save.
 
 ## The styles
 

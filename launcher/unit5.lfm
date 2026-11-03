@@ -97,6 +97,22 @@ object Form5: TForm5
     Style = csDropDownList
     OnChange = ComboBox2Change
   end
+  object Label11: TLabel
+    Left = 436
+    Height = 15
+    Top = 300
+    Caption = 'Sounds'
+    FocusControl = ComboBox6
+  end
+  object ComboBox6: TComboBox
+    Hint = 'The sounds of the game: Original (from the CD) or the sounds of a set from the graphics generator. Automatic = the sounds of the selected graphics set if the CD sounds are missing, else the original. Missing sounds of a set are taken from the original.'
+    Left = 540
+    Height = 23
+    Top = 296
+    Width = 216
+    ItemHeight = 15
+    Style = csDropDownList
+  end
   object Label2: TLabel
     Left = 12
     Height = 15

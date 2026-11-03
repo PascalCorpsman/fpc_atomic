@@ -336,6 +336,27 @@ Begin
     i := CopySetSchemes(AssetSet);
     If i <> 0 Then log(format('Copied %d schemes from the graphics set to %s', [i, SchemesDir()]), llInfo);
   End;
+  (*
+   * Sounds: -sounds <Ordner unter assets/>, leer oder unbekannt (oder ohne Parameter) = die Originalsounds aus data/,
+   * "auto" = die des Grafiksatzes, wenn es keine Originalsounds gibt. Fehlende Sounds des Satzes kommen aus data/.
+   *)
+  SoundSet := '';
+  For i := 1 To Paramcount - 1 Do Begin
+    If lowercase(ParamStrUTF8(i)) = '-sounds' Then Begin
+      If SameText(trim(ParamStrUTF8(i + 1)), SoundSetAuto) Then Begin
+        SetSoundSet(ResolveSoundSet(SoundSetAuto, AssetSet));
+      End
+      Else If (trim(ParamStrUTF8(i + 1)) <> '') And Not SetSoundSet(ParamStrUTF8(i + 1)) Then Begin
+        log('Sound set "' + ParamStrUTF8(i + 1) + '" not found or without sounds, using the original sounds.', llWarning);
+      End;
+    End;
+  End;
+  If SoundSet = '' Then Begin
+    log('Sounds: original (data)', llInfo);
+  End
+  Else Begin
+    log('Sounds: ' + SoundSet + ' (' + AssetSetsDir() + SoundSet + PathDelim + ', missing files from data)', llInfo);
+  End;
   caption := defCaption;
 
   If (BASS_GetVersion() Shr 16) <> Bassversion Then Begin

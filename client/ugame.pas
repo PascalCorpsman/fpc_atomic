@@ -430,7 +430,7 @@ Begin
     sExitBomberman: Begin
         NeedFormClose := true;
         StartPlayingSong(''); // Disable the Background musik if playing, that speeds up the shutdown process or at least stop making noises
-        PlaySoundEffect('data' + pathdelim + 'res' + PathDelim + 'quitgame.wav', @OnQuitGameSoundFinished);
+        PlaySoundEffect(SoundFile('res' + PathDelim + 'quitgame.wav'), @OnQuitGameSoundFinished);
       End;
     sHost: Begin
         fParamJoinIP := '';
@@ -1899,7 +1899,7 @@ Begin
     seWrapHohle: s := SelectRandomSound(AtomicWrapHole);
     seTrampoline: s := SelectRandomSound(AtomicJump);
   End;
-  If s <> '' Then s := 'data' + PathDelim + 'sounds' + PathDelim + s;
+  If s <> '' Then s := SoundFile('sounds' + PathDelim + s); // Aus dem gewählten Soundsatz, sonst aus data
   PlaySoundEffect(s);
 End;
 

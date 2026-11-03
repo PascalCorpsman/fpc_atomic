@@ -243,7 +243,7 @@ Uses
   , math
 {$ENDIF}
 {$IFDEF Client}
-  , uvectormath
+  , uvectormath, uassetpath
   , dglOpenGL
   , uopengl_spriteengine
   , uopengl_shaderprimitives
@@ -542,6 +542,7 @@ Var
 {$IFDEF Client}
   i, j: Integer;
   xBrick: TOpenGL_Animation;
+  MapSound: String;
 {$ENDIF}
 Begin
   result := false;
@@ -583,6 +584,11 @@ Begin
 
   fSoundFile := Dir + 'sound.wav';
 {$IFDEF Client}
+  // Die Musik der Karte aus dem gewählten Soundsatz, wenn er sie hat (assets/<Satz>/maps/FieldXX/sound.wav)
+  If SoundSet <> '' Then Begin
+    MapSound := SoundFile('maps' + PathDelim + ExtractFileName(ExcludeTrailingPathDelimiter(Dir)) + PathDelim + 'sound.wav');
+    If FileExists(MapSound) Then fSoundFile := MapSound;
+  End;
   // Der Client braucht alle Grafiken, der Server nur info.txt. Der Sound ist optional (ohne CD-Daten gibt es keinen, dann bleibt die Karte stumm)
 
   If Not FileExists(Gfx('brick.png')) Then exit;
