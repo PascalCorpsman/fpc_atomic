@@ -332,6 +332,9 @@ Begin
   End
   Else Begin
     log('Graphics set: ' + AssetSet + ' (' + AssetSetDir() + ', missing files from data)', llInfo);
+    // Ohne CD-Daten gibt es keine Schemes in data/schemes, dann die des generierten Satzes (macht sonst der Launcher)
+    i := CopySetSchemes(AssetSet);
+    If i <> 0 Then log(format('Copied %d schemes from the graphics set to %s', [i, SchemesDir()]), llInfo);
   End;
   caption := defCaption;
 
@@ -581,7 +584,7 @@ End;
 
 Procedure TForm1.Load_Atomic_Settings;
 Var
-  SectionBakup: String;
+  SectionBakup, s: String;
 Begin
   // Read the Remote settings from "Launcher" Section
   SectionBakup := IniPropStorage1.IniSection;
@@ -603,6 +606,12 @@ Begin
     Game.Settings.ConveyorSpeed := csMiddle;
   End;
   Game.Settings.SchemeFile := IniPropStorage1.ReadString('SchemeFile', 'BASIC.SCH');
+  // Gibt es das Scheme nicht (z.B. nur generierte Schemes, die haben kein BASIC.SCH), dann BASIC.SCH oder das erste vorhandene
+  s := ResolveSchemeFile(Game.Settings.SchemeFile);
+  If s <> Game.Settings.SchemeFile Then Begin
+    log('Scheme "' + Game.Settings.SchemeFile + '" not found, using "' + s + '"', llWarning);
+    Game.Settings.SchemeFile := s;
+  End;
   Game.Settings.PlayTime := IniPropStorage1.ReadInteger('PlayTime', 2 * 60 + 30);
   Game.Settings.LostPlayersRevertToAI := IniPropStorage1.ReadBoolean('LostPlayersRevertToAI', false);
   Game.Settings.PlaySounds := IniPropStorage1.ReadBoolean('PlaySounds', true);

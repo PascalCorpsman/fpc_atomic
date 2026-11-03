@@ -12,6 +12,10 @@ Resourcestring
   R_UpToDate = 'Your version of fpc_atomic is up to date.';
   R_GameDataFound = '✓ Game data found';
   R_GameDataMissing = '✗ Game data missing';
+  R_GeneratingGraphics = 'Generating graphics …';
+  R_GenerateGraphicsTitle = 'Generate graphics';
+  R_AskGenerateGraphics = 'No game data found (graphics and schemes from the Atomic Bomberman CD).' + LineEnding + LineEnding + 'Generate an own graphics set now and start the game with it? This takes a few seconds, the game has no sounds then.' + LineEnding + LineEnding + 'If you have the CD, use "CD extractor..." instead.';
+  R_GenerateFailed = 'No graphics set was generated, the game can not start without game data.' + LineEnding + 'Use "CD extractor..." or try "Generate graphics" again.';
   R_GameVersionUnknown = 'Game ver. unknown';
   R_GameVersion = 'Game ver. ';
   R_VersionUpToDate = ', up to date';

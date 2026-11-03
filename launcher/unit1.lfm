@@ -272,7 +272,7 @@ object Form1: TForm1
       Left = 8
       Height = 15
       Top = 7
-      Width = 352
+      Width = 196
       AutoSize = False
       Caption = 'Label5'
       ParentFont = False
@@ -315,6 +315,17 @@ object Form1: TForm1
       Caption = 'Graphics...'
       TabOrder = 2
       OnClick = Button12Click
+    end
+    object Button13: TButton
+      Left = 212
+      Height = 25
+      Hint = 'No game data: generate an own graphics set (and schemes) without the CD.'#13#10'The game is started without sounds then.'
+      Top = 2
+      Width = 150
+      Caption = 'Ge&nerate graphics'
+      TabOrder = 3
+      Visible = False
+      OnClick = Button13Click
     end
   end
   object CheckBox6: TCheckBox

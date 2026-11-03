@@ -1077,7 +1077,7 @@ Function TGame.StartHost: Boolean;
 Var
   serv: String;
   p: TProcessUTF8;
-  EnterID: Integer;
+  EnterID, i: Integer;
 Begin
   EnterID := LogEnter('TGame.StartHost');
   result := false;
@@ -1101,6 +1101,14 @@ Begin
     p.Parameters.Add(inttostr(settings.Port));
     p.Parameters.Add('-l');
     p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
+    // -localhost: the server only listens on 127.0.0.1 (local game, no firewall question, nobody else can join)
+    For i := 1 To ParamCount Do
+      If lowercase(ParamStrUTF8(i)) = '-localhost' Then Begin
+        p.Parameters.Add('-bind');
+        p.Parameters.Add('127.0.0.1');
+        log('Server only listens on 127.0.0.1 (-localhost)', llInfo);
+        break;
+      End;
     p.Execute;
     p.free;
   End

@@ -17,6 +17,10 @@
  *
  * Paths are relative to the set folder and use '/' (e.g. 'atomic/walk.png'),
  * the same layout as the data folder of the game.
+ *
+ * For previews: DryRun = true and KeepImages = true writes nothing and keeps
+ * a copy of every image in Images (keyed images with fuchsia, as saved).
+ * Cancelled can be set from another thread, the next Save* raises EAbort.
  *)
 Unit uag_output;
 
@@ -56,16 +60,23 @@ Type
     fFiles: TStringList;
     fLock: TRTLCriticalSection;
     fExpected: Integer;
+    fImages: TStringList;
     Function FullPath(Const RelPath: String): String;
     Procedure Written(Const RelPath: String);
+    Procedure CheckCancel;
+    Procedure KeepImage(Const RelPath: String; Img: TAGImage; Keyed: Boolean);
   public
     DryRun: Boolean; // true = nothing is written, only counted (for the progress total)
+    KeepImages: Boolean; // true = a copy of every saved image is kept in Images
+    Cancelled: Boolean; // set by the UI thread, the next Save* raises EAbort
     OnProgress: TAGProgressEvent;
     Constructor Create(Const aDir: String);
     Destructor Destroy; override;
     Property Dir: String read fDir;
     Property Files: TStringList read fFiles; // relative paths of all written files
     Property Expected: Integer read fExpected write fExpected; // total for the progress, 0 = unknown
+    Property Images: TStringList read fImages; // RelPath, Objects = TAGImage (owned), only with KeepImages
+    Function FindImage(Const RelPath: String): TAGImage; // Nil if not kept
 
     Procedure SaveImage(Const RelPath: String; Img: TAGImage; Mode: TAGSaveMode);
     Procedure SaveAni(Const RelPath: String; Img: TAGImage; Const Spec: TAGAniSpec); // Img is keyed with fuchsia
@@ -269,11 +280,14 @@ Begin
   Inherited Create;
   fDir := IncludeTrailingPathDelimiter(aDir);
   fFiles := TStringList.Create;
+  fImages := TStringList.Create;
+  fImages.OwnsObjects := true;
   InitCriticalSection(fLock);
 End;
 
 Destructor TAGOutput.Destroy;
 Begin
+  fImages.Free;
   fFiles.Free;
   DoneCriticalSection(fLock);
   Inherited Destroy;
@@ -299,10 +313,43 @@ Begin
   If assigned(OnProgress) Then OnProgress(self, RelPath, done, fExpected);
 End;
 
+Procedure TAGOutput.CheckCancel;
+Begin
+  If Cancelled Then Raise EAbort.Create('Cancelled');
+End;
+
+Procedure TAGOutput.KeepImage(Const RelPath: String; Img: TAGImage; Keyed: Boolean);
+Var
+  c: TAGImage;
+Begin
+  If Not KeepImages Then exit;
+  c := Img.Clone;
+  If Keyed Then c.KeyTransparent;
+  EnterCriticalSection(fLock);
+  Try
+    fImages.AddObject(RelPath, c);
+  Finally
+    LeaveCriticalSection(fLock);
+  End;
+End;
+
+Function TAGOutput.FindImage(Const RelPath: String): TAGImage;
+Var
+  i: Integer;
+Begin
+  i := fImages.IndexOf(RelPath);
+  If i >= 0 Then
+    result := TAGImage(fImages.Objects[i])
+  Else
+    result := Nil;
+End;
+
 Procedure TAGOutput.SaveImage(Const RelPath: String; Img: TAGImage; Mode: TAGSaveMode);
 Var
   fs: TFileStream;
 Begin
+  CheckCancel;
+  KeepImage(RelPath, Img, Mode = smKeyed);
   If Not DryRun Then Begin
     fs := TFileStream.Create(FullPath(RelPath), fmCreate);
     Try
@@ -318,6 +365,8 @@ Procedure TAGOutput.SaveAni(Const RelPath: String; Img: TAGImage; Const Spec: TA
 Var
   fs: TFileStream;
 Begin
+  CheckCancel;
+  KeepImage(RelPath, Img, true);
   If Not DryRun Then Begin
     fs := TFileStream.Create(FullPath(RelPath), fmCreate);
     Try
@@ -335,6 +384,7 @@ Var
   i: Integer;
   s: String;
 Begin
+  CheckCancel;
   If Not DryRun Then Begin
     s := '';
     For i := 0 To high(Lines) Do

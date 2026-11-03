@@ -50,6 +50,7 @@ Type
     Area, Name: String;
     Base, Spread, Value: Double;
     Overridden: Boolean;
+    IsPick: Boolean; // integer choice 0 .. Spread (Pick, Chance), else Base +- Spread (Vary)
   End;
 
   TAGContext = Class;
@@ -86,10 +87,13 @@ Type
     PerPlayer: Boolean;
     Constructor Create;
     Destructor Destroy; override;
+    Procedure Assign(Src: TAGContext); // everything except the parameter log
+    Function Clone: TAGContext; // e.g. for a worker thread, the UI keeps its own context
     Function Area(Const AreaName: String): TAGArea;
     Function AreaSeed(Const AreaName: String): QWord;
     Procedure LockSeed(Const AreaName: String; aSeed: QWord);
     Procedure UnlockSeed(Const AreaName: String);
+    Function IsSeedLocked(Const AreaName: String): Boolean;
     Procedure SetOverride(Const AreaName, Param: String; Value: Double);
     Procedure ClearOverride(Const AreaName, Param: String);
     Function FindOverride(Const AreaName, Param: String; Out Value: Double): Boolean;
@@ -154,6 +158,7 @@ Begin
   info.Name := Param;
   info.Base := Base;
   info.Spread := Spread;
+  info.IsPick := false;
   info.Overridden := Ctx.FindOverride(Name, Param, v);
   If Not info.Overridden Then
     v := Base + Spread * (2 * HashUnit(Seed, Param) - 1);
@@ -172,6 +177,7 @@ Begin
   info.Name := Param;
   info.Base := 0;
   info.Spread := Count - 1; // UI: integer choice 0 .. Spread
+  info.IsPick := true;
   info.Overridden := Ctx.FindOverride(Name, Param, v);
   If info.Overridden Then
     result := AGClampI(AGRound(v), 0, Count - 1)
@@ -221,6 +227,22 @@ Begin
   fLockedSeeds.Free;
   DoneCriticalSection(fLock);
   Inherited Destroy;
+End;
+
+Procedure TAGContext.Assign(Src: TAGContext);
+Begin
+  Name := Src.Name;
+  Seed := Src.Seed;
+  Style := Src.Style;
+  PerPlayer := Src.PerPlayer;
+  fOverrides.Assign(Src.fOverrides);
+  fLockedSeeds.Assign(Src.fLockedSeeds);
+End;
+
+Function TAGContext.Clone: TAGContext;
+Begin
+  result := TAGContext.Create;
+  result.Assign(self);
 End;
 
 Procedure TAGContext.LogParam(Const Info: TAGParamInfo);
@@ -285,6 +307,11 @@ Var
 Begin
   i := fLockedSeeds.IndexOfName(AreaName);
   If i >= 0 Then fLockedSeeds.Delete(i);
+End;
+
+Function TAGContext.IsSeedLocked(Const AreaName: String): Boolean;
+Begin
+  result := fLockedSeeds.IndexOfName(AreaName) >= 0;
 End;
 
 Procedure TAGContext.SetOverride(Const AreaName, Param: String; Value: Double);

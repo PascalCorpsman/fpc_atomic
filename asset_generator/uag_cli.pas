@@ -75,8 +75,7 @@ Var
   OutDir, ProfileFile, OnlyList, SeedStr, StyleStr, NameStr: String;
   PerPlayer, ListParams: Boolean;
   Only: TStringList;
-  i, total: Integer;
-  g: TAGGenerator;
+  i: Integer;
   p: TAGParamInfo;
   t0: QWord;
 
@@ -139,25 +138,13 @@ Begin
         halt(2);
       End;
 
-    total := 1; // profile.ini
-    For i := 0 To GeneratorCount - 1 Do Begin
-      g := GetGenerator(i);
-      If (Only.Count = 0) And (g.Name = 'selftest') Then Continue;
-      If (Only.Count > 0) And (Only.IndexOf(g.Name) < 0) Then Continue;
-      total := total + g.ExpectedFiles;
-    End;
-    Output.Expected := total;
+    Output.Expected := ExpectedTotal(Ctx, Only);
     Output.OnProgress := @Cli.OnProgress;
 
     writeln(format('Set "%s", seed %d, style %s', [Ctx.Name, Ctx.Seed, StyleToString(Ctx.Style)]));
     t0 := GetTickCount64;
     ForceDirectories(OutDir);
-    For i := 0 To GeneratorCount - 1 Do Begin
-      g := GetGenerator(i);
-      If (Only.Count = 0) And (g.Name = 'selftest') Then Continue;
-      If (Only.Count > 0) And (Only.IndexOf(g.Name) < 0) Then Continue;
-      g.Proc(Ctx, Output);
-    End;
+    RunGenerators(Ctx, Output, Only);
     Ctx.SaveToFile(IncludeTrailingPathDelimiter(OutDir) + 'profile.ini');
     writeln(format('%d files in %d ms', [Output.Files.Count, GetTickCount64 - t0]));
 

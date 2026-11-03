@@ -37,6 +37,7 @@ Type
     Button10: TButton;
     Button11: TButton;
     Button12: TButton;
+    Button13: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -76,6 +77,7 @@ Type
     Procedure Button9Click(Sender: TObject);
     Procedure Button10Click(Sender: TObject);
     Procedure Button12Click(Sender: TObject);
+    Procedure Button13Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
@@ -95,6 +97,7 @@ Type
     Version: Single;
     UpToDate: Boolean; // True, wenn "Updates..." in diesem Lauf nichts mehr zum Herunterladen gefunden hat
     GameDataFound: Boolean; // True, wenn CheckForFiles nichts vermisst, dann ist der Launch Knopf blau
+    CanGenerate: Boolean; // True, wenn Spieldaten fehlen und der Grafik-Generator einen Satz erzeugen kann (Button13), dann ist der Launch Knopf auch blau
     GameProcess: TProcessUTF8; // Das laufende Spiel, wenn der Launcher danach wieder erscheinen soll (CheckBox6), sonst Nil
     fLanguageCodes: Array Of String;
     fAssetFolders: TStringList; // Die Grafiksätze, [0] = '' = Original, sonst der Ordner unter assets/
@@ -113,7 +116,13 @@ Type
     Procedure ReadAssetSets();
     Procedure SelectAssetSet(Index: integer);
     Function AssetGeneratorExe(): String;
+    Function AssetGeneratorCliExe(): String;
     Procedure StartAssetGenerator();
+    Function SelectedAssetFolder(): String;
+    Function MissingGameData(): TStringList;
+    Function SelectUsableAssetSet(): Boolean;
+    Procedure PrepareSchemes();
+    Function GenerateAssetSet(): Boolean;
     Procedure OnDoLog(Const LogText: String);
   public
     Procedure StoreVersion(NewVersion: single);
@@ -195,6 +204,9 @@ Begin
   fAssetIndex := 0;
   LoadLanguages();
   LoadSettings(); // Liest auch den Grafiksatz und zeigt sein Seitenbild (LoadSideImage)
+  // Ohne CD-Daten: einen brauchbaren (generierten) Satz wählen, falls es einen gibt, und dessen Schemes nach data/schemes kopieren
+  SelectUsableAssetSet();
+  PrepareSchemes();
   fm := DefaultFormatSettings;
   fm.DecimalSeparator := '.';
   caption := format('FPC Atomic Launcher, ver. %0.2f', [LauncherVersion / 100], fm);
@@ -395,6 +407,12 @@ Begin
   StartAssetGenerator();
 End;
 
+Procedure TForm1.Button13Click(Sender: TObject);
+Begin
+  // Nur sichtbar, wenn Spieldaten fehlen: einen Grafiksatz erzeugen, ohne das Spiel zu starten (das macht der Launch Knopf)
+  GenerateAssetSet();
+End;
+
 Procedure TForm1.Button9Click(Sender: TObject);
 Begin
   // Spielmodus, der Dialog liest und schreibt atomic_mods.ini selbst, Team play nur für seinen Hinweis
@@ -466,7 +484,7 @@ Var
 Begin
   // Gemeinsam für Enter und Leave von Panel1 und Label7, ob die Maus über dem Knopf ist entscheidet die Position
   p := Panel1.ScreenToClient(Mouse.CursorPos);
-  If GameDataFound Then Begin
+  If GameDataFound Or CanGenerate Then Begin
     If (p.x >= 0) And (p.y >= 0) And (p.x < Panel1.Width) And (p.y < Panel1.Height) Then Begin
       Panel1.Color := $00A85A00; // Dunkleres Blau
     End
@@ -477,7 +495,7 @@ Begin
     Panel1.BevelOuter := bvNone;
   End
   Else Begin
-    // Ohne Spieldaten sieht er aus wie ein normaler Knopf, ein Klick zeigt die fehlenden Dateien
+    // Ohne Spieldaten (und ohne Generator) sieht er aus wie ein normaler Knopf, ein Klick zeigt die fehlenden Dateien
     Panel1.Color := clBtnFace;
     Label7.Font.Color := clBtnText;
     Panel1.BevelOuter := bvRaised;
@@ -514,7 +532,25 @@ Begin
   // Launch
   StoreSettings();
   ini.UpdateFile;
-  sl := CheckForFiles();
+  sl := MissingGameData();
+  If (sl.count <> 0) And SelectUsableAssetSet() Then Begin
+    // Original gewählt, aber keine CD-Daten: es gibt einen vollständigen (generierten) Satz, dann eben den
+    sl.free;
+    sl := MissingGameData();
+  End;
+  If (sl.count <> 0) And CanGenerate Then Begin
+    (*
+     * Keine Spieldaten und kein brauchbarer Grafiksatz: den Generator starten, warten und bei Erfolg mit dem neuen Satz
+     * weiter starten. Die GUI fragt selbst nach dem Stil (mit Abbrechen), ohne sie läuft der Kommandozeilen-Generator,
+     * dann fragen wir vorher.
+     *)
+    sl.free;
+    If Not FileExists(AssetGeneratorExe()) Then Begin
+      If id_yes <> Application.MessageBox(pchar(R_AskGenerateGraphics), pchar(R_GenerateGraphicsTitle), MB_YESNO Or MB_ICONQUESTION) Then exit;
+    End;
+    If Not GenerateAssetSet() Then exit;
+    sl := MissingGameData();
+  End;
   If sl.count <> 0 Then Begin
     showmessage(R_MissingFiles + LineEnding +
       sl.Text + LineEnding +
@@ -523,6 +559,7 @@ Begin
     exit;
   End;
   sl.free;
+  PrepareSchemes(); // Falls der gewählte Satz Schemes mitbringt, data/schemes aber noch leer ist
   // Short Prechecks
   If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
     (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
@@ -731,11 +768,214 @@ Begin
     End;
   End;
   LoadSideImage();
+  UpdateStatus(); // Ob die Spieldaten reichen, hängt vom Grafiksatz ab
 End;
 
 Function TForm1.AssetGeneratorExe: String;
 Begin
   result := AppDir() + 'asset_generator_gui'{$IFDEF Windows} + '.exe'{$ENDIF};
+End;
+
+Function TForm1.AssetGeneratorCliExe: String;
+Begin
+  result := AppDir() + 'asset_generator'{$IFDEF Windows} + '.exe'{$ENDIF};
+End;
+
+Function TForm1.SelectedAssetFolder: String;
+Begin
+  result := '';
+  If (fAssetIndex > 0) And (fAssetIndex < fAssetFolders.Count) Then result := fAssetFolders[fAssetIndex];
+End;
+
+Function TForm1.MissingGameData: TStringList;
+Begin
+  // Mit Grafiksatz reichen dessen Grafiken und Schemes, Sounds sind dann optional (siehe CheckForFiles)
+  result := CheckForFiles(SelectedAssetFolder());
+End;
+
+Function TForm1.SelectUsableAssetSet: Boolean;
+Var
+  sl: TStringList;
+  i: integer;
+Begin
+  (*
+   * Ist "Original" gewählt, gibt es aber keine CD-Daten, dann den ersten Grafiksatz wählen, mit dem das Spiel starten
+   * kann (z.B. einen generierten). Mit CD-Daten oder einem gewählten Satz ändert sich nichts. Result = umgeschaltet.
+   *)
+  result := false;
+  If (fAssetIndex <> 0) Or (fAssetFolders.Count < 2) Then exit;
+  sl := CheckForFiles('');
+  i := sl.Count;
+  sl.free;
+  If i = 0 Then exit;
+  For i := 1 To fAssetFolders.Count - 1 Do Begin
+    sl := CheckForFiles(fAssetFolders[i]);
+    result := sl.Count = 0;
+    sl.free;
+    If result Then Begin
+      SelectAssetSet(i);
+      exit;
+    End;
+  End;
+End;
+
+Procedure TForm1.PrepareSchemes;
+Var
+  i, Count: integer;
+  s, r: String;
+Begin
+  (*
+   * Ohne CD-Daten ist data/schemes leer, Spiel und Server lesen die Schemes aber nur von dort. Dann die des gewählten
+   * Satzes (sonst die irgendeines Satzes, generierte Schemes sind überall gleich) dorthin kopieren.
+   * Liegen dort schon Schemes (CD), passiert nichts.
+   *)
+  If HasSchemeFiles(SchemesDir()) Then exit;
+  Count := CopySetSchemes(SelectedAssetFolder());
+  For i := 1 To fAssetFolders.Count - 1 Do Begin
+    If Count <> 0 Then break;
+    Count := CopySetSchemes(fAssetFolders[i]);
+  End;
+  If Count = 0 Then exit;
+  // Generierte Schemes haben kein BASIC.SCH (die Voreinstellung), dann das erste vorhandene
+  s := ini.ReadString(FPC_AtomicIniSection, 'SchemeFile', 'BASIC.SCH');
+  r := ResolveSchemeFile(s);
+  If r <> s Then Begin
+    ini.WriteString(FPC_AtomicIniSection, 'SchemeFile', r);
+    ini.UpdateFile;
+  End;
+  UpdateStatus();
+End;
+
+Function TForm1.GenerateAssetSet: Boolean;
+Var
+  p: TProcessUTF8;
+  Folder, s, Line: String;
+  sl: TStringList;
+  n: integer;
+  UseGui: Boolean;
+  Buffer: Array[0..4095] Of char;
+
+  // Die Ausgabe des Kommandozeilen-Generators lesen (sonst läuft die Pipe voll), Zeilen "[x/y] Datei" zeigen den Fortschritt
+  Procedure ReadOutput;
+  Var
+    c, i: integer;
+  Begin
+    If Not (poUsePipes In p.Options) Then exit;
+    While p.Output.NumBytesAvailable > 0 Do Begin
+      c := p.Output.NumBytesAvailable;
+      If c > SizeOf(Buffer) Then c := SizeOf(Buffer);
+      c := p.Output.Read(Buffer, c);
+      If c <= 0 Then break;
+      For i := 0 To c - 1 Do Begin
+        If Buffer[i] In [#10, #13] Then Begin
+          If (Line <> '') And (Line[1] = '[') And (pos(']', Line) > 0) Then Begin
+            Label5.Caption := R_GeneratingGraphics + ' ' + copy(Line, 1, pos(']', Line));
+          End;
+          Line := '';
+        End
+        Else Begin
+          Line := Line + Buffer[i];
+        End;
+      End;
+    End;
+  End;
+
+Begin
+  (*
+   * Erzeugt einen neuen Grafiksatz (mit Schemes) in assets/Generated (Generated2, ... wenn es den schon gibt),
+   * wählt ihn aus und kopiert seine Schemes nach data/schemes (wenn dort keine sind). Result = das Spiel kann jetzt starten.
+   * - asset_generator_gui --auto --set <Ordner>: zeigt die Stil-Auswahl und den Fortschritt, schreibt den Ordner nach
+   *   assets/last_set.txt, Exit-Code 0 = erzeugt, sonst abgebrochen oder Fehler.
+   * - Ohne GUI: asset_generator (Kommandozeile) mit zufälligem Seed im Stil "flat", der Fortschritt steht im Status.
+   * Wie beim CD Extraktor wartet der Launcher auf das Ende, er ist solange gesperrt, zeichnet sich aber neu.
+   *)
+  result := false;
+  UseGui := FileExists(AssetGeneratorExe());
+  If (Not UseGui) And (Not FileExists(AssetGeneratorCliExe())) Then exit;
+  StoreSettings();
+  ini.UpdateFile;
+  Folder := 'Generated';
+  n := 1;
+  While DirectoryExists(AssetSetsDir() + Folder) Do Begin
+    inc(n);
+    Folder := 'Generated' + inttostr(n);
+  End;
+  Line := '';
+  Buffer[0] := #0; // Beruhigt den Compiler
+  p := TProcessUTF8.Create(Nil);
+  Enabled := false;
+  Screen.Cursor := crHourGlass;
+  Label5.Caption := R_GeneratingGraphics;
+  Label5.Font.Color := clWindowText;
+  Try
+    p.CurrentDirectory := AppDir();
+    If UseGui Then Begin
+      p.Executable := AssetGeneratorExe();
+      p.Parameters.Add('--auto');
+      p.Parameters.Add('--set');
+      p.Parameters.Add(Folder);
+      p.Options := [];
+    End
+    Else Begin
+      p.Executable := AssetGeneratorCliExe();
+      p.Parameters.Add('--out');
+      p.Parameters.Add(AssetSetsDir() + Folder);
+      p.Parameters.Add('--name');
+      p.Parameters.Add(Folder);
+      p.Parameters.Add('--seed');
+      p.Parameters.Add('random');
+      p.Parameters.Add('--style');
+      p.Parameters.Add('flat');
+      p.Options := [poUsePipes, poStderrToOutPut, poNoConsole];
+    End;
+    Try
+      p.Execute;
+      While p.Running Do Begin
+        ReadOutput();
+        Application.ProcessMessages;
+        Sleep(20);
+      End;
+      ReadOutput();
+      result := p.ExitCode = 0;
+      If Not result Then log('Graphics generator ended with exit code ' + inttostr(p.ExitCode));
+    Except
+      On av: Exception Do Begin
+        log('Could not run the graphics generator: ' + av.Message);
+        result := false;
+      End;
+    End;
+  Finally
+    p.free;
+    Screen.Cursor := crDefault;
+    Enabled := true;
+  End;
+  If result And UseGui And FileExists(AssetSetsDir() + 'last_set.txt') Then Begin
+    // Die GUI schreibt den tatsächlich erzeugten Ordner hierher
+    sl := TStringList.Create;
+    Try
+      sl.LoadFromFile(AssetSetsDir() + 'last_set.txt');
+      If sl.Count > 0 Then Begin
+        s := trim(sl[0]);
+        If s <> '' Then Folder := s;
+      End;
+    Finally
+      sl.free;
+    End;
+  End;
+  If result Then result := FileExists(AssetSetsDir() + Folder + PathDelim + AssetProfileFile);
+  If Not result Then Begin
+    UpdateStatus();
+    showmessage(R_GenerateFailed);
+    exit;
+  End;
+  // Den neuen Satz auswählen (ReadAssetSets liest [Launcher] AssetSet), dann seine Schemes kopieren
+  ini.WriteString('Launcher', 'AssetSet', Folder);
+  ini.UpdateFile;
+  ReadAssetSets();
+  PrepareSchemes();
+  UpdateStatus();
+  result := GameDataFound;
+  If Not result Then showmessage(R_GenerateFailed);
 End;
 
 Procedure TForm1.StartAssetGenerator;
@@ -869,7 +1109,9 @@ Var
   fm: TFormatSettings;
 Begin
   // Links: sind die Spieldaten vollständig, rechts: die installierte Version (ohne Netzwerkzugriff)
-  sl := CheckForFiles();
+  If Not assigned(fAssetFolders) Then exit; // Noch nicht initialisiert
+  // Mit gewähltem Grafiksatz reichen dessen Grafiken und Schemes (Sounds sind dann optional)
+  sl := MissingGameData();
   If sl.Count = 0 Then Begin
     Label5.Caption := R_GameDataFound;
     Label5.Font.Color := clGreen;
@@ -885,6 +1127,10 @@ Begin
   Else Begin
     Button4.Font.Style := [fsBold];
   End;
+  // Ohne Spieldaten kann der Grafik-Generator einen Satz erzeugen (Button13, der Launch Knopf macht das auch)
+  CanGenerate := (sl.Count <> 0) And (FileExists(AssetGeneratorExe()) Or FileExists(AssetGeneratorCliExe()));
+  Button13.Visible := CanGenerate;
+  Button13.Font.Style := [fsBold];
   // Die fehlenden Dateien stehen im Tooltip
   Label5.Hint := trim(sl.Text);
   Label5.ShowHint := sl.Count <> 0;

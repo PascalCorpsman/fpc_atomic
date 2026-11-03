@@ -37,9 +37,20 @@ Unit uag_gen_atomic;
 
 Interface
 
+Uses uag_image, uag_context, uag_output;
+
+(*
+ * All sheets of one figure into Dir (e.g. 'atomic/p3/'), Area is the random
+ * source ('atomic' or 'atomic/p<j>'). Used by the generator and the editor.
+ *)
+Procedure GenerateFigure(Ctx: TAGContext; Output: TAGOutput; Const Area: TAGArea; Const Dir: String; Hunted: Boolean);
+
+(* Pixel style: outline of Scale pixel around the silhouette in every w x h cell of Img *)
+Procedure PixelOutline(Img: TAGImage; w, h, Scale: Integer; Col: TAGColor);
+
 Implementation
 
-Uses SysUtils, uag_math, uag_image, uag_canvas, uag_context, uag_output, uag_render, uag_registry, uag_rig;
+Uses SysUtils, uag_math, uag_canvas, uag_render, uag_registry, uag_rig;
 
 Const
   CellW = 110;
@@ -825,7 +836,13 @@ Begin
       GenerateFigure(Ctx, Output, base.Sub('p' + IntToStr(j)), 'atomic/p' + IntToStr(j) + '/', false);
 End;
 
+Function ExpectedAtomic(Ctx: TAGContext): Integer;
+Begin
+  result := 2 * FilesPerSet; // atomic/ and atomic/hunted/
+  If Ctx.PerPlayer Then result := result + 10 * FilesPerSet;
+End;
+
 Initialization
-  RegisterGenerator('atomic', 'Player figure (atomic/*: walk, stand, kick, die, idle, ...)', 2 * FilesPerSet, @GenerateAtomic);
+  RegisterGenerator('atomic', 'Player figure (atomic/*: walk, stand, kick, die, idle, ...)', @ExpectedAtomic, @GenerateAtomic);
 
 End.

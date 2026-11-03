@@ -583,8 +583,7 @@ Begin
 
   fSoundFile := Dir + 'sound.wav';
 {$IFDEF Client}
-  // Der Client braucht alle Grafiken und den Sound, der Server nur info.txt
-  If Not FileExists(fSoundFile) Then exit;
+  // Der Client braucht alle Grafiken, der Server nur info.txt. Der Sound ist optional (ohne CD-Daten gibt es keinen, dann bleibt die Karte stumm)
 
   If Not FileExists(Gfx('brick.png')) Then exit;
   fBrickTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(Gfx('brick.png'), ColorToRGB(clfuchsia), smStretchHard);

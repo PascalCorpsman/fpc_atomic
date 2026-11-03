@@ -25,6 +25,8 @@ Interface
  * (atomic/, atomic/die/, atomic/idle/, atomic/locked_in/, maps/FieldXX/, res/), plus profile.ini ([General] Name=...)
  * and preview.png. A set may be incomplete, every graphic that is missing in the set is taken from data/.
  * Sounds, schemes and maps/FieldXX/info.txt are never part of a set, they always come from data/.
+ * A generated set brings its own schemes in schemes/*.SCH, they are copied to data/schemes/ when there are none
+ * (no CD data), so server and clients always read the schemes from data/schemes/ (see CopySetSchemes).
  *
  * Without a selected set (AssetSet = '') everything is loaded from data/ as before.
  *)
@@ -76,6 +78,21 @@ Function AtomicDirs(Const SubDir: String): TStringArray;
  *)
 Procedure ListAssetSets(Const Folders, Names: TStrings);
 Function AssetSetName(Const Folder: String): String; // Name from profile.ini, '' = Folder
+
+Function SchemesDir(): String; // <AppDir>data/schemes/
+Function HasSchemeFiles(Const Dir: String): Boolean; // True if Dir contains at least one *.SCH
+
+(*
+ * Copies assets/<Folder>/schemes/*.SCH to data/schemes/, but only if data/schemes/ has no *.SCH yet
+ * (the CD schemes are never mixed with or replaced by generated ones). Result = number of copied files.
+ *)
+Function CopySetSchemes(Const Folder: String): integer;
+
+(*
+ * Wanted if it exists in data/schemes/, else BASIC.SCH, else the first *.SCH (sorted), else Wanted unchanged.
+ * Generated schemes have no BASIC.SCH, so the default of the game would not be found without this.
+ *)
+Function ResolveSchemeFile(Const Wanted: String): String;
 
 Implementation
 
@@ -180,6 +197,100 @@ Begin
     End;
   End;
   If result = '' Then result := Folder;
+End;
+
+Function SchemesDir(): String;
+Begin
+  result := AssetDataDir() + 'schemes' + PathDelim;
+End;
+
+// All *.SCH in Dir (case insensitive, Linux), sorted
+Function FindSchemeFiles(Const Dir: String): TStringList;
+Var
+  sr: TSearchRec;
+Begin
+  result := TStringList.Create;
+  result.Sorted := true;
+  result.CaseSensitive := false;
+  result.Duplicates := dupIgnore;
+  If FindFirst(IncludeTrailingPathDelimiter(Dir) + '*', faAnyFile, sr) = 0 Then Begin
+    Try
+      Repeat
+        If (sr.Attr And faDirectory) <> 0 Then Continue;
+        If SameText(ExtractFileExt(sr.Name), '.SCH') Then result.Add(sr.Name);
+      Until FindNext(sr) <> 0;
+    Finally
+      FindClose(sr);
+    End;
+  End;
+End;
+
+Function HasSchemeFiles(Const Dir: String): Boolean;
+Var
+  sl: TStringList;
+Begin
+  sl := FindSchemeFiles(Dir);
+  result := sl.Count <> 0;
+  sl.free;
+End;
+
+Function CopySetSchemes(Const Folder: String): integer;
+Var
+  sl: TStringList;
+  src: String;
+  i: integer;
+  fi, fo: TFileStream;
+Begin
+  result := 0;
+  If (trim(Folder) = '') Or HasSchemeFiles(SchemesDir()) Then exit;
+  src := AssetSetsDir() + Folder + PathDelim + 'schemes' + PathDelim;
+  sl := FindSchemeFiles(src);
+  Try
+    If sl.Count = 0 Then exit;
+    If Not ForceDirectories(SchemesDir()) Then exit;
+    For i := 0 To sl.Count - 1 Do Begin
+      Try
+        fi := TFileStream.Create(src + sl[i], fmOpenRead Or fmShareDenyWrite);
+        Try
+          fo := TFileStream.Create(SchemesDir() + sl[i], fmCreate);
+          Try
+            fo.CopyFrom(fi, 0);
+          Finally
+            fo.free;
+          End;
+        Finally
+          fi.free;
+        End;
+        inc(result);
+      Except
+        // A single file that can not be copied (e.g. no write access) is skipped, the caller sees it in the count
+      End;
+    End;
+  Finally
+    sl.free;
+  End;
+End;
+
+Function ResolveSchemeFile(Const Wanted: String): String;
+Var
+  sl: TStringList;
+  i: integer;
+Begin
+  result := Wanted;
+  sl := FindSchemeFiles(SchemesDir());
+  Try
+    If sl.Count = 0 Then exit;
+    i := sl.IndexOf(Wanted);
+    If (Wanted <> '') And (i >= 0) Then Begin
+      result := sl[i]; // The real spelling of the file (Linux)
+      exit;
+    End;
+    i := sl.IndexOf('BASIC.SCH');
+    If i < 0 Then i := 0;
+    result := sl[i];
+  Finally
+    sl.free;
+  End;
 End;
 
 Procedure ListAssetSets(Const Folders, Names: TStrings);

@@ -113,7 +113,14 @@ Function FileSizeToString(Value: Int64): String;
 
 Function Change_DLL_To_lib_so(Const filename: String): String;
 
-Function CheckForFiles(): TStringList;
+(*
+ * Die fehlenden Spieldaten (Dateien relativ zum Programmverzeichnis), leer = das Spiel kann starten.
+ * SetFolder = '': die Daten von der CD (wie bisher, alles aus data/).
+ * SetFolder = Ordner eines Grafiksatzes unter assets/: jede Grafik darf auch aus dem Satz kommen, ein Ordner mit eigener
+ *             files.txt im Satz ersetzt alle Animationen des Ordners aus data/. Sounds sind dann optional (ohne CD gibt es
+ *             keine, das Spiel bleibt stumm). Die Schemes dürfen auch im Satz liegen, der Launcher kopiert sie nach data/schemes.
+ *)
+Function CheckForFiles(Const SetFolder: String = ''): TStringList;
 
 (*
  * Öffnet ein Handbuch (z.B. MANUAL.md) mit dem dafür eingestellten Programm,
@@ -123,7 +130,7 @@ Procedure OpenManual(Const Filename: String);
 
 Implementation
 
-Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf;
+Uses uJSON, LazFileUtils, ucdextractor, uatomic_global, LCLIntf, uassetpath;
 
 Procedure OpenManual(Const Filename: String);
 Var
@@ -189,15 +196,17 @@ Begin
   result := fp + 'lib' + fn + '.so';
 End;
 
-Function CheckForFiles(): TStringList;
+Function CheckForFiles(Const SetFolder: String): TStringList;
 Var
-  s: String;
+  s, SetDir, rel: String;
   i, j: Integer;
   optionals, Files: TStringArray;
   found: Boolean;
 Begin
   result := TStringList.Create;
   s := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  SetDir := '';
+  If trim(SetFolder) <> '' Then SetDir := AssetSetsDir() + SetFolder + PathDelim;
   Files := GetAllFilesToCheck();
   optionals := GetOptionalFilesToCheck;
   For i := 0 To high(Files) Do Begin
@@ -209,9 +218,22 @@ Begin
           break;
         End;
       End;
+      If (Not found) And (SetDir <> '') Then Begin
+        rel := Files[i];
+        If pos('data' + PathDelim, rel) = 1 Then delete(rel, 1, length('data' + PathDelim));
+        found := SameText(ExtractFileExt(rel), '.wav') Or
+          FileExists(SetDir + rel) Or
+          FileExists(SetDir + ExtractFilePath(rel) + 'files.txt');
+      End;
       If Not found Then Begin
         result.Add(Files[i]);
       End;
+    End;
+  End;
+  // Ohne Schemes kann kein Spiel gestartet werden (die CD-Daten haben sie immer, ein generierter Satz bringt eigene mit)
+  If Not HasSchemeFiles(SchemesDir()) Then Begin
+    If (SetDir = '') Or Not HasSchemeFiles(SetDir + 'schemes') Then Begin
+      result.Add('data' + PathDelim + 'schemes' + PathDelim + '*.SCH');
     End;
   End;
 End;

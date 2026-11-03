@@ -35,9 +35,24 @@ Unit uag_gen_world;
 
 Interface
 
+Uses uag_image, uag_context, uag_output;
+
+Const
+  MapCount = 11;
+
+(* All files of the map maps/Field<Index>/ *)
+Procedure GenerateMap(Ctx: TAGContext; Output: TAGOutput; Index: Integer);
+
+(* Single images of a map (as rendered, not keyed yet), the caller frees them *)
+Function RenderMapField(Ctx: TAGContext; Index: Integer): TAGImage;
+Function RenderMapBrick(Ctx: TAGContext; Index: Integer): TAGImage;
+Function RenderMapSolid(Ctx: TAGContext; Index: Integer): TAGImage;
+
+Function MapThemeName(Index: Integer): String; // e.g. 'ice'
+
 Implementation
 
-Uses SysUtils, uag_image, uag_canvas, uag_context, uag_output, uag_render, uag_registry, uag_math, uag_random;
+Uses SysUtils, uag_canvas, uag_render, uag_registry, uag_math, uag_random;
 
 Const
   FX = 20; // left edge of the play field
@@ -48,7 +63,6 @@ Const
   GH = 11;
   FR = FX + GW * CW; // 620
   FB = FY + GH * CH; // 462
-  MapCount = 11;
 
 Type
   TTheme = (thMeadow, thClassic, thIce, thEgypt, thMine, thBeach, thAlien, thHaunted, thWater, thForest, thCity);
@@ -1803,22 +1817,54 @@ End;
 (* Generator                                                              *)
 (* ---------------------------------------------------------------------- *)
 
-Procedure GenerateMap(Ctx: TAGContext; Output: TAGOutput; Index: Integer);
+Function InitMap(Ctx: TAGContext; Index: Integer): TMap;
+Begin
+  result.Index := Index;
+  result.Theme := Themes[Index];
+  result.A := Ctx.Area(format('map:Field%.2d', [Index]));
+  result.Style := Ctx.Style;
+  result.PS := GetStyleInfo(Ctx.Style).PixelScale;
+  result.Hue := result.A.Vary('hue', 0, 8);
+  result.Light := result.A.Vary('light', 1, 0.06);
+End;
+
+Function MapThemeName(Index: Integer): String;
+Begin
+  WriteStr(result, Themes[Index]);
+  result := LowerCase(copy(result, 3, length(result)));
+End;
+
+Function RenderMapField(Ctx: TAGContext; Index: Integer): TAGImage;
 Var
   M: TMap;
-  dir: String;
-  img, brick: TAGImage;
-  L: TXBrickLayout;
 
   Procedure DF(C: TAGCanvas; Frame: Integer);
   Begin
     DrawFieldImage(C, M);
   End;
 
+Begin
+  M := InitMap(Ctx, Index);
+  result := RenderImage(Ctx, 640, 480, @DF);
+End;
+
+Function RenderMapBrick(Ctx: TAGContext; Index: Integer): TAGImage;
+Var
+  M: TMap;
+
   Procedure DB(C: TAGCanvas; Frame: Integer);
   Begin
     DrawBrick(C, M);
   End;
+
+Begin
+  M := InitMap(Ctx, Index);
+  result := RenderImage(Ctx, CW, CH, @DB);
+End;
+
+Function RenderMapSolid(Ctx: TAGContext; Index: Integer): TAGImage;
+Var
+  M: TMap;
 
   Procedure DS(C: TAGCanvas; Frame: Integer);
   Begin
@@ -1826,25 +1872,28 @@ Var
   End;
 
 Begin
+  M := InitMap(Ctx, Index);
+  result := RenderImage(Ctx, CW, CH, @DS);
+End;
+
+Procedure GenerateMap(Ctx: TAGContext; Output: TAGOutput; Index: Integer);
+Var
+  dir: String;
+  img, brick: TAGImage;
+  L: TXBrickLayout;
+Begin
   dir := format('maps/Field%.2d/', [Index]);
-  M.Index := Index;
-  M.Theme := Themes[Index];
-  M.A := Ctx.Area(format('map:Field%.2d', [Index]));
-  M.Style := Ctx.Style;
-  M.PS := GetStyleInfo(Ctx.Style).PixelScale;
-  M.Hue := M.A.Vary('hue', 0, 8);
-  M.Light := M.A.Vary('light', 1, 0.06);
-  img := RenderImage(Ctx, 640, 480, @DF);
+  img := RenderMapField(Ctx, Index);
   Try
     Output.SaveImage(dir + 'field.png', img, smOpaque);
   Finally
     img.Free;
   End;
-  brick := RenderImage(Ctx, CW, CH, @DB);
+  brick := RenderMapBrick(Ctx, Index);
   Try
     Output.SaveImage(dir + 'brick.png', brick, smKeyed);
     brick.KeyTransparent;
-    img := MakeXBrick(Ctx, M, brick);
+    img := MakeXBrick(Ctx, InitMap(Ctx, Index), brick);
     Try
       L := XLayouts[Index];
       Output.SaveAni(dir + 'xbrick.ani', img, AniSpec(0, 100, L.Cols, L.Rows, CW, CH, [0], [L.Count]));
@@ -1854,7 +1903,7 @@ Begin
   Finally
     brick.Free;
   End;
-  img := RenderImage(Ctx, CW, CH, @DS);
+  img := RenderMapSolid(Ctx, Index);
   Try
     Output.SaveImage(dir + 'solid.png', img, smKeyed);
   Finally

@@ -38,9 +38,17 @@ Unit uag_gen_items;
 
 Interface
 
+Uses uag_canvas, uag_context;
+
+(*
+ * Draws frame 0 of bomb.png (cell 40 x 37) into C with the current
+ * transformation, e.g. for preview.png.
+ *)
+Procedure DrawBombPreview(Ctx: TAGContext; C: TAGCanvas);
+
 Implementation
 
-Uses SysUtils, uag_math, uag_random, uag_image, uag_canvas, uag_context, uag_render, uag_output, uag_registry;
+Uses SysUtils, uag_math, uag_random, uag_image, uag_render, uag_output, uag_registry;
 
 Const
   OutlineDark: TAGColor = (r: 26; g: 22; b: 32; a: 255);
@@ -552,7 +560,8 @@ End;
 (* bomb                                                                       *)
 (******************************************************************************)
 
-Procedure GenerateBomb(Ctx: TAGContext; Output: TAGOutput);
+(* Preview = Nil: all bomb sheets into Output, else only frame 0 of bomb.png into Preview *)
+Procedure BombWork(Ctx: TAGContext; Output: TAGOutput; Preview: TAGCanvas);
 Const
   KNormal = 0;
   KTrigger = 1;
@@ -758,10 +767,26 @@ Begin
   shade := area.Vary('shade', 0.5, 0.1);
   curl := area.Vary('curl', 1.0, 0.4);
   band := area.Pick('band', 2);
+  If assigned(Preview) Then Begin
+    kind := KNormal;
+    wobble := false;
+    DrawBomb(Preview, 0);
+    exit;
+  End;
   Sheet('bomb.png', KNormal, false, 5, 4, 40, 37, 18);
   Sheet('bomb_dud.png', KDud, false, 1, 2, 40, 40, 2);
   Sheet('bomb_trigger.png', KTrigger, false, 5, 4, 40, 40, 18);
   Sheet('bomb_wobble.png', KNormal, true, 4, 3, 40, 37, 12);
+End;
+
+Procedure GenerateBomb(Ctx: TAGContext; Output: TAGOutput);
+Begin
+  BombWork(Ctx, Output, Nil);
+End;
+
+Procedure DrawBombPreview(Ctx: TAGContext; C: TAGCanvas);
+Begin
+  BombWork(Ctx, Nil, C);
 End;
 
 (******************************************************************************)

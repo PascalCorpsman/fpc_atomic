@@ -1,0 +1,197 @@
+object Form2: TForm2
+  Left = 400
+  Height = 456
+  Top = 200
+  Width = 652
+  BorderStyle = bsDialog
+  Caption = 'FPC Atomic graphics'
+  ClientHeight = 456
+  ClientWidth = 652
+  Position = poScreenCenter
+  OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  object LabelTitle: TLabel
+    Left = 12
+    Height = 21
+    Top = 10
+    Width = 300
+    Caption = 'Choose the look of your graphics'
+    Font.Height = -16
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object LabelHint: TLabel
+    Left = 12
+    Height = 30
+    Top = 38
+    Width = 628
+    AutoSize = False
+    Caption = 'There is no game data from the CD yet, so FPC Atomic computes its own graphics. Click on a style.'
+    WordWrap = True
+  end
+  object PanelFlat: TPanel
+    Tag = 0
+    Left = 12
+    Height = 330
+    Top = 70
+    Width = 200
+    BevelOuter = bvRaised
+    ClientHeight = 330
+    ClientWidth = 200
+    Cursor = crHandPoint
+    TabOrder = 0
+    OnClick = StyleClick
+    object ImageFlat: TImage
+      Tag = 0
+      Left = 4
+      Height = 288
+      Top = 4
+      Width = 192
+      Cursor = crHandPoint
+      OnClick = StyleClick
+    end
+    object LabelFlat: TLabel
+      Tag = 0
+      Left = 4
+      Height = 30
+      Top = 296
+      Width = 192
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'Flat with outline'
+      Cursor = crHandPoint
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentFont = False
+      OnClick = StyleClick
+    end
+  end
+  object PanelSoft: TPanel
+    Tag = 1
+    Left = 226
+    Height = 330
+    Top = 70
+    Width = 200
+    BevelOuter = bvRaised
+    ClientHeight = 330
+    ClientWidth = 200
+    Cursor = crHandPoint
+    TabOrder = 1
+    OnClick = StyleClick
+    object ImageSoft: TImage
+      Tag = 1
+      Left = 4
+      Height = 288
+      Top = 4
+      Width = 192
+      Cursor = crHandPoint
+      OnClick = StyleClick
+    end
+    object LabelSoft: TLabel
+      Tag = 1
+      Left = 4
+      Height = 30
+      Top = 296
+      Width = 192
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'Soft shaded'
+      Cursor = crHandPoint
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentFont = False
+      OnClick = StyleClick
+    end
+  end
+  object PanelPixel: TPanel
+    Tag = 2
+    Left = 440
+    Height = 330
+    Top = 70
+    Width = 200
+    BevelOuter = bvRaised
+    ClientHeight = 330
+    ClientWidth = 200
+    Cursor = crHandPoint
+    TabOrder = 2
+    OnClick = StyleClick
+    object ImagePixel: TImage
+      Tag = 2
+      Left = 4
+      Height = 288
+      Top = 4
+      Width = 192
+      Cursor = crHandPoint
+      OnClick = StyleClick
+    end
+    object LabelPixel: TLabel
+      Tag = 2
+      Left = 4
+      Height = 30
+      Top = 296
+      Width = 192
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'Pixel art'
+      Cursor = crHandPoint
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentFont = False
+      OnClick = StyleClick
+    end
+  end
+  object ButtonRoll: TButton
+    Left = 12
+    Height = 30
+    Top = 414
+    Width = 150
+    Caption = 'Roll again'
+    TabOrder = 3
+    OnClick = ButtonRollClick
+  end
+  object ButtonCancel: TButton
+    Left = 490
+    Height = 30
+    Top = 414
+    Width = 150
+    Caption = 'Cancel'
+    TabOrder = 4
+    OnClick = ButtonCancelClick
+  end
+  object PanelProgress: TPanel
+    Left = 12
+    Height = 120
+    Top = 160
+    Width = 628
+    BevelOuter = bvNone
+    ClientHeight = 120
+    ClientWidth = 628
+    TabOrder = 5
+    Visible = False
+    object LabelProgress: TLabel
+      Left = 0
+      Height = 15
+      Top = 10
+      Width = 628
+      AutoSize = False
+    end
+    object ProgressBar1: TProgressBar
+      Left = 0
+      Height = 22
+      Top = 36
+      Width = 628
+      TabOrder = 0
+    end
+    object ButtonStop: TButton
+      Left = 478
+      Height = 30
+      Top = 74
+      Width = 150
+      Caption = 'Cancel'
+      TabOrder = 1
+      OnClick = ButtonStopClick
+    end
+  end
+end

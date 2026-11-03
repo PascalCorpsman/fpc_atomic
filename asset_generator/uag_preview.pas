@@ -1,0 +1,260 @@
+(******************************************************************************)
+(*                                                                            *)
+(* This file is part of FPC_Atomic                                            *)
+(*                                                                            *)
+(*  See the file license.md, located under:                                   *)
+(*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
+(*  for details about the license.                                            *)
+(*                                                                            *)
+(*               It is not allowed to change or remove this text from any     *)
+(*               source file of the project.                                  *)
+(*                                                                            *)
+(******************************************************************************)
+(*
+ * Key art of a set: preview.png (192 x 288, the format of the side image of
+ * the launcher) with the figure in a player color, a bomb and a piece of one
+ * map (ground, bricks, solid blocks). The same function draws the previews of
+ * the style picker of the UI, so it has to be fast (one map field and a few
+ * shapes).
+ *
+ * Also the helpers the UI needs to show the sheets like the engine does:
+ * the player colors and the recoloring of client/uatomic.pas
+ * (LoadColorTabledTexture) and a map scene with placed blocks.
+ *)
+Unit uag_preview;
+
+{$MODE ObjFPC}{$H+}
+{$MODESWITCH nestedprocvars}
+
+Interface
+
+Uses uag_image, uag_context, uag_output;
+
+Const
+  PreviewW = 192;
+  PreviewH = 288;
+
+Type
+  TAGPlayerColor = Record
+    r, g, b: Integer; // 0..100 like PlayerColors in units/uatomic_common.pas
+  End;
+
+Const
+  // same order as PlayerColors in units/uatomic_common.pas
+  AGPlayerColors: Array[0..9] Of TAGPlayerColor = (
+    (r: 100; g: 100; b: 100), // white
+    (r: 20; g: 20; b: 20), // black
+    (r: 100; g: 0; b: 0), // red
+    (r: 0; g: 0; b: 100), // blue
+    (r: 0; g: 100; b: 0), // green
+    (r: 100; g: 100; b: 0), // yellow
+    (r: 0; g: 100; b: 100), // cyan
+    (r: 100; g: 0; b: 100), // magenta
+    (r: 100; g: 50; b: 0), // orange
+    (r: 50; g: 0; b: 100) // purple
+    );
+  AGHuntedGold: TAGPlayerColor = (r: 100; g: 75; b: 10);
+
+(* Every pixel with g > r and g > b gets the player color, exactly like the engine *)
+Procedure RecolorPlayer(Img: TAGImage; Const Col: TAGPlayerColor);
+
+(* The key art, the caller frees it *)
+Function RenderPreview(Ctx: TAGContext): TAGImage;
+
+(*
+ * Field (640 x 480) with solid blocks in the usual grid and some bricks,
+ * Brick and Solid are keyed (fuchsia = transparent). For the UI.
+ *)
+Function ComposeMapScene(Field, Brick, Solid: TAGImage; Seed: QWord): TAGImage;
+
+(* Draws Src onto Dst, fuchsia pixels and pixels with alpha < 128 are skipped *)
+Procedure DrawKeyed(Dst, Src: TAGImage; x, y: Integer);
+
+Implementation
+
+Uses uag_math, uag_random, uag_canvas, uag_render, uag_registry, uag_rig, uag_gen_atomic, uag_gen_items, uag_gen_world;
+
+Const
+  // play field of field.png, see uag_gen_world
+  FX = 20;
+  FY = 66;
+  CW = 40;
+  CH = 36;
+
+Procedure RecolorPlayer(Img: TAGImage; Const Col: TAGPlayerColor);
+Var
+  i, r, g, b, n, k, m: Integer;
+Begin
+  For i := 0 To high(Img.Pixels) Do Begin
+    r := Img.Pixels[i].r;
+    g := Img.Pixels[i].g;
+    b := Img.Pixels[i].b;
+    If (g > r) And (g > b) Then Begin
+      n := (r + b) Div 2;
+      k := g - n;
+      r := n + (k * Col.r) Div 100;
+      g := n + (k * Col.g) Div 100;
+      b := n + (k * Col.b) Div 100;
+      m := r;
+      If g > m Then m := g;
+      If b > m Then m := b;
+      If m > 255 Then Begin
+        r := (r * 255) Div m;
+        g := (g * 255) Div m;
+        b := (b * 255) Div m;
+      End;
+      Img.Pixels[i].r := r;
+      Img.Pixels[i].g := g;
+      Img.Pixels[i].b := b;
+    End;
+  End;
+End;
+
+Procedure DrawKeyed(Dst, Src: TAGImage; x, y: Integer);
+Var
+  i, j: Integer;
+  c: TAGColor;
+Begin
+  For j := 0 To Src.Height - 1 Do
+    For i := 0 To Src.Width - 1 Do Begin
+      c := Src.Pixels[j * Src.Width + i];
+      If (c.a < 128) Or AGSameColor(c, AGFuchsia) Then Continue;
+      Dst.SetPixel(x + i, y + j, AGWithAlpha(c, 255));
+    End;
+End;
+
+Function ComposeMapScene(Field, Brick, Solid: TAGImage; Seed: QWord): TAGImage;
+Var
+  i, j: Integer;
+  R: TAGRandom;
+Begin
+  result := Field.Clone;
+  R.Init(Seed);
+  For j := 0 To 10 Do
+    For i := 0 To 14 Do Begin
+      If odd(i) And odd(j) Then
+        DrawKeyed(result, Solid, FX + i * CW, FY + j * CH)
+      Else If ((i > 1) Or (j > 1)) And ((i < 13) Or (j < 9)) And R.Chance(0.55) Then
+        DrawKeyed(result, Brick, FX + i * CW, FY + j * CH);
+    End;
+End;
+
+Function RenderPreview(Ctx: TAGContext): TAGImage;
+Const
+  // cell column 4 of the play field starts 24 pixel left of the image
+  CropX = FX + 4 * CW + 24;
+  CropY = FY + CH; // rows 1 .. 8
+  FigScale = 2.0;
+  FigX = 116;
+  BombX = 46;
+  GroundY = 270;
+Var
+  area: TAGArea;
+  mapIndex, i, j, k, row, col: Integer;
+  field, brick, solid, layer: TAGImage;
+  fig: TFigure;
+  pose: TPose;
+  facing: Double;
+  info: TAGStyleInfo;
+
+  Procedure DrawLayer(C: TAGCanvas; Frame: Integer);
+  Begin
+    // shadows on the ground
+    C.Ellipse(FigX, GroundY, 30, 8);
+    C.Fill(AGRGBA(0, 0, 0, 90));
+    C.Ellipse(BombX, GroundY + 1, 21, 6);
+    C.Fill(AGRGBA(0, 0, 0, 90));
+    // bomb, the bottom of the ball (19.5, 35) of its cell is on the ground
+    C.Push;
+    C.Translate(BombX, GroundY);
+    C.Scale(FigScale, FigScale);
+    C.Translate(-19.5, -35);
+    DrawBombPreview(Ctx, C);
+    C.Pop;
+    // figure
+    C.Push;
+    C.Translate(FigX, GroundY);
+    C.Scale(FigScale, FigScale);
+    DrawFigure(C, Ctx.Style, fig, pose, facing, 0, 0);
+    C.Pop;
+  End;
+
+Begin
+  area := Ctx.Area('preview');
+  mapIndex := area.Pick('map', MapCount);
+  facing := area.Vary('facing', 0.35, 0.25);
+  info := GetStyleInfo(Ctx.Style);
+
+  // ground and blocks
+  field := RenderMapField(Ctx, mapIndex);
+  Try
+    result := field.Crop(CropX, CropY, PreviewW, PreviewH);
+  Finally
+    field.Free;
+  End;
+  brick := RenderMapBrick(Ctx, mapIndex);
+  solid := RenderMapSolid(Ctx, mapIndex);
+  Try
+    brick.KeyTransparent;
+    solid.KeyTransparent;
+    For j := 0 To 7 Do
+      For i := 0 To 5 Do Begin
+        col := 4 + i; // column of the play field
+        row := 1 + j;
+        If odd(col) And odd(row) Then
+          DrawKeyed(result, solid, i * CW - 24, j * CH)
+        Else If (j < 4) And (area.Rnd('brick', j * 8 + i) < 0.5 - 0.1 * j) Then
+          DrawKeyed(result, brick, i * CW - 24, j * CH);
+      End;
+  Finally
+    brick.Free;
+    solid.Free;
+  End;
+
+  // figure in red, waving, with a bomb
+  fig := MakeFigure(Ctx.Area('atomic'), false);
+  If Ctx.Style = asPixel Then fig.OutlineScale := fig.OutlineScale * 0.6; // like uag_gen_atomic
+  pose := NeutralPose;
+  pose.Arm[0].Spread := 2.2;
+  pose.Arm[0].Swing := 0.2;
+  pose.Arm[0].Bend := 0.05;
+  pose.Arm[0].BendSpread := 0.6;
+  pose.Arm[1].Swing := 0.25;
+  pose.Arm[1].Bend := 0.5;
+  pose.Leg[0].Swing := 0.12;
+  pose.Leg[1].Swing := -0.1;
+  pose.HeadRoll := 0.12;
+  pose.Roll := -0.05;
+  layer := RenderImage(Ctx, PreviewW, PreviewH, @DrawLayer);
+  Try
+    If info.PixelScale > 1 Then PixelOutline(layer, PreviewW, PreviewH, info.PixelScale, fig.Col.Outline);
+    RecolorPlayer(layer, AGPlayerColors[2]);
+    result.Draw(layer, 0, 0);
+  Finally
+    layer.Free;
+  End;
+
+  // darker towards the top, the figure stands out
+  For j := 0 To PreviewH Div 3 - 1 Do Begin
+    k := AGRound(70 * (1 - j / (PreviewH / 3)));
+    For i := 0 To PreviewW - 1 Do
+      result.BlendPixel(i, j, AGRGBA(8, 6, 16, 255), k);
+  End;
+End;
+
+Procedure GeneratePreview(Ctx: TAGContext; Output: TAGOutput);
+Var
+  img: TAGImage;
+Begin
+  img := RenderPreview(Ctx);
+  Try
+    Output.SaveImage('preview.png', img, smOpaque);
+  Finally
+    img.Free;
+  End;
+End;
+
+Initialization
+  RegisterGenerator('preview', 'Key art for the launcher (preview.png)', 1, @GeneratePreview);
+
+End.

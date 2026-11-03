@@ -30,7 +30,8 @@ Uses
   uag_gen_atomic,
   uag_gen_world,
   uag_gen_screens,
-  uag_gen_schemes;
+  uag_gen_schemes,
+  uag_preview;
 
 Begin
   RunCli;
