@@ -61,6 +61,9 @@ The keys for both players on this PC are set up in the launcher with **Controls.
 ## Game mods
 FPC Atomic has optional game mods (e.g. stun on bomb landing, positive disease, hit points per player, ghosts) and a mod test mode. All of them are off by default and can be set up in the launcher with "Mods...". See the [mods manual](MODS_MANUAL.md) for details ([German version](MODS_MANUAL_DE.md)).
 
+## Graphics sets
+Besides the original graphics from the CD the game can use own graphics sets, computed by the included graphics generator (also without the CD). The set is chosen in the launcher below the image on the left, **Graphics...** opens the generator. See the [graphics manual](GRAPHICS_MANUAL.md) ([German version](GRAPHICS_MANUAL_DE.md)).
+
 ## Game options and game modes
 The game options (team play, scheme, map, play time, ...) are set in the options menu of the game or in the launcher with "Game options...". Besides the classic game there is the game mode **Hunter**: one player is the hunted with (almost) all items, whoever gets him becomes the new hunted. The game mode is chosen in the launcher with "Game mode...". All options and modes are explained in the [game options manual](GAMEOPTIONS_MANUAL.md) ([German version](GAMEOPTIONS_MANUAL_DE.md)).
 
@@ -93,6 +96,9 @@ To start the server in dedicated mode, use the following command line parameters
 - -t \<time\>: the timeout in seconds to automatically close the server if no users are connected. Use 0 to disable the timeout.
 - -l \<level\>: the log level (default is 2)
 - -ats \<speed\>: sets atomic normal speed (default is 5)
+- -bind \<IP\>: only listen on this address, e.g. 127.0.0.1 for a game on this PC only (no firewall question, nobody else can join)
+
+When the game hosts a game itself, the parameter **-localhost** of fpc_atomic makes the server listen only on 127.0.0.1. The parameter **-assets \<folder\>** of fpc_atomic selects a [graphics set](GRAPHICS_MANUAL.md) (the launcher passes it automatically).
 
 ### Console commands:
 During server execution it is possible to type the following commands in the console window:

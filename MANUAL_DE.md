@@ -61,6 +61,9 @@ Die Tasten für beide Spieler an diesem PC stellt man im Launcher unter **Steuer
 ## Spiel-Mods
 FPC Atomic hat optionale Spiel-Mods (z. B. Stun bei Bombenlandung, positive Krankheit, Trefferpunkte pro Spieler, Geister) und einen Mod-Test-Modus. Alle sind standardmäßig aus und lassen sich im Launcher unter **Mods...** einstellen. Details stehen in der [Anleitung der Mods](MODS_MANUAL_DE.md) ([englische Version](MODS_MANUAL.md)).
 
+## Grafiksätze
+Neben den Originalgrafiken von der CD kann das Spiel eigene Grafiksätze nutzen, die der mitgelieferte Grafik-Generator berechnet (auch ohne CD). Den Satz wählt man im Launcher unter dem Bild links, **Grafiken...** öffnet den Generator. Details stehen in der [Anleitung der Grafiksätze](GRAPHICS_MANUAL_DE.md) ([englische Version](GRAPHICS_MANUAL.md)).
+
 ## Spieloptionen und Spielmodi
 Die Spieloptionen (Teamspiel, Schema, Karte, Spielzeit, ...) lassen sich im Optionen-Menü des Spiels oder im Launcher unter **Spieloptionen...** einstellen. Neben dem klassischen Spiel gibt es den Spielmodus **Hunter**: Ein Spieler ist der Gejagte mit (fast) allen Items, wer ihn erwischt, wird der neue Gejagte. Den Spielmodus wählt man im Launcher unter **Spielmodus...**. Alle Optionen und Modi erklärt die [Anleitung der Spieloptionen](GAMEOPTIONS_MANUAL_DE.md) ([englische Version](GAMEOPTIONS_MANUAL.md)).
 
@@ -93,6 +96,9 @@ Für den dedizierten Modus den Server mit diesen Kommandozeilenparametern starte
 - -t \<zeit\>: Timeout in Sekunden, nach dem sich der Server beendet, wenn kein Spieler verbunden ist. 0 schaltet den Timeout ab.
 - -l \<level\>: das Log-Level (Standard 2)
 - -ats \<speed\>: die normale Atomic-Geschwindigkeit (Standard 5)
+- -bind \<IP\>: nur auf dieser Adresse lauschen, z. B. 127.0.0.1 für ein Spiel nur auf diesem PC (keine Firewall-Abfrage, niemand sonst kann beitreten)
+
+Hostet das Spiel selbst, lässt der Parameter **-localhost** von fpc_atomic den Server nur auf 127.0.0.1 lauschen. Der Parameter **-assets \<Ordner\>** von fpc_atomic wählt einen [Grafiksatz](GRAPHICS_MANUAL_DE.md) (der Launcher übergibt ihn automatisch).
 
 ### Konsolenbefehle
 Während der Server läuft, gibt es im Konsolenfenster diese Befehle:

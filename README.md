@@ -19,6 +19,8 @@ This repository hosts only the custom source code. To protect the intellectual p
 ## What needs to be done to play the game?
 The steps shown here are only needed to be done once (for installation).
 
+**No CD?** Skip steps 1 and 4: the launcher can compute its own graphics (figure, bombs, maps, menus, schemes) in a few seconds, the game then runs without sounds. See the [graphics manual](GRAPHICS_MANUAL.md).
+
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/documentation/installation.plantuml)
 
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
@@ -42,6 +44,7 @@ The steps shown here are only needed to be done once (for installation).
 5. read the [manual](MANUAL.md)<br>
    5.5 if you are a Linux user run the "Linux_sound_install_script.sh"
 6. start the game by executing "atomic_launcher" and enjoy
+7. optional: create own graphics sets with **Graphics...** in the launcher and switch between them and the original with the arrows below the image, see the [graphics manual](GRAPHICS_MANUAL.md)
 
 ## How do i get updates ?
 By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates.
@@ -115,5 +118,5 @@ Read the manual section [Console commands](MANUAL.md#console-commands) to load a
 ## Contributors
 Idea : Interplay Productions  
 Implementation : Uwe Schächterle  
-Graphics & Leveldesign: Original assets copyrighted by Interplay Productions (must be provided by the user via CD extraction)<br>
+Graphics & Leveldesign: Original assets copyrighted by Interplay Productions (must be provided by the user via CD extraction), or own graphics sets computed by the included graphics generator<br>
 Testing : Uwe Schächterle
