@@ -22,7 +22,7 @@ Fehlen die CD-Daten, zeigt der Launcher den Button **Grafiken erzeugen**. Auch e
 
 **Abbrechen** erzeugt nichts, das Spiel startet dann nicht.
 
-Die Spielgeräusche bringt der Satz mit (siehe [Töne](#töne)), nur die Menü-Musik fehlt noch. Die Schemes (Aufstellungen der Steine) bringt der Grafiksatz mit, sie werden beim ersten Mal nach `data/schemes` kopiert. Sind dort schon Schemes von der CD, bleiben sie unverändert.
+Spielgeräusche und Menü-Musik bringt der Satz mit (siehe [Töne](#töne)). Die Schemes (Aufstellungen der Steine) bringt der Grafiksatz mit, sie werden beim ersten Mal nach `data/schemes` kopiert. Sind dort schon Schemes von der CD, bleiben sie unverändert.
 
 ## Grafiksatz wählen
 
@@ -33,9 +33,13 @@ Der aktuelle Satz steht im Launcher **unter dem Bild links**: `◀  Name  ▶`. 
 
 ## Töne
 
-Jeder Satz enthält eigene Spielgeräusche: Explosionen, Kicks, Abpraller, Teleporter und kurze Sprüche wie „Erwischt!“ oder „Beeil dich!“. Sie sind keine Aufnahmen, sondern werden wie die Grafiken berechnet (eine Interpretation der Original-Geräusche, beschrieben in `asset_generator/sounds.ini`). Die Menü-Musik fehlt noch.
+Jeder Satz enthält eigene Spielgeräusche: Explosionen, Kicks, Abpraller, Teleporter und kurze Sprüche wie „Erwischt!“ oder „Beeil dich!“. Sie sind keine Aufnahmen, sondern werden wie die Grafiken berechnet (eine Interpretation der Original-Geräusche, beschrieben in `asset_generator/sounds.ini`). Dazu kommt ein eigenes Musikstück für die Menüs (`asset_generator/music.ini`).
 
-Welche Töne das Spiel spielt, stellt man im Launcher unter **Spieloptionen...** bei **Sounds** ein:
+Der Klang passt zum Stil: Flach klingt klar und knackig, Weich warm mit etwas Hall, Pixel nach 16-Bit-Konsole mit Echo, Retro rau nach 8-Bit. Der Seed verändert Tonhöhe, Länge und Klangfarbe, zwei Sätze im selben Stil klingen also unterschiedlich.
+
+Im Launcher stehen die Töne unter dem Bild links in einer zweiten Zeile: `◀  Sounds: Name  ▶`. **Töne testen** spielt eine Explosion, einen Spruch und den Anfang der Menü-Musik der gewählten Quelle.
+
+Welche Töne das Spiel spielt, stellt man dort oder unter **Spieloptionen...** bei **Sounds** ein:
 
 - **Automatisch** (Standard): die Töne von der CD, wenn es sie gibt, sonst die des gewählten Grafiksatzes.
 - **Original (CD)**: immer die Töne von der CD.

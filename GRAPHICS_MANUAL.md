@@ -22,7 +22,7 @@ If the CD data is missing, the launcher shows the button **Generate graphics**. 
 
 **Cancel** generates nothing, and the game is not started.
 
-The game sounds come with the set (see [Sounds](#sounds)), only the menu music is still missing. The schemes (layouts of the bricks) come with the graphics set and are copied to `data/schemes` the first time. If there are schemes from the CD already, they stay unchanged.
+Game sounds and menu music come with the set (see [Sounds](#sounds)). The schemes (layouts of the bricks) come with the graphics set and are copied to `data/schemes` the first time. If there are schemes from the CD already, they stay unchanged.
 
 ## Choosing a graphics set
 
@@ -33,9 +33,13 @@ The current set is shown in the launcher **below the image on the left**: `◀  
 
 ## Sounds
 
-Every set contains its own game sounds: explosions, kicks, bounces, teleporters and short callouts like "Erwischt!" or "Beeil dich!". They are not recordings, they are computed like the graphics (an interpretation of the original sounds, described in `asset_generator/sounds.ini`). The menu music is still missing.
+Every set contains its own game sounds: explosions, kicks, bounces, teleporters and short callouts like "Erwischt!" or "Beeil dich!". They are not recordings, they are computed like the graphics (an interpretation of the original sounds, described in `asset_generator/sounds.ini`). There is also an own piece of music for the menus (`asset_generator/music.ini`).
 
-Which sounds the game plays is set in the launcher under **Game options...** with **Sounds**:
+The sound fits the style: flat sounds clear and punchy, soft warm with a little reverb, pixel like a 16-bit console with echo, retro rough like 8-bit. The seed changes pitch, length and timbre, so two sets of the same style sound different.
+
+In the launcher the sounds are shown below the image on the left in a second row: `◀  Sounds: Name  ▶`. **Test sounds** plays an explosion, a callout and the start of the menu music of the selected source.
+
+Which sounds the game plays is set there or under **Game options...** with **Sounds**:
 
 - **Automatic** (default): the sounds from the CD if there are any, else those of the selected graphics set.
 - **Original (CD)**: always the sounds from the CD.

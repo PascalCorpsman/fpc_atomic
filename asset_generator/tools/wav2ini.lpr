@@ -19,12 +19,16 @@
  *       data/res/menuexit.wav, quitgame.wav) and writes an own design per
  *       file (see uw2i_design). Loudness is matched to the original (one
  *       number per sound). The result is a draft to be refined by hand.
- *   wav2ini --inc <sounds.ini> <out.inc>
- *       Converts sounds.ini into the include file that is compiled into the
- *       asset generator (uag_sounds_ini.inc). Run after every change of
- *       sounds.ini.
+ *   wav2ini --inc <sounds.ini | music.ini> <out.inc>
+ *       Converts sounds.ini (music.ini) into the include file that is
+ *       compiled into the asset generator (uag_sounds_ini.inc,
+ *       uag_music_ini.inc, constant SoundsIni / MusicIni). Run after every
+ *       change of the ini.
  *   wav2ini --render <sounds.ini> <out dir> [name ...]
  *       Renders sections with neutral variation (quick listening / checks).
+ *   wav2ini --music <music.ini> <out dir> [kit [seed]]
+ *       Renders every [music:..] file with neutral variation, optionally with
+ *       a sound kit (flat, soft, pixel, retro) and noise seed.
  *   wav2ini --features <file.wav> ...
  *       Prints the measured features.
  *   wav2ini --compare <dir a> <dir b>
@@ -252,16 +256,19 @@ Procedure DoInc(Const IniFile, OutFile: String);
 Var
   src, dst: TStringList;
   i: Integer;
-  line: String;
+  line, constName: String;
   first: Boolean;
 Begin
+  // sounds.ini -> SoundsIni, music.ini -> MusicIni
+  constName := ChangeFileExt(ExtractFileName(IniFile), '');
+  constName := UpperCase(Copy(constName, 1, 1)) + Copy(constName, 2, MaxInt) + 'Ini';
   src := TStringList.Create;
   dst := TStringList.Create;
   dst.LineBreak := #10;
   Try
     src.LoadFromFile(IniFile);
     dst.Add('(*');
-    dst.Add(' * Generated from sounds.ini by tools/wav2ini --inc, do not edit.');
+    dst.Add(' * Generated from ' + ExtractFileName(IniFile) + ' by tools/wav2ini --inc, do not edit.');
     dst.Add(' * Comments and empty lines are dropped.');
     dst.Add(' *)');
     first := true;
@@ -272,7 +279,7 @@ Begin
       If line = '' Then Continue;
       If length(line) > 250 Then Raise Exception.Create('line too long: ' + line);
       If first Then
-        dst.Add('SoundsIni: Array[0..%COUNT%] Of String = (')
+        dst.Add(constName + ': Array[0..%COUNT%] Of String = (')
       Else
         dst[dst.Count - 1] := dst[dst.Count - 1] + ',';
       dst.Add('  ''' + StringReplace(line, '''', '''''', [rfReplaceAll]) + '''');
@@ -307,6 +314,49 @@ Begin
       If (Only.Count > 0) And (Only.IndexOf(book.Names[i]) < 0) Then Continue;
       data := AGRenderWav(book.Parts[i], AGNeutralVariation(SeedOf(book.Names[i])));
       fs := TFileStream.Create(IncludeTrailingPathDelimiter(OutDir) + book.Names[i] + '.wav', fmCreate);
+      Try
+        fs.WriteBuffer(data[0], length(data));
+      Finally
+        fs.Free;
+      End;
+    End;
+  Finally
+    sl.Free;
+    book.Free;
+  End;
+End;
+
+Procedure DoMusic(Const IniFile, OutDir, KitName: String; Seed: QWord);
+Var
+  sl: TStringList;
+  book: TAGMusicBook;
+  i: Integer;
+  data: TBytes;
+  fs: TFileStream;
+  v: TAGMusicVariation;
+  t: QWord;
+Begin
+  sl := TStringList.Create;
+  book := TAGMusicBook.Create;
+  Try
+    sl.LoadFromFile(IniFile);
+    book.LoadFromStrings(sl);
+    For i := 0 To book.Errors.Count - 1 Do
+      WriteLn('error: ', book.Errors[i]);
+    If book.Errors.Count > 0 Then Halt(2);
+    v := AGNeutralMusicVariation(Seed);
+    Case LowerCase(KitName) Of
+      'flat': v.Sound.Kit := skFlat;
+      'soft': v.Sound.Kit := skSoft;
+      'pixel': v.Sound.Kit := skPixel;
+      'retro': v.Sound.Kit := skRetro;
+    End;
+    ForceDirectories(OutDir);
+    For i := 0 To book.FileCount - 1 Do Begin
+      t := GetTickCount64;
+      data := book.RenderWav(i, v);
+      WriteLn(book.Files[i].Name, ': ', (length(data) - 44) Div 2, ' samples, ', GetTickCount64 - t, ' ms');
+      fs := TFileStream.Create(IncludeTrailingPathDelimiter(OutDir) + book.Files[i].Name + '.wav', fmCreate);
       Try
         fs.WriteBuffer(data[0], length(data));
       Finally
@@ -374,6 +424,7 @@ Var
 Begin
   If ParamCount < 1 Then Begin
     WriteLn('wav2ini --design <data dir> <out.ini> | --inc <ini> <out.inc> | --render <ini> <dir> [names] |');
+    WriteLn('        --music <ini> <dir> [kit [seed]] |');
     WriteLn('        --features <wav>... | --compare <dir a> <dir b> | --png <out.png> <wav>...');
     Halt(1);
   End;
@@ -390,6 +441,8 @@ Begin
         only.Free;
       End;
     End
+    Else If (ParamStr(1) = '--music') And (ParamCount >= 3) Then
+      DoMusic(ParamStr(2), ParamStr(3), ParamStr(4), StrToQWordDef(ParamStr(5), 12345))
     Else If ParamStr(1) = '--features' Then DoFeatures(2)
     Else If (ParamStr(1) = '--compare') And (ParamCount >= 3) Then DoCompare(ParamStr(2), ParamStr(3))
     Else If (ParamStr(1) = '--png') And (ParamCount >= 3) Then Begin
