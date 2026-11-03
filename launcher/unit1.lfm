@@ -64,6 +64,54 @@ object Form1: TForm1
     TabOrder = 9
     OnClick = Button10Click
   end
+  object Button14: TButton
+    AnchorSideLeft.Control = Image1
+    Left = 8
+    Height = 25
+    Hint = 'Previous sound source.'
+    Top = 363
+    Width = 28
+    Caption = #9664
+    TabOrder = 10
+    OnClick = Button14Click
+  end
+  object Label12: TLabel
+    AnchorSideLeft.Control = Button14
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideRight.Control = Button15
+    Left = 40
+    Height = 16
+    Top = 367
+    Width = 128
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    AutoSize = False
+    BorderSpacing.Left = 4
+    BorderSpacing.Right = 4
+    Caption = 'Label12'
+  end
+  object Button15: TButton
+    AnchorSideRight.Control = Image1
+    AnchorSideRight.Side = asrBottom
+    Left = 172
+    Height = 25
+    Hint = 'Next sound source.'
+    Top = 363
+    Width = 28
+    Anchors = [akTop, akRight]
+    Caption = #9654
+    TabOrder = 11
+    OnClick = Button14Click
+  end
+  object Button16: TButton
+    Left = 8
+    Height = 25
+    Top = 392
+    Width = 192
+    Caption = 'Button16'
+    TabOrder = 12
+    OnClick = Button16Click
+  end
   object GroupBox1: TGroupBox
     Left = 208
     Height = 112

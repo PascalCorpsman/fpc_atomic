@@ -117,6 +117,30 @@ Function ResolveSoundSet(Const Setting, GraphicsSet: String): String;
  *)
 Procedure ListSoundSets(Const Folders, Names: TStrings);
 
+(*
+ * The values of [Launcher] SoundSet in the order the launcher offers them: SoundSetAuto, '' (original), then the sets
+ * with sounds (ListSoundSets). Names gets AutoName and OriginalName for the first two, then the names of the sets.
+ *)
+Procedure ListSoundChoices(Const Folders, Names: TStrings; Const AutoName, OriginalName: String);
+
+(*
+ * The index of Setting in Folders (from ListSoundChoices): 0 = SoundSetAuto, a set by its folder name, everything else
+ * (also a set that no longer exists or has no sounds) is 1 = original, like the game treats it.
+ *)
+Function SoundChoiceIndex(Const Folders: TStrings; Const Setting: String): integer;
+
+(*
+ * Like SoundFile, but for the given sound set Folder instead of the global SoundSet:
+ * assets/<Folder>/<RelPath> if that file exists, else data/<RelPath>.
+ *)
+Function SoundSetFile(Const Folder, RelPath: String): String;
+
+(*
+ * The first of RelPaths (relative to data/) that exists for the sound set Folder: first the files of the set, then the
+ * ones in data/ (per file fallback like in the game). '' if none of them exists.
+ *)
+Function FirstSoundFile(Const Folder: String; Const RelPaths: Array Of String): String;
+
 Function AssetSetName(Const Folder: String): String; // Name from profile.ini, '' = Folder
 
 Function SchemesDir(): String; // <AppDir>data/schemes/
@@ -303,6 +327,58 @@ Begin
       Names.Delete(i);
     End;
   End;
+End;
+
+Procedure ListSoundChoices(Const Folders, Names: TStrings; Const AutoName, OriginalName: String);
+Begin
+  ListSoundSets(Folders, Names);
+  Folders.Insert(0, '');
+  Names.Insert(0, OriginalName);
+  Folders.Insert(0, SoundSetAuto);
+  Names.Insert(0, AutoName);
+End;
+
+Function SoundChoiceIndex(Const Folders: TStrings; Const Setting: String): integer;
+Var
+  i: integer;
+Begin
+  result := 1;
+  If SameText(trim(Setting), SoundSetAuto) Then Begin
+    result := 0;
+    exit;
+  End;
+  For i := 2 To Folders.Count - 1 Do Begin
+    If SameText(Folders[i], trim(Setting)) Then Begin
+      result := i;
+      exit;
+    End;
+  End;
+End;
+
+Function SoundSetFile(Const Folder, RelPath: String): String;
+Begin
+  If trim(Folder) <> '' Then Begin
+    result := AssetSetsDir() + trim(Folder) + PathDelim + RelPath;
+    If FileExists(result) Then exit;
+  End;
+  result := AssetDataDir() + RelPath;
+End;
+
+Function FirstSoundFile(Const Folder: String; Const RelPaths: Array Of String): String;
+Var
+  i: integer;
+Begin
+  If trim(Folder) <> '' Then Begin
+    For i := 0 To high(RelPaths) Do Begin
+      result := AssetSetsDir() + trim(Folder) + PathDelim + RelPaths[i];
+      If FileExists(result) Then exit;
+    End;
+  End;
+  For i := 0 To high(RelPaths) Do Begin
+    result := AssetDataDir() + RelPaths[i];
+    If FileExists(result) Then exit;
+  End;
+  result := '';
 End;
 
 Function AssetSetName(Const Folder: String): String;

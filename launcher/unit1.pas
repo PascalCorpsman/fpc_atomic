@@ -20,7 +20,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  IniFiles, UTF8Process, ulauncher;
+  IniFiles, UTF8Process, ulauncher, ulaunchersound;
 
 Type
 
@@ -38,6 +38,9 @@ Type
     Button11: TButton;
     Button12: TButton;
     Button13: TButton;
+    Button14: TButton;
+    Button15: TButton;
+    Button16: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -64,6 +67,7 @@ Type
     Label9: TLabel;
     Label10: TLabel;
     Label11: TLabel;
+    Label12: TLabel;
     ComboBox1: TComboBox;
     Panel1: TPanel;
     Timer1: TTimer;
@@ -78,6 +82,8 @@ Type
     Procedure Button10Click(Sender: TObject);
     Procedure Button12Click(Sender: TObject);
     Procedure Button13Click(Sender: TObject);
+    Procedure Button14Click(Sender: TObject);
+    Procedure Button16Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
@@ -105,6 +111,11 @@ Type
     fAssetFolders: TStringList; // Die Grafiksätze, [0] = '' = Original, sonst der Ordner unter assets/
     fAssetNames: TStringList; // Dazu die Namen aus profile.ini
     fAssetIndex: integer; // Der gewählte Grafiksatz in fAssetFolders
+    fSoundFolders: TStringList; // Die Werte für [Launcher] SoundSet: [0] = SoundSetAuto, [1] = '' = Original, sonst der Ordner unter assets/
+    fSoundNames: TStringList; // Dazu die Namen
+    fSoundIndex: integer; // Die gewählte Soundquelle in fSoundFolders
+    fSoundTest: TSoundTest; // Probehören (Button16), erst beim ersten Klick angelegt
+    fSoundTestFolder: String; // Der Soundsatz, der gerade probe gehört wird ('' = Original)
 
     Procedure LoadLanguages();
     Procedure LoadSettings();
@@ -122,6 +133,13 @@ Type
     Procedure StartAssetGenerator();
     Function SelectedAssetFolder(): String;
     Function SelectedSoundSet(): String;
+    Procedure ReadSoundSets();
+    Procedure SelectSoundSet(Index: integer);
+    Procedure UpdateSoundCaption();
+    Procedure UpdateSoundTestButton();
+    Procedure StopSoundTest();
+    Procedure ReleaseSoundTest();
+    Procedure OnSoundTestFinished(Sender: TObject);
     Function MissingGameData(): TStringList;
     Function SelectUsableAssetSet(): Boolean;
     Procedure PrepareSchemes();
@@ -208,6 +226,11 @@ Begin
   fAssetFolders := TStringList.Create;
   fAssetNames := TStringList.Create;
   fAssetIndex := 0;
+  fSoundFolders := TStringList.Create;
+  fSoundNames := TStringList.Create;
+  fSoundIndex := 0;
+  fSoundTest := Nil;
+  fSoundTestFolder := '';
   OnlineVersion := -1;
   OnlineLauncherVersion := -1;
   QuietLog := false;
@@ -251,6 +274,7 @@ Begin
     exit;
   End;
   // Run the App ;)
+  ReleaseSoundTest(); // Der Launcher wartet auf den Extraktor
   p := TProcessUTF8.Create(Nil);
   p.Executable := 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
   p.Options := p.Options + [poWaitOnExit];
@@ -410,6 +434,91 @@ Begin
   End;
 End;
 
+Procedure TForm1.Button14Click(Sender: TObject);
+Begin
+  // Gemeinsam für die Pfeile unter dem Grafiksatz: Button14 = vorige, Button15 = nächste Soundquelle
+  If fSoundFolders.Count = 0 Then exit;
+  If Sender = Button15 Then Begin
+    SelectSoundSet((fSoundIndex + 1) Mod fSoundFolders.Count);
+  End
+  Else Begin
+    SelectSoundSet((fSoundIndex + fSoundFolders.Count - 1) Mod fSoundFolders.Count);
+  End;
+End;
+
+Procedure TForm1.Button16Click(Sender: TObject);
+Const
+  // Was es davon im Satz gibt, sonst in data (wie im Spiel pro Datei)
+  Explosions: Array[0..4] Of String = ('explode2.wav', 'explo1.wav', 'expl6.wav', 'bomb_01.wav', 'explode3.wav');
+  Voices: Array[0..4] Of String = ('gotcha.wav', 'roasted.wav', 'later.wav', 'youwin1.wav', 'allrite.wav');
+  MusicMs = 8000; // Nur der Anfang der Menümusik
+Var
+  Steps: TSoundTestSteps;
+  Effects, Music: Boolean;
+  Folder: String;
+
+  Procedure Add(Const aFile: String; MaxMs: integer);
+  Begin
+    If aFile = '' Then exit;
+    setlength(Steps, length(Steps) + 1);
+    Steps[high(Steps)].Filename := aFile;
+    Steps[high(Steps)].MaxMs := MaxMs;
+  End;
+
+  Function InSounds(Const Names: Array Of String): String;
+  Var
+    Rel: Array Of String;
+    j: integer;
+  Begin
+    Rel := Nil;
+    setlength(Rel, length(Names));
+    For j := 0 To high(Names) Do Rel[j] := 'sounds' + PathDelim + Names[j];
+    result := FirstSoundFile(Folder, Rel);
+  End;
+
+Begin
+  // Probehören der gewählten Soundquelle: eine Explosion, eine Ansage und der Anfang der Menümusik, ein zweiter Klick stoppt
+  If assigned(fSoundTest) And fSoundTest.Playing() Then Begin
+    StopSoundTest();
+    exit;
+  End;
+  // Die Schalter des Spiels gelten auch hier: Musik (Hauptfenster) und Soundeffekte (Spieloptionen)
+  Effects := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
+  Music := CheckBox4.Checked;
+  If Not (Effects Or Music) Then Begin
+    showmessage(R_SoundTestMuted);
+    exit;
+  End;
+  Folder := SelectedSoundSet();
+  Steps := Nil;
+  If Effects Then Begin
+    Add(InSounds(Explosions), 0);
+    Add(InSounds(Voices), 0);
+  End;
+  If Music Then Add(FirstSoundFile(Folder, ['res' + PathDelim + 'mainmenu_sound.wav']), MusicMs);
+  If length(Steps) = 0 Then Begin
+    showmessage(R_SoundTestNothing);
+    exit;
+  End;
+  If Not assigned(fSoundTest) Then Begin
+    fSoundTest := TSoundTest.Create;
+    fSoundTest.OnFinished := @OnSoundTestFinished;
+  End;
+  If fSoundTest.Play(Steps, ini.ReadInteger(FPC_AtomicIniSection, 'Volume', 10000)) Then Begin
+    fSoundTestFolder := Folder;
+  End
+  Else Begin
+    log('Sound test: ' + fSoundTest.Error, llWarning);
+    If fSoundTest.Failed Then Begin
+      showmessage(R_SoundTestUnavailable + LineEnding + LineEnding + fSoundTest.Error);
+    End
+    Else Begin
+      showmessage(R_SoundTestNothing);
+    End;
+  End;
+  UpdateSoundTestButton();
+End;
+
 Procedure TForm1.Button12Click(Sender: TObject);
 Begin
   (*
@@ -522,6 +631,12 @@ End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
+  fSoundTest.Free; // Gibt auch BASS frei
+  fSoundTest := Nil;
+  fSoundFolders.free;
+  fSoundFolders := Nil;
+  fSoundNames.free;
+  fSoundNames := Nil;
   fAssetFolders.free;
   fAssetFolders := Nil;
   fAssetNames.free;
@@ -577,6 +692,7 @@ Begin
     exit;
   End;
   // Run the App ;)
+  ReleaseSoundTest(); // Das Spiel braucht das Audiogerät
   p := TProcessUTF8.Create(Nil);
   p.Options := [poDetached];
   p.Executable := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
@@ -725,6 +841,7 @@ Begin
   Button10.Enabled := fAssetFolders.Count > 1;
   Button11.Enabled := fAssetFolders.Count > 1;
   SelectAssetSet(fAssetIndex);
+  ReadSoundSets(); // Sätze mit Sounds können dazu gekommen oder weg sein
 End;
 
 Procedure TForm1.SelectAssetSet(Index: integer);
@@ -744,6 +861,7 @@ Begin
   End;
   LoadSideImage();
   UpdateStatus(); // Ob die Spieldaten reichen, hängt vom Grafiksatz ab
+  UpdateSoundCaption(); // Automatisch hängt vom Grafiksatz ab
 End;
 
 Function TForm1.AssetGeneratorExe: String;
@@ -766,6 +884,93 @@ Function TForm1.SelectedSoundSet: String;
 Begin
   // [Launcher] SoundSet (Standard Automatisch) zum gewählten Grafiksatz aufgelöst, '' = Originalsounds aus data
   result := ResolveSoundSet(ini.ReadString('Launcher', 'SoundSet', SoundSetAuto), SelectedAssetFolder());
+End;
+
+Procedure TForm1.ReadSoundSets;
+Begin
+  // Automatisch, Original und alle Sätze mit Sounds, gewählt ist [Launcher] SoundSet (wie in den Spieloptionen, ComboBox6)
+  If Not assigned(fSoundFolders) Then exit;
+  ListSoundChoices(fSoundFolders, fSoundNames, R_SoundSetAuto, R_SoundSetOriginal);
+  Button14.Enabled := fSoundFolders.Count > 1;
+  Button15.Enabled := fSoundFolders.Count > 1;
+  fSoundIndex := SoundChoiceIndex(fSoundFolders, ini.ReadString('Launcher', 'SoundSet', SoundSetAuto));
+  UpdateSoundCaption();
+End;
+
+Procedure TForm1.SelectSoundSet(Index: integer);
+Begin
+  If (Index < 0) Or (Index >= fSoundFolders.Count) Then Index := 1;
+  If Index >= fSoundFolders.Count Then exit;
+  fSoundIndex := Index;
+  // Gleich speichern, die selbe Einstellung nutzen der Dialog Spieloptionen und der Start des Spiels
+  If ini.ReadString('Launcher', 'SoundSet', SoundSetAuto) <> fSoundFolders[fSoundIndex] Then Begin
+    ini.WriteString('Launcher', 'SoundSet', fSoundFolders[fSoundIndex]);
+  End;
+  UpdateSoundCaption();
+  UpdateStatus(); // "(keine Sounds)" hängt von der Soundquelle ab
+End;
+
+Procedure TForm1.UpdateSoundCaption;
+Var
+  Folder, Plays: String;
+Begin
+  If (Not assigned(fSoundFolders)) Or (fSoundIndex < 0) Or (fSoundIndex >= fSoundFolders.Count) Then exit;
+  Label12.Caption := format(RF_SoundSet, [fSoundNames[fSoundIndex]]);
+  // Im Tooltip, was tatsächlich gespielt wird (Automatisch hängt vom Grafiksatz und den CD-Sounds ab)
+  Folder := SelectedSoundSet();
+  If Folder <> '' Then Begin
+    Plays := AssetSetName(Folder);
+  End
+  Else If HasOriginalSounds() Then Begin
+    Plays := R_SoundSetOriginal;
+  End
+  Else Begin
+    Plays := R_NoSounds;
+  End;
+  Label12.Hint := R_SoundSetHint + LineEnding + LineEnding + format(RF_SoundSetPlays, [Plays]);
+  // Hört man gerade eine andere Quelle probe, dann aufhören
+  If assigned(fSoundTest) And fSoundTest.Playing() And (Folder <> fSoundTestFolder) Then StopSoundTest();
+  UpdateSoundTestButton();
+End;
+
+Procedure TForm1.UpdateSoundTestButton;
+Begin
+  // Ohne BASS (bass.dll / libbass.so) oder wenn es sich nicht starten lässt, gibt es kein Probehören
+  If (assigned(fSoundTest) And fSoundTest.Failed) Or ((Not assigned(fSoundTest)) And (Not SoundLibraryAvailable())) Then Begin
+    Button16.Enabled := false;
+    Button16.Caption := R_SoundTest;
+    Button16.Hint := R_SoundTestUnavailable;
+    If assigned(fSoundTest) And (fSoundTest.Error <> '') Then Button16.Hint := Button16.Hint + LineEnding + fSoundTest.Error;
+    exit;
+  End;
+  Button16.Enabled := true;
+  Button16.Hint := R_SoundTestHint;
+  If assigned(fSoundTest) And fSoundTest.Playing() Then Begin
+    Button16.Caption := R_SoundTestStop;
+  End
+  Else Begin
+    Button16.Caption := R_SoundTest;
+  End;
+End;
+
+Procedure TForm1.StopSoundTest;
+Begin
+  If assigned(fSoundTest) Then fSoundTest.Stop(); // Ruft OnSoundTestFinished
+End;
+
+Procedure TForm1.ReleaseSoundTest;
+Begin
+  // Stoppen und BASS frei geben (das Audiogerät), beim nächsten Probehören wird es wieder geladen
+  If Not assigned(fSoundTest) Then exit;
+  fSoundTest.Free;
+  fSoundTest := Nil;
+  UpdateSoundTestButton();
+End;
+
+Procedure TForm1.OnSoundTestFinished(Sender: TObject);
+Begin
+  If Not assigned(fSoundFolders) Then exit; // Schon beim Schließen
+  UpdateSoundTestButton();
 End;
 
 Function TForm1.MissingGameData: TStringList;
@@ -875,6 +1080,7 @@ Begin
   If (Not UseGui) And (Not FileExists(AssetGeneratorCliExe())) Then exit;
   StoreSettings();
   ini.UpdateFile;
+  ReleaseSoundTest();
   Folder := 'Generated';
   n := 1;
   While DirectoryExists(AssetSetsDir() + Folder) Do Begin
@@ -966,6 +1172,7 @@ Begin
   If Not FileExists(AssetGeneratorExe()) Then exit;
   StoreSettings();
   ini.UpdateFile;
+  ReleaseSoundTest(); // Der Generator ersetzt evtl. die Sounds des Satzes (die dürfen dabei nicht offen sein) und spielt selbst welche
   // Wie der CD Extraktor: warten, bis der Generator beendet ist, dann assets/ neu einlesen
   p := TProcessUTF8.Create(Nil);
   Try
@@ -1257,6 +1464,12 @@ Begin
   Language.AddIgnoredIdentifier('Form1.Label11.Hint');
   Language.AddIgnoredIdentifier('Form1.Button10.Caption');
   Language.AddIgnoredIdentifier('Form1.Button11.Caption');
+  Language.AddIgnoredIdentifier('Form1.Label12.Caption'); // Die Soundquelle, setzt UpdateSoundCaption
+  Language.AddIgnoredIdentifier('Form1.Label12.Hint');
+  Language.AddIgnoredIdentifier('Form1.Button14.Caption');
+  Language.AddIgnoredIdentifier('Form1.Button15.Caption');
+  Language.AddIgnoredIdentifier('Form1.Button16.Caption'); // Probehören, setzt UpdateSoundTestButton
+  Language.AddIgnoredIdentifier('Form1.Button16.Hint');
   Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
   Language.AddIgnoredComponent(Form3.ListView1);
   For i := 0 To Form3.ComponentCount - 1 Do Begin // Form3: zur Laufzeit gesetzt (Labels ohne Caption im Designer, Knöpfe)
@@ -1324,6 +1537,11 @@ Begin
     fAssetNames[0] := R_AssetSetOriginal; // Der Name von Original kommt aus der Sprache
     SelectAssetSet(fAssetIndex);
   End;
+  If fSoundNames.Count > 1 Then Begin
+    fSoundNames[0] := R_SoundSetAuto; // Die Namen von Automatisch und Original kommen aus der Sprache
+    fSoundNames[1] := R_SoundSetOriginal;
+  End;
+  UpdateSoundCaption();
   FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
 
