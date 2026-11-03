@@ -1,0 +1,6 @@
+[Translation]
+r_updating="Der Launcher wird aktualisiert ..."
+r_invalidparameters="Fehler, ungültige Parameter, Abbruch."
+rf_notfound="Fehler, nicht gefunden: %s"
+rf_stillrunning="Fehler, %s läuft noch oder ist gesperrt, das Update wurde nicht installiert."
+rf_copyfailed="Fehler, %s konnte nicht nach %s kopiert werden, der alte Launcher wurde wiederhergestellt."

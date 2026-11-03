@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* usynapsedownloader                                              04.12.2024 *)
 (*                                                                            *)
-(* Version     : 0.01                                                         *)
+(* Version     : 0.02                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -24,6 +24,9 @@
 (* Known Issues: none                                                         *)
 (*                                                                            *)
 (* History     : 0.01 - Initial version                                       *)
+(*               0.02 - ADD: Abort, cancels a running download                *)
+(*                      FIX: HTTP errors (e.g. 404) were stored as file       *)
+(*                      FIX: existing target was deleted before the download  *)
 (*                                                                            *)
 (******************************************************************************)
 Unit usynapsedownloader;
@@ -48,6 +51,7 @@ Type
     Procedure OnHookSocketStatus(Sender: TObject; Reason: THookSocketReason; Const Value: String);
   public
     OnFileDownloadUpdateEvent: TOnFileDownloadUpdateEvent;
+    Abort: Boolean; // Auf true setzen (z.B. in OnFileDownloadUpdateEvent), um den laufenden Download abzubrechen
 
     Constructor Create; virtual;
     Destructor Destroy; override;
@@ -122,6 +126,10 @@ Var
   sa: TStringArray;
 Begin
   If Not assigned(fInstance) Then exit;
+  If Abort Then Begin
+    fInstance.Sock.AbortSocket;
+    exit;
+  End;
   If aTotalSize = 0 Then Begin
     // Read Filesize from Header
     For i := 0 To fInstance.Headers.Count - 1 Do Begin
@@ -148,6 +156,7 @@ Constructor TSynapesDownloader.Create;
 Begin
   Inherited Create;
   OnFileDownloadUpdateEvent := Nil;
+  Abort := false;
 End;
 
 Destructor TSynapesDownloader.Destroy;
@@ -164,12 +173,8 @@ Begin
   result := false;
   If assigned(fInstance) Then fInstance.free;
   fInstance := Nil;
-  If FileExists(Filename) Then Begin
-    If Not DeleteFile(Filename) Then Begin
-      Raise exception.create('Error, unable to delete old file: ' + Filename);
-      exit;
-    End;
-  End;
+  // Das Ziel wird erst überschrieben, wenn der Download geklappt hat (fmCreate unten)
+  Abort := false;
   aTotalSize := 0;
   aFileSize := 0;
 
@@ -193,6 +198,13 @@ Begin
     exit;
   End;
   Follow_Links(fInstance, url);
+  If fInstance.ResultCode <> 200 Then Begin
+    s := 'Error, ' + url + ': HTTP ' + inttostr(fInstance.ResultCode) + ' ' + fInstance.ResultString;
+    fInstance.free;
+    fInstance := Nil;
+    Raise Exception.Create(s);
+    exit;
+  End;
   If fInstance.Document.Size <> 0 Then Begin
     // Fertig melden, hat ja wohl geklappt ;)
     If assigned(OnFileDownloadUpdateEvent) Then Begin

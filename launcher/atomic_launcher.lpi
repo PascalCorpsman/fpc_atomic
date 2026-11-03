@@ -103,6 +103,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uupdatecheck.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="../../Sample/DatenSteuerung/uJSON.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

@@ -648,6 +648,7 @@ Begin
   fStack.free;
   fStack := Nil;
   CloseLogFile(true);
+  Inherited Destroy;
 End;
 
 Procedure TLogger.CloseLogFile(Force: Boolean);
@@ -745,6 +746,7 @@ End;
 
 Function TLogger.LogEnter(LogText: String): Integer;
 Begin
+  result := -1; // -1 wird von LogLeave immer akzeptiert
   If Not Enable Then exit;
   If fStackTraceValidation Then Begin
     result := fStack.Enter(LogText);
@@ -765,8 +767,8 @@ Begin
     Else Begin
       If Not fStack.Leave(EnterID) Then Begin
         log(Format('TLogger.LogLeave: Missmatch happened for: %s, expected stack id: %d, actual parameter id: %d',
-          [fStack.fStack[fStack.fStackNextIndex + 1].Routine,
-          fstack.fStack[fStack.fStackNextIndex + 1].ID,
+          [fStack.fStack[fStack.fStackNextIndex].Routine,
+          fstack.fStack[fStack.fStackNextIndex].ID,
             EnterID]), llfatal);
       End;
     End;

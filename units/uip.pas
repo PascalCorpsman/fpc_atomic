@@ -91,6 +91,24 @@ Begin
   End;
 End;
 
+{$IFDEF Darwin}
+(*
+ * Converts a hex netmask like 0xffffff00 into 255.255.255.0, other values are returned unchanged
+ *)
+Function HexMaskToIPString(Value: String): String;
+Var
+  m: Int64;
+Begin
+  result := Value;
+  If pos('0x', lowercase(Value)) = 1 Then Begin
+    m := StrToInt64Def('$' + copy(Value, 3, length(Value)), -1);
+    If (m >= 0) And (m <= $FFFFFFFF) Then Begin
+      result := format('%d.%d.%d.%d', [(m Shr 24) And $FF, (m Shr 16) And $FF, (m Shr 8) And $FF, m And $FF]);
+    End;
+  End;
+End;
+{$ENDIF}
+
 Function IsNetworkPresent: Boolean;
 Var
   blub: TNetworkAdapterList;
@@ -156,11 +174,10 @@ Begin
         // Extract netmask (can be in hex format like 0xffffff00 or decimal)
         tmp := sl[i];
         If pos('netmask ', tmp) <> 0 Then Begin
-          tmp := copy(tmp, pos('netmask ', tmp) + length('netmask '), length(tmp));
+          tmp := copy(tmp, pos('netmask ', tmp) + length('netmask '), length(tmp)) + ' ';
           tmp := copy(tmp, 1, pos(' ', tmp) - 1);
-          // If netmask is in hex format (0x...), we could convert it, but for now just store as is
-          // Most common: 0xffffff00 = 255.255.255.0
-          result[high(result)].SubnetMask := tmp;
+          // macOS reports the netmask in hex format, e.g. 0xffffff00 = 255.255.255.0
+          result[high(result)].SubnetMask := HexMaskToIPString(tmp);
         End
         Else Begin
           result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
@@ -214,7 +231,8 @@ Begin
       // Try to find subnet mask in next few lines
       result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
       For j := i + 1 To min(i + 5, sl.Count - 1) Do Begin
-        If (pos('Subnet Mask', sl[j]) <> 0) Or (pos('Subnetmaske', sl[j]) <> 0) Then Begin
+        // "Subnet Mask" (english), "Subnetzmaske" (german)
+        If (pos('Subnet', sl[j]) <> 0) And (pos('mask', lowercase(sl[j])) <> 0) Then Begin
           tmp := sl[j];
           k := length(tmp);
           While (k > 0) And (tmp[k] <> ':') Do

@@ -92,7 +92,9 @@ Type
     Procedure Panel1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
   private
     ini: TIniFile;
-    Atomic_Version: TVersion;
+    OnlineVersion: Single; // Von der Prüfung beim Start, -1 = unbekannt
+    OnlineLauncherVersion: integer; // Von der Prüfung beim Start, -1 = unbekannt
+    QuietLog: Boolean; // True -> loggen ohne das Log Fenster zu zeigen (Prüfung beim Start)
     ProtocollVersion: integer;
     Version: Single;
     UpToDate: Boolean; // True, wenn "Updates..." in diesem Lauf nichts mehr zum Herunterladen gefunden hat
@@ -124,8 +126,12 @@ Type
     Procedure PrepareSchemes();
     Function GenerateAssetSet(): Boolean;
     Procedure OnDoLog(Const LogText: String);
+    Procedure OnStartCheckDone(Ok: Boolean; Const Filename, ErrorText: String);
+    Function GetCheckUpdatesOnStart: Boolean;
+    Procedure SetCheckUpdatesOnStart(Value: Boolean);
   public
     Procedure StoreVersion(NewVersion: single);
+    Property CheckUpdatesOnStart: Boolean read GetCheckUpdatesOnStart write SetCheckUpdatesOnStart;
 
   End;
 
@@ -136,8 +142,8 @@ Implementation
 
 {$R *.lfm}
 
-Uses process, Unit2, Unit3, Unit4, Unit5, Unit6, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage, ulayout, uassetpath
+Uses Math, process, Unit2, Unit3, Unit4, Unit5, Unit6, LCLType, lclintf
+  , ukeyboarddialog, uatomic_common, uatomic_global, ulanguage, ulayout, uupdatecheck, uassetpath
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -197,11 +203,16 @@ Begin
   Constraints.MinWidth := Width;
   Constraints.MaxWidth := Width;
   SetCurrentDir(ExtractFilePath(ParamStr(0)));
-  Atomic_Version := TVersion.Create();
   UpToDate := false;
   fAssetFolders := TStringList.Create;
   fAssetNames := TStringList.Create;
   fAssetIndex := 0;
+  OnlineVersion := -1;
+  OnlineLauncherVersion := -1;
+  QuietLog := false;
+  // Vom Updater übrig gelassen, der alte Launcher
+  If FileExists(ParamStr(0) + '.old') Then DeleteFile(ParamStr(0) + '.old');
+  LoadSideImage();
   LoadLanguages();
   LoadSettings(); // Liest auch den Grafiksatz und zeigt sein Seitenbild (LoadSideImage)
   // Ohne CD-Daten: einen brauchbaren (generierten) Satz wählen, falls es einen gibt, und dessen Schemes nach data/schemes kopieren
@@ -510,8 +521,6 @@ End;
 
 Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
-  Atomic_Version.free;
-  Atomic_Version := Nil;
   fAssetFolders.free;
   fAssetFolders := Nil;
   fAssetNames.free;
@@ -621,9 +630,6 @@ Begin
 End;
 
 Procedure TForm1.Button1Click(Sender: TObject);
-Var
-  tmpFolder: String;
-  dl: TSynapesDownloader;
 Begin
 {$IFDEF Linux}
   If DirectoryExists('cd_data_extractor') Then Begin
@@ -640,46 +646,9 @@ Begin
   End;
 {$ENDIF}
   ClearLog();
-  // 2. Download der Version Info
-  tmpFolder := IncludeTrailingPathDelimiter(GetTempDir()) + 'atomic_update' + PathDelim;
-  log('Tempfolder: ' + tmpFolder);
-  If Not ForceDirectories(tmpFolder) Then Begin
-    log('Error, could not create: ' + tmpFolder);
-    exit;
-  End;
-  dl := TSynapesDownloader.Create;
-  If Not dl.DownloadFile(VersionInfoUrl, tmpFolder + 'fpc_atomic_version.json') Then Begin
-{$IFDEF Linux}
-    log('try installing ssl support: sudo aptitude install libssl-dev');
-{$ENDIF}
-    dl.free;
-    exit;
-  End;
-  dl.free;
-  If Not Atomic_Version.LoadFromFile(tmpFolder + 'fpc_atomic_version.json') Then exit;
-  log('Online version: ' + format('%0.5f', [Atomic_Version.Version]));
-  If Version = -1 Then Begin
-    log('Local version: not available');
-  End
-  Else Begin
-    log('Local version: ' + format('%0.5f', [Version]));
-  End;
-  log('Online launcher version: ' + format('%0.2f', [Atomic_Version.LauncherVersion / 100]));
-  log('Local launcher version: ' + format('%0.2f', [LauncherVersion / 100]));
-  form3.InitWith(Atomic_Version, Version = -1);
-  If form3.GetFilesToDLCount() = 0 Then Begin
-    UpToDate := true;
-    showmessage(
-      R_UpToDate
-      //      + LineEnding + LineEnding +
-      //      'But the additional *.zip files are not checked.' + LineEnding + LineEnding +
-      //      'If you want, you can check these files now manually and update them.'
-      );
-  End;
-  form2.top := form3.top;
-  form2.Left := form3.left + form3.Width + 10;
-  form3.ShowModal;
-  form2.Hide;
+  // Der Dialog prüft online und zeigt, was aktualisiert werden kann
+  Form3.Execute(Version);
+  UpToDate := Form3.UpToDate;
   UpdateStatus();
 End;
 
@@ -1010,12 +979,56 @@ Var
 Begin
   aText := copy(LogText, pos('|', LogText) + 1, length(LogText));
   aText := copy(aText, pos('|', aText) + 1, length(aText));
+  // Der Update Dialog zeigt das Log selbst (ohne die Stack Info)
+  If Form3.Visible Then Begin
+    Form3.AddLog(trim(copy(aText, pos(':', aText) + 1, length(aText))));
+    exit;
+  End;
   form2.Memo1.Append(aText);
+  If QuietLog Then exit;
   If Not form2.Visible Then Begin
     form2.top := form1.top;
     form2.Left := form1.left + form1.Width + 10;
     Form2.Show;
   End;
+End;
+
+Procedure TForm1.OnStartCheckDone(Ok: Boolean; Const Filename,
+  ErrorText: String);
+Var
+  v: TVersion;
+Begin
+  // Fehler werden nur geloggt, die Prüfung beim Start soll niemanden stören
+  QuietLog := true;
+  Try
+    If Ok Then Begin
+      v := TVersion.Create();
+      If v.LoadFromFile(Filename) Then Begin
+        OnlineVersion := v.Version;
+        OnlineLauncherVersion := v.LauncherVersion;
+      End;
+      v.free;
+    End
+    Else Begin
+      log('Check for updates at the start: ' + ErrorText);
+    End;
+    DeleteFile(Filename);
+  Finally
+    QuietLog := false;
+  End;
+  If assigned(ini) Then UpdateStatus();
+End;
+
+Function TForm1.GetCheckUpdatesOnStart: Boolean;
+Begin
+  result := assigned(ini) And ini.ReadBool('Launcher', 'CheckUpdatesOnStart', true);
+End;
+
+Procedure TForm1.SetCheckUpdatesOnStart(Value: Boolean);
+Begin
+  If Not assigned(ini) Then exit;
+  ini.WriteBool('Launcher', 'CheckUpdatesOnStart', Value);
+  ini.UpdateFile;
 End;
 
 Procedure TForm1.StoreVersion(NewVersion: single);
@@ -1107,6 +1120,7 @@ Procedure TForm1.UpdateStatus;
 Var
   sl: TStringList;
   fm: TFormatSettings;
+  UpdateAvailable: Boolean;
 Begin
   // Links: sind die Spieldaten vollständig, rechts: die installierte Version (ohne Netzwerkzugriff)
   If Not assigned(fAssetFolders) Then exit; // Noch nicht initialisiert
@@ -1146,8 +1160,21 @@ Begin
     Label6.Caption := R_GameVersion + format('%0.5f', [Version], fm);
   End;
   If UpToDate Then Label6.Caption := Label6.Caption + R_VersionUpToDate;
+  // Von der Prüfung beim Start gefunden
+  UpdateAvailable := (Version <> -1) And (
+    ((OnlineVersion <> -1) And (OnlineVersion > Version + 0.000001)) Or
+    ((OnlineLauncherVersion <> -1) And (OnlineLauncherVersion > LauncherVersion)));
+  If UpdateAvailable Then Begin
+    fm := DefaultFormatSettings;
+    fm.DecimalSeparator := '.';
+    Label6.Caption := Label6.Caption + format(RF_UpdateAvailable, [format('%0.5f', [Max(OnlineVersion, Version)], fm)]);
+    Label6.Font.Color := $00007FD0; // Orange
+  End
+  Else Begin
+    Label6.Font.Color := clDefault;
+  End;
   // Ohne bekannte Version ist das Spiel noch nicht (vollständig) installiert, das macht "Updates..."
-  If Version = -1 Then Begin
+  If (Version = -1) Or UpdateAvailable Then Begin
     Button1.Font.Style := [fsBold];
   End
   Else Begin
@@ -1213,10 +1240,13 @@ Begin
   Language.AddIgnoredIdentifier('Form1.Button10.Caption');
   Language.AddIgnoredIdentifier('Form1.Button11.Caption');
   Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
-  Language.AddIgnoredComponent(Form3.CheckListBox1);
-  Language.AddIgnoredComponent(Form3.CheckListBox2);
-  Language.AddIgnoredIdentifier('Form3.Label3.Caption');
-  Language.AddIgnoredIdentifier('Form3.Label5.Caption');
+  Language.AddIgnoredComponent(Form3.ListView1);
+  For i := 0 To Form3.ComponentCount - 1 Do Begin // Form3: zur Laufzeit gesetzt (Labels ohne Caption im Designer, Knöpfe)
+    If (Form3.Components[i] Is TLabel) And (TLabel(Form3.Components[i]).Caption = '') Then
+      Language.AddIgnoredIdentifier('Form3.' + Form3.Components[i].Name + '.Caption');
+  End;
+  Language.AddIgnoredIdentifier('Form3.ButtonMain.Caption');
+  Language.AddIgnoredIdentifier('Form3.ButtonClose.Caption');
   Language.AddIgnoredComponent(Form4.StringGrid1);
   For i := 80 To 92 Do Begin // Form4: Anteile der Items und Krankheiten, setzt UpdateItemShares
     Language.AddIgnoredIdentifier('Form4.Label' + inttostr(i) + '.Caption');
@@ -1228,6 +1258,10 @@ Begin
   Language.AddIgnoredIdentifier('Form5.ComboBox4.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox5.Items');
   ApplyLanguage();
+  // Nur ein Hinweis neben "Updates...", ohne Klick wird nichts heruntergeladen
+  If CheckUpdatesOnStart Then Begin
+    TUpdateCheckThread.Create(GetUpdateTempFolder() + 'fpc_atomic_version_start.json', @OnStartCheckDone);
+  End;
 End;
 
 Procedure TForm1.ComboBox1Change(Sender: TObject);
@@ -1265,7 +1299,6 @@ Begin
   ini.WriteString('Launcher', 'Language', fLanguageCodes[ComboBox1.ItemIndex]);
   Edit1Change(Nil);
   UpdateStatus();
-  Form3.CheckListBox1Click(Nil);
   UpdateModsCaption();
   UpdateGameModeCaption();
   If fAssetNames.Count > 0 Then Begin

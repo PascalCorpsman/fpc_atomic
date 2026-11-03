@@ -1,0 +1,6 @@
+[Translation]
+r_updating="Le lanceur est en cours de mise à jour ..."
+r_invalidparameters="Erreur, paramètres invalides, arrêt."
+rf_notfound="Erreur, introuvable : %s"
+rf_stillrunning="Erreur, %s est encore en cours d'exécution ou verrouillé, la mise à jour n'a pas été installée."
+rf_copyfailed="Erreur, impossible de copier %s -> %s, l'ancien lanceur a été restauré."

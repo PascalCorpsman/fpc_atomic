@@ -1,0 +1,6 @@
+[Translation]
+r_updating="The launcher is being updated ..."
+r_invalidparameters="Error, invalid parameters, terminate now."
+rf_notfound="Error, could not find: %s"
+rf_stillrunning="Error, %s is still running or locked, the update was not installed."
+rf_copyfailed="Error, could not copy %s -> %s, the old launcher is restored."
