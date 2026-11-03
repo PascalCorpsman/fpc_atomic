@@ -80,6 +80,23 @@ object Form5: TForm5
     Top = 12
     Width = 320
   end
+  object Label10: TLabel
+    Left = 436
+    Height = 15
+    Top = 268
+    Caption = 'Graphics set'
+    FocusControl = ComboBox5
+  end
+  object ComboBox5: TComboBox
+    Hint = 'The graphics of the game: Original (from the CD) or a set from the graphics generator (folders in assets). Missing graphics of a set are taken from the original.'
+    Left = 540
+    Height = 23
+    Top = 264
+    Width = 216
+    ItemHeight = 15
+    Style = csDropDownList
+    OnChange = ComboBox2Change
+  end
   object Label2: TLabel
     Left = 12
     Height = 15

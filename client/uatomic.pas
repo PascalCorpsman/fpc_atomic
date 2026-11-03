@@ -73,7 +73,11 @@ Type
     Constructor Create(); virtual;
     Destructor Destroy(); override;
     Function GetAnimTimeInMs(Anim: TRenderAnimation; Value: uint16): Integer;
-    Function InitAsColor(path: String; aTargetColor: TRGB): Boolean;
+    (*
+     * Paths: Die Verzeichnisse, in denen die Sheets gesucht werden, das erste, in dem es eine Datei gibt, gewinnt
+     * (z.B. Grafiksatz/atomic/p0/, Grafiksatz/atomic/, data/atomic/), siehe uassetpath.AtomicDirs
+     *)
+    Function InitAsColor(Const Paths: TStringArray; aTargetColor: TRGB): Boolean;
 
     Procedure Render(Const Info: TAtomicInfo; Edge: Boolean);
   End;
@@ -262,7 +266,19 @@ Begin
   End;
 End;
 
-Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
+Function TAtomic.InitAsColor(Const Paths: TStringArray; aTargetColor: TRGB): Boolean;
+
+  // Die Datei aus dem ersten Verzeichnis, in dem es sie gibt, sonst aus dem letzten (dann schlägt das Laden fehl wie bisher)
+  Function F(Const Filename: String): String;
+  Var
+    i: integer;
+  Begin
+    result := Filename;
+    For i := 0 To high(Paths) Do Begin
+      result := Paths[i] + Filename;
+      If FileExists(result) Then exit;
+    End;
+  End;
 
   Function CreateAnimation(Filename: String; AngleOffset: Single; TimePerFrame, w, h, fpr, fpc, c: integer; Const RangeData: Array Of Integer): TOpenGL_Animation;
   Var
@@ -273,7 +289,8 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
   Begin
     result := Nil;
     If Not FileExists(Filename) Then exit;
-    fn := ExtractFileName(Filename) + ColorToString(RGBToColor(aTargetColor));
+    // Mit Verzeichnis, sonst würden sich gleichnamige Sheets aus verschiedenen Verzeichnissen (Grafiksatz pro Spieler, die/, idle/ ..) überschreiben
+    fn := Filename + ColorToString(RGBToColor(aTargetColor));
     (*
      * Die Textur wird direkt aus den Rohdaten erzeugt, die Sprites haben kein Bitmap
      * (spart den RAM und die Umwege über TBitmap). Der Name entspricht dem, den
@@ -308,6 +325,7 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
     End;
   End;
 
+  // Dir ist relativ zu Paths (z.B. 'idle' + PathDelim), jede Datei kommt über F aus dem ersten Verzeichnis, das sie hat
   Function LoadDir(Dir: String; Var Animations: TAnimations): Boolean;
   Var
     sl: TStringList;
@@ -316,14 +334,14 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
   Begin
     result := true;
     sl := TStringList.Create;
-    sl.LoadFromFile(dir + 'files.txt');
+    sl.LoadFromFile(F(dir + 'files.txt'));
     For i := 0 To sl.Count - 1 Do Begin
       If trim(sl[i]) = '' Then Continue;
       If pos('#', trim(sl[i])) = 1 Then Continue;
       sa := sl[i].Split(';');
       If length(sa) <> 9 Then exit(false);
-      If Not FileExists(dir + sa[0]) Then Begin
-        Log(format('Warning, can not load animation, file: %s does not exist', [dir + sa[0]]), llWarning);
+      If Not FileExists(F(dir + sa[0])) Then Begin
+        Log(format('Warning, can not load animation, file: %s does not exist', [F(dir + sa[0])]), llWarning);
         Continue; // Gibt es die eine Animation nicht, dann wird sie ignoriert
       End;
       tpf := strtointdef(sa[1], -1);
@@ -342,7 +360,7 @@ Function TAtomic.InitAsColor(path: String; aTargetColor: TRGB): Boolean;
       roy := strtointdef(sa[8], 0);
 
       setlength(Animations, high(Animations) + 2);
-      Animations[high(Animations)].Ani := CreateAnimation(dir + sa[0], 0, tpf, w, h, fpr, fpc, c, [0]);
+      Animations[high(Animations)].Ani := CreateAnimation(F(dir + sa[0]), 0, tpf, w, h, fpr, fpc, c, [0]);
       Animations[high(Animations)].OffsetX := rox;
       Animations[high(Animations)].Offsety := roy;
 {$IFDEF Only1Directory}
@@ -359,67 +377,67 @@ Begin
   (*
    * Laden aller Texturen die ein Einzelner Spieler so haben kann
    *)
-  fShadowTex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(path + 'shadow.png', smClamp);
-  fAnimations[aaWalk].Ani := CreateAnimation(path + 'walk.png', 45, 50, 110, 110, 15, 4, 15, [0, 15, 45, 30]);
+  fShadowTex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(F('shadow.png'), smClamp);
+  fAnimations[aaWalk].Ani := CreateAnimation(F('walk.png'), 45, 50, 110, 110, 15, 4, 15, [0, 15, 45, 30]);
   fAnimations[aaWalk].OffsetX := 55;
   fAnimations[aaWalk].OffsetY := 90;
   If Not assigned(fAnimations[aaWalk].Ani) Then exit;
 
-  fAnimations[aaStandStill].ani := CreateAnimation(path + 'stand.png', 45, 100, 110, 110, 2, 2, 1, [0, 1, 3, 2]);
+  fAnimations[aaStandStill].ani := CreateAnimation(F('stand.png'), 45, 100, 110, 110, 2, 2, 1, [0, 1, 3, 2]);
   fAnimations[aaStandStill].OffsetX := 55;
   fAnimations[aaStandStill].OffsetY := 90;
   If Not assigned(fAnimations[aaStandStill].ani) Then exit;
 
-  fAnimations[aaKick].ani := CreateAnimation(path + 'kick.png', 45, 50, 50, 69, 10, 4, 10, [10, 0, 30, 20]);
+  fAnimations[aaKick].ani := CreateAnimation(F('kick.png'), 45, 50, 50, 69, 10, 4, 10, [10, 0, 30, 20]);
   fAnimations[aaKick].OffsetX := 25;
   fAnimations[aaKick].OffsetY := 60;
   If Not assigned(fAnimations[aaKick].ani) Then exit;
 
-  fAnimations[aaPunch].ani := CreateAnimation(path + 'punbomb.png', 45, 50, 110, 110, 10, 4, 10, [30, 10, 20, 0]);
+  fAnimations[aaPunch].ani := CreateAnimation(F('punbomb.png'), 45, 50, 110, 110, 10, 4, 10, [30, 10, 20, 0]);
   fAnimations[aaPunch].OffsetX := 55;
   fAnimations[aaPunch].OffsetY := 90;
   If Not assigned(fAnimations[aaPunch].ani) Then exit;
 
-  fAnimations[aaPup].ani := CreateAnimation(path + 'pupbomb.png', 45, 50, 110, 110, 11, 4, 11, [11, 33, 0, 22]);
+  fAnimations[aaPup].ani := CreateAnimation(F('pupbomb.png'), 45, 50, 110, 110, 11, 4, 11, [11, 33, 0, 22]);
   fAnimations[aaPup].OffsetX := 55;
   fAnimations[aaPup].OffsetY := 90;
   If Not assigned(fAnimations[aaPup].ani) Then exit;
 
   // Mod Bomben tragen: bwalk.png gibt es erst mit einem neuen cd_data_extractor, fehlt sie, wird normal gelaufen (siehe Render)
-  fAnimations[aaCarryWalk].ani := CreateAnimation(path + 'bwalk.png', 45, 50, 110, 110, 15, 4, 15, [0, 15, 45, 30]);
+  fAnimations[aaCarryWalk].ani := CreateAnimation(F('bwalk.png'), 45, 50, 110, 110, 15, 4, 15, [0, 15, 45, 30]);
   fAnimations[aaCarryWalk].OffsetX := 55;
   fAnimations[aaCarryWalk].OffsetY := 90;
-  fAnimations[aaCarryStandStill].ani := CreateAnimation(path + 'bwalk.png', 45, 100, 110, 110, 15, 4, 1, [0, 15, 45, 30]);
+  fAnimations[aaCarryStandStill].ani := CreateAnimation(F('bwalk.png'), 45, 100, 110, 110, 15, 4, 1, [0, 15, 45, 30]);
   fAnimations[aaCarryStandStill].OffsetX := 55;
   fAnimations[aaCarryStandStill].OffsetY := 90;
 
 
-  Bomb.ani := CreateAnimation(path + 'bomb.png', 0, 50, 40, 37, 5, 4, 18, [0]);
+  Bomb.ani := CreateAnimation(F('bomb.png'), 0, 50, 40, 37, 5, 4, 18, [0]);
   Bomb.OffsetX := -20;
   Bomb.OffsetY := -37 Div 2;
   If Not assigned(Bomb.ani) Then exit;
-  Bomb_dud.ani := CreateAnimation(path + 'bomb_dud.png', 0, 750, 40, 40, 1, 2, 2, [0]);
+  Bomb_dud.ani := CreateAnimation(F('bomb_dud.png'), 0, 750, 40, 40, 1, 2, 2, [0]);
   Bomb_dud.OffsetX := -20;
   Bomb_dud.OffsetY := -20;
   If Not assigned(Bomb_dud.ani) Then exit;
-  Bomb_trigger.ani := CreateAnimation(path + 'bomb_trigger.png', 0, 50, 40, 40, 5, 4, 18, [0]);
+  Bomb_trigger.ani := CreateAnimation(F('bomb_trigger.png'), 0, 50, 40, 40, 5, 4, 18, [0]);
   Bomb_trigger.OffsetX := -20;
   Bomb_trigger.OffsetY := -20;
   If Not assigned(Bomb_trigger.ani) Then exit;
-  Bomb_Wobble.ani := CreateAnimation(path + 'bomb_wobble.png', 0, 75, 40, 37, 4, 3, 12, [0]);
+  Bomb_Wobble.ani := CreateAnimation(F('bomb_wobble.png'), 0, 75, 40, 37, 4, 3, 12, [0]);
   Bomb_Wobble.OffsetX := -20;
   Bomb_Wobble.OffsetY := -37 Div 2;
   If Not assigned(Bomb_Wobble.ani) Then exit;
   // Mod Bomben tragen: Die selben Bilder, aber nur 1 Frame (= keine Animation)
-  Bomb_still.ani := CreateAnimation(path + 'bomb.png', 0, 50, 40, 37, 5, 4, 1, [0]);
+  Bomb_still.ani := CreateAnimation(F('bomb.png'), 0, 50, 40, 37, 5, 4, 1, [0]);
   Bomb_still.OffsetX := Bomb.OffsetX;
   Bomb_still.OffsetY := Bomb.OffsetY;
   If Not assigned(Bomb_still.ani) Then exit;
-  Bomb_dud_still.ani := CreateAnimation(path + 'bomb_dud.png', 0, 750, 40, 40, 1, 2, 1, [0]);
+  Bomb_dud_still.ani := CreateAnimation(F('bomb_dud.png'), 0, 750, 40, 40, 1, 2, 1, [0]);
   Bomb_dud_still.OffsetX := Bomb_dud.OffsetX;
   Bomb_dud_still.OffsetY := Bomb_dud.OffsetY;
   If Not assigned(Bomb_dud_still.ani) Then exit;
-  Bomb_trigger_still.ani := CreateAnimation(path + 'bomb_trigger.png', 0, 50, 40, 40, 5, 4, 1, [0]);
+  Bomb_trigger_still.ani := CreateAnimation(F('bomb_trigger.png'), 0, 50, 40, 40, 5, 4, 1, [0]);
   Bomb_trigger_still.OffsetX := Bomb_trigger.OffsetX;
   Bomb_trigger_still.OffsetY := Bomb_trigger.OffsetY;
   If Not assigned(Bomb_trigger_still.ani) Then exit;
@@ -435,21 +453,21 @@ Begin
   // Row 7 (frames 35-39): FlameMiddle right (horizontal middle going right) - 5-frame animation
   // Row 8 (frames 40-44): FlameMiddle left (horizontal middle going left) - 5-frame animation
   // Each range corresponds to a direction: 0°=right, 90°=up, 180°=left, 270°=down
-  FlameCross := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [0]); // Row 0: cross animation (5 frames)
+  FlameCross := CreateAnimation(F('flame.png'), 0, 50, 41, 37, 5, 9, 5, [0]); // Row 0: cross animation (5 frames)
   If Not assigned(FlameCross) Then exit;
   // FlameMiddle: 4 ranges for 4 directions, each with 5-frame animation
   // Frame offsets: 40=right(0°), 30=up(90°), 35=left(180°), 25=down(270°) - swapped right/left and up/down
-  FlameMiddle := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [40, 30, 35, 25]);
+  FlameMiddle := CreateAnimation(F('flame.png'), 0, 50, 41, 37, 5, 9, 5, [40, 30, 35, 25]);
   If Not assigned(FlameMiddle) Then exit;
   // FlameEnd: 4 ranges for 4 directions, each with 5-frame animation
   // EqualizeRanges divides 360° into 4 equal parts: Range 0=0-89°, Range 1=90-179°, Range 2=180-269°, Range 3=270-359°
   // When FlameAngle is set: 0°=right, 90°=up, 180°=left, 270°=down
   // Frame offsets: 20=right(0°), 5=up(90°), 10=left(180°), 15=down(270°)
-  FlameEnd := CreateAnimation(path + 'flame.png', 0, 50, 41, 37, 5, 9, 5, [20, 5, 10, 15]); // right, up, left, down
+  FlameEnd := CreateAnimation(F('flame.png'), 0, 50, 41, 37, 5, 9, 5, [20, 5, 10, 15]); // right, up, left, down
   If Not assigned(FlameEnd) Then exit;
-  If Not LoadDir(Path + 'idle' + PathDelim, fZenAnimations) Then exit;
-  If Not LoadDir(Path + 'locked_in' + PathDelim, fLockedInAnimations) Then exit;
-  If Not LoadDir(Path + 'die' + PathDelim, fDieAnimations) Then exit;
+  If Not LoadDir('idle' + PathDelim, fZenAnimations) Then exit;
+  If Not LoadDir('locked_in' + PathDelim, fLockedInAnimations) Then exit;
+  If Not LoadDir('die' + PathDelim, fDieAnimations) Then exit;
 
   result := true;
 End;

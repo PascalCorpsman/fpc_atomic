@@ -32,6 +32,7 @@ Resourcestring
   R_HitPoints = 'Hit points';
   R_RandomMap = 'Random each game';
   R_NoMapGraphics = 'No map graphics, extract the CD data first.';
+  R_AssetSetOriginal = 'Original';
   R_KeyboardSettings = 'Configure controls';
   R_Player0 = 'Player 1';
   R_Player1 = 'Player 2';

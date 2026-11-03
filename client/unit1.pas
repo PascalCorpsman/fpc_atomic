@@ -152,6 +152,7 @@ Uses lazfileutils, LazUTF8, LCLType, Types
   , uatomicfont
   , uscreens // sHost / sJoinNetwork für die Parameter -host / -join (und den AUTOMODE)
   , usdl_input
+  , uassetpath
   , uopengl_legacychecker
   , uopengl_shaderprimitives
   ;
@@ -317,6 +318,21 @@ Begin
   End;
   EnterID := LogEnter('TForm1.FormCreate');
   log('TForm1.FormCreate', llInfo);
+  // Grafiksatz: -assets <Ordner unter assets/>, leer oder unbekannt = die Originalgrafiken aus data/
+  AssetSet := '';
+  For i := 1 To Paramcount - 1 Do Begin
+    If lowercase(ParamStrUTF8(i)) = '-assets' Then Begin
+      If (trim(ParamStrUTF8(i + 1)) <> '') And Not SetAssetSet(ParamStrUTF8(i + 1)) Then Begin
+        log('Graphics set "' + ParamStrUTF8(i + 1) + '" not found, using the original graphics.', llWarning);
+      End;
+    End;
+  End;
+  If AssetSet = '' Then Begin
+    log('Graphics set: original (data)', llInfo);
+  End
+  Else Begin
+    log('Graphics set: ' + AssetSet + ' (' + AssetSetDir() + ', missing files from data)', llInfo);
+  End;
   caption := defCaption;
 
   If (BASS_GetVersion() Shr 16) <> Bassversion Then Begin

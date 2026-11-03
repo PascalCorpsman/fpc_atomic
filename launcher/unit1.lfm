@@ -19,10 +19,51 @@ object Form1: TForm1
   object Image1: TImage
     Left = 8
     Height = 288
+    Hint = 'The graphics set of the game.'#13#10'Double click: open it in the graphics generator.'
     Top = 40
     Width = 192
     Center = True
     Stretch = True
+    OnDblClick = Button12Click
+  end
+  object Button10: TButton
+    AnchorSideLeft.Control = Image1
+    Left = 8
+    Height = 25
+    Hint = 'Previous graphics set.'
+    Top = 334
+    Width = 28
+    Caption = #9664
+    TabOrder = 8
+    OnClick = Button10Click
+  end
+  object Label11: TLabel
+    AnchorSideLeft.Control = Button10
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideRight.Control = Button11
+    Left = 40
+    Height = 16
+    Top = 338
+    Width = 128
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    AutoSize = False
+    BorderSpacing.Left = 4
+    BorderSpacing.Right = 4
+    Caption = 'Label11'
+  end
+  object Button11: TButton
+    AnchorSideRight.Control = Image1
+    AnchorSideRight.Side = asrBottom
+    Left = 172
+    Height = 25
+    Hint = 'Next graphics set.'
+    Top = 334
+    Width = 28
+    Anchors = [akTop, akRight]
+    Caption = #9654
+    TabOrder = 9
+    OnClick = Button10Click
   end
   object GroupBox1: TGroupBox
     Left = 208
@@ -251,7 +292,7 @@ object Form1: TForm1
       Height = 15
       Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
       Top = 36
-      Width = 352
+      Width = 196
       AutoSize = False
       Caption = 'Label6'
     end
@@ -264,6 +305,16 @@ object Form1: TForm1
       Caption = '&Updates...'
       TabOrder = 1
       OnClick = Button1Click
+    end
+    object Button12: TButton
+      Left = 212
+      Height = 25
+      Hint = 'Open the graphics generator: create or change graphics sets for the game.'
+      Top = 31
+      Width = 150
+      Caption = 'Graphics...'
+      TabOrder = 2
+      OnClick = Button12Click
     end
   end
   object CheckBox6: TCheckBox

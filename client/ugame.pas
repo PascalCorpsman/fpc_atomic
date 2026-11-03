@@ -313,6 +313,7 @@ Uses dglopengl
   , ugraphics
   , usdl_input
   , uopengl_shaderprimitives
+  , uassetpath
   ;
 
 (*
@@ -2798,6 +2799,7 @@ Var
   field: TAtomicRandomField;
   EnterID: Integer;
   ScreenCount, ScreenDone: Integer;
+  GfxDir: String;
 {$IFDEF ShowInitTime}
 
   Procedure TimePoint(tp: Integer);
@@ -2820,7 +2822,7 @@ Begin
         fSerialInit.total := fSerialInit.t;
 {$ENDIF}
         // Der Meldungsdialog nutzt den Rahmen des Lade Dialogs, damit auch Fehler beim Laden schon im Spiel angezeigt werden können
-        fMessageDialog.LoadFromDisk(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png');
+        fMessageDialog.LoadFromDisk(AssetFile('res' + PathDelim + 'loaddialog.png'));
         fSerialInit.Loader := TLoaderDialog.create(fOwner);
         fSerialInit.Loader.OnBeforeRender := @OnLoaderRender;
         (*
@@ -2865,7 +2867,7 @@ Begin
         fOwner.OnResize := @FOnResize;
 
         fSerialInit.p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
-        AtomicBigFont.CreateFont(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim);
+        AtomicBigFont.CreateFont(AssetFile('res' + PathDelim + 'infinity.png'), AssetFile('res' + PathDelim + 'bigfont.png'));
         fSerialInit.Loader.Percent := 3;
         fSerialInit.Loader.Render();
 
@@ -2913,98 +2915,98 @@ Begin
         fSerialInit.Loader.Percent := 10;
         fSerialInit.Loader.Render();
         fPowerUpsTex[puNone].Image := 0; // Das Gibts ja net -> Weg
-        fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powbomb.png', smClamp);
+        fPowerUpsTex[puExtraBomb] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powbomb.png'), smClamp);
         If fPowerUpsTex[puExtraBomb].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puLongerFlameLength] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powflame.png', smClamp);
+        fPowerUpsTex[puLongerFlameLength] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powflame.png'), smClamp);
         If fPowerUpsTex[puLongerFlameLength].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puDisease] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powdisea.png', smClamp);
+        fPowerUpsTex[puDisease] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powdisea.png'), smClamp);
         If fPowerUpsTex[puDisease].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puCanCick] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powkick.png', smClamp);
+        fPowerUpsTex[puCanCick] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powkick.png'), smClamp);
         If fPowerUpsTex[puCanCick].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powskate.png', smClamp);
+        fPowerUpsTex[puExtraSpeed] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powskate.png'), smClamp);
         If fPowerUpsTex[puExtraSpeed].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powpunch.png', smClamp);
+        fPowerUpsTex[puCanPunch] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powpunch.png'), smClamp);
         If fPowerUpsTex[puCanPunch].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powgrab.png', smClamp);
+        fPowerUpsTex[puCanGrab] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powgrab.png'), smClamp);
         If fPowerUpsTex[puCanGrab].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powspoog.png', smClamp);
+        fPowerUpsTex[puCanSpooger] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powspoog.png'), smClamp);
         If fPowerUpsTex[puCanSpooger].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powgold.png', smClamp);
+        fPowerUpsTex[puGoldFlame] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powgold.png'), smClamp);
         If fPowerUpsTex[puGoldFlame].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powtrig.png', smClamp);
+        fPowerUpsTex[puTrigger] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powtrig.png'), smClamp);
         If fPowerUpsTex[puTrigger].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powjelly.png', smClamp);
+        fPowerUpsTex[puCanJelly] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powjelly.png'), smClamp);
         If fPowerUpsTex[puCanJelly].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powebola.png', smClamp);
+        fPowerUpsTex[puSuperBadDisease] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powebola.png'), smClamp);
         If fPowerUpsTex[puSuperBadDisease].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powslow.png', smClamp);
+        fPowerUpsTex[puSlow] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powslow.png'), smClamp);
         If fPowerUpsTex[puSlow].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphikItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'powrand.png', smClamp);
+        fPowerUpsTex[purandom] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'powrand.png'), smClamp);
         If fPowerUpsTex[purandom].Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
@@ -3014,30 +3016,30 @@ Begin
         fSerialInit.Loader.Percent := 10;
         fSerialInit.Loader.Render();
         // Load PlayerDead Tex correct.
-        fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
-        fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'playerdead.png');
+        fPlayerdeadTex.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(AssetFile('res' + PathDelim + 'playerdead.png'), ugraphics.ColorToRGB(clfuchsia), smClamp);
+        fPlayerdeadTex := OpenGL_GraphikEngine.FindItem(AssetFile('res' + PathDelim + 'playerdead.png'));
         If fPlayerdeadTex.Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+        fhurry.Texture.Image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(AssetFile('res' + PathDelim + 'hurry.png'), ugraphics.ColorToRGB(clfuchsia), smClamp);
         If fhurry.Texture.Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fhurry.Texture := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hurry.png');
-        fSerialInit.hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png', ugraphics.ColorToRGB(clfuchsia), smClamp);
+        fhurry.Texture := OpenGL_GraphikEngine.FindItem(AssetFile('res' + PathDelim + 'hurry.png'));
+        fSerialInit.hohletex.image := OpenGL_GraphikEngine.LoadAlphaColorGraphik(AssetFile('res' + PathDelim + 'hole.png'), ugraphics.ColorToRGB(clfuchsia), smClamp);
         If fSerialInit.hohletex.Image = 0 Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
-        fSerialInit.hohletex := OpenGL_GraphikEngine.FindItem(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'hole.png');
+        fSerialInit.hohletex := OpenGL_GraphikEngine.FindItem(AssetFile('res' + PathDelim + 'hole.png'));
         fSerialInit.Loader.Percent := 10;
         fSerialInit.Loader.Render();
 {$IFDEF ShowInitTime}
@@ -3045,21 +3047,21 @@ Begin
 {$ENDIF}
         // Laden der Felder
         fArrows := TOpenGL_Animation.Create;
-        If Not fArrows.LoadFromFile(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'arrows.ani', true) Then Begin
+        If Not fArrows.LoadFromFile(AssetFile('res' + PathDelim + 'arrows.ani'), true) Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
         fConveyors := TOpenGL_Animation.Create;
-        If Not fConveyors.LoadFromFile(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'conveyor.ani', true) Then Begin
+        If Not fConveyors.LoadFromFile(AssetFile('res' + PathDelim + 'conveyor.ani'), true) Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
           exit;
         End;
         fTramp := TOpenGL_Animation.Create;
-        If Not fTramp.LoadFromFile(fSerialInit.p + 'data' + PathDelim + 'res' + PathDelim + 'tramp.ani', true) Then Begin
+        If Not fTramp.LoadFromFile(AssetFile('res' + PathDelim + 'tramp.ani'), true) Then Begin
           fSerialInit.aStep := 1000;
           result := true;
           logleave(EnterID);
@@ -3126,7 +3128,14 @@ Begin
           fSerialInit.Loader.Percent := 10 + round(40 * fSerialInit.j / fSerialInit.sl.count);
           fSerialInit.Loader.Render();
           fFields[fSerialInit.j] := TAtomicField.Create();
-          If Not fFields[fSerialInit.j].loadFromDirectory(fSerialInit.sl[fSerialInit.j], fArrows, fConveyors, fTramp, fSerialInit.hohletex, fSerialInit.TrampStatic) Then Begin
+          // Die Kartenliste kommt immer aus data/maps (gleiche Nummerierung auf allen Clients), die Grafiken ggf. aus dem Grafiksatz
+          If AssetSet <> '' Then Begin
+            GfxDir := AssetSetDir() + 'maps' + PathDelim + ExtractFileName(ExcludeTrailingPathDelimiter(fSerialInit.sl[fSerialInit.j])) + PathDelim;
+          End
+          Else Begin
+            GfxDir := '';
+          End;
+          If Not fFields[fSerialInit.j].loadFromDirectory(fSerialInit.sl[fSerialInit.j], GfxDir, fArrows, fConveyors, fTramp, fSerialInit.hohletex, fSerialInit.TrampStatic) Then Begin
             LogShow('Error, unable to load field:' + fSerialInit.sl[fSerialInit.j], llFatal);
             fSerialInit.aStep := 1000;
             result := true;
@@ -3170,7 +3179,8 @@ Begin
           fSerialInit.Loader.Percent := 50 + round(50 * fSerialInit.j / (length(fAtomics) + 1));
           fSerialInit.Loader.Render();
           fAtomics[fSerialInit.j] := TAtomic.Create;
-          If Not fAtomics[fSerialInit.j].InitAsColor(fSerialInit.p + 'data' + PathDelim + 'atomic' + PathDelim, PlayerColors[fSerialInit.j]) Then Begin
+          If AssetSet <> '' Then log(format('Atomic %d graphics from: %s', [fSerialInit.j, AtomicDirs('p' + inttostr(fSerialInit.j))[0]]), llInfo);
+          If Not fAtomics[fSerialInit.j].InitAsColor(AtomicDirs('p' + inttostr(fSerialInit.j)), PlayerColors[fSerialInit.j]) Then Begin
             LogShow('Error, unable to load atomic.', llFatal);
             fSerialInit.aStep := 1000;
             result := true;
@@ -3186,7 +3196,7 @@ Begin
           fSerialInit.Loader.Percent := 50 + round(50 * fSerialInit.j / (length(fAtomics) + 1));
           fSerialInit.Loader.Render();
           fHuntedAtomic := TAtomic.Create;
-          If Not fHuntedAtomic.InitAsColor(fSerialInit.p + 'data' + PathDelim + 'atomic' + PathDelim, HuntedGoldColor) Then Begin
+          If Not fHuntedAtomic.InitAsColor(AtomicDirs('hunted'), HuntedGoldColor) Then Begin
             LogShow('Error, unable to load atomic.', llFatal);
             fSerialInit.aStep := 1000;
             result := true;

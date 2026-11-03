@@ -54,12 +54,12 @@ Uses
   Graphics
   , dglOpenGL
   , Forms
-  , LazUTF8
   , uatomic_common
   , uOpenGL_ASCII_Font
   , uopengl_shaderprimitives
   , umessagedialog
   , uvectormath
+  , uassetpath
   ;
 
 { TLoaderDialog }
@@ -76,7 +76,7 @@ Begin
   Top := 0;
   Scale := 1;
   OnBeforeRender := Nil;
-  fTexture := OpenGL_GraphikEngine.LoadGraphikItem(ExtractFilePath(ParamStrUTF8(0)) + 'data' + PathDelim + 'res' + PathDelim + 'loaddialog.png', smClamp);
+  fTexture := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'loaddialog.png'), smClamp);
 End;
 
 Destructor TLoaderDialog.Destroy;

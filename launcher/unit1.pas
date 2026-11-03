@@ -34,6 +34,9 @@ Type
     Button7: TButton;
     Button8: TButton;
     Button9: TButton;
+    Button10: TButton;
+    Button11: TButton;
+    Button12: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -59,6 +62,7 @@ Type
     Label8: TLabel;
     Label9: TLabel;
     Label10: TLabel;
+    Label11: TLabel;
     ComboBox1: TComboBox;
     Panel1: TPanel;
     Timer1: TTimer;
@@ -70,6 +74,8 @@ Type
     Procedure Button7Click(Sender: TObject);
     Procedure Button8Click(Sender: TObject);
     Procedure Button9Click(Sender: TObject);
+    Procedure Button10Click(Sender: TObject);
+    Procedure Button12Click(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
@@ -91,6 +97,9 @@ Type
     GameDataFound: Boolean; // True, wenn CheckForFiles nichts vermisst, dann ist der Launch Knopf blau
     GameProcess: TProcessUTF8; // Das laufende Spiel, wenn der Launcher danach wieder erscheinen soll (CheckBox6), sonst Nil
     fLanguageCodes: Array Of String;
+    fAssetFolders: TStringList; // Die Grafiksätze, [0] = '' = Original, sonst der Ordner unter assets/
+    fAssetNames: TStringList; // Dazu die Namen aus profile.ini
+    fAssetIndex: integer; // Der gewählte Grafiksatz in fAssetFolders
 
     Procedure LoadLanguages();
     Procedure LoadSettings();
@@ -101,6 +110,10 @@ Type
     Procedure ApplyLanguage();
 
     Procedure LoadSideImage();
+    Procedure ReadAssetSets();
+    Procedure SelectAssetSet(Index: integer);
+    Function AssetGeneratorExe(): String;
+    Procedure StartAssetGenerator();
     Procedure OnDoLog(Const LogText: String);
   public
     Procedure StoreVersion(NewVersion: single);
@@ -115,7 +128,7 @@ Implementation
 {$R *.lfm}
 
 Uses process, Unit2, Unit3, Unit4, Unit5, Unit6, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage, ulayout
+  , ukeyboarddialog, uatomic_common, usynapsedownloader, uatomic_global, ulanguage, ulayout, uassetpath
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -177,9 +190,11 @@ Begin
   SetCurrentDir(ExtractFilePath(ParamStr(0)));
   Atomic_Version := TVersion.Create();
   UpToDate := false;
-  LoadSideImage();
+  fAssetFolders := TStringList.Create;
+  fAssetNames := TStringList.Create;
+  fAssetIndex := 0;
   LoadLanguages();
-  LoadSettings();
+  LoadSettings(); // Liest auch den Grafiksatz und zeigt sein Seitenbild (LoadSideImage)
   fm := DefaultFormatSettings;
   fm.DecimalSeparator := '.';
   caption := format('FPC Atomic Launcher, ver. %0.2f', [LauncherVersion / 100], fm);
@@ -355,7 +370,29 @@ Begin
   If form5.ShowModal = mrOK Then Begin
     form5.SaveToIni(ini);
     ini.UpdateFile;
+    ReadAssetSets(); // Der Grafiksatz kann sich im Dialog geändert haben
   End;
+End;
+
+Procedure TForm1.Button10Click(Sender: TObject);
+Begin
+  // Gemeinsam für die Pfeile unter dem Bild: Button10 = voriger, Button11 = nächster Grafiksatz
+  If fAssetFolders.Count = 0 Then exit;
+  If Sender = Button11 Then Begin
+    SelectAssetSet((fAssetIndex + 1) Mod fAssetFolders.Count);
+  End
+  Else Begin
+    SelectAssetSet((fAssetIndex + fAssetFolders.Count - 1) Mod fAssetFolders.Count);
+  End;
+End;
+
+Procedure TForm1.Button12Click(Sender: TObject);
+Begin
+  (*
+   * Gemeinsam für Grafiken... und den Doppelklick auf das Bild: öffnet den Grafik-Generator mit dem gewählten Satz.
+   * Ohne Generator passiert nichts, ein einfacher Klick auf das Bild schaltet absichtlich nicht (er käme vor jedem Doppelklick).
+   *)
+  StartAssetGenerator();
 End;
 
 Procedure TForm1.Button9Click(Sender: TObject);
@@ -457,6 +494,10 @@ Procedure TForm1.FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
 Begin
   Atomic_Version.free;
   Atomic_Version := Nil;
+  fAssetFolders.free;
+  fAssetFolders := Nil;
+  fAssetNames.free;
+  fAssetNames := Nil;
   ini.free;
   ini := Nil;
 End;
@@ -505,6 +546,11 @@ Begin
     p.Parameters.Add(Edit2.Text);
     p.Parameters.Add('-port');
     p.Parameters.Add(Edit3.Text);
+  End;
+  // Der Grafiksatz, ohne den Parameter nimmt das Spiel die Originalgrafiken aus data
+  If (fAssetIndex > 0) And (fAssetIndex < fAssetFolders.Count) Then Begin
+    p.Parameters.Add('-assets');
+    p.Parameters.Add(fAssetFolders[fAssetIndex]);
   End;
   If CheckBox6.Checked Then Begin
     // Der Launcher wartet versteckt, bis das Spiel beendet ist, und erscheint dann wieder (siehe Timer1Timer)
@@ -603,7 +649,38 @@ End;
 Procedure TForm1.LoadSideImage;
 Var
   p: TPortableNetworkGraphic;
+  SetDir: String;
 Begin
+  (*
+   * Das Bild zeigt den gewählten Grafiksatz: dessen preview.png, sonst die linke Hälfte seines Hauptmenüs,
+   * sonst (und für Original) die linke Hälfte des Hauptmenüs aus data
+   *)
+  Image1.Picture.Clear;
+  If (fAssetIndex > 0) And (fAssetIndex < fAssetFolders.Count) Then Begin
+    SetDir := AssetSetsDir() + fAssetFolders[fAssetIndex] + PathDelim;
+    Try
+      If FileExists(SetDir + AssetPreviewFile) Then Begin
+        Image1.Picture.LoadFromFile(SetDir + AssetPreviewFile);
+        exit;
+      End;
+      If FileExists(SetDir + 'res' + PathDelim + 'mainmenu.png') Then Begin
+        p := TPortableNetworkGraphic.Create;
+        Try
+          p.LoadFromFile(SetDir + 'res' + PathDelim + 'mainmenu.png');
+          p.Width := p.Width Div 2;
+          Image1.Picture.Assign(p);
+        Finally
+          p.free;
+        End;
+        exit;
+      End;
+    Except
+      On av: Exception Do Begin
+        log(av.Message); // Ein kaputtes Bild im Satz, dann eben das Original
+        Image1.Picture.Clear;
+      End;
+    End;
+  End;
   If FileExists('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png') Then Begin
     p := TPortableNetworkGraphic.Create;
     p.LoadFromFile('data' + PathDelim + 'res' + PathDelim + 'mainmenu.png');
@@ -611,6 +688,80 @@ Begin
     Image1.Picture.Assign(p);
     p.free;
   End;
+End;
+
+Procedure TForm1.ReadAssetSets;
+Var
+  Folder: String;
+  i: integer;
+Begin
+  // Original und alle Sätze in assets/, gewählt ist der aus [Launcher] AssetSet (gibt es ihn nicht mehr, dann Original)
+  ListAssetSets(fAssetFolders, fAssetNames);
+  fAssetFolders.Insert(0, '');
+  fAssetNames.Insert(0, R_AssetSetOriginal);
+  Folder := ini.ReadString('Launcher', 'AssetSet', '');
+  fAssetIndex := 0;
+  For i := 1 To fAssetFolders.Count - 1 Do Begin
+    If SameText(fAssetFolders[i], Folder) Then Begin
+      fAssetIndex := i;
+      break;
+    End;
+  End;
+  // Den Generator gibt es evtl. noch nicht, dann gibt es auch keinen Knopf und keinen Doppelklick
+  Button12.Visible := FileExists(AssetGeneratorExe());
+  Image1.ShowHint := Button12.Visible;
+  Button10.Enabled := fAssetFolders.Count > 1;
+  Button11.Enabled := fAssetFolders.Count > 1;
+  SelectAssetSet(fAssetIndex);
+End;
+
+Procedure TForm1.SelectAssetSet(Index: integer);
+Begin
+  If (Index < 0) Or (Index >= fAssetFolders.Count) Then Index := 0;
+  fAssetIndex := Index;
+  If fAssetFolders.Count = 0 Then Begin
+    Label11.Caption := R_AssetSetOriginal;
+  End
+  Else Begin
+    Label11.Caption := fAssetNames[fAssetIndex];
+    Label11.Hint := fAssetNames[fAssetIndex];
+    // Gleich speichern, die selbe Einstellung nutzen der Dialog Spieloptionen und der Start des Spiels
+    If ini.ReadString('Launcher', 'AssetSet', '') <> fAssetFolders[fAssetIndex] Then Begin
+      ini.WriteString('Launcher', 'AssetSet', fAssetFolders[fAssetIndex]);
+    End;
+  End;
+  LoadSideImage();
+End;
+
+Function TForm1.AssetGeneratorExe: String;
+Begin
+  result := AppDir() + 'asset_generator_gui'{$IFDEF Windows} + '.exe'{$ENDIF};
+End;
+
+Procedure TForm1.StartAssetGenerator;
+Var
+  P: TProcessUTF8;
+Begin
+  If Not FileExists(AssetGeneratorExe()) Then exit;
+  StoreSettings();
+  ini.UpdateFile;
+  // Wie der CD Extraktor: warten, bis der Generator beendet ist, dann assets/ neu einlesen
+  p := TProcessUTF8.Create(Nil);
+  Try
+    p.Executable := AssetGeneratorExe();
+    If (fAssetIndex > 0) And (fAssetIndex < fAssetFolders.Count) Then Begin
+      p.Parameters.Add('--set');
+      p.Parameters.Add(fAssetFolders[fAssetIndex]);
+    End
+    Else Begin
+      p.Parameters.Add('--new');
+    End;
+    p.Options := p.Options + [poWaitOnExit];
+    p.Execute;
+  Finally
+    p.free;
+  End;
+  ReadAssetSets();
 End;
 
 Procedure TForm1.OnDoLog(Const LogText: String);
@@ -709,6 +860,7 @@ Begin
       break;
     End;
   End;
+  ReadAssetSets();
 End;
 
 Procedure TForm1.UpdateStatus;
@@ -810,6 +962,10 @@ Begin
   Language.AddIgnoredIdentifier('Form1.Label5.Hint');
   Language.AddIgnoredIdentifier('Form1.Label6.Caption');
   Language.AddIgnoredIdentifier('Form1.Label10.Caption'); // Setzt UpdateGameModeCaption
+  Language.AddIgnoredIdentifier('Form1.Label11.Caption'); // Der Name des Grafiksatzes, setzt SelectAssetSet
+  Language.AddIgnoredIdentifier('Form1.Label11.Hint');
+  Language.AddIgnoredIdentifier('Form1.Button10.Caption');
+  Language.AddIgnoredIdentifier('Form1.Button11.Caption');
   Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
   Language.AddIgnoredComponent(Form3.CheckListBox1);
   Language.AddIgnoredComponent(Form3.CheckListBox2);
@@ -824,6 +980,7 @@ Begin
   End;
   Language.AddIgnoredIdentifier('Form5.ComboBox2.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox4.Items');
+  Language.AddIgnoredIdentifier('Form5.ComboBox5.Items');
   ApplyLanguage();
 End;
 
@@ -865,6 +1022,10 @@ Begin
   Form3.CheckListBox1Click(Nil);
   UpdateModsCaption();
   UpdateGameModeCaption();
+  If fAssetNames.Count > 0 Then Begin
+    fAssetNames[0] := R_AssetSetOriginal; // Der Name von Original kommt aus der Sprache
+    SelectAssetSet(fAssetIndex);
+  End;
   FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
 
