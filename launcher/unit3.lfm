@@ -1,153 +1,371 @@
 object Form3: TForm3
   Left = 323
-  Height = 617
+  Height = 560
   Top = 107
-  Width = 773
-  Caption = 'Form3'
-  ClientHeight = 617
-  ClientWidth = 773
+  Width = 720
+  Caption = 'Update overview'
+  ClientHeight = 560
+  ClientWidth = 720
   Position = poScreenCenter
   LCLVersion = '4.99.0.0'
+  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
-  object Memo1: TMemo
-    Left = 8
-    Height = 98
-    Top = 24
-    Width = 756
-    Anchors = [akTop, akLeft, akRight]
-    Lines.Strings = (
-      'Memo1'
-    )
-    ReadOnly = True
-    ScrollBars = ssAutoBoth
-    TabOrder = 0
-    WordWrap = False
-  end
-  object CheckBox1: TCheckBox
-    Left = 8
-    Height = 22
-    Top = 128
-    Width = 124
-    Caption = 'Update launcher'
+  OnDestroy = FormDestroy
+  object PanelButtons: TPanel
+    Left = 0
+    Height = 41
+    Top = 519
+    Width = 720
+    Align = alBottom
+    AutoSize = True
+    BevelOuter = bvNone
+    ClientHeight = 41
+    ClientWidth = 720
     TabOrder = 1
-    OnChange = CheckListBox1Click
+    object ButtonClose: TButton
+      Left = 622
+      Height = 25
+      Top = 8
+      Width = 90
+      Align = alRight
+      AutoSize = True
+      BorderSpacing.Around = 8
+      Constraints.MinWidth = 90
+      TabOrder = 1
+      OnClick = ButtonCloseClick
+    end
+    object ButtonMain: TButton
+      Left = 524
+      Height = 25
+      Top = 8
+      Width = 90
+      Align = alRight
+      AutoSize = True
+      BorderSpacing.Around = 8
+      Constraints.MinWidth = 90
+      Default = True
+      TabOrder = 0
+      OnClick = ButtonMainClick
+    end
   end
-  object Label1: TLabel
-    Left = 8
-    Height = 16
-    Top = 160
-    Width = 175
-    Caption = 'Files that should be updated:'
-  end
-  object CheckListBox1: TCheckListBox
-    Left = 8
-    Height = 134
-    Top = 176
-    Width = 756
-    Anchors = [akTop, akLeft, akRight, akBottom]
-    ItemHeight = 0
-    TabOrder = 2
-    TopIndex = -1
-    OnClick = CheckListBox1Click
-  end
-  object Label2: TLabel
-    Left = 8
-    Height = 16
-    Top = 343
-    Width = 244
-    Anchors = [akLeft, akBottom]
-    Caption = 'Additional files that can be downloaded:'
-  end
-  object CheckListBox2: TCheckListBox
-    Left = 8
-    Height = 97
-    Top = 359
-    Width = 756
-    Anchors = [akLeft, akRight, akBottom]
-    ItemHeight = 0
-    TabOrder = 3
-    TopIndex = -1
-    OnClick = CheckListBox1Click
-  end
-  object Button1: TButton
-    Left = 8
-    Height = 25
-    Top = 541
-    Width = 756
-    Anchors = [akLeft, akRight, akBottom]
-    Caption = 'Download and update files'
-    TabOrder = 4
-    OnClick = Button1Click
-  end
-  object Button2: TButton
-    Left = 8
-    Height = 25
-    Top = 581
-    Width = 756
-    Anchors = [akLeft, akRight, akBottom]
-    Caption = 'Cancel'
-    TabOrder = 5
-    OnClick = Button2Click
-  end
-  object Label3: TLabel
-    Left = 8
-    Height = 16
-    Top = 464
-    Width = 41
-    Anchors = [akLeft, akBottom]
-    Caption = 'Label3'
-  end
-  object Button3: TButton
-    Left = 658
-    Height = 25
-    Top = 316
-    Width = 50
-    Anchors = [akRight, akBottom]
-    Caption = 'All'
-    TabOrder = 6
-    OnClick = Button3Click
-  end
-  object Button4: TButton
-    Left = 714
-    Height = 25
-    Top = 316
-    Width = 50
-    Anchors = [akRight, akBottom]
-    Caption = 'None'
-    TabOrder = 7
-    OnClick = Button4Click
-  end
-  object Label4: TLabel
-    Left = 8
-    Height = 16
-    Top = 8
-    Width = 129
-    Caption = 'Last release message:'
-  end
-  object ProgressBar1: TProgressBar
-    Left = 8
-    Height = 20
-    Top = 488
-    Width = 756
-    Anchors = [akLeft, akRight, akBottom]
-    TabOrder = 8
-  end
-  object ProgressBar2: TProgressBar
-    Left = 8
-    Height = 20
-    Top = 512
-    Width = 756
-    Anchors = [akLeft, akRight, akBottom]
-    TabOrder = 9
-  end
-  object Label5: TLabel
-    Left = 200
-    Height = 16
-    Top = 464
-    Width = 564
-    Alignment = taRightJustify
-    Anchors = [akTop, akLeft, akRight, akBottom]
-    AutoSize = False
-    Caption = 'Label5'
+  object Notebook1: TNotebook
+    Left = 12
+    Height = 507
+    Top = 12
+    Width = 696
+    PageIndex = 0
+    Align = alClient
+    BorderSpacing.Left = 12
+    BorderSpacing.Top = 12
+    BorderSpacing.Right = 12
+    TabOrder = 0
+    object PageCheck: TPage
+      object LabelCheck: TLabel
+        Left = 0
+        Height = 1
+        Top = 0
+        Width = 696
+        Align = alTop
+        Font.Style = [fsBold]
+        ParentFont = False
+        WordWrap = True
+      end
+      object ProgressCheck: TProgressBar
+        Left = 0
+        Height = 20
+        Top = 9
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 8
+        Style = pbstMarquee
+        TabOrder = 0
+      end
+      object LabelCheckHint: TLabel
+        Left = 0
+        Height = 1
+        Top = 37
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 8
+        WordWrap = True
+      end
+      object MemoCheck: TMemo
+        Left = 0
+        Height = 462
+        Top = 46
+        Width = 696
+        Align = alClient
+        BorderSpacing.Top = 8
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        WordWrap = False
+      end
+    end
+    object PageOverview: TPage
+      object LabelVersion: TLabel
+        Left = 0
+        Height = 1
+        Top = 0
+        Width = 696
+        Align = alTop
+        Font.Style = [fsBold]
+        ParentFont = False
+        WordWrap = True
+      end
+      object LabelLauncher: TLabel
+        Left = 0
+        Height = 1
+        Top = 5
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 4
+        WordWrap = True
+      end
+      object Label4: TLabel
+        Left = 0
+        Height = 16
+        Top = 18
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 12
+        Caption = 'Last release message:'
+      end
+      object Memo1: TMemo
+        Left = 0
+        Height = 100
+        Top = 38
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 4
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+        WordWrap = False
+      end
+      object Label1: TLabel
+        Left = 0
+        Height = 16
+        Top = 150
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 12
+        Caption = 'Files:'
+      end
+      object ListView1: TListView
+        Left = 0
+        Height = 250
+        Top = 170
+        Width = 696
+        Align = alClient
+        BorderSpacing.Top = 4
+        Checkboxes = True
+        Columns = <
+          item
+            Width = 360
+          end
+          item
+            Width = 220
+          end
+          item
+            Alignment = taRightJustify
+            Width = 90
+          end>
+        ReadOnly = True
+        RowSelect = True
+        TabOrder = 1
+        ViewStyle = vsReport
+        OnItemChecked = ListView1ItemChecked
+      end
+      object PanelList: TPanel
+        Left = 0
+        Height = 33
+        Top = 424
+        Width = 696
+        Align = alBottom
+        AutoSize = True
+        BorderSpacing.Top = 4
+        BevelOuter = bvNone
+        ClientHeight = 33
+        ClientWidth = 696
+        TabOrder = 2
+        object CheckBoxShowAll: TCheckBox
+          Left = 0
+          Height = 22
+          Top = 4
+          Width = 200
+          Align = alLeft
+          BorderSpacing.Top = 4
+          BorderSpacing.Bottom = 4
+          Caption = 'Also show up to date files'
+          TabOrder = 0
+          OnChange = CheckBoxShowAllChange
+        end
+        object ButtonNone: TButton
+          Left = 616
+          Height = 25
+          Top = 4
+          Width = 80
+          Align = alRight
+          AutoSize = True
+          BorderSpacing.Left = 6
+          BorderSpacing.Top = 4
+          BorderSpacing.Bottom = 4
+          Caption = 'None'
+          Constraints.MinWidth = 80
+          TabOrder = 2
+          OnClick = ButtonNoneClick
+        end
+        object ButtonAll: TButton
+          Left = 530
+          Height = 25
+          Top = 4
+          Width = 80
+          Align = alRight
+          AutoSize = True
+          BorderSpacing.Top = 4
+          BorderSpacing.Bottom = 4
+          Caption = 'All'
+          Constraints.MinWidth = 80
+          TabOrder = 1
+          OnClick = ButtonAllClick
+        end
+      end
+      object CheckBoxAutoCheck: TCheckBox
+        Left = 0
+        Height = 22
+        Top = 461
+        Width = 696
+        Align = alBottom
+        BorderSpacing.Top = 4
+        BorderSpacing.Bottom = 4
+        Caption = 'Check for updates when the launcher starts'
+        TabOrder = 3
+        OnChange = CheckBoxAutoCheckChange
+      end
+    end
+    object PageProgress: TPage
+      object LabelFile: TLabel
+        Left = 0
+        Height = 1
+        Top = 0
+        Width = 696
+        Align = alTop
+        WordWrap = True
+      end
+      object ProgressBar1: TProgressBar
+        Left = 0
+        Height = 20
+        Top = 5
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 4
+        TabOrder = 0
+      end
+      object LabelTotal: TLabel
+        Left = 0
+        Height = 1
+        Top = 37
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 12
+      end
+      object ProgressBar2: TProgressBar
+        Left = 0
+        Height = 20
+        Top = 42
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 4
+        TabOrder = 1
+      end
+      object Label2: TLabel
+        Left = 0
+        Height = 16
+        Top = 74
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 12
+        Caption = 'Details:'
+      end
+      object MemoLog: TMemo
+        Left = 0
+        Height = 413
+        Top = 94
+        Width = 696
+        Align = alClient
+        BorderSpacing.Top = 4
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 2
+        WordWrap = False
+      end
+    end
+    object PageResult: TPage
+      object LabelResult: TLabel
+        Left = 0
+        Height = 1
+        Top = 0
+        Width = 696
+        Align = alTop
+        Font.Style = [fsBold]
+        ParentFont = False
+        WordWrap = True
+      end
+      object LabelResultHint: TLabel
+        Left = 0
+        Height = 1
+        Top = 9
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 8
+        WordWrap = True
+      end
+      object PanelExtractor: TPanel
+        Left = 0
+        Height = 25
+        Top = 18
+        Width = 696
+        Align = alTop
+        AutoSize = True
+        BorderSpacing.Top = 8
+        BevelOuter = bvNone
+        ClientHeight = 25
+        ClientWidth = 696
+        TabOrder = 0
+        object ButtonExtractor: TButton
+          Left = 0
+          Height = 25
+          Top = 0
+          Width = 150
+          Align = alLeft
+          AutoSize = True
+          Caption = 'CD e&xtractor...'
+          TabOrder = 0
+          OnClick = ButtonExtractorClick
+        end
+      end
+      object Label3: TLabel
+        Left = 0
+        Height = 16
+        Top = 55
+        Width = 696
+        Align = alTop
+        BorderSpacing.Top = 12
+        Caption = 'Details:'
+      end
+      object MemoResult: TMemo
+        Left = 0
+        Height = 432
+        Top = 75
+        Width = 696
+        Align = alClient
+        BorderSpacing.Top = 4
+        ReadOnly = True
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        WordWrap = False
+      end
+    end
   end
 end
