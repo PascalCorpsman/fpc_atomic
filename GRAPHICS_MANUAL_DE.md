@@ -16,11 +16,11 @@ FPC Atomic braucht Grafiken und Töne. Bisher kamen sie nur von der Atomic Bombe
 
 Beim allerersten Start ohne CD-Daten und ohne Grafiksatz fragt der Launcher einmal: **Willkommen bei FPC Atomic – woher sollen die Grafiken und Sounds des Spiels kommen?**
 
-- **Eigene erzeugen (empfohlen)**: Ein Fenster zeigt **vier Stile** nebeneinander, jeweils mit derselben Figur (**Neu würfeln** zeigt vier neue Varianten). Ein Klick auf einen Stil erzeugt diesen Satz in etwa 15 Sekunden, benannt nach dem Stil (Flach, Weich, Pixel, Retro; auf Englisch Flat, Soft, Pixel, Retro). Der Launcher wählt ihn aus (Sounds „Automatisch“), du kannst sofort spielen. Die anderen drei Stile entstehen **im Hintergrund** mit demselben Seed (gleiche Figur und Karten, anderes Aussehen); der Status im Launcher zeigt, wie viele noch laufen, sie erscheinen unter dem Bild, sobald sie fertig sind. Schließt du den Launcher vorher, wartet er unsichtbar, bis sie fertig sind. **Abbrechen** im Stil-Fenster erzeugt nichts und zeigt die Frage wieder.
+- **Eigene erzeugen (empfohlen)**: Ein Fenster zeigt **vier Stile** nebeneinander, jeweils mit derselben Figur (**Neu würfeln** zeigt vier neue Varianten). Ein Klick auf einen Stil erzeugt diesen Satz in etwa 15 Sekunden, benannt nach dem Stil. Die Ordner unter `assets/` heißen immer englisch (`Flat`, `Soft`, `Pixel`, `Retro`), Launcher, Spieloptionen und Grafik-Generator zeigen den Namen des Stils in der aktuellen Sprache des Launchers (auf Deutsch Flach, Weich, Pixel, Retro) und wechseln ihn mit der Sprache. Der Launcher wählt ihn aus (Sounds „Automatisch“), du kannst sofort spielen. Die anderen drei Stile entstehen **im Hintergrund** mit demselben Seed (gleiche Figur und Karten, anderes Aussehen); der Status im Launcher zeigt, wie viele noch laufen, sie erscheinen unter dem Bild, sobald sie fertig sind. Schließt du den Launcher vorher, wartet er unsichtbar, bis sie fertig sind. **Abbrechen** im Stil-Fenster erzeugt nichts und zeigt die Frage wieder.
 - **Von der CD übernehmen**: öffnet den CD-Extraktor (dafür braucht es die Atomic Bomberman CD).
 - **Später**: Es passiert nichts. Das Bild im Launcher zeigt dann „Noch keine Grafiken“, ein Klick darauf öffnet die Frage wieder.
 
-Von selbst kommt die Frage nur einmal. **Einrichtung...** im Launcher (Gruppe Installation, links neben **CD-Extraktor...**; fett, solange Spieldaten fehlen) oder `atomic_launcher --setup` öffnen sie jederzeit, z.B. um die vier Stile mit einem neuen Seed noch einmal zu erzeugen. Sätze, die eine frühere Einrichtung erzeugt hat, werden dabei **ersetzt** (Flach, Weich, Pixel, Retro bekommen das neue Aussehen). Sätze, die im Grafik-Generator gespeichert wurden oder anders entstanden sind, werden nie überschrieben: Der neue Stil heißt dann z.B. „Flach 2“. Alles andere bleibt möglich: Der CD-Extraktor ist immer da, nach dem Auslesen der CD ist „Original“ einfach eine weitere Wahl, und die erzeugten Sätze bleiben.
+Von selbst kommt die Frage nur einmal. **Einrichtung...** im Launcher (Gruppe Installation, links neben **CD-Extraktor...**; fett, solange Spieldaten fehlen) oder `atomic_launcher --setup` öffnen sie jederzeit, z.B. um die vier Stile mit einem neuen Seed noch einmal zu erzeugen. Sätze, die eine frühere Einrichtung erzeugt hat, werden dabei **ersetzt** (Flach, Weich, Pixel, Retro bekommen das neue Aussehen). Sätze, die im Grafik-Generator gespeichert wurden oder anders entstanden sind, werden nie überschrieben: Der neue Stil heißt dann z.B. „Flach 2“ (Ordner `Flat2`). Alles andere bleibt möglich: Der CD-Extraktor ist immer da, nach dem Auslesen der CD ist „Original“ einfach eine weitere Wahl, und die erzeugten Sätze bleiben.
 
 Fehlen die CD-Daten, erzeugt ein Klick auf **Starten** zuerst einen Grafiksatz (ein Stil nach Wahl, danach startet der Launcher das Spiel).
 
@@ -41,7 +41,7 @@ Der aktuelle Satz steht im Launcher **unter dem Bild links**: `◀  Name  ▶`. 
 
 Jeder Satz enthält eigene Spielgeräusche: Explosionen, Kicks, Abpraller, Teleporter und kurze Sprüche wie „Erwischt!“ oder „Beeil dich!“. Sie sind keine Aufnahmen, sondern werden wie die Grafiken berechnet (eine Interpretation der Original-Geräusche, beschrieben in `asset_generator/sounds.ini`). Dazu kommt ein eigenes Musikstück für die Menüs (`asset_generator/music.ini`).
 
-Die Sprüche gibt es auf Deutsch und Englisch, jeder Satz enthält beide. Das Spiel und **Probehören** im Launcher spielen die Sprüche automatisch in der Sprache des Launchers (Französisch und Spanisch: Englisch), es genügt, die Sprache im Launcher umzustellen. Die Sprache im Bereich **Töne** des Grafik-Generators wählt nur, was die Vorschau spielt, und die Vorgabe für andere Programme, die nur eine Sprache kennen (die einfachen Dateien in `sounds/`, die Sprachen liegen in `sounds/en/`, `sounds/de/`).
+Die Sprüche gibt es auf Englisch, Deutsch, Französisch und Spanisch (in jeder Sprache eigene kurze Sprüche, z.B. „Je t'ai eu !“, „¡Te pillé!“), jeder Satz enthält alle. Das Spiel und **Probehören** im Launcher spielen die Sprüche automatisch in der Sprache des Launchers, es genügt, die Sprache im Launcher umzustellen. Ein Satz einer älteren Version ohne französische oder spanische Sprüche spielt die englischen. Die Sprache im Bereich **Töne** des Grafik-Generators wählt nur, was die Vorschau spielt, und die Vorgabe für andere Programme, die nur eine Sprache kennen (die einfachen Dateien in `sounds/`, die Sprachen liegen in `sounds/en/`, `sounds/de/`, `sounds/fr/`, `sounds/es/`).
 
 Der Klang passt zum Stil: Flach klingt klar und knackig, Weich warm mit etwas Hall, Pixel nach 16-Bit-Konsole mit Echo, Retro rau nach 8-Bit. Der Seed verändert Tonhöhe, Länge und Klangfarbe, zwei Sätze im selben Stil klingen also unterschiedlich.
 
@@ -107,7 +107,7 @@ asset_generator --out assets/MeinSatz --name "Mein Satz" --seed random --style r
 - `--out <Ordner>`: Ziel, eine vorhandene `profile.ini` dort wird gelesen
 - `--profile <Datei>`, `--seed <Zahl|random>`, `--style <flat|soft|pixel|retro>`, `--name <Text>`
 - `--per-player`: eigene Figur pro Spieler
-- `--language de|en`: Vorgabe-Sprache der Sprüche (der Satz enthält immer beide)
+- `--language en|de|fr|es`: Vorgabe-Sprache der Sprüche (der Satz enthält immer alle)
 - `--only <a,b,...>`: nur diese Bereiche, `--list` zeigt alle
 - `--params`: alle Einstellungen mit ihren Werten ausgeben
 

@@ -28,7 +28,7 @@
  *   Seed=123456
  *   Style=flat            (flat | soft | pixel | retro)
  *   PerPlayer=0           (1 = own atomic per player, atomic/p0 .. p9)
- *   Language=en           (language of the spoken sounds: en | de)
+ *   Language=en           (language of the spoken sounds: en | de | fr | es)
  *   Origin=setup          (optional, who created the set: setup = the setup of
  *                         the launcher, it replaces such a set when it runs
  *                         again; editor = saved in the editor; the CLI keeps it)
@@ -113,7 +113,7 @@ Type
   End;
 
 Const
-  AGLanguages: Array[0..1] Of String = ('en', 'de'); // languages of the spoken sounds (sounds.ini)
+  AGLanguages: Array[0..3] Of String = ('en', 'de', 'fr', 'es'); // languages of the spoken sounds (sounds.ini [name], [name@de], ...)
 
 Function IsAGLanguage(Const Lang: String): Boolean;
 Function StyleToString(s: TAGStyle): String;

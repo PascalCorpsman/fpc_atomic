@@ -15,7 +15,7 @@ Resourcestring
   R_GenerateGraphicsTitle = 'Generate graphics';
   R_AskGenerateGraphics = 'No game data found (graphics and schemes from the Atomic Bomberman CD).' + LineEnding + LineEnding + 'Generate an own graphics set (with sounds) now and start the game with it? This takes a few seconds.' + LineEnding + LineEnding + 'If you have the CD, use "CD extractor..." instead.';
   R_GenerateFailed = 'No graphics set was generated, the game can not start without game data.' + LineEnding + 'Use "CD extractor..." or try "Setup..." again.';
-  R_StyleFlat = 'Flat'; // Namen (und Ordner) der Sätze, die die Einrichtung erzeugt
+  R_StyleFlat = 'Flat'; // Angezeigte Namen der Sätze der Einrichtung (die Ordner sind immer englisch: Flat, Soft, Pixel, Retro)
   R_StyleSoft = 'Soft';
   R_StylePixel = 'Pixel';
   R_StyleRetro = 'Retro';

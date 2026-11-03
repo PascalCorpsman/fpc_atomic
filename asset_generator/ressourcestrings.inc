@@ -80,6 +80,12 @@ Resourcestring
   R_VoiceLanguageHint = 'Language of the voices in the preview and of the plain files of the set (default). Every set contains the voices in all languages, the game and the launcher play the ones of their current language.';
   R_LangEnglish = 'English';
   R_LangGerman = 'German';
+  R_LangFrench = 'French';
+  R_LangSpanish = 'Spanish';
+  R_StyleNameFlat = 'Flat'; // Shown name of the sets of the launcher setup (Origin=setup, folder Flat), see AssetSetDisplayName
+  R_StyleNameSoft = 'Soft';
+  R_StyleNamePixel = 'Pixel';
+  R_StyleNameRetro = 'Retro';
   R_SoundPlay = '▶ Play';
   R_SoundPlayHint = 'Plays the selected sound (also with a double click)';
   R_SoundPlayMusic = '♫ Play music';

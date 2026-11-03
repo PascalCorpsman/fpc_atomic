@@ -118,7 +118,7 @@ Type
     GameProcess: TProcessUTF8; // Das laufende Spiel, wenn der Launcher danach wieder erscheinen soll (CheckBox6), sonst Nil
     fLanguageCodes: Array Of String;
     fAssetFolders: TStringList; // Die Grafiksätze, [0] = '' = Original, sonst der Ordner unter assets/
-    fAssetNames: TStringList; // Dazu die Namen aus profile.ini
+    fAssetNames: TStringList; // Dazu die angezeigten Namen (AssetSetDisplayName)
     fAssetIndex: integer; // Der gewählte Grafiksatz in fAssetFolders
     fSoundFolders: TStringList; // Die Werte für [Launcher] SoundSet: [0] = SoundSetAuto, [1] = '' = Original, sonst der Ordner unter assets/
     fSoundNames: TStringList; // Dazu die Namen
@@ -227,6 +227,19 @@ End;
 
 { TForm1 }
 
+// Der Name eines Stils in der Sprache des Launchers (uassetpath.AssetStyleNameFunc: die Namen der Sätze der Einrichtung)
+Function LauncherStyleName(Const Style: String): String;
+Begin
+  Case Style Of
+    'flat': result := R_StyleFlat;
+    'soft': result := R_StyleSoft;
+    'pixel': result := R_StylePixel;
+    'retro': result := R_StyleRetro;
+  Else
+    result := '';
+  End;
+End;
+
 Procedure TForm1.FormCreate(Sender: TObject);
 Var
   i: Integer;
@@ -264,6 +277,7 @@ Begin
   QuietLog := false;
   // Vom Updater übrig gelassen, der alte Launcher
   If FileExists(ParamStr(0) + '.old') Then DeleteFile(ParamStr(0) + '.old');
+  AssetStyleNameFunc := @LauncherStyleName; // Sätze der Einrichtung heißen wie ihr Stil in der aktuellen Sprache
   LoadSideImage();
   LoadLanguages();
   LoadSettings(); // Liest auch den Grafiksatz und zeigt sein Seitenbild (LoadSideImage)
@@ -1080,7 +1094,7 @@ Begin
   // Im Tooltip, was tatsächlich gespielt wird (Automatisch hängt vom Grafiksatz ab)
   Folder := SelectedSoundSet();
   If Folder <> '' Then Begin
-    Plays := AssetSetName(Folder);
+    Plays := AssetSetDisplayName(Folder);
   End
   Else If HasOriginalSounds() Then Begin
     Plays := R_SoundSetOriginal;
@@ -1091,7 +1105,7 @@ Begin
   // Bei Automatisch steht die tatsächliche Quelle kurz dabei, wenn das zwischen die Pfeile passt (sonst nur im Tooltip)
   If (fSoundIndex = 0) And HandleAllocated And ((Folder <> '') Or HasOriginalSounds()) Then Begin
     If Folder <> '' Then Begin
-      s := format(RF_SoundSetAutoShort, [AssetSetName(Folder)]);
+      s := format(RF_SoundSetAutoShort, [AssetSetDisplayName(Folder)]);
     End
     Else Begin
       s := format(RF_SoundSetAutoShort, [R_AssetSetOriginal]);
@@ -1369,7 +1383,7 @@ Begin
   If Not result Then showmessage(R_GenerateFailed);
 End;
 
-// Ein Ordnername aus dem (übersetzten) Namen eines Stils: nur a-z 0-9 - _, Umlaute und Akzente vereinfacht
+// Ein Ordnername aus einem Namen: nur a-z 0-9 - _, Umlaute und Akzente vereinfacht
 Function FolderFromName(Const Name: String): String;
 Const
   Map: Array[0..21] Of Array[0..1] Of String = (
@@ -1461,9 +1475,10 @@ Var
   pini: TIniFile;
 Begin
   (*
-   * Eigene Grafiken (Einrichtung): ein Satz pro Stil, Ordner und Name aus dem übersetzten Namen des Stils (Flach, Weich,
-   * Pixel, Retro). Gibt es den Ordner schon, dann wird er ersetzt, wenn ihn eine frühere Einrichtung erzeugt hat
-   * (profile.ini [General] Origin=setup), sonst (eigener, im Editor gespeicherter Satz) z.B. Flach2. Vertrag mit dem Generator:
+   * Eigene Grafiken (Einrichtung): ein Satz pro Stil, Ordner und Name immer englisch (Flat, Soft, Pixel, Retro), angezeigt
+   * wird der Name des Stils in der aktuellen Sprache (AssetSetDisplayName, Origin=setup). Gibt es den Ordner schon, dann
+   * wird er ersetzt, wenn ihn eine frühere Einrichtung erzeugt hat (profile.ini [General] Origin=setup), sonst (eigener,
+   * im Editor gespeicherter Satz) z.B. Flat2. Vertrag mit dem Generator:
    * 1. asset_generator_gui --auto --setup --folders <f,s,p,r> --names <f,s,p,r>: die Stil-Auswahl, der gewählte Stil wird
    *    in seinen Ordner erzeugt, der Ordner steht danach in assets/last_set.txt, Exit-Code 0 = erzeugt.
    *    (Ohne GUI: asset_generator mit Stil flat und zufälligem Seed.)
@@ -1478,10 +1493,9 @@ Begin
   Count := 0;
   UseGui := FileExists(AssetGeneratorExe());
   If (Not UseGui) And (Not FileExists(AssetGeneratorCliExe())) Then exit;
-  Names[0] := R_StyleFlat;
-  Names[1] := R_StyleSoft;
-  Names[2] := R_StylePixel;
-  Names[3] := R_StyleRetro;
+  For i := 0 To 3 Do Begin
+    Names[i] := AssetStyleEnglishName(Styles[i]); // Ordner und profile.ini Name englisch, angezeigt wird übersetzt
+  End;
   Taken := TStringList.Create;
   Try
     Taken.CaseSensitive := false;
@@ -1490,9 +1504,6 @@ Begin
       Taken.Add(TStyleJob(fJobs[i]).Folder);
     End;
     For i := 0 To 3 Do Begin
-      // Keine Kommas und Anführungszeichen, die Namen gehen als Liste an die GUI
-      Names[i] := trim(StringReplace(StringReplace(Names[i], ',', ' ', [rfReplaceAll]), '"', '', [rfReplaceAll]));
-      If Names[i] = '' Then Names[i] := Styles[i];
       f := FolderFromName(Names[i]);
       s := f;
       ns := Names[i];
@@ -2067,11 +2078,18 @@ Begin
   UpdateGameModeCaption();
   If fAssetNames.Count > 0 Then Begin
     fAssetNames[0] := R_AssetSetOriginal; // Der Name von Original kommt aus der Sprache
+    // Die Sätze der Einrichtung heißen wie ihr Stil in der Sprache
+    For Index := 1 To fAssetNames.Count - 1 Do Begin
+      fAssetNames[Index] := AssetSetDisplayName(fAssetFolders[Index]);
+    End;
     SelectAssetSet(fAssetIndex);
   End;
   If fSoundNames.Count > 1 Then Begin
     fSoundNames[0] := R_SoundSetAuto; // Die Namen von Automatisch und Original kommen aus der Sprache
     fSoundNames[1] := R_SoundSetOriginal;
+    For Index := 2 To fSoundNames.Count - 1 Do Begin
+      fSoundNames[Index] := AssetSetDisplayName(fSoundFolders[Index]);
+    End;
   End;
   UpdateSoundCaption();
   FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache

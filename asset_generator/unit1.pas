@@ -241,7 +241,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses Math, FileUtil, uag_math, uag_random, uag_gen_world, uag_gen_sounds, uag_gui, ulanguage;
+Uses Math, FileUtil, uag_math, uag_random, uag_gen_world, uag_gen_sounds, uassetpath, uag_gui, ulanguage;
 
 Const
   RowHeight = 62;
@@ -439,6 +439,8 @@ Begin
   If (GuiMode = gmSet) And FileExists(SetDir(GuiFolder) + 'profile.ini') Then Begin
     Try
       fCtx.LoadFromFile(SetDir(GuiFolder) + 'profile.ini');
+      // a set of the launcher setup: the name of its style in the current language, like in the launcher
+      If fCtx.Origin = 'setup' Then fCtx.Name := AssetSetDisplayName(GuiFolder);
     Except
       On e: Exception Do err := e.Message;
     End;
@@ -1375,6 +1377,8 @@ Begin
     Case langs[i] Of
       'en': fComboLang.Items.Add(R_LangEnglish);
       'de': fComboLang.Items.Add(R_LangGerman);
+      'fr': fComboLang.Items.Add(R_LangFrench);
+      'es': fComboLang.Items.Add(R_LangSpanish);
     Else
       fComboLang.Items.Add(langs[i]);
     End;

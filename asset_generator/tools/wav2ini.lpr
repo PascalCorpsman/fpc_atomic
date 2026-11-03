@@ -19,10 +19,11 @@
  *       data/res/menuexit.wav, quitgame.wav) and writes an own design per
  *       file (see uw2i_design). Loudness is matched to the original (one
  *       number per sound). The result is a draft to be refined by hand.
- *   wav2ini --voices <data dir> <de | en> <out.ini>
+ *   wav2ini --voices <data dir> <en | de | fr | es> <out.ini>
  *       Only the spoken sounds, with the phrases of the language (see
  *       uw2i_design), sections [name] for en (the default of the
- *       generator), [name@de] for de. Paste them into sounds.ini.
+ *       generator), [name@de] (@fr, @es) for the others. Paste them into
+ *       sounds.ini.
  *   wav2ini --inc <sounds.ini | music.ini> <out.inc>
  *       Converts sounds.ini (music.ini) into the include file that is
  *       compiled into the asset generator (uag_sounds_ini.inc,
@@ -479,7 +480,7 @@ Var
   pngFiles: Array Of String;
 Begin
   If ParamCount < 1 Then Begin
-    WriteLn('wav2ini --design <data dir> <out.ini> | --voices <data dir> <de|en> <out.ini> |');
+    WriteLn('wav2ini --design <data dir> <out.ini> | --voices <data dir> <en|de|fr|es> <out.ini> |');
     WriteLn('        --inc <ini> <out.inc> | --render <ini> <dir> [names] |');
     WriteLn('        --music <ini> <dir> [kit [seed]] |');
     WriteLn('        --features <wav>... | --compare <dir a> <dir b> | --png <out.png> <wav>...');

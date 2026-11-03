@@ -41,9 +41,18 @@ Interface
  * ResolveSoundSet.
  *
  * Spoken sounds of a set exist per language in a sub folder next to the plain file (sounds/de/gotcha.wav,
- * res/en/quitgame.wav, written by the asset generator). The sound language is the language of the launcher
- * ([Launcher] Language, see SoundLanguageFromIni); a set looks for <dir>/<lang>/<file>, then <dir>/en/<file> (a language
- * without own voices, e.g. fr, es), then <dir>/<file>. data/ (CD) has no language folders.
+ * res/fr/quitgame.wav, written by the asset generator: en, de, fr, es). The sound language is the language of the
+ * launcher ([Launcher] Language, see SoundLanguageFromIni); a set looks for <dir>/<lang>/<file>, then <dir>/en/<file>
+ * (only if the set has no folder of that language, e.g. an older set without fr/es), then <dir>/<file>.
+ * data/ (CD) has no language folders.
+ *
+ * Names of the sets
+ *
+ * The setup of the launcher creates one set per style in the folders Flat, Soft, Pixel, Retro (always English, a
+ * second one Flat2, ...) with [General] Origin=setup and Style=<flat|soft|pixel|retro> in profile.ini. Such a set is
+ * shown with the name of its style in the current language (AssetStyleNameFunc, set by the launcher and the editor
+ * from their string resources), so the name follows a language switch. All other sets show their profile Name.
+ * See AssetSetDisplayName.
  *)
 
 Uses
@@ -98,7 +107,7 @@ Function AtomicDirs(Const SubDir: String): TStringArray;
 
 (*
  * All sets in assets/ (folders that contain profile.ini), sorted by folder name.
- * Folders gets the folder names, Names the names from profile.ini (the folder name if there is none).
+ * Folders gets the folder names, Names the names that are shown (AssetSetDisplayName).
  *)
 Procedure ListAssetSets(Const Folders, Names: TStrings);
 
@@ -163,7 +172,24 @@ Function SoundSetFile(Const Folder, RelPath: String): String;
  *)
 Function FirstSoundFile(Const Folder: String; Const RelPaths: Array Of String): String;
 
-Function AssetSetName(Const Folder: String): String; // Name from profile.ini, '' = Folder
+Type
+  (*
+   * The name of a style ('flat', 'soft', 'pixel', 'retro') in the current language, '' = unknown (then the English
+   * name is used).
+   *)
+  TAssetStyleNameFunc = Function(Const Style: String): String;
+
+Var
+  AssetStyleNameFunc: TAssetStyleNameFunc = Nil;
+
+(*
+ * The name of a set as it is shown (launcher, options, sound selection, editor):
+ *   [General] Origin=setup and a known Style -> the style name in the current language (AssetStyleNameFunc, else
+ *     English), with the number of the folder (Flat2 -> "Flach 2")
+ *   else [General] Name, '' = Folder
+ *)
+Function AssetSetDisplayName(Const Folder: String): String;
+Function AssetStyleEnglishName(Const Style: String): String; // 'flat' -> 'Flat', '' for an unknown style
 
 Function HasOriginalGraphics(): Boolean; // True if data/res/mainmenu.png exists (CD data)
 Function SetHasGraphics(Const Folder: String): Boolean; // True if assets/<Folder>/ has profile.ini and res/mainmenu.png
@@ -567,18 +593,51 @@ Begin
   result := '';
 End;
 
-Function AssetSetName(Const Folder: String): String;
+Function AssetStyleEnglishName(Const Style: String): String;
+Begin
+  Case lowercase(trim(Style)) Of
+    'flat': result := 'Flat';
+    'soft': result := 'Soft';
+    'pixel': result := 'Pixel';
+    'retro': result := 'Retro';
+  Else
+    result := '';
+  End;
+End;
+
+Function AssetSetDisplayName(Const Folder: String): String;
 Var
   ini: TIniFile;
+  Style, Origin, Base, Suffix: String;
 Begin
   result := '';
-  If FileExists(AssetSetsDir() + Folder + PathDelim + AssetProfileFile) Then Begin
-    ini := TIniFile.Create(AssetSetsDir() + Folder + PathDelim + AssetProfileFile);
+  Style := '';
+  Origin := '';
+  If IsPlainFolder(trim(Folder)) And FileExists(AssetSetsDir() + trim(Folder) + PathDelim + AssetProfileFile) Then Begin
+    ini := TIniFile.Create(AssetSetsDir() + trim(Folder) + PathDelim + AssetProfileFile);
     Try
       result := trim(ini.ReadString('General', 'Name', ''));
+      Style := lowercase(trim(ini.ReadString('General', 'Style', '')));
+      Origin := lowercase(trim(ini.ReadString('General', 'Origin', '')));
     Finally
       ini.free;
     End;
+  End;
+  Base := AssetStyleEnglishName(Style);
+  If (Origin = 'setup') And (Base <> '') Then Begin
+    // The number of a second set of the same style (folder Flat2 -> " 2")
+    Suffix := '';
+    If SameText(copy(trim(Folder), 1, length(Base)), Base) Then Begin
+      Suffix := copy(trim(Folder), length(Base) + 1, length(Folder));
+      If (Suffix <> '') And (StrToIntDef(Suffix, -1) < 2) Then Suffix := '';
+    End;
+    If assigned(AssetStyleNameFunc) And (trim(AssetStyleNameFunc(Style)) <> '') Then Begin
+      result := trim(AssetStyleNameFunc(Style));
+    End
+    Else Begin
+      result := Base;
+    End;
+    If Suffix <> '' Then result := result + ' ' + Suffix;
   End;
   If result = '' Then result := Folder;
 End;
@@ -703,7 +762,7 @@ Begin
     End;
     For i := 0 To sl.Count - 1 Do Begin
       Folders.Add(sl[i]);
-      Names.Add(AssetSetName(sl[i]));
+      Names.Add(AssetSetDisplayName(sl[i]));
     End;
   Finally
     sl.free;

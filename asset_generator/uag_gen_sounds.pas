@@ -29,9 +29,10 @@
  * differ. Music files with the same song and changes are rendered once.
  *
  * Spoken sounds exist per language: sounds.ini [name] is English (the
- * default), [name@de] German. Every spoken sound is written in every
- * language into a sub folder (sounds/en/<name>.wav, sounds/de/<name>.wav,
- * res/en/quitgame.wav, ...), the game takes the one of its language (see
+ * default), [name@de] German, [name@fr] French, [name@es] Spanish. Every
+ * spoken sound is written in every language into a sub folder
+ * (sounds/en/<name>.wav, sounds/de/, sounds/fr/, sounds/es/,
+ * res/en/quitgame.wav, res/fr/, ...), the game takes the one of its language (see
  * SoundFile in units/uassetpath.pas). The plain file (sounds/<name>.wav) is
  * the language Ctx.Language (the default of the set, for games that do not
  * know the sub folders); a sound without a section in that language uses
@@ -56,7 +57,7 @@ Type
 Procedure GenerateSoundEffects(Ctx: TAGContext; Output: TAGOutput); // sounds/*.wav, res/menuexit + quitgame
 Procedure GenerateMusic(Ctx: TAGContext; Output: TAGOutput); // res/<music>.wav
 Function SoundGroup(Const RelPath: String): TAGSoundGroup; // e.g. 'sounds/bomb_01.wav' -> sgExplosion
-Function VoiceLanguages: TStringArray; // 'en' first, then the languages of sounds.ini ('de')
+Function VoiceLanguages: TStringArray; // 'en' first, then the languages of sounds.ini ('de', 'fr', 'es')
 Function IsVoiceLanguage(Const Lang: String): Boolean;
 
 Implementation

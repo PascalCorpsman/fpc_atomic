@@ -16,11 +16,11 @@ FPC Atomic needs graphics and sounds. Until now they only came from the Atomic B
 
 On the very first start without CD data and without a graphics set the launcher asks once: **Welcome to FPC Atomic — where should the graphics and sounds of the game come from?**
 
-- **Generate own (recommended)**: a window shows **four styles** side by side, each with the same figure (**Roll again** shows four new variants). A click on a style generates that set in about 15 seconds, named after the style (Flat, Soft, Pixel, Retro; in German Flach, Weich, Pixel, Retro). The launcher selects it (sounds "Automatic") and you can play at once. The other three styles are generated **in the background** with the same seed (same figure and maps, other look); the status in the launcher shows how many are still running, they appear below the image when they are ready. If you close the launcher before, it waits invisibly until they are done. **Cancel** in the style window generates nothing and shows the question again.
+- **Generate own (recommended)**: a window shows **four styles** side by side, each with the same figure (**Roll again** shows four new variants). A click on a style generates that set in about 15 seconds, named after the style. The folders below `assets/` are always English (`Flat`, `Soft`, `Pixel`, `Retro`), the launcher, the game options and the graphics generator show the style name in the current language of the launcher (in German Flach, Weich, Pixel, Retro) and switch it with the language. The launcher selects it (sounds "Automatic") and you can play at once. The other three styles are generated **in the background** with the same seed (same figure and maps, other look); the status in the launcher shows how many are still running, they appear below the image when they are ready. If you close the launcher before, it waits invisibly until they are done. **Cancel** in the style window generates nothing and shows the question again.
 - **Take them from the CD**: opens the CD extractor (the Atomic Bomberman CD is needed).
 - **Later**: nothing happens. The image in the launcher then shows "No graphics yet", a click on it opens the question again.
 
-The question comes by itself only once. **Setup...** in the launcher (group Installation, left of **CD extractor...**; bold as long as there are no game data) or `atomic_launcher --setup` open it any time, e.g. to generate the four styles again with a new seed. Sets that a setup created before are **replaced** (Flat, Soft, Pixel, Retro get the new look). Sets you saved in the graphics generator, or sets that came from elsewhere, are never overwritten: the new style is then called e.g. "Flat 2". Everything else stays possible: the CD extractor is always there, after extracting the CD "Original" is just one more choice, and the generated sets stay.
+The question comes by itself only once. **Setup...** in the launcher (group Installation, left of **CD extractor...**; bold as long as there are no game data) or `atomic_launcher --setup` open it any time, e.g. to generate the four styles again with a new seed. Sets that a setup created before are **replaced** (Flat, Soft, Pixel, Retro get the new look). Sets you saved in the graphics generator, or sets that came from elsewhere, are never overwritten: the new style is then called e.g. "Flat 2" (folder `Flat2`). Everything else stays possible: the CD extractor is always there, after extracting the CD "Original" is just one more choice, and the generated sets stay.
 
 If the CD data is missing, a click on **Launch** generates a graphics set first (one style of your choice, the launcher then starts the game).
 
@@ -41,7 +41,7 @@ The current set is shown in the launcher **below the image on the left**: `◀  
 
 Every set contains its own game sounds: explosions, kicks, bounces, teleporters and short callouts like "Erwischt!" or "Beeil dich!". They are not recordings, they are computed like the graphics (an interpretation of the original sounds, described in `asset_generator/sounds.ini`). There is also an own piece of music for the menus (`asset_generator/music.ini`).
 
-The callouts exist in German and English, and every set contains both. The game and the launcher's **Test sounds** automatically play the callouts in the language of the launcher (French and Spanish: English); switching the language in the launcher is enough. The language in the area **Sounds** of the graphics generator only chooses what the preview plays and the default for other programs that know just one language (the plain files in `sounds/`, the languages are in `sounds/en/`, `sounds/de/`).
+The callouts exist in English, German, French and Spanish (own short phrases in every language, e.g. "Je t'ai eu !", "¡Te pillé!"), and every set contains all of them. The game and the launcher's **Test sounds** automatically play the callouts in the language of the launcher; switching the language in the launcher is enough. A set of an older version without French or Spanish callouts plays the English ones. The language in the area **Sounds** of the graphics generator only chooses what the preview plays and the default for other programs that know just one language (the plain files in `sounds/`, the languages are in `sounds/en/`, `sounds/de/`, `sounds/fr/`, `sounds/es/`).
 
 The sound fits the style: flat sounds clear and punchy, soft warm with a little reverb, pixel like a 16-bit console with echo, retro rough like 8-bit. The seed changes pitch, length and timbre, so two sets of the same style sound different.
 
@@ -107,7 +107,7 @@ asset_generator --out assets/MySet --name "My set" --seed random --style retro
 - `--out <folder>`: target, an existing `profile.ini` there is read
 - `--profile <file>`, `--seed <number|random>`, `--style <flat|soft|pixel|retro>`, `--name <text>`
 - `--per-player`: own figure per player
-- `--language de|en`: default language of the callouts (the set always contains both)
+- `--language en|de|fr|es`: default language of the callouts (the set always contains all of them)
 - `--only <a,b,...>`: only these areas, `--list` shows all of them
 - `--params`: print all settings with their values
 

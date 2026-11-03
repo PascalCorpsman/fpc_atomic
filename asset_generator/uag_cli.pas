@@ -70,7 +70,7 @@ Begin
   writeln('  --style <s>        flat | soft | pixel | retro');
   writeln('  --name <text>      name of the set');
   writeln('  --per-player       own atomic per player (atomic/p0 .. p9)');
-  writeln('  --language <l>     default language of the spoken sounds: en | de (default en);');
+  writeln('  --language <l>     default language of the spoken sounds: en | de | fr | es (default en);');
   writeln('                     sounds/<name>.wav, every language is in sounds/<lang>/ too');
   writeln('  --only <a,b,..>    only these generators');
   writeln('  --params           list all parameters after generating');
@@ -119,7 +119,7 @@ Begin
           inc(i);
           LangStr := LowerCase(ParamStr(i));
           If Not IsAGLanguage(LangStr) Then Begin
-            writeln('Unknown language: ', ParamStr(i), ' (en or de)');
+            writeln('Unknown language: ', ParamStr(i), ' (en, de, fr or es)');
             halt(2);
           End;
         End;

@@ -13,7 +13,8 @@
 (*
  * Tests for the language of the spoken sounds (uassetpath): SoundFile,
  * SoundSetFile and FirstSoundFile look for <dir>/<lang>/<file> in a set, then
- * <dir>/en/<file>, then the plain file of the set, then data/.
+ * <dir>/en/<file> (a set without that language), then the plain file of the
+ * set, then data/. Also the shown names of the sets (AssetSetDisplayName).
  * No GUI, works in a temporary folder (AppDirOverride).
  *
  *   fpc -Fu../units test_soundlang.lpr && ./test_soundlang
@@ -93,6 +94,67 @@ Begin
   result := FuncLang;
 End;
 
+Function TestStyleName(Const Style: String): String;
+Begin
+  If FuncLang = 'de' Then Begin
+    Case Style Of
+      'flat': result := 'Flach';
+      'soft': result := 'Weich';
+    Else
+      result := '';
+    End;
+  End
+  Else If FuncLang = 'fr' Then Begin
+    If Style = 'retro' Then result := 'Rétro' Else result := '';
+  End
+  Else
+    result := '';
+End;
+
+Procedure CheckDisplayNames;
+Var
+  Folders, Names: TStringList;
+Begin
+  WriteFile(P('assets/Flat/profile.ini'), '[General]' + LineEnding + 'Name=Flat' + LineEnding + 'Style=flat' + LineEnding + 'Origin=setup');
+  WriteFile(P('assets/Flat2/profile.ini'), '[General]' + LineEnding + 'Name=Flat 2' + LineEnding + 'Style=flat' + LineEnding + 'Origin=setup');
+  WriteFile(P('assets/Soft/profile.ini'), '[General]' + LineEnding + 'Name=Weich' + LineEnding + 'Style=SOFT' + LineEnding + 'Origin=Setup');
+  WriteFile(P('assets/Retro/profile.ini'), '[General]' + LineEnding + 'Name=Retro' + LineEnding + 'Style=retro' + LineEnding + 'Origin=setup');
+  WriteFile(P('assets/Mine/profile.ini'), '[General]' + LineEnding + 'Name=Mein Satz' + LineEnding + 'Style=flat' + LineEnding + 'Origin=editor');
+  WriteFile(P('assets/Odd/profile.ini'), '[General]' + LineEnding + 'Name=Odd one' + LineEnding + 'Style=chalk' + LineEnding + 'Origin=setup');
+  WriteFile(P('assets/NoName/profile.ini'), '[General]' + LineEnding + 'Style=pixel');
+  AssetStyleNameFunc := Nil;
+  ExpectText('name: setup set, no translation -> English', AssetSetDisplayName('Flat'), 'Flat');
+  ExpectText('name: setup set 2, no translation', AssetSetDisplayName('Flat2'), 'Flat 2');
+  ExpectText('name: setup set, old profile name ignored', AssetSetDisplayName('Soft'), 'Soft');
+  ExpectText('name: editor set keeps its name', AssetSetDisplayName('Mine'), 'Mein Satz');
+  ExpectText('name: unknown style keeps its name', AssetSetDisplayName('Odd'), 'Odd one');
+  ExpectText('name: no name -> folder', AssetSetDisplayName('NoName'), 'NoName');
+  ExpectText('name: no set -> folder', AssetSetDisplayName('Nope'), 'Nope');
+  AssetStyleNameFunc := @TestStyleName;
+  FuncLang := 'de';
+  ExpectText('name de: Flat', AssetSetDisplayName('Flat'), 'Flach');
+  ExpectText('name de: Flat2', AssetSetDisplayName('Flat2'), 'Flach 2');
+  ExpectText('name de: Soft', AssetSetDisplayName('Soft'), 'Weich');
+  ExpectText('name de: Retro (no translation -> English)', AssetSetDisplayName('Retro'), 'Retro');
+  ExpectText('name de: editor set', AssetSetDisplayName('Mine'), 'Mein Satz');
+  FuncLang := 'fr';
+  ExpectText('name fr: Retro (language switch)', AssetSetDisplayName('Retro'), 'Rétro');
+  ExpectText('name fr: Flat', AssetSetDisplayName('Flat'), 'Flat');
+  // the lists show the same names
+  FuncLang := 'de';
+  Folders := TStringList.Create;
+  Names := TStringList.Create;
+  Try
+    ListAssetSets(Folders, Names);
+    ExpectText('ListAssetSets: name of Flat2', Names[Folders.IndexOf('Flat2')], 'Flach 2');
+    ExpectText('ListAssetSets: name of Mine', Names[Folders.IndexOf('Mine')], 'Mein Satz');
+  Finally
+    Folders.free;
+    Names.free;
+  End;
+  AssetStyleNameFunc := Nil;
+End;
+
 Procedure CheckLang(Const Lang, ExpVoiceML, ExpVoicePlain, ExpQuit: String);
 Begin
   SoundLanguage := Lang;
@@ -129,10 +191,19 @@ Begin
     WriteFile(P('assets/ML/sounds/gotcha.wav'), 'default');
     WriteFile(P('assets/ML/sounds/en/gotcha.wav'), 'en');
     WriteFile(P('assets/ML/sounds/de/gotcha.wav'), 'de');
+    WriteFile(P('assets/ML/sounds/fr/gotcha.wav'), 'fr');
+    WriteFile(P('assets/ML/sounds/es/gotcha.wav'), 'es');
     WriteFile(P('assets/ML/sounds/bmdrop1.wav'), 'fx');
     WriteFile(P('assets/ML/res/quitgame.wav'), 'default');
     WriteFile(P('assets/ML/res/en/quitgame.wav'), 'en');
     WriteFile(P('assets/ML/res/de/quitgame.wav'), 'de');
+    WriteFile(P('assets/ML/res/fr/quitgame.wav'), 'fr');
+    WriteFile(P('assets/ML/res/es/quitgame.wav'), 'es');
+    // a set of an older version: only en and de
+    WriteFile(P('assets/Old/profile.ini'), '[General]' + LineEnding + 'Name=Old');
+    WriteFile(P('assets/Old/sounds/gotcha.wav'), 'default');
+    WriteFile(P('assets/Old/sounds/en/gotcha.wav'), 'en');
+    WriteFile(P('assets/Old/sounds/de/gotcha.wav'), 'de');
     WriteFile(P('assets/Plain/profile.ini'), '[General]' + LineEnding + 'Name=Plain');
     WriteFile(P('assets/Plain/sounds/gotcha.wav'), 'default');
 
@@ -140,8 +211,16 @@ Begin
     CheckLang('en', 'assets/ML/sounds/en/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/en/quitgame.wav');
     CheckLang('de', 'assets/ML/sounds/de/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/de/quitgame.wav');
     CheckLang('DE', 'assets/ML/sounds/de/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/de/quitgame.wav');
-    CheckLang('fr', 'assets/ML/sounds/en/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/en/quitgame.wav');
-    CheckLang('es', 'assets/ML/sounds/en/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/en/quitgame.wav');
+    CheckLang('fr', 'assets/ML/sounds/fr/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/fr/quitgame.wav');
+    CheckLang('es', 'assets/ML/sounds/es/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/es/quitgame.wav');
+    CheckLang('it', 'assets/ML/sounds/en/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/en/quitgame.wav');
+    // a set without the language folder: English
+    SoundLanguage := 'fr';
+    Expect('Old, lang "fr": no fr folder -> en', SoundSetFile('Old', P('sounds/gotcha.wav')), 'assets/Old/sounds/en/gotcha.wav');
+    SoundLanguage := 'es';
+    Expect('Old, lang "es": no es folder -> en', SoundSetFile('Old', P('sounds/gotcha.wav')), 'assets/Old/sounds/en/gotcha.wav');
+    SoundLanguage := 'de';
+    Expect('Old, lang "de"', SoundSetFile('Old', P('sounds/gotcha.wav')), 'assets/Old/sounds/de/gotcha.wav');
     CheckLang('..', 'assets/ML/sounds/gotcha.wav', 'assets/Plain/sounds/gotcha.wav', 'assets/ML/res/quitgame.wav');
 
     // SoundLanguageFunc wins over SoundLanguage and is asked at every lookup (launcher: language switch)
@@ -161,6 +240,8 @@ Begin
     ExpectText('ini Language=DE -> de', SoundLanguageFromIni(Root + 'fpc_atomic.cfg'), 'de');
     WriteFile('fpc_atomic.cfg', '[Launcher]' + LineEnding + 'AssetSet=x');
     ExpectText('ini without Language -> en', SoundLanguageFromIni(Root + 'fpc_atomic.cfg'), 'en');
+
+    CheckDisplayNames;
   Finally
     DeleteTree(Root);
   End;

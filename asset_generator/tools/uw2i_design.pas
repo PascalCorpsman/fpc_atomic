@@ -19,8 +19,16 @@
  * the length and the pitch level are used.
  *
  * Spoken sounds exist per language (DesignLanguage): 'de' German phrases,
- * 'en' English phrases (own wording too). sounds.ini keeps the English one
- * as [name] (default) and the German one as [name@de].
+ * 'en' English, 'fr' French, 'es' Spanish phrases (own wording each, no
+ * translations of the recordings). sounds.ini keeps the English one as
+ * [name] (default) and the others as [name@de], [name@fr], [name@es].
+ *
+ * Phonemes (tokens of Speak): German / English vowels, diphthongs, nasals,
+ * liquids, fricatives, plosives (see InitPhons), for French also the front
+ * rounded vowels y (lune) and 9 (peur), the nasal vowels a~ (an), o~ (on),
+ * e~ (in) (wide formants, weaker), the uvular R (approximant with a little
+ * low noise), Z (je) and J (gn); for Spanish the trilled rr (three short taps)
+ * and J (n with the tongue at the palate, also French gn).
  *)
 Unit uw2i_design;
 
@@ -54,7 +62,7 @@ Var
   NoiseGain: TNoiseCalib = Nil; // low pass -> factor that gives the loudness of white noise
 
 Var
-  DesignLanguage: String = 'de'; // language of the phrases: de | en
+  DesignLanguage: String = 'de'; // language of the phrases: de | en | fr | es
 
 Function DesignSound(Const Name: String; Const F: TFeatures): TDesign;
 Function IsSpokenSound(Const Name: String): Boolean; // the phrase depends on the language
@@ -559,8 +567,10 @@ End;
 Type
   TPhon = Record
     Tok: String;
-    Kind: Char; // V vowel, D diphthong, N nasal, L liquid, F fricative, P plosive, H h, Z voiced fricative
+    Kind: Char; // V vowel, D diphthong, N nasal, L liquid, F fricative, P plosive, H h, Z voiced fricative, R trill
     F1, F2, F3: Double; // target (diphthong: start)
+    Bw: Double; // bandwidth of the formants, 90 = normal, wider for the nasal vowels
+    Vol: Double; // level of a vowel, 0.6 = normal
     E1, E2, E3: Double; // diphthong end
     Dur: Double; // ms, unstressed
     NoiseF, NoiseVol: Double;
@@ -568,7 +578,7 @@ Type
   End;
 
 Const
-  PhonCount = 42;
+  PhonCount = 51;
 
 Var
   Phons: Array[0..PhonCount - 1] Of TPhon;
@@ -588,7 +598,17 @@ Begin
   Phons[PhonN].NoiseF := NoiseF;
   Phons[PhonN].NoiseVol := NoiseVol;
   Phons[PhonN].Voiced := Voiced;
+  Phons[PhonN].Bw := 90;
+  Phons[PhonN].Vol := 0.6;
   inc(PhonN);
+End;
+
+(* a nasal vowel: wide formants, weaker (the nose damps the mouth) *)
+Procedure DefNasalVowel(Const Tok: String; F1, F2, F3: Double);
+Begin
+  DefPhon(Tok, 'V', F1, F2, F3, 0, 0, 0, 100, 0, 0, true);
+  Phons[PhonN - 1].Bw := 170;
+  Phons[PhonN - 1].Vol := 0.5;
 End;
 
 Procedure InitPhons;
@@ -642,6 +662,18 @@ Begin
   DefPhon('d', 'P', 0, 0, 0, 0, 0, 0, 40, 4000, 0.14, true);
   DefPhon('g', 'P', 0, 0, 0, 0, 0, 0, 45, 2500, 0.14, true);
   DefPhon('_', ' ', 0, 0, 0, 0, 0, 0, 140, 0, 0, false);
+  // French: front rounded vowels "lune", "peur", nasal vowels "an", "on", "in", uvular r, "je"
+  DefPhon('y', 'V', 290, 1750, 2150, 0, 0, 0, 90, 0, 0, true);
+  DefPhon('9', 'V', 520, 1400, 2350, 0, 0, 0, 85, 0, 0, true);
+  DefNasalVowel('a~', 650, 1050, 2500);
+  DefNasalVowel('o~', 450, 780, 2350);
+  DefNasalVowel('e~', 600, 1550, 2500);
+  DefPhon('R', 'Z', 560, 1150, 2350, 0, 0, 0, 55, 1700, 0.07, true);
+  DefPhon('Z', 'Z', 300, 1700, 2400, 0, 0, 0, 80, 6500, 0.10, true);
+  // French gn, Spanish n with tilde: palatal nasal (glides like j into the vowel)
+  DefPhon('J', 'N', 260, 2100, 2900, 0, 0, 0, 75, 0, 0, true);
+  // Spanish trilled r: three short taps
+  DefPhon('rr', 'R', 480, 1300, 1700, 0, 0, 0, 90, 0, 0, true);
 End;
 
 Function FindPhon(Const Tok: String): Integer;
@@ -696,7 +728,7 @@ Var
   havePrev, first, long: Boolean;
   p: TDPart;
 
-  Procedure VoiceLine(T0, Len, A1, A2, A3, B1, B2, B3, Vol, Pa, Pb: Double; Last: Boolean);
+  Procedure VoiceLine(T0, Len, A1, A2, A3, B1, B2, B3, Vol, Pa, Pb: Double; Last: Boolean; Bw: Double = 90);
   Begin
     p := NewPart('voice', T0, Len + 4, Pa, Pb, Vol);
     p.Fm[1, 0] := A1;
@@ -708,7 +740,7 @@ Var
     If first Then p.Attack := 10 Else p.Attack := 3;
     If Last Then p.Curve := 1.2 Else p.Curve := 0;
     p.Ring := Ring;
-    p.Bw := 90;
+    p.Bw := Bw;
     Add(D, p);
     first := false;
   End;
@@ -718,12 +750,13 @@ Var
     j: Integer;
   Begin
     For j := Idx + 1 To high(items) Do
-      If (Not items[j].Gap) And (Phons[items[j].Ph].Kind In ['V', 'D', 'N', 'L', 'Z']) Then exit(false);
+      If (Not items[j].Gap) And (Phons[items[j].Ph].Kind In ['V', 'D', 'N', 'L', 'Z', 'R']) Then exit(false);
     result := true;
   End;
 
 Var
   dur, pa, pb, trans: Double;
+  k: Integer;
 Begin
   items := Nil;
   words := TStringList.Create;
@@ -804,15 +837,15 @@ Begin
             prev[3] := ph.F3;
           End;
           trans := Min(45, dur * 0.4);
-          VoiceLine(t, trans, prev[1], prev[2], prev[3], ph.F1, ph.F2, ph.F3, 0.6, pa, pa, false);
+          VoiceLine(t, trans, prev[1], prev[2], prev[3], ph.F1, ph.F2, ph.F3, ph.Vol, pa, pa, false, ph.Bw);
           If ph.Kind = 'D' Then Begin
-            VoiceLine(t + trans, dur - trans, ph.F1, ph.F2, ph.F3, ph.E1, ph.E2, ph.E3, 0.6, pa, pb, IsLastVoiced(i));
+            VoiceLine(t + trans, dur - trans, ph.F1, ph.F2, ph.F3, ph.E1, ph.E2, ph.E3, ph.Vol, pa, pb, IsLastVoiced(i), ph.Bw);
             prev[1] := ph.E1;
             prev[2] := ph.E2;
             prev[3] := ph.E3;
           End
           Else Begin
-            VoiceLine(t + trans, dur - trans, ph.F1, ph.F2, ph.F3, ph.F1, ph.F2, ph.F3, 0.6, pa, pb, IsLastVoiced(i));
+            VoiceLine(t + trans, dur - trans, ph.F1, ph.F2, ph.F3, ph.F1, ph.F2, ph.F3, ph.Vol, pa, pb, IsLastVoiced(i), ph.Bw);
             prev[1] := ph.F1;
             prev[2] := ph.F2;
             prev[3] := ph.F3;
@@ -839,6 +872,21 @@ Begin
             p.Curve := 0;
             Add(D, p);
           End;
+        End;
+      'R': Begin
+          // trill: three short taps of the tongue, the closures in between are short gaps
+          If Not havePrev Then Begin
+            prev[1] := ph.F1;
+            prev[2] := ph.F2;
+            prev[3] := ph.F3;
+          End;
+          For k := 0 To 2 Do
+            VoiceLine(t + k * dur / 3, dur / 3 * 0.6, prev[1], prev[2], prev[3], ph.F1, ph.F2, ph.F3, 0.4, pa, pb,
+              (k = 2) And IsLastVoiced(i));
+          prev[1] := ph.F1;
+          prev[2] := ph.F2;
+          prev[3] := ph.F3;
+          havePrev := true;
         End;
       'F', 'H': Begin
           p := SpNoise(t, dur, ph.NoiseF, ph.NoiseVol);
@@ -1130,6 +1178,79 @@ Begin
     result := false;
 End;
 
+(*
+ * own French phrases (stress on the last word), true if Name is one of them.
+ * The texts (comments in sounds.ini) without accents: "Depeche-toi !" is
+ * "Dépêche-toi !".
+ *)
+Function DesignFrench(Const n: String; Const F: TFeatures; Var D: TDesign): Boolean;
+Begin
+  result := true;
+  If n = 'hurry' Then Say(F, D, 'Depeche-toi !', 'd e p ''E S | t w ''a', mUrgent, 55, 120, 200, 1)
+  Else If n = 'hurytuf' Then Say(F, D, 'Plus vite, plus vite !', 'p l y | v ''i t _ p l y | v ''i t', mUrgent, 55, 120, 200, 1)
+  Else If n = 'woohoo1' Then Say(F, D, 'Youpi !', 'j u p ''i:', mExcited, 30, 160, 280, 1)
+  Else If n = 'allrite' Then Say(F, D, 'Bien joue !', 'b j ''e~ | Z u ''e', mExcited, 30, 140, 240, 1)
+  Else If n = 'ohno1' Then Say(F, D, 'Oh non !', '''o | n ''o~', mSad, 40, 130, 220, 1)
+  Else If n = 'disease1' Then Say(F, D, 'Atchoum !', 'a t S ''u m', mExcited, 40, 150, 260, 1)
+  Else If n = 'disease2' Then Say(F, D, 'Beurk !', 'b ''9 R k', mDisgust, 45, 180, 300, 1)
+  Else If n = 'gotcha' Then Say(F, D, 'Je t''ai eu !', 'Z @ | t e | ''y', mMock, 45, 120, 220, 1)
+  Else If n = 'later' Then Say(F, D, 'Salut !', 's a l ''y', mMock, 45, 140, 240, 1)
+  Else If n = 'cul8r' Then Say(F, D, 'A plus !', 'a | p l ''y s', mFarewell, 45, 120, 220, 1)
+  Else If n = 'roasted' Then Say(F, D, 'Grille !', 'g R i j ''e', mMock, 45, 120, 220, 1)
+  Else If n = 'toeasy' Then Say(F, D, 'Trop facile !', 't R o | f a s ''i l', mMock, 45, 110, 200, 1)
+  Else If n = 'youblow' Then Say(F, D, 'Rate, rate !', 'R a t ''e _ R a t ''e', mMock, 45, 110, 200, 1)
+  Else If n = 'eatdust' Then Say(F, D, 'Dans la poussiere !', 'd a~ | l a | p u s j ''E R', mNeutral, 45, 110, 200, 1)
+  Else If n = 'smelsmok' Then Say(F, D, 'Ca sent le brule !', 's a | s a~ | l @ | b R y l ''e', mMock, 45, 110, 200, 1)
+  Else If n = 'stupidio' Then Say(F, D, 'Oh la la !', '''o | l a | l ''a', mSad, 45, 110, 200, 1)
+  Else If n = 'suckitdn' Then Say(F, D, 'Dommage !', 'd O m ''a Z', mMock, 45, 110, 200, 1)
+  Else If n = 'tastpain' Then Say(F, D, 'Aie ! Ouille !', '''a j _ ''u j', mExcited, 45, 140, 240, 1)
+  Else If n = 'tastpai2' Then Say(F, D, 'Ca pique !', 's a | p ''i k', mMock, 45, 110, 200, 1)
+  Else If n = 'gotahurt' Then Say(F, D, 'Ca fait mal !', 's a | f E | m ''a l', mMock, 45, 110, 200, 1)
+  Else If n = 'cribrown' Then Say(F, D, 'Eteint !', 'e t ''e~', mNeutral, 45, 110, 200, 1)
+  Else If n = 'proud' Then Say(F, D, 'Bravo !', 'b R a v ''o', mProud, 30, 130, 220, 1)
+  Else If n = 'theman' Then Say(F, D, 'Le meilleur !', 'l @ | m E j ''9 R', mProud, 30, 120, 200, 1)
+  Else If n = 'youwin1' Then Say(F, D, 'Gagne !', 'g a J ''e', mProud, 30, 140, 240, 1)
+  Else If n = 'quitgame' Then Say(F, D, 'Au revoir !', 'o | R @ v w ''a R', mFarewell, 35, 110, 200, 1)
+  Else
+    result := false;
+End;
+
+(*
+ * own Spanish phrases, true if Name is one of them. The texts without accents
+ * and opening marks: "Date prisa!" is "¡Date prisa!", "Adios!" "¡Adiós!".
+ *)
+Function DesignSpanish(Const n: String; Const F: TFeatures; Var D: TDesign): Boolean;
+Begin
+  result := true;
+  If n = 'hurry' Then Say(F, D, 'Date prisa!', 'd ''a t e | p r ''i s a', mUrgent, 55, 120, 200, 1)
+  Else If n = 'hurytuf' Then Say(F, D, 'Rapido, rapido!', 'rr ''a p i d o _ rr ''a p i d o', mUrgent, 55, 120, 200, 1)
+  Else If n = 'woohoo1' Then Say(F, D, 'Yupi!', 'j ''u p i', mExcited, 30, 160, 280, 1)
+  Else If n = 'allrite' Then Say(F, D, 'Muy bien!', 'm u j | b j ''e n', mExcited, 30, 140, 240, 1)
+  Else If n = 'ohno1' Then Say(F, D, 'Ay, no!', '''a j _ n ''o', mSad, 40, 130, 220, 1)
+  Else If n = 'disease1' Then Say(F, D, 'Achis!', 'a t S ''i s', mExcited, 40, 150, 260, 1)
+  Else If n = 'disease2' Then Say(F, D, 'Puaj!', 'p w ''a x', mDisgust, 45, 180, 300, 1)
+  Else If n = 'gotcha' Then Say(F, D, 'Te pille!', 't e | p i j ''e', mMock, 45, 120, 220, 1)
+  Else If n = 'later' Then Say(F, D, 'Chao!', 't S ''a o', mMock, 45, 140, 240, 1)
+  Else If n = 'cul8r' Then Say(F, D, 'Hasta luego!', '''a s t a | l w ''e g o', mFarewell, 45, 120, 220, 1)
+  Else If n = 'roasted' Then Say(F, D, 'Tostado!', 't o s t ''a d o', mMock, 45, 120, 220, 1)
+  Else If n = 'toeasy' Then Say(F, D, 'Que facil!', 'k e | f ''a s i l', mMock, 45, 110, 200, 1)
+  Else If n = 'youblow' Then Say(F, D, 'Ni de cerca!', 'n i | d e | s ''e r k a', mMock, 45, 110, 200, 1)
+  Else If n = 'eatdust' Then Say(F, D, 'Al suelo!', 'a l | s w ''e l o', mNeutral, 45, 110, 200, 1)
+  Else If n = 'smelsmok' Then Say(F, D, 'Huele a quemado!', '''w e l e | a | k e m ''a d o', mMock, 45, 110, 200, 1)
+  Else If n = 'stupidio' Then Say(F, D, 'Que mala suerte!', 'k e | m ''a l a | s w ''e r t e', mSad, 45, 110, 200, 1)
+  Else If n = 'suckitdn' Then Say(F, D, 'Mala pata!', 'm ''a l a | p ''a t a', mMock, 45, 110, 200, 1)
+  Else If n = 'tastpain' Then Say(F, D, 'Ay! Uy!', '''a j _ ''u j', mExcited, 45, 140, 240, 1)
+  Else If n = 'tastpai2' Then Say(F, D, 'Eso dolio!', '''e s o | d o l j ''o', mMock, 45, 110, 200, 1)
+  Else If n = 'gotahurt' Then Say(F, D, 'Que dano!', 'k e | d ''a J o', mMock, 45, 110, 200, 1)
+  Else If n = 'cribrown' Then Say(F, D, 'Apagado!', 'a p a g ''a d o', mNeutral, 45, 110, 200, 1)
+  Else If n = 'proud' Then Say(F, D, 'Ole!', 'o l ''e', mProud, 30, 130, 220, 1)
+  Else If n = 'theman' Then Say(F, D, 'El campeon!', 'e l | k a m p e ''o n', mProud, 30, 120, 200, 1)
+  Else If n = 'youwin1' Then Say(F, D, 'Ganaste!', 'g a n ''a s t e', mProud, 30, 140, 240, 1)
+  Else If n = 'quitgame' Then Say(F, D, 'Adios!', 'a d j ''o s', mFarewell, 35, 110, 200, 1)
+  Else
+    result := false;
+End;
+
 Function DesignSound(Const Name: String; Const F: TFeatures): TDesign;
 Var
   n: String;
@@ -1138,6 +1259,8 @@ Begin
   result := Default(TDesign);
   n := LowerCase(Name);
   If (DesignLanguage = 'en') And DesignEnglish(n, F, result) Then exit;
+  If (DesignLanguage = 'fr') And DesignFrench(n, F, result) Then exit;
+  If (DesignLanguage = 'es') And DesignSpanish(n, F, result) Then exit;
   // explosions
   If (Copy(n, 1, 5) = 'bomb_') Or (Copy(n, 1, 4) = 'expl') Then Explosion(n, F, result)
   // bombs

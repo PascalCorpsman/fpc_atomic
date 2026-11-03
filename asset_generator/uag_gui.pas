@@ -54,7 +54,12 @@
  * and 30) list the rendered WAVs and play them with the BASS library next to
  * the program (bass.dll / libbass.so, loaded at runtime); without it the play
  * buttons are disabled. The language of the voices (profile Language) of a
- * new set is the one of the launcher (de -> de, all others -> en).
+ * new set is the one of the launcher (en, de, fr, es; others -> en).
+ *
+ * Sets of the launcher setup (profile Origin=setup, folders Flat, Soft,
+ * Pixel, Retro) are shown with the name of their style in the language of the
+ * launcher (uassetpath.AssetSetDisplayName, the names come from
+ * R_StyleName*, see ApplyLanguage).
  *
  * Contract with the launcher: after a set was written, its folder name is
  * written into assets/last_set.txt (one line). Exit code 0 = a set was
@@ -96,7 +101,7 @@ Var
 Procedure ParseCommandLine;
 Procedure ApplyLanguage; // same language as the launcher
 Function LauncherLanguage: String; // code of the launcher language, e.g. 'de'
-Function DefaultVoiceLanguage: String; // language of the voices of a new set: 'de' or 'en'
+Function DefaultVoiceLanguage: String; // language of the voices of a new set: the launcher language, if there are voices in it, else 'en'
 Function SoundVolume: Integer; // volume of the game 0..10000 ([FPC_Atomic] Volume)
 Function AppDir: String; // with trailing path delimiter
 Function AssetsDir: String; // <AppDir>assets/
@@ -123,7 +128,8 @@ Procedure SaveFormScreenshot(Form: TCustomForm; Const Filename: String; Extra: T
 
 Implementation
 
-Uses Math, IniFiles, IntfGraphics, GraphType, LCLType, LCLIntf, ulanguage, uatomic_global, uag_output;
+Uses Math, IniFiles, IntfGraphics, GraphType, LCLType, LCLIntf, ulanguage, uatomic_global, uag_output, uag_context,
+  uassetpath;
 
 Procedure ParseCommandLine;
 Var
@@ -204,10 +210,21 @@ End;
 
 Function DefaultVoiceLanguage: String;
 Begin
-  If LauncherLanguage() = 'de' Then
-    result := 'de'
+  result := LauncherLanguage();
+  If Not IsAGLanguage(result) Then result := 'en'; // a language without voices: English
+End;
+
+(* the name of a style in the current language, for uassetpath.AssetSetDisplayName *)
+Function GuiStyleName(Const Style: String): String;
+Begin
+  Case Style Of
+    'flat': result := R_StyleNameFlat;
+    'soft': result := R_StyleNameSoft;
+    'pixel': result := R_StyleNamePixel;
+    'retro': result := R_StyleNameRetro;
   Else
-    result := 'en'; // fr, es, ...: English voices
+    result := '';
+  End;
 End;
 
 Function SoundVolume: Integer;
@@ -239,6 +256,7 @@ Begin
   Filename := AppDir() + 'asset_generator_lang.';
   If Not FileExists(Filename + Code) Then Code := 'en';
   Language.CurrentLanguage := Filename + Code;
+  AssetStyleNameFunc := @GuiStyleName;
 End;
 
 Function AppDir: String;
