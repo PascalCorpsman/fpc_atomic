@@ -74,6 +74,7 @@ object Form1: TForm1
         'Flat with outline'
         'Soft shaded'
         'Pixel art'
+        'Retro (DOS look)'
       )
       Style = csDropDownList
       TabOrder = 1
@@ -410,29 +411,28 @@ object Form1: TForm1
         Text = '1x'
         OnChange = ComboImageChange
       end
-    end
-    object PanelAnim: TPanel
-      Left = 0
-      Height = 600
-      Top = 36
-      Width = 240
-      Align = alLeft
-      BevelOuter = bvNone
-      ClientHeight = 600
-      ClientWidth = 240
-      TabOrder = 1
       object LabelColor: TLabel
-        Left = 8
+        AnchorSideLeft.Control = ComboZoom
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = ComboImage
+        AnchorSideTop.Side = asrCenter
+        Left = 365
         Height = 15
-        Top = 6
+        Top = 10
         Width = 70
+        BorderSpacing.Left = 12
         Caption = 'Player color:'
       end
       object ComboColor: TComboBox
-        Left = 8
+        AnchorSideLeft.Control = LabelColor
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = ComboImage
+        AnchorSideTop.Side = asrCenter
+        Left = 441
         Height = 23
-        Top = 24
-        Width = 108
+        Top = 6
+        Width = 120
+        BorderSpacing.Left = 6
         DropDownCount = 12
         ItemHeight = 15
         ItemIndex = 2
@@ -447,23 +447,53 @@ object Form1: TForm1
           'Magenta'
           'Orange'
           'Purple'
+          'Gold (hunted)'
         )
         Style = csDropDownList
-        TabOrder = 0
+        TabOrder = 2
         Text = 'Red'
-        OnChange = ComboImageChange
+        OnChange = ComboColorChange
       end
-      object LabelDir: TLabel
-        Left = 124
+    end
+    object PanelAnim: TPanel
+      Left = 0
+      Height = 600
+      Top = 36
+      Width = 240
+      Align = alLeft
+      BevelOuter = bvNone
+      ClientHeight = 600
+      ClientWidth = 240
+      TabOrder = 1
+      object LabelAnim: TLabel
+        Left = 8
         Height = 15
         Top = 6
+        Width = 60
+        Caption = 'Animation:'
+      end
+      object ComboAnim: TComboBox
+        Left = 8
+        Height = 23
+        Top = 24
+        Width = 224
+        DropDownCount = 30
+        ItemHeight = 15
+        Style = csDropDownList
+        TabOrder = 0
+        OnChange = ComboAnimChange
+      end
+      object LabelDir: TLabel
+        Left = 8
+        Height = 15
+        Top = 54
         Width = 50
         Caption = 'Direction:'
       end
       object ComboDir: TComboBox
-        Left = 124
+        Left = 8
         Height = 23
-        Top = 24
+        Top = 72
         Width = 108
         ItemHeight = 15
         ItemIndex = 0
@@ -478,12 +508,26 @@ object Form1: TForm1
         Text = 'Down'
         OnChange = ComboDirChange
       end
-      object PaintBoxAnim: TPaintBox
+      object ScrollBoxAnim: TScrollBox
         Left = 0
-        Height = 260
-        Top = 52
+        Height = 496
+        Top = 104
         Width = 240
-        OnPaint = PaintBoxAnimPaint
+        HorzScrollBar.Visible = False
+        VertScrollBar.Visible = False
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        BorderStyle = bsNone
+        ClientHeight = 496
+        ClientWidth = 240
+        TabOrder = 2
+        object PaintBoxAnim: TPaintBox
+          Left = 0
+          Height = 496
+          Top = 0
+          Width = 240
+          Align = alClient
+          OnPaint = PaintBoxAnimPaint
+        end
       end
     end
     object ScrollBox1: TScrollBox
@@ -512,7 +556,7 @@ object Form1: TForm1
     Top = 300
   end
   object TimerAnim: TTimer
-    Interval = 60
+    Interval = 25
     OnTimer = TimerAnimTimer
     Left = 460
     Top = 300

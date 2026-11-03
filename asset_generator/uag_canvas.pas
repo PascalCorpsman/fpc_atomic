@@ -131,6 +131,7 @@ Type
     Procedure Fill(c: TAGColor; Keep: Boolean = false);
     Procedure FillPaint(Const Paint: TAGPaint; Keep: Boolean = false);
     Procedure Stroke(Width: Double; c: TAGColor; Keep: Boolean = false); // round joins and caps, width in user space
+    Procedure StrokePaint(Width: Double; Const Paint: TAGPaint; Keep: Boolean = false); // same with a gradient
     Function PathBounds(Out x0, y0, x1, y1: Double): Boolean; // device space, false if empty
   End;
 
@@ -706,6 +707,11 @@ Begin
 End;
 
 Procedure TAGCanvas.Stroke(Width: Double; c: TAGColor; Keep: Boolean);
+Begin
+  StrokePaint(Width, Solid(c), Keep);
+End;
+
+Procedure TAGCanvas.StrokePaint(Width: Double; Const Paint: TAGPaint; Keep: Boolean);
 Var
   polys: Array Of TAGPoints;
   hw: Double;
@@ -775,7 +781,7 @@ Begin
       End;
     End;
     oldRule := FillRule;
-    RasterizePaths(polys, Solid(c), frNonZero);
+    RasterizePaths(polys, Paint, frNonZero);
     FillRule := oldRule;
   End;
   If Not Keep Then BeginPath;

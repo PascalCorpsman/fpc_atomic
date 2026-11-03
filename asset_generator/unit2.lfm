@@ -2,11 +2,11 @@ object Form2: TForm2
   Left = 400
   Height = 456
   Top = 200
-  Width = 652
+  Width = 866
   BorderStyle = bsDialog
   Caption = 'FPC Atomic graphics'
   ClientHeight = 456
-  ClientWidth = 652
+  ClientWidth = 866
   Position = poScreenCenter
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
@@ -26,7 +26,7 @@ object Form2: TForm2
     Left = 12
     Height = 30
     Top = 38
-    Width = 628
+    Width = 842
     AutoSize = False
     Caption = 'There is no game data from the CD yet, so FPC Atomic computes its own graphics. Click on a style.'
     WordWrap = True
@@ -142,50 +142,87 @@ object Form2: TForm2
       OnClick = StyleClick
     end
   end
+  object PanelRetro: TPanel
+    Tag = 3
+    Left = 654
+    Height = 330
+    Top = 70
+    Width = 200
+    BevelOuter = bvRaised
+    ClientHeight = 330
+    ClientWidth = 200
+    Cursor = crHandPoint
+    TabOrder = 3
+    OnClick = StyleClick
+    object ImageRetro: TImage
+      Tag = 3
+      Left = 4
+      Height = 288
+      Top = 4
+      Width = 192
+      Cursor = crHandPoint
+      OnClick = StyleClick
+    end
+    object LabelRetro: TLabel
+      Tag = 3
+      Left = 4
+      Height = 30
+      Top = 296
+      Width = 192
+      Alignment = taCenter
+      AutoSize = False
+      Caption = 'Retro (DOS look)'
+      Cursor = crHandPoint
+      Font.Style = [fsBold]
+      Layout = tlCenter
+      ParentFont = False
+      OnClick = StyleClick
+    end
+  end
   object ButtonRoll: TButton
     Left = 12
     Height = 30
     Top = 414
     Width = 150
     Caption = 'Roll again'
-    TabOrder = 3
+    TabOrder = 4
     OnClick = ButtonRollClick
   end
   object ButtonCancel: TButton
-    Left = 490
+    Left = 704
     Height = 30
     Top = 414
     Width = 150
     Caption = 'Cancel'
-    TabOrder = 4
+    TabOrder = 5
     OnClick = ButtonCancelClick
   end
   object PanelProgress: TPanel
     Left = 12
     Height = 120
     Top = 160
-    Width = 628
+    Width = 842
     BevelOuter = bvNone
     ClientHeight = 120
-    ClientWidth = 628
-    TabOrder = 5
+    ClientWidth = 842
+    TabOrder = 6
     Visible = False
     object LabelProgress: TLabel
       Left = 0
       Height = 15
       Top = 10
-      Width = 628
+      Width = 842
       AutoSize = False
     end
     object ProgressBar1: TProgressBar
       Left = 0
       Height = 22
       Top = 36
-      Width = 628
+      Width = 842
       TabOrder = 0
     end
     object ButtonStop: TButton
-      Left = 478
+      Left = 692
       Height = 30
       Top = 74
       Width = 150

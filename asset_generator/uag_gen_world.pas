@@ -172,7 +172,7 @@ End;
 (* Minimum pen width, thin lines get gaps in the pixel style *)
 Function Pen(Const M: TMap; w: Double): Double;
 Begin
-  If (M.PS > 1) And (w < 2.2) Then result := 2.2 Else result := w;
+  If (M.PS > 1) And (w < GetStyleInfo(M.Style).MinPen) Then result := GetStyleInfo(M.Style).MinPen Else result := w;
 End;
 
 Procedure Line(C: TAGCanvas; x0, y0, x1, y1, w: Double; Col: TAGColor);
@@ -479,7 +479,7 @@ Var
   Begin
     C.BeginPath;
     C.Circle(cx, cy, rr);
-    If M.PS > 1 Then C.Stroke(3, Col) Else C.Stroke(2, Col);
+    If M.PS > 2 Then C.Stroke(4.5, Col) Else If M.PS > 1 Then C.Stroke(3, Col) Else C.Stroke(2, Col);
   End;
 
 Begin
@@ -1800,6 +1800,7 @@ Begin
           If AGSameColor(c, AGFuchsia) Then Continue;
           If thr[((y + (q Div 2) * (CH Div 2)) Div 4) * 10 + (x + (q Mod 2) * (CW Div 2)) Div 4] < 1.3 * t - 0.15 Then Continue;
           If f > 0 Then c := AGMix(c, AGHex($201810), 0.6 * t);
+          If (f > 0) And GetStyleInfo(M.Style).Palette Then c := AGRetroColor(c);
           fimg.SetPixel(x + (q Mod 2) * (CW Div 2) + dx, y + (q Div 2) * (CH Div 2) + dy, c);
         End;
     End;

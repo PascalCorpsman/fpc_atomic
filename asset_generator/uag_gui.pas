@@ -24,7 +24,11 @@
  *   --screenshot <file>    (debug) saves the window as png once everything
  *                          is rendered and ends
  *   --area <n>             (debug) selects the n-th area of the editor
- *                          (0 = figure, 1..10 players, 11 bomb, ...)
+ *                          (0 = figure, 1..10 players, 11 bomb, 12 flames,
+ *                          13 power ups, 14 field objects, 15.. maps, then
+ *                          menu screens, launcher image, hunted figure)
+ *   --anim <n>             (debug) selects the n-th animation of the
+ *                          animated preview (e.g. 6 = first die animation)
  *   --test-save <folder>   (debug) editor: switches "own figure per player"
  *                          on, moves the first slider, rolls the area seed,
  *                          saves into assets/<folder>/ and ends
@@ -39,7 +43,7 @@ Unit uag_gui;
 
 Interface
 
-Uses Classes, SysUtils, Graphics, Forms, uag_image;
+Uses Classes, SysUtils, Graphics, Forms, Controls, StdCtrls, uag_image;
 
 Type
   TGuiMode = (gmNew, gmSet, gmAuto);
@@ -50,6 +54,7 @@ Var
   GuiScreenshot: String = ''; // --screenshot
   GuiStyle: String = ''; // --style
   GuiArea: Integer = -1; // --area
+  GuiAnim: Integer = -1; // --anim
   GuiTestSave: String = ''; // --test-save
   GuiWritten: Boolean = false; // a set was written -> exit code 0
 
@@ -67,11 +72,20 @@ Function FolderFromName(Const Name: String): String; // file system safe folder 
  *)
 Function ImageToBitmap(Img: TAGImage; Zoom: Integer): TBitmap;
 
-Procedure SaveFormScreenshot(Form: TCustomForm; Const Filename: String);
+Type
+  TScreenshotPaint = Procedure(Canvas: TCanvas) Of Object; // draws onto the client area of the form
+
+(*
+ * Saves the client area of Form as png. Windows only lets the front window
+ * be copied from the screen; when another program has the focus the form is
+ * painted with PaintTo, which misses graphic controls: the captions of the
+ * labels are drawn here, Extra draws the content of paint boxes.
+ *)
+Procedure SaveFormScreenshot(Form: TCustomForm; Const Filename: String; Extra: TScreenshotPaint = Nil);
 
 Implementation
 
-Uses IniFiles, IntfGraphics, GraphType, LCLType, LCLIntf, ulanguage, uatomic_global;
+Uses Math, IniFiles, IntfGraphics, GraphType, LCLType, LCLIntf, ulanguage, uatomic_global;
 
 Procedure ParseCommandLine;
 Var
@@ -102,6 +116,10 @@ Begin
       '--area': Begin
           inc(i);
           GuiArea := StrToIntDef(ParamStr(i), -1);
+        End;
+      '--anim': Begin
+          inc(i);
+          GuiAnim := StrToIntDef(ParamStr(i), -1);
         End;
     End;
     inc(i);
@@ -216,15 +234,45 @@ Begin
   End;
 End;
 
-Procedure SaveFormScreenshot(Form: TCustomForm; Const Filename: String);
+{$IFDEF Windows}
+Function GetForegroundWindow: HWND; stdcall; external 'user32.dll';
+{$ENDIF}
+
+(* PaintTo misses the captions of the labels *)
+Procedure DrawLabels(Canvas: TCanvas; Form: TCustomForm; Parent: TWinControl);
 Var
-  bmp: TBitmap;
+  i: Integer;
+  c: TControl;
+  p, q: TPoint;
+  r: TRect;
+Begin
+  For i := 0 To Parent.ControlCount - 1 Do Begin
+    c := Parent.Controls[i];
+    If Not c.Visible Then Continue;
+    If c Is TWinControl Then
+      DrawLabels(Canvas, Form, TWinControl(c))
+    Else If c Is TCustomLabel Then Begin
+      p := Form.ScreenToClient(c.ClientToScreen(Point(0, 0)));
+      // only the part inside the parent (scroll boxes)
+      q := Form.ScreenToClient(Parent.ClientToScreen(Point(0, 0)));
+      r := Rect(Max(p.x, q.x), Max(p.y, q.y), Min(p.x + c.Width, q.x + Parent.ClientWidth), Min(p.y + c.Height, q.y + Parent.ClientHeight));
+      If (r.Right <= r.Left) Or (r.Bottom <= r.Top) Then Continue;
+      Canvas.Font.Assign(TCustomLabel(c).Font);
+      Canvas.Brush.Style := bsClear;
+      Canvas.TextRect(r, p.x, p.y, TCustomLabel(c).Caption);
+    End;
+  End;
+End;
+
+Procedure SaveFormScreenshot(Form: TCustomForm; Const Filename: String; Extra: TScreenshotPaint);
+Var
+  bmp, win: TBitmap;
   png: TPortableNetworkGraphic;
   scr: TCanvas;
   i: Integer;
   p: TPoint;
+  front: Boolean;
 Begin
-  // copied from the screen, PaintTo misses the content of some controls
   Form.BringToFront;
   For i := 0 To 9 Do Begin
     Form.Repaint;
@@ -232,17 +280,37 @@ Begin
     Sleep(50);
   End;
   p := Form.ClientToScreen(Point(0, 0));
+  front := true;
+{$IFDEF Windows}
+  front := GetForegroundWindow() = Form.Handle;
+{$ENDIF}
   bmp := TBitmap.Create;
   png := TPortableNetworkGraphic.Create;
   Try
     bmp.SetSize(Form.ClientWidth, Form.ClientHeight);
-    scr := TCanvas.Create;
-    Try
-      scr.Handle := GetDC(0);
-      bmp.Canvas.CopyRect(Rect(0, 0, bmp.Width, bmp.Height), scr, Rect(p.x, p.y, p.x + bmp.Width, p.y + bmp.Height));
-      ReleaseDC(0, scr.Handle);
-    Finally
-      scr.Free;
+    If front Then Begin
+      // copied from the screen, PaintTo misses the captions of the labels
+      scr := TCanvas.Create;
+      Try
+        scr.Handle := GetDC(0);
+        bmp.Canvas.CopyRect(Rect(0, 0, bmp.Width, bmp.Height), scr, Rect(p.x, p.y, p.x + bmp.Width, p.y + bmp.Height));
+        ReleaseDC(0, scr.Handle);
+      Finally
+        scr.Free;
+      End;
+    End
+    Else Begin
+      // Windows did not bring the window to the front (another program has the focus): paint it
+      win := TBitmap.Create;
+      Try
+        win.SetSize(bmp.Width, bmp.Height);
+        Form.PaintTo(win.Canvas, Form.Left - p.x, Form.Top - p.y); // with the window frame
+        bmp.Canvas.Draw(0, 0, win);
+        DrawLabels(bmp.Canvas, Form, Form);
+        If assigned(Extra) Then Extra(bmp.Canvas);
+      Finally
+        win.Free;
+      End;
     End;
     png.Assign(bmp);
     png.SaveToFile(Filename);

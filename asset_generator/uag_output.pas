@@ -19,7 +19,8 @@
  * the same layout as the data folder of the game.
  *
  * For previews: DryRun = true and KeepImages = true writes nothing and keeps
- * a copy of every image in Images (keyed images with fuchsia, as saved).
+ * a copy of every image in Images (keyed images with fuchsia, as saved) and
+ * of every text file (FindText).
  * Cancelled can be set from another thread, the next Save* raises EAbort.
  *)
 Unit uag_output;
@@ -61,6 +62,7 @@ Type
     fLock: TRTLCriticalSection;
     fExpected: Integer;
     fImages: TStringList;
+    fTexts: TStringList;
     Function FullPath(Const RelPath: String): String;
     Procedure Written(Const RelPath: String);
     Procedure CheckCancel;
@@ -77,6 +79,7 @@ Type
     Property Expected: Integer read fExpected write fExpected; // total for the progress, 0 = unknown
     Property Images: TStringList read fImages; // RelPath, Objects = TAGImage (owned), only with KeepImages
     Function FindImage(Const RelPath: String): TAGImage; // Nil if not kept
+    Function FindText(Const RelPath: String): String; // lines separated by #10, '' if not kept (only with KeepImages)
 
     Procedure SaveImage(Const RelPath: String; Img: TAGImage; Mode: TAGSaveMode);
     Procedure SaveAni(Const RelPath: String; Img: TAGImage; Const Spec: TAGAniSpec); // Img is keyed with fuchsia
@@ -282,12 +285,14 @@ Begin
   fFiles := TStringList.Create;
   fImages := TStringList.Create;
   fImages.OwnsObjects := true;
+  fTexts := TStringList.Create;
   InitCriticalSection(fLock);
 End;
 
 Destructor TAGOutput.Destroy;
 Begin
   fImages.Free;
+  fTexts.Free;
   fFiles.Free;
   DoneCriticalSection(fLock);
   Inherited Destroy;
@@ -344,6 +349,20 @@ Begin
     result := Nil;
 End;
 
+Function TAGOutput.FindText(Const RelPath: String): String;
+Var
+  i: Integer;
+Begin
+  result := '';
+  EnterCriticalSection(fLock);
+  Try
+    i := fTexts.IndexOfName(RelPath);
+    If i >= 0 Then result := StringReplace(fTexts.ValueFromIndex[i], #1, #10, [rfReplaceAll]);
+  Finally
+    LeaveCriticalSection(fLock);
+  End;
+End;
+
 Procedure TAGOutput.SaveImage(Const RelPath: String; Img: TAGImage; Mode: TAGSaveMode);
 Var
   fs: TFileStream;
@@ -385,10 +404,18 @@ Var
   s: String;
 Begin
   CheckCancel;
+  s := '';
+  For i := 0 To high(Lines) Do
+    s := s + Lines[i] + #10; // same bytes on every platform
+  If KeepImages Then Begin
+    EnterCriticalSection(fLock);
+    Try
+      fTexts.Add(RelPath + '=' + StringReplace(s, #10, #1, [rfReplaceAll]));
+    Finally
+      LeaveCriticalSection(fLock);
+    End;
+  End;
   If Not DryRun Then Begin
-    s := '';
-    For i := 0 To high(Lines) Do
-      s := s + Lines[i] + #10; // same bytes on every platform
     fs := TFileStream.Create(FullPath(RelPath), fmCreate);
     Try
       If s <> '' Then fs.Write(s[1], length(s));

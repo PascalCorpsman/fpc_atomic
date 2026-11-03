@@ -35,16 +35,19 @@ Type
     ButtonStop: TButton;
     ImageFlat: TImage;
     ImagePixel: TImage;
+    ImageRetro: TImage;
     ImageSoft: TImage;
     LabelFlat: TLabel;
     LabelHint: TLabel;
     LabelPixel: TLabel;
     LabelProgress: TLabel;
+    LabelRetro: TLabel;
     LabelSoft: TLabel;
     LabelTitle: TLabel;
     PanelFlat: TPanel;
     PanelPixel: TPanel;
     PanelProgress: TPanel;
+    PanelRetro: TPanel;
     PanelSoft: TPanel;
     ProgressBar1: TProgressBar;
     Procedure ButtonCancelClick(Sender: TObject);
@@ -114,6 +117,7 @@ Begin
   Case s Of
     asSoft: result := ImageSoft;
     asPixel: result := ImagePixel;
+    asRetro: result := ImageRetro;
   Else
     result := ImageFlat;
   End;
@@ -209,6 +213,7 @@ Begin
   PanelFlat.Visible := false;
   PanelSoft.Visible := false;
   PanelPixel.Visible := false;
+  PanelRetro.Visible := false;
   ButtonRoll.Visible := false;
   ButtonCancel.Visible := false;
   LabelHint.Visible := false;

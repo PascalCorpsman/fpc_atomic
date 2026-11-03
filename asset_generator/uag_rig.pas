@@ -261,19 +261,28 @@ Const
 Var
   r: TFigure;
   sz: Double;
+  retro: Boolean;
+
+  // default proportions, the retro style has a bigger head and a chunkier body
+  Function D(Normal, Chunky: Double): Double;
+  Begin
+    If retro Then result := Chunky Else result := Normal;
+  End;
+
 Begin
   r := Default(TFigure);
+  retro := assigned(Area.Ctx) And (Area.Ctx.Style = asRetro);
   sz := Area.Vary('size', 1.0, 0.06);
-  r.HeadR := Area.Vary('headsize', 12.5, 1.3) * sz;
-  r.BodyW := Area.Vary('bodywidth', 9.5, 1.3) * sz;
-  r.BodyH := Area.Vary('bodyheight', 14.0, 1.4) * sz;
+  r.HeadR := Area.Vary('headsize', D(12.5, 14.5), 1.3) * sz;
+  r.BodyW := Area.Vary('bodywidth', D(9.5, 11.0), 1.3) * sz;
+  r.BodyH := Area.Vary('bodyheight', D(14.0, 12.5), 1.4) * sz;
   r.BodyD := r.BodyW * 0.7;
-  r.LegLen := Area.Vary('leglength', 14.0, 1.6) * sz;
-  r.ArmLen := Area.Vary('armlength', 13.0, 1.5) * sz;
-  r.LimbR := Area.Vary('limbwidth', 3.4, 0.5) * sz;
+  r.LegLen := Area.Vary('leglength', D(14.0, 11.5), 1.6) * sz;
+  r.ArmLen := Area.Vary('armlength', D(13.0, 11.5), 1.5) * sz;
+  r.LimbR := Area.Vary('limbwidth', D(3.4, 4.3), 0.5) * sz;
   r.HipW := r.BodyW * 0.5;
   r.ShoulderW := r.BodyW * 0.92;
-  r.BootR := Area.Vary('bootsize', 3.9, 0.5) * sz;
+  r.BootR := Area.Vary('bootsize', D(3.9, 4.7), 0.5) * sz;
   r.BootLen := r.BootR * 1.5;
   r.GloveR := r.LimbR * Area.Vary('glovesize', 1.35, 0.15);
   r.Helmet := Area.Pick('helmet', 4);

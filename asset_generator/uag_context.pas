@@ -26,7 +26,7 @@
  *   [General]
  *   Name=My set
  *   Seed=123456
- *   Style=flat            (flat | soft | pixel)
+ *   Style=flat            (flat | soft | pixel | retro)
  *   PerPlayer=0           (1 = own atomic per player, atomic/p0 .. p9)
  *   [Seeds]
  *   bomb=777              (locks the seed of an area)
@@ -44,13 +44,15 @@ Uses Classes, uag_random;
 
 Type
 
-  TAGStyle = (asFlat, asSoft, asPixel);
+  TAGStyle = (asFlat, asSoft, asPixel, asRetro);
 
   TAGParamInfo = Record
     Area, Name: String;
     Base, Spread, Value: Double;
     Overridden: Boolean;
     IsPick: Boolean; // integer choice 0 .. Spread (Pick, Chance), else Base +- Spread (Vary)
+    IsChance: Boolean; // Chance: on (Value < Probability * 1000000) or off, the UI shows a check box
+    Probability: Double;
   End;
 
   TAGContext = Class;
@@ -121,6 +123,7 @@ Begin
   Case s Of
     asSoft: result := 'soft';
     asPixel: result := 'pixel';
+    asRetro: result := 'retro';
   Else
     result := 'flat';
   End;
@@ -132,6 +135,7 @@ Begin
     'flat': result := asFlat;
     'soft': result := asSoft;
     'pixel': result := asPixel;
+    'retro': result := asRetro;
   Else
     result := Default;
   End;
@@ -159,6 +163,8 @@ Begin
   info.Base := Base;
   info.Spread := Spread;
   info.IsPick := false;
+  info.IsChance := false;
+  info.Probability := 0;
   info.Overridden := Ctx.FindOverride(Name, Param, v);
   If Not info.Overridden Then
     v := Base + Spread * (2 * HashUnit(Seed, Param) - 1);
@@ -178,6 +184,8 @@ Begin
   info.Base := 0;
   info.Spread := Count - 1; // UI: integer choice 0 .. Spread
   info.IsPick := true;
+  info.IsChance := false;
+  info.Probability := 0;
   info.Overridden := Ctx.FindOverride(Name, Param, v);
   If info.Overridden Then
     result := AGClampI(AGRound(v), 0, Count - 1)
@@ -188,8 +196,22 @@ Begin
 End;
 
 Function TAGArea.Chance(Const Param: String; p: Double): Boolean;
+Var
+  i: Integer;
 Begin
   result := Pick(Param + '?', 1000000) < AGRound(p * 1000000);
+  // mark the logged entry, the UI shows a check box (override 0 = on, 999999 = off)
+  EnterCriticalSection(Ctx.fLock);
+  Try
+    For i := high(Ctx.fParams) Downto 0 Do
+      If (Ctx.fParams[i].Area = Name) And (Ctx.fParams[i].Name = Param + '?') Then Begin
+        Ctx.fParams[i].IsChance := true;
+        Ctx.fParams[i].Probability := p;
+        break;
+      End;
+  Finally
+    LeaveCriticalSection(Ctx.fLock);
+  End;
 End;
 
 Function TAGArea.Rnd(Const Key: String; Index: Integer): Double;

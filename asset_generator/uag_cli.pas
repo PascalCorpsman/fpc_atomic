@@ -55,7 +55,7 @@ Begin
   writeln('  --profile <file>   load seed, style, locked seeds and parameters');
   writeln('                     (default: <dir>/profile.ini if it exists)');
   writeln('  --seed <n|random>  main seed');
-  writeln('  --style <s>        flat | soft | pixel');
+  writeln('  --style <s>        flat | soft | pixel | retro');
   writeln('  --name <text>      name of the set');
   writeln('  --per-player       own atomic per player (atomic/p0 .. p9)');
   writeln('  --only <a,b,..>    only these generators');

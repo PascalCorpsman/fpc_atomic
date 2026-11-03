@@ -57,8 +57,8 @@ Const
 
 Function SW(St: TAGStyle; w: Double): Double;
 Begin
-  If St = asPixel Then
-    result := AGMax(w, 2.2)
+  If IsCoarse(St) Then
+    result := AGMax(w, GetStyleInfo(St).MinPen)
   Else
     result := w;
 End;
@@ -151,7 +151,7 @@ Procedure OutlinedPts(C: TAGCanvas; St: TAGStyle; Const P: TPts; w: Double; Col,
 Var
   bw: Double;
 Begin
-  If St = asPixel Then bw := 2.2 Else bw := 1.6;
+  If IsCoarse(St) Then bw := GetStyleInfo(St).MinPen Else bw := 1.6;
   StrokePts(C, P, SW(St, w) + bw, Border);
   StrokePts(C, P, SW(St, w), Col);
 End;
@@ -428,7 +428,7 @@ Var
       6: Begin // grab (open hand)
           C.Push;
           C.Translate(20, 20);
-          If St = asPixel Then Begin
+          If IsCoarse(St) Then Begin
             // the half resolution only has room for three fingers
             C.Capsule(-4, 0, -7.5, -9, 2.8);
             C.Capsule(0, -1, 0, -12.5, 2.8);
@@ -667,7 +667,7 @@ Var
           // panel with a running light
           C.Push;
           C.Translate(0, 0.18 * r);
-          If St <> asPixel Then C.Rotate(AGDeg(-16));
+          If Not IsCoarse(St) Then C.Rotate(AGDeg(-16));
           C.RoundRect(-0.62 * r, -0.24 * r, 1.24 * r, 0.48 * r, 1.4);
           DrawShapeOutlined(C, St, AGRGB(40, 32, 40), OutlineDark, 0.7);
           For i := 0 To 2 Do Begin
@@ -1190,6 +1190,10 @@ Var
     If St = asSoft Then Begin
       C.FillPaint(C.Linear(0, 0, 0, 64, [AGRGB(255, 250, 200), fillc, AGHSV(hurryHue - 25, 0.95, 0.9)]), true);
       C.Stroke(2.2, AGRGB(110, 14, 8));
+    End
+    Else If St = asRetro Then Begin
+      C.FillPaint(AGBandPaint(C, 0, 64, fillc), true);
+      C.Stroke(3.6 / sc, AGRGB(110, 14, 8));
     End
     Else
       DrawShapeOutlined(C, St, fillc, AGRGB(110, 14, 8), 1.6);

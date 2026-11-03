@@ -80,14 +80,13 @@ Begin
   result := AGMix(Cols[i], Cols[i + 1], seg - i);
 End;
 
-(* Vertical gradient, pixel style uses steps *)
+(* Vertical gradient, pixel style uses steps, retro fewer and harder ones *)
 Procedure VGradient(C: TAGCanvas; Style: TAGStyle; x, y, w, h: Double; Const Cols: Array Of TAGColor);
-Const
-  Bands = 18;
 Var
-  k: Integer;
+  k, Bands: Integer;
 Begin
-  If Style = asPixel Then Begin
+  If Style = asRetro Then Bands := 7 Else Bands := 18;
+  If IsCoarse(Style) Then Begin
     For k := 0 To Bands - 1 Do Begin
       C.Rect(x, y + h * k / Bands, w, h / Bands + 1);
       C.Fill(GradColor(Cols, (k + 0.5) / Bands));
@@ -620,7 +619,7 @@ Var
   Begin
     If Frame = 10 Then s := ':' Else s := chr(ord('0') + Frame);
     pen := Size * Weight;
-    If Style = asPixel Then ow := 2 Else ow := 1.4;
+    If Style = asRetro Then ow := 3 Else If Style = asPixel Then ow := 2 Else ow := 1.4;
     x := 9 - TextWidth(s, Size, Weight) / 2;
     y := (27 - Size - pen - 2 * ow) / 2 + pen / 2 + ow;
     StrokeText(C, x, y, Size, s, pen + 2 * ow, AGHex($200C04), Weight, 0);

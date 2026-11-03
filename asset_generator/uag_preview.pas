@@ -213,7 +213,8 @@ Begin
 
   // figure in red, waving, with a bomb
   fig := MakeFigure(Ctx.Area('atomic'), false);
-  If Ctx.Style = asPixel Then fig.OutlineScale := fig.OutlineScale * 0.6; // like uag_gen_atomic
+  If IsCoarse(Ctx.Style) Then fig.OutlineScale := fig.OutlineScale * 0.6; // like uag_gen_atomic
+  If Ctx.Style = asRetro Then fig.OutlineScale := 0;
   pose := NeutralPose;
   pose.Arm[0].Spread := 2.2;
   pose.Arm[0].Swing := 0.2;
@@ -227,6 +228,7 @@ Begin
   pose.Roll := -0.05;
   layer := RenderImage(Ctx, PreviewW, PreviewH, @DrawLayer);
   Try
+    If info.Palette Then fig.Col.Outline := AGRetroColor(fig.Col.Outline);
     If info.PixelScale > 1 Then PixelOutline(layer, PreviewW, PreviewH, info.PixelScale, fig.Col.Outline);
     RecolorPlayer(layer, AGPlayerColors[2]);
     result.Draw(layer, 0, 0);
@@ -240,6 +242,7 @@ Begin
     For i := 0 To PreviewW - 1 Do
       result.BlendPixel(i, j, AGRGBA(8, 6, 16, 255), k);
   End;
+  If info.Palette Then AGRetroQuantize(result);
 End;
 
 Procedure GeneratePreview(Ctx: TAGContext; Output: TAGOutput);

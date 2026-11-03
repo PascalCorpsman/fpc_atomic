@@ -32,7 +32,7 @@ Uses Classes, SysUtils, uag_context, uag_output, uag_image;
 
 Type
 
-  TAGAreaKind = (akFigure, akPlayer, akBomb, akFlame, akPowerups, akObjects, akMap, akScreens, akPreview);
+  TAGAreaKind = (akFigure, akPlayer, akBomb, akFlame, akPowerups, akObjects, akMap, akScreens, akPreview, akHunted);
 
   TAGParamList = Array Of TAGParamInfo;
 
@@ -86,7 +86,29 @@ Type
     Destructor Destroy; override;
   End;
 
-Function AreaName(Kind: TAGAreaKind; Index: Integer): String; // e.g. 'atomic/p3', 'map:Field02'
+Const
+  // play field of field.png like the engine (Fieldxoff, FieldyOff, FieldBlockWidth, FieldBlockHeight)
+  SceneFX = 20;
+  SceneFY = 66;
+  SceneCW = 40;
+  SceneCH = 36;
+  // cells of the map scene of the editor that stay free of bricks
+  SceneBombX = 4; // a ticking bomb
+  SceneBombY = 4;
+  SceneFigureX = 2; // the figure stands left of it
+  SceneFigureY = 4;
+  SceneFlameX = 10; // an explosion with flames of SceneFlameLen cells in all directions
+  SceneFlameY = 6;
+  SceneFlameLen = 2;
+
+Function AreaName(Kind: TAGAreaKind; Index: Integer): String; // e.g. 'atomic/p3', 'map:Field02', the hunted figure is 'atomic'
+
+(*
+ * Field (640 x 480) with solid blocks in the usual grid and some bricks, the
+ * cells of the bomb, the explosion and the figure (constants Scene...) stay free.
+ * Brick and Solid are keyed (fuchsia = transparent). For the editor.
+ *)
+Function ComposeScene(Field, Brick, Solid: TAGImage; Seed: QWord): TAGImage;
 
 (* Renders all images of an area into Output (use DryRun and KeepImages), maps also get the image 'scene' *)
 Procedure RenderArea(Ctx: TAGContext; Output: TAGOutput; Kind: TAGAreaKind; Index: Integer);
@@ -100,7 +122,7 @@ Procedure RemoveStaleFiles(Const Dir: String; Written: TStrings);
 
 Implementation
 
-Uses uag_registry, uag_gen_atomic, uag_gen_world, uag_preview;
+Uses uag_registry, uag_random, uag_gen_atomic, uag_gen_world, uag_preview;
 
 Function AreaName(Kind: TAGAreaKind; Index: Integer): String;
 Begin
@@ -113,9 +135,36 @@ Begin
     akObjects: result := 'objects';
     akMap: result := format('map:Field%.2d', [Index]);
     akScreens: result := 'screens';
+    akHunted: result := 'atomic'; // the base figure with a crown, same parameters
   Else
     result := 'preview';
   End;
+End;
+
+Function SceneCellFree(i, j: Integer): Boolean;
+Begin
+  // start corners of the players
+  If ((i <= 1) And (j <= 1)) Or ((i >= 13) And (j >= 9)) Then exit(true);
+  If (j = SceneBombY) And (i >= SceneFigureX) And (i <= SceneBombX) Then exit(true);
+  If (j = SceneFlameY) And (abs(i - SceneFlameX) <= SceneFlameLen) Then exit(true);
+  If (i = SceneFlameX) And (abs(j - SceneFlameY) <= SceneFlameLen) Then exit(true);
+  result := false;
+End;
+
+Function ComposeScene(Field, Brick, Solid: TAGImage; Seed: QWord): TAGImage;
+Var
+  i, j: Integer;
+  R: TAGRandom;
+Begin
+  result := Field.Clone;
+  R.Init(Seed);
+  For j := 0 To 10 Do
+    For i := 0 To 14 Do Begin
+      If odd(i) And odd(j) Then
+        DrawKeyed(result, Solid, SceneFX + i * SceneCW, SceneFY + j * SceneCH)
+      Else If R.Chance(0.55) And Not SceneCellFree(i, j) Then
+        DrawKeyed(result, Brick, SceneFX + i * SceneCW, SceneFY + j * SceneCH);
+    End;
 End;
 
 Procedure RunGenerator(Ctx: TAGContext; Output: TAGOutput; Const Name: String);
@@ -146,8 +195,9 @@ Begin
         brick := Output.FindImage(dir + 'brick.png');
         solid := Output.FindImage(dir + 'solid.png');
         If assigned(field) And assigned(brick) And assigned(solid) Then
-          Output.Images.InsertObject(0, 'scene', ComposeMapScene(field, brick, solid, Ctx.AreaSeed(AreaName(Kind, Index))));
+          Output.Images.InsertObject(0, 'scene', ComposeScene(field, brick, solid, Ctx.AreaSeed(AreaName(Kind, Index))));
       End;
+    akHunted: GenerateFigure(Ctx, Output, Ctx.Area('atomic'), 'atomic/hunted/', true);
     akScreens: RunGenerator(Ctx, Output, 'screens');
     akPreview: RunGenerator(Ctx, Output, 'preview');
   End;

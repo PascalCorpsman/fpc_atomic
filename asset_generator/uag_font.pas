@@ -49,7 +49,8 @@ Procedure DrawText(C: TAGCanvas; x, y, Size: Double; Const Text: String; Color: 
 (*
  * Title text in the look of the style: an outline of OutlineW pixel around
  * the letters, flat = solid fill, soft = darker fill with a light highlight
- * on the upper part, pixel = solid fill (the sheet renderer pixelates it).
+ * on the upper part, pixel = solid fill (the sheet renderer pixelates it),
+ * retro = vertical gradient in 4 hard bands (light top, dark bottom).
  * Shadow > 0 adds a drop shadow offset by Shadow pixel.
  *)
 Procedure DrawTextStyled(C: TAGCanvas; Style: TAGStyle; x, y, Size: Double; Const Text: String;
@@ -62,7 +63,7 @@ Procedure StrokeText(C: TAGCanvas; x, y, Size: Double; Const Text: String; Pen: 
 
 Implementation
 
-Uses uag_math;
+Uses uag_math, uag_render;
 
 Type
   TGlyph = Record
@@ -363,7 +364,7 @@ Begin
   result := w * Size / 10;
 End;
 
-Procedure StrokeText(C: TAGCanvas; x, y, Size: Double; Const Text: String; Pen: Double; Color: TAGColor;
+Procedure StrokeTextPaint(C: TAGCanvas; x, y, Size: Double; Const Text: String; Pen: Double; Const Paint: TAGPaint;
   Weight: Double; Slant: Double; dx: Double; dy: Double);
 Var
   chars: TFontChars;
@@ -385,7 +386,7 @@ Var
       py := y + dy + uy * sc;
       If j = 0 Then C.MoveTo(px, py) Else C.LineTo(px, py);
     End;
-    C.Stroke(Pen, Color);
+    C.StrokePaint(Pen, Paint);
   End;
 
 Begin
@@ -413,6 +414,12 @@ Begin
   End;
 End;
 
+Procedure StrokeText(C: TAGCanvas; x, y, Size: Double; Const Text: String; Pen: Double; Color: TAGColor;
+  Weight: Double; Slant: Double; dx: Double; dy: Double);
+Begin
+  StrokeTextPaint(C, x, y, Size, Text, Pen, C.Solid(Color), Weight, Slant, dx, dy);
+End;
+
 Function AlignX(x, Size: Double; Const Text: String; Align: TAGFontAlign; Weight: Double): Double;
 Begin
   Case Align Of
@@ -434,11 +441,13 @@ Procedure DrawTextStyled(C: TAGCanvas; Style: TAGStyle; x, y, Size: Double; Cons
   Base, Outline: TAGColor; Align: TAGFontAlign; Weight: Double; OutlineW: Double; Slant: Double; Shadow: Double);
 Var
   pen: Double;
+  paint: TAGPaint;
 Begin
   x := AlignX(x, Size, Text, Align, Weight);
   pen := Weight * Size;
   If OutlineW < 0 Then OutlineW := AGMax(1.5, pen * 0.28);
   If Style = asPixel Then OutlineW := AGMax(OutlineW, 2.5);
+  If Style = asRetro Then OutlineW := AGMax(OutlineW, 3.5);
   If Shadow > 0 Then
     StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, AGWithAlpha(AGBlack, 150), Weight, Slant, Shadow, Shadow);
   StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, Outline, Weight, Slant);
@@ -447,6 +456,11 @@ Begin
         StrokeText(C, x, y, Size, Text, pen, AGShade(Base, 0.72), Weight, Slant);
         StrokeText(C, x, y, Size, Text, pen * 0.62, Base, Weight, Slant, -pen * 0.08, -pen * 0.1);
         StrokeText(C, x, y, Size, Text, pen * 0.26, AGShade(Base, 1.55), Weight, Slant, -pen * 0.16, -pen * 0.2);
+      End;
+    asRetro: Begin
+        // 4 hard bands from the top of the ink to its bottom
+        paint := AGBandPaint(C, y - pen / 2, y + Size + pen / 2, Base);
+        StrokeTextPaint(C, x, y, Size, Text, pen, paint, Weight, Slant, 0, 0);
       End;
   Else
     StrokeText(C, x, y, Size, Text, pen, Base, Weight, Slant);

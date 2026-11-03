@@ -807,8 +807,10 @@ Var
 Begin
   Style := Ctx.Style;
   Fig := MakeFigure(Area, Hunted);
-  If Style = asPixel Then Fig.OutlineScale := Fig.OutlineScale * 0.6; // inner lines, the silhouette gets its outline in SaveSheet
+  If IsCoarse(Style) Then Fig.OutlineScale := Fig.OutlineScale * 0.6; // inner lines, the silhouette gets its outline in SaveSheet
+  If Style = asRetro Then Fig.OutlineScale := 0; // no room for inner lines, the parts are told apart by color and shading
   Outline := Fig.Col.Outline;
+  If GetStyleInfo(Style).Palette Then Outline := AGRetroColor(Outline);
   // rows of the sheets, see the ranges in client/uatomic.pas (right, up, left, down)
   DirSheet('walk.png', akWalk, 15, CellW, CellH, FootX, FootY, [FacingR, FacingUp, FacingDown, FacingL]);
   DirSheet('bwalk.png', akCarry, 15, CellW, CellH, FootX, FootY, [FacingR, FacingUp, FacingDown, FacingL]);
