@@ -77,6 +77,7 @@ Resourcestring
   R_AreaSounds = 'Sounds';
   R_AreaMusic = 'Music';
   R_VoiceLanguage = 'Language of the voices:';
+  R_VoiceLanguageHint = 'Language of the voices in the preview and of the plain files of the set (default). Every set contains the voices in all languages, the game and the launcher play the ones of their current language.';
   R_LangEnglish = 'English';
   R_LangGerman = 'German';
   R_SoundPlay = '▶ Play';

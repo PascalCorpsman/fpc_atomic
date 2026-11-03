@@ -115,6 +115,7 @@ rf_folderreplace="Le dossier "%s" existe déjà et sera entièrement remplacé. 
 r_areasounds="Sons"
 r_areamusic="Musique"
 r_voicelanguage="Langue des voix :"
+r_voicelanguagehint="Langue des voix dans l'aperçu et des fichiers simples du jeu (par défaut). Chaque jeu contient les voix dans toutes les langues, le jeu et le lanceur jouent celles de leur langue actuelle."
 r_langenglish="Anglais"
 r_langgerman="Allemand"
 r_soundplay="▶ Lire"

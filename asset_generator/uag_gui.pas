@@ -25,7 +25,8 @@
  *                          with --auto (setup of the launcher): one folder
  *                          and set name per style (comma separated, order
  *                          flat, soft, pixel, retro), the chosen style is
- *                          generated into its folder (instead of --set).
+ *                          generated into its folder (instead of --set),
+ *                          its profile.ini gets Origin=setup.
  *                          The launcher reads the seed from the profile.ini
  *                          of that set and generates the other styles with
  *                          the command line version in the background.

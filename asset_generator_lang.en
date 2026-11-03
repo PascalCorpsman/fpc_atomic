@@ -115,6 +115,7 @@ rf_folderreplace="The folder "%s" already exists and will be replaced completely
 r_areasounds="Sounds"
 r_areamusic="Music"
 r_voicelanguage="Language of the voices:"
+r_voicelanguagehint="Language of the voices in the preview and of the plain files of the set (default). Every set contains the voices in all languages, the game and the launcher play the ones of their current language."
 r_langenglish="English"
 r_langgerman="German"
 r_soundplay="▶ Play"

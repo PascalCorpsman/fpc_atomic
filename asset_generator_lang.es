@@ -115,6 +115,7 @@ rf_folderreplace="La carpeta "%s" ya existe y se reemplazará por completo. ¿Co
 r_areasounds="Sonidos"
 r_areamusic="Música"
 r_voicelanguage="Idioma de las voces:"
+r_voicelanguagehint="Idioma de las voces en la vista previa y de los archivos simples del conjunto (predeterminado). Cada conjunto contiene las voces en todos los idiomas, el juego y el lanzador reproducen las de su idioma actual."
 r_langenglish="Inglés"
 r_langgerman="Alemán"
 r_soundplay="▶ Reproducir"

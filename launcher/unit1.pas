@@ -20,7 +20,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  IniFiles, UTF8Process, ulauncher, ulaunchersound;
+  Buttons, IniFiles, UTF8Process, ulauncher, ulaunchersound;
 
 Type
 
@@ -37,7 +37,6 @@ Type
     Button10: TButton;
     Button11: TButton;
     Button12: TButton;
-    Button13: TButton;
     Button14: TButton;
     Button15: TButton;
     Button16: TButton;
@@ -72,6 +71,9 @@ Type
     Label12: TLabel;
     ComboBox1: TComboBox;
     Panel1: TPanel;
+    PanelNews: TPanel;
+    LabelNews: TLabel;
+    ButtonNewsClose: TSpeedButton;
     Timer1: TTimer;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
@@ -83,11 +85,12 @@ Type
     Procedure Button9Click(Sender: TObject);
     Procedure Button10Click(Sender: TObject);
     Procedure Button12Click(Sender: TObject);
-    Procedure Button13Click(Sender: TObject);
     Procedure Button14Click(Sender: TObject);
     Procedure Button16Click(Sender: TObject);
     Procedure Button17Click(Sender: TObject);
     Procedure Image1Click(Sender: TObject);
+    Procedure LabelNewsClick(Sender: TObject);
+    Procedure ButtonNewsCloseClick(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
@@ -109,7 +112,7 @@ Type
     Version: Single;
     UpToDate: Boolean; // True, wenn "Updates..." in diesem Lauf nichts mehr zum Herunterladen gefunden hat
     GameDataFound: Boolean; // True, wenn CheckForFiles nichts vermisst, dann ist der Launch Knopf blau
-    CanGenerate: Boolean; // True, wenn Spieldaten fehlen und der Grafik-Generator einen Satz erzeugen kann (Button13), dann ist der Launch Knopf auch blau
+    CanGenerate: Boolean; // True, wenn Spieldaten fehlen und der Grafik-Generator einen Satz erzeugen kann (Einrichtung fett), dann ist der Launch Knopf auch blau
     GameProcess: TProcessUTF8; // Das laufende Spiel, wenn der Launcher danach wieder erscheinen soll (CheckBox6), sonst Nil
     fLanguageCodes: Array Of String;
     fAssetFolders: TStringList; // Die Grafiksätze, [0] = '' = Original, sonst der Ordner unter assets/
@@ -156,8 +159,9 @@ Type
     Function RunGenerator(p: TProcessUTF8): Boolean;
     Procedure RunSetup();
     Procedure StartSetupAsync(Data: PtrInt);
-    Function SetupGenerate(): Boolean;
-    Procedure StartStyleJob(Const Folder, aName, Style, Profile: String);
+    Function SetupGenerate(KeepSelection: Boolean; Out Count: integer): Boolean;
+    Procedure UpdateNewsBanner();
+    Function StartStyleJob(Const Folder, aName, Style, Profile: String): Boolean;
     Procedure OnJobTimer(Sender: TObject);
     Procedure OnDoLog(Const LogText: String);
     Procedure OnStartCheckDone(Ok: Boolean; Const Filename, ErrorText: String);
@@ -557,10 +561,49 @@ Begin
   If fNoGraphics Then RunSetup();
 End;
 
-Procedure TForm1.Button13Click(Sender: TObject);
+Procedure TForm1.LabelNewsClick(Sender: TObject);
+Var
+  n: integer;
 Begin
-  // Nur sichtbar, wenn Spieldaten fehlen: einen Grafiksatz erzeugen, ohne das Spiel zu starten (das macht der Launch Knopf)
-  GenerateAssetSet();
+  (*
+   * Der Hinweis "Neu: eigene Grafiken" (nur mit CD-Daten und ohne Grafiksätze): eigene erzeugen wie in der Einrichtung,
+   * aber Original bleibt gewählt. Abgebrochen: der Hinweis bleibt.
+   *)
+  If Not SetupGenerate(true, n) Then exit;
+  ini.WriteBool('Launcher', 'NewsGraphicsSeen', true);
+  ini.UpdateFile;
+  UpdateNewsBanner();
+  If n > 0 Then showmessage(format(RF_NewsGraphicsDone, [n]));
+End;
+
+Procedure TForm1.ButtonNewsCloseClick(Sender: TObject);
+Begin
+  // Für immer weg
+  ini.WriteBool('Launcher', 'NewsGraphicsSeen', true);
+  ini.UpdateFile;
+  UpdateNewsBanner();
+End;
+
+Procedure TForm1.UpdateNewsBanner;
+Var
+  sl: TStringList;
+  ShowNews: Boolean;
+Begin
+  (*
+   * Einmal für Spieler, die schon die CD-Daten haben (die Einrichtung erscheint dann nicht von selbst): ein schmaler
+   * Hinweis über dem Seitenbild. Nicht, wenn es schon Grafiksätze gibt, die Einrichtung schon lief, er weg geklickt
+   * wurde oder es keinen Generator gibt. Er liegt in der freien Fläche über dem Bild und verschiebt nichts.
+   *)
+  ShowNews := assigned(fAssetFolders) And (fAssetFolders.Count <= 1)
+    And (Not ini.ReadBool('Launcher', 'SetupDone', false))
+    And (Not ini.ReadBool('Launcher', 'NewsGraphicsSeen', false))
+    And (FileExists(AssetGeneratorExe()) Or FileExists(AssetGeneratorCliExe()));
+  If ShowNews Then Begin
+    sl := CheckForFiles('');
+    ShowNews := sl.Count = 0; // Nur mit vollständigen CD-Daten
+    sl.free;
+  End;
+  PanelNews.Visible := ShowNews;
 End;
 
 Procedure TForm1.Button9Click(Sender: TObject);
@@ -933,6 +976,7 @@ Begin
   Button11.Enabled := fAssetFolders.Count > 1;
   SelectAssetSet(fAssetIndex);
   ReadSoundSets(); // Sätze mit Sounds können dazu gekommen oder weg sein
+  UpdateNewsBanner(); // Mit Grafiksätzen braucht es den Hinweis nicht mehr
 End;
 
 Procedure TForm1.SelectAssetSet(Index: integer);
@@ -1026,7 +1070,9 @@ Begin
     Else Begin
       s := format(RF_SoundSetAutoShort, [R_AssetSetOriginal]);
     End;
-    If Label12.Canvas.TextWidth(s) <= Label12.Width Then Label12.Caption := s;
+    // Platz zwischen den Pfeilen (Label12.Width taugt nicht, das Label passt seine Breite dem Text an)
+    Label12.Canvas.Font.Assign(Label12.Font);
+    If Label12.Canvas.TextWidth(s) <= Button15.Left - (Button14.Left + Button14.Width) - 8 Then Label12.Caption := s;
   End;
   Label12.Hint := R_SoundSetHint + LineEnding + LineEnding + format(RF_SoundSetPlays, [Plays]);
   // Hört man gerade eine andere Quelle probe, dann aufhören
@@ -1324,6 +1370,7 @@ End;
 Procedure TForm1.RunSetup;
 Var
   r: TModalResult;
+  n: integer;
 Begin
   (*
    * Die Einrichtung: woher kommen Grafiken und Sounds (Form7). Eigene erzeugen: die Stil-Auswahl des Generators, wird
@@ -1333,10 +1380,11 @@ Begin
   Repeat
     ini.WriteBool('Launcher', 'SetupDone', true);
     ini.UpdateFile;
+    UpdateNewsBanner(); // Die Einrichtung ersetzt den Hinweis
     r := Form7.Execute(FileExists(AssetGeneratorExe()) Or FileExists(AssetGeneratorCliExe()),
       FileExists(AppDir() + 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF}));
     Case r Of
-      mrYes: If SetupGenerate() Then break;
+      mrYes: If SetupGenerate(false, n) Then break;
       mrNo: Begin
           Button4Click(Nil);
           ReadAssetSets(); // Mit den CD-Daten gibt es das Original (und das Seitenbild)
@@ -1353,7 +1401,28 @@ Begin
   RunSetup();
 End;
 
-Function TForm1.SetupGenerate: Boolean;
+Type
+  TStyleJob = Class
+    Process: TProcessUTF8;
+    Folder: String;
+  End;
+
+// True, wenn assets/<Folder> ein Satz ist, den die Einrichtung erzeugt hat ([General] Origin=setup), den darf sie ersetzen
+Function IsSetupSet(Const Folder: String): Boolean;
+Var
+  pini: TIniFile;
+Begin
+  result := false;
+  If Not FileExists(AssetSetsDir() + Folder + PathDelim + AssetProfileFile) Then exit;
+  pini := TIniFile.Create(AssetSetsDir() + Folder + PathDelim + AssetProfileFile);
+  Try
+    result := SameText(trim(pini.ReadString('General', 'Origin', '')), 'setup');
+  Finally
+    pini.free;
+  End;
+End;
+
+Function TForm1.SetupGenerate(KeepSelection: Boolean; Out Count: integer): Boolean;
 Const
   Styles: Array[0..3] Of String = ('flat', 'soft', 'pixel', 'retro'); // Reihenfolge wie TAGStyle im Generator
 Var
@@ -1367,16 +1436,20 @@ Var
 Begin
   (*
    * Eigene Grafiken (Einrichtung): ein Satz pro Stil, Ordner und Name aus dem übersetzten Namen des Stils (Flach, Weich,
-   * Pixel, Retro, gibt es den Ordner schon, dann z.B. Flach2). Vertrag mit dem Generator:
+   * Pixel, Retro). Gibt es den Ordner schon, dann wird er ersetzt, wenn ihn eine frühere Einrichtung erzeugt hat
+   * (profile.ini [General] Origin=setup), sonst (eigener, im Editor gespeicherter Satz) z.B. Flach2. Vertrag mit dem Generator:
    * 1. asset_generator_gui --auto --setup --folders <f,s,p,r> --names <f,s,p,r>: die Stil-Auswahl, der gewählte Stil wird
    *    in seinen Ordner erzeugt, der Ordner steht danach in assets/last_set.txt, Exit-Code 0 = erzeugt.
    *    (Ohne GUI: asset_generator mit Stil flat und zufälligem Seed.)
-   * 2. Der Satz wird gewählt (Sounds Automatisch), man kann sofort spielen.
+   * 2. Der Satz wird gewählt (Sounds Automatisch), man kann sofort spielen. KeepSelection (Hinweis "Neu: eigene Grafiken"):
+   *    die Auswahl bleibt (z.B. Original).
    * 3. Die anderen drei Stile erzeugt asset_generator im Hintergrund mit --profile <profile.ini des ersten Satzes> (gleicher
    *    Seed, gleiche Sprache der Ansagen), --style und --name; parallel, OnJobTimer liest die Sätze neu ein, wenn sie fertig sind.
-   * Result = false: abgebrochen oder Fehler (die Einrichtung erscheint wieder).
+   * Result = false: abgebrochen oder Fehler (die Einrichtung erscheint wieder). Count = die neuen Sätze (mit denen, die
+   * noch im Hintergrund entstehen).
    *)
   result := false;
+  Count := 0;
   UseGui := FileExists(AssetGeneratorExe());
   If (Not UseGui) And (Not FileExists(AssetGeneratorCliExe())) Then exit;
   Names[0] := R_StyleFlat;
@@ -1386,6 +1459,10 @@ Begin
   Taken := TStringList.Create;
   Try
     Taken.CaseSensitive := false;
+    // Ein Satz, der gerade noch im Hintergrund entsteht (frühere Einrichtung), wird nicht angefasst
+    For i := 0 To fJobs.Count - 1 Do Begin
+      Taken.Add(TStyleJob(fJobs[i]).Folder);
+    End;
     For i := 0 To 3 Do Begin
       // Keine Kommas und Anführungszeichen, die Namen gehen als Liste an die GUI
       Names[i] := trim(StringReplace(StringReplace(Names[i], ',', ' ', [rfReplaceAll]), '"', '', [rfReplaceAll]));
@@ -1394,8 +1471,8 @@ Begin
       s := f;
       ns := Names[i];
       n := 1;
-      // Vorhandene Sätze (oder ein Satz, der gerade im Hintergrund entsteht) werden nie überschrieben
-      While DirectoryExists(AssetSetsDir() + s) Or (Taken.IndexOf(s) >= 0) Do Begin
+      // Vorhandene Sätze werden nur ersetzt, wenn sie von der Einrichtung sind (das Speichern ist atomar)
+      While (DirectoryExists(AssetSetsDir() + s) And Not IsSetupSet(s)) Or (Taken.IndexOf(s) >= 0) Do Begin
         inc(n);
         s := f + inttostr(n);
         ns := Names[i] + ' ' + inttostr(n);
@@ -1453,13 +1530,23 @@ Begin
     result := true; // Nicht noch einmal fragen
     exit;
   End;
+  // Ohne GUI (Kommandozeile): der Satz ist auch von der Einrichtung, die anderen Stile erben das über --profile
+  pini := TIniFile.Create(AssetSetsDir() + First + PathDelim + AssetProfileFile);
+  Try
+    If pini.ReadString('General', 'Origin', '') = '' Then pini.WriteString('General', 'Origin', 'setup');
+  Finally
+    pini.free;
+  End;
   // Den ersten Satz wählen, Sounds Automatisch (= die Sounds dieses Satzes)
-  ini.WriteString('Launcher', 'AssetSet', First);
-  ini.WriteString('Launcher', 'SoundSet', SoundSetAuto);
+  If Not KeepSelection Then Begin
+    ini.WriteString('Launcher', 'AssetSet', First);
+    ini.WriteString('Launcher', 'SoundSet', SoundSetAuto);
+  End;
   ini.UpdateFile;
   ReadAssetSets();
   PrepareSchemes();
   result := true;
+  Count := 1;
   // Die anderen Stile im Hintergrund, mit dem Profil (Seed) des ersten Satzes
   If Not FileExists(AssetGeneratorCliExe()) Then Begin
     UpdateStatus();
@@ -1473,21 +1560,16 @@ Begin
   End;
   For i := 0 To 3 Do Begin
     If (Styles[i] = FirstStyle) Or SameText(Folders[i], First) Then Continue;
-    StartStyleJob(Folders[i], Names[i], Styles[i], AssetSetsDir() + First + PathDelim + AssetProfileFile);
+    If StartStyleJob(Folders[i], Names[i], Styles[i], AssetSetsDir() + First + PathDelim + AssetProfileFile) Then inc(Count);
   End;
   UpdateStatus();
 End;
 
-Type
-  TStyleJob = Class
-    Process: TProcessUTF8;
-    Folder: String;
-  End;
-
-Procedure TForm1.StartStyleJob(Const Folder, aName, Style, Profile: String);
+Function TForm1.StartStyleJob(Const Folder, aName, Style, Profile: String): Boolean;
 Var
   j: TStyleJob;
 Begin
+  result := false;
   j := TStyleJob.Create;
   j.Folder := Folder;
   j.Process := TProcessUTF8.Create(Nil);
@@ -1516,6 +1598,7 @@ Begin
   End;
   fJobs.Add(j);
   fJobTimer.Enabled := true;
+  result := true;
 End;
 
 Procedure TForm1.OnJobTimer(Sender: TObject);
@@ -1756,10 +1839,14 @@ Begin
   Else Begin
     Button4.Font.Style := [fsBold];
   End;
-  // Ohne Spieldaten kann der Grafik-Generator einen Satz erzeugen (Button13, der Launch Knopf macht das auch)
+  // Ohne Spieldaten kann der Grafik-Generator Sätze erzeugen (die Einrichtung, der Launch Knopf macht das auch), dann ist sie fett
   CanGenerate := (sl.Count <> 0) And (FileExists(AssetGeneratorExe()) Or FileExists(AssetGeneratorCliExe()));
-  Button13.Visible := CanGenerate;
-  Button13.Font.Style := [fsBold];
+  If CanGenerate Then Begin
+    Button17.Font.Style := [fsBold];
+  End
+  Else Begin
+    Button17.Font.Style := [];
+  End;
   // Die fehlenden Dateien stehen im Tooltip
   Label5.Hint := trim(sl.Text);
   Label5.ShowHint := sl.Count <> 0;
@@ -1873,6 +1960,7 @@ Begin
   Language.AddIgnoredIdentifier('Form1.Button15.Caption');
   Language.AddIgnoredIdentifier('Form1.Button16.Caption'); // Probehören, setzt UpdateSoundTestButton
   Language.AddIgnoredIdentifier('Form1.Button16.Hint');
+  Language.AddIgnoredIdentifier('Form1.ButtonNewsClose.Caption'); // Nur das Zeichen ×
   Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
   Language.AddIgnoredComponent(Form3.ListView1);
   For i := 0 To Form3.ComponentCount - 1 Do Begin // Form3: zur Laufzeit gesetzt (Labels ohne Caption im Designer, Knöpfe)
@@ -1911,6 +1999,7 @@ Begin
     sl.free;
   End;
   If WantSetup Then Application.QueueAsyncCall(@StartSetupAsync, 0);
+  UpdateNewsBanner();
 End;
 
 Procedure TForm1.ComboBox1Change(Sender: TObject);

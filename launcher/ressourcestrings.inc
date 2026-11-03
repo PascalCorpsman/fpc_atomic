@@ -14,7 +14,7 @@ Resourcestring
   R_GeneratingGraphics = 'Generating graphics …';
   R_GenerateGraphicsTitle = 'Generate graphics';
   R_AskGenerateGraphics = 'No game data found (graphics and schemes from the Atomic Bomberman CD).' + LineEnding + LineEnding + 'Generate an own graphics set (with sounds) now and start the game with it? This takes a few seconds.' + LineEnding + LineEnding + 'If you have the CD, use "CD extractor..." instead.';
-  R_GenerateFailed = 'No graphics set was generated, the game can not start without game data.' + LineEnding + 'Use "CD extractor..." or try "Generate graphics" again.';
+  R_GenerateFailed = 'No graphics set was generated, the game can not start without game data.' + LineEnding + 'Use "CD extractor..." or try "Setup..." again.';
   R_StyleFlat = 'Flat'; // Namen (und Ordner) der Sätze, die die Einrichtung erzeugt
   R_StyleSoft = 'Soft';
   R_StylePixel = 'Pixel';
@@ -77,12 +77,13 @@ Resourcestring
   R_RandomMap = 'Random each game';
   R_NoMapGraphics = 'No map graphics, extract the CD data first.';
   R_AssetSetOriginal = 'Original';
+  RF_NewsGraphicsDone = '%d own graphics sets created (the others are finished in the background in a few seconds).' + LineEnding + '"Original" stays selected, switch with ◀ ▶ below the image.';
   R_SoundSetAuto = 'Automatic';
   R_SoundSetOriginal = 'Original (CD)';
   R_NoSounds = '(no sounds)';
   R_NoSoundsHint = 'The game has no sounds: the CD sounds are missing and the selected sound source has none. Choose "Automatic" with a graphics set with sounds or such a set below the image (or in the game options), or create a graphics set with sounds.';
   RF_SoundSet = 'Sounds: %s';
-  R_SoundSetHint = 'The sounds of the game. Automatic: the sounds of the selected graphics set (with "Original" the sounds from the CD). Original (CD): always the sounds from the CD. Or the sounds of a set from the graphics generator. What a set lacks comes from the original.';
+  R_SoundSetHint = 'The sounds of the game.' + LineEnding + 'Automatic: the sounds of the selected graphics set' + LineEnding + '(with "Original" the sounds from the CD).' + LineEnding + 'Original (CD): always the sounds from the CD.' + LineEnding + 'Or the sounds of a set from the graphics generator.' + LineEnding + 'What a set lacks comes from the original.';
   RF_SoundSetAutoShort = 'Sounds: Auto (%s)'; // Automatisch mit der tatsächlichen Quelle, nur wenn es zwischen die Pfeile passt
   RF_SoundSetPlays = 'Plays: %s';
   R_SoundTest = '♪  Test sounds';

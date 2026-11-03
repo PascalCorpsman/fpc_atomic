@@ -27,8 +27,10 @@
  * The areas "Sounds" and "Music" show the rendered WAVs instead of images
  * (grouped by event) and play them with BASS (ulaunchersound of the
  * launcher, the WAV is written into a temporary folder first). "Play music"
- * plays the first 15 s of the menu music. The language of the voices is
- * chosen in the Sounds area (profile Language).
+ * plays the first 15 s of the menu music. The language chosen in the Sounds
+ * area (profile Language) is the one of the preview and of the plain files;
+ * a saved set has the voices in every language (sounds/<lang>/), the game
+ * plays the ones of its language.
  *)
 Unit Unit1;
 
@@ -1357,6 +1359,10 @@ Var
   i: Integer;
 Begin
   fLabelLang.Caption := R_VoiceLanguage;
+  fLabelLang.Hint := R_VoiceLanguageHint;
+  fLabelLang.ShowHint := true;
+  fComboLang.Hint := R_VoiceLanguageHint;
+  fComboLang.ShowHint := true;
   fButtonPlay.Caption := R_SoundPlay;
   fButtonPlay.Hint := R_SoundPlayHint;
   fButtonPlayMusic.Caption := R_SoundPlayMusic;
@@ -1957,6 +1963,7 @@ Begin
   EnableEditing(false);
   ProgressBar1.Position := 0;
   SetStatus(format(RF_Generating, [0, 0]));
+  fCtx.Origin := 'editor'; // saved by hand: the setup of the launcher never replaces this set
   fSaver := TAGSetWorker.Create(fCtx, SetDir(Folder), @SaveDone, @SaveProgress);
   fSaver.Output.CancelAfter := GuiCancelAfter;
   fSaver.Start;

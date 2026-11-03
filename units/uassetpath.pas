@@ -39,6 +39,11 @@ Interface
  * The launcher setting [Launcher] SoundSet has the additional value SoundSetAuto (default, client -sounds auto): the
  * sounds of the selected graphics set, with the original graphics (or a set without sounds) the original sounds, see
  * ResolveSoundSet.
+ *
+ * Spoken sounds of a set exist per language in a sub folder next to the plain file (sounds/de/gotcha.wav,
+ * res/en/quitgame.wav, written by the asset generator). The sound language is the language of the launcher
+ * ([Launcher] Language, see SoundLanguageFromIni); a set looks for <dir>/<lang>/<file>, then <dir>/en/<file> (a language
+ * without own voices, e.g. fr, es), then <dir>/<file>. data/ (CD) has no language folders.
  *)
 
 Uses
@@ -53,6 +58,12 @@ Const
 Var
   AssetSet: String = ''; // Folder name below assets/, '' = original graphics from data/
   SoundSet: String = ''; // Folder name below assets/, '' = original sounds from data/
+  SoundLanguage: String = ''; // Language of the spoken sounds of a set (e.g. 'de'), '' = only the plain files
+  (*
+   * If assigned, it is asked at every lookup instead of SoundLanguage (the launcher: the language it shows right now,
+   * so a language switch takes effect immediately).
+   *)
+  SoundLanguageFunc: Function(): String = Nil;
 
 (*
  * Selects the set by its folder name, returns false (and selects the original) if there is no such set.
@@ -99,9 +110,18 @@ Function SetSoundSet(Const Folder: String): Boolean;
 
 (*
  * RelPath is relative to data/ (e.g. 'sounds' + PathDelim + 'bmdrop1.wav').
- * Result is assets/<SoundSet>/<RelPath> if that file exists, else data/<RelPath> (both with AppDir in front).
+ * Result is the first file that exists of: assets/<SoundSet>/<dir>/<lang>/<file> (see SoundLanguages),
+ * assets/<SoundSet>/<RelPath>, else data/<RelPath> (all with AppDir in front).
  *)
 Function SoundFile(Const RelPath: String): String;
+
+(*
+ * The language sub folders a set is searched in, in this order: the current sound language (SoundLanguageFunc or
+ * SoundLanguage), then 'en'. Empty if no language is set. Only plain language codes (letters) are used.
+ *)
+Function SoundLanguages(): TStringArray;
+
+Function SoundLanguageFromIni(Const IniFile: String): String; // [Launcher] Language of IniFile, default 'en'
 
 Function HasOriginalSounds(): Boolean; // True if data/sounds/ contains at least one *.wav (CD data)
 Function SetHasSounds(Const Folder: String): Boolean; // True if assets/<Folder>/sounds/ contains at least one *.wav
@@ -133,7 +153,7 @@ Function SoundChoiceIndex(Const Folders: TStrings; Const Setting: String): integ
 
 (*
  * Like SoundFile, but for the given sound set Folder instead of the global SoundSet:
- * assets/<Folder>/<RelPath> if that file exists, else data/<RelPath>.
+ * assets/<Folder>/<dir>/<lang>/<file> or assets/<Folder>/<RelPath> if that file exists, else data/<RelPath>.
  *)
 Function SoundSetFile(Const Folder, RelPath: String): String;
 
@@ -398,13 +418,79 @@ Begin
   End;
 End;
 
-Function SoundFile(Const RelPath: String): String;
+Function IsLanguageCode(Const Code: String): Boolean;
+Var
+  i: integer;
 Begin
-  If SoundSet <> '' Then Begin
-    result := AssetSetsDir() + SoundSet + PathDelim + RelPath;
+  result := (Code <> '') And (length(Code) <= 8);
+  For i := 1 To length(Code) Do Begin
+    If Not (Code[i] In ['a'..'z']) Then result := false;
+  End;
+End;
+
+Function SoundLanguages(): TStringArray;
+Var
+  Lang: String;
+Begin
+  result := Nil;
+  If assigned(SoundLanguageFunc) Then Begin
+    Lang := lowercase(trim(SoundLanguageFunc()));
+  End
+  Else Begin
+    Lang := lowercase(trim(SoundLanguage));
+  End;
+  If Not IsLanguageCode(Lang) Then exit;
+  If Lang = 'en' Then Begin
+    setlength(result, 1);
+    result[0] := 'en';
+  End
+  Else Begin
+    setlength(result, 2);
+    result[0] := Lang;
+    result[1] := 'en';
+  End;
+End;
+
+Function SoundLanguageFromIni(Const IniFile: String): String;
+Var
+  ini: TIniFile;
+Begin
+  result := 'en';
+  If (IniFile = '') Or Not FileExists(IniFile) Then exit;
+  ini := TIniFile.Create(IniFile);
+  Try
+    result := lowercase(trim(ini.ReadString('Launcher', 'Language', 'en')));
+  Finally
+    ini.free;
+  End;
+End;
+
+(*
+ * The file RelPath of the set Folder: first in the language folders (SoundLanguages) next to it, then RelPath itself.
+ * '' if the set has none of them.
+ *)
+Function SoundInSet(Const Folder, RelPath: String): String;
+Var
+  Langs: TStringArray;
+  Base: String;
+  i: integer;
+Begin
+  result := '';
+  If trim(Folder) = '' Then exit;
+  Base := AssetSetsDir() + trim(Folder) + PathDelim;
+  Langs := SoundLanguages();
+  For i := 0 To high(Langs) Do Begin
+    result := Base + ExtractFilePath(RelPath) + Langs[i] + PathDelim + ExtractFileName(RelPath);
     If FileExists(result) Then exit;
   End;
-  result := AssetDataDir() + RelPath;
+  result := Base + RelPath;
+  If Not FileExists(result) Then result := '';
+End;
+
+Function SoundFile(Const RelPath: String): String;
+Begin
+  result := SoundInSet(SoundSet, RelPath);
+  If result = '' Then result := AssetDataDir() + RelPath;
 End;
 
 Function ResolveSoundSet(Const Setting, GraphicsSet: String): String;
@@ -462,22 +548,17 @@ End;
 
 Function SoundSetFile(Const Folder, RelPath: String): String;
 Begin
-  If trim(Folder) <> '' Then Begin
-    result := AssetSetsDir() + trim(Folder) + PathDelim + RelPath;
-    If FileExists(result) Then exit;
-  End;
-  result := AssetDataDir() + RelPath;
+  result := SoundInSet(Folder, RelPath);
+  If result = '' Then result := AssetDataDir() + RelPath;
 End;
 
 Function FirstSoundFile(Const Folder: String; Const RelPaths: Array Of String): String;
 Var
   i: integer;
 Begin
-  If trim(Folder) <> '' Then Begin
-    For i := 0 To high(RelPaths) Do Begin
-      result := AssetSetsDir() + trim(Folder) + PathDelim + RelPaths[i];
-      If FileExists(result) Then exit;
-    End;
+  For i := 0 To high(RelPaths) Do Begin
+    result := SoundInSet(Folder, RelPaths[i]);
+    If result <> '' Then exit;
   End;
   For i := 0 To high(RelPaths) Do Begin
     result := AssetDataDir() + RelPaths[i];

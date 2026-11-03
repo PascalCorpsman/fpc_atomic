@@ -451,6 +451,8 @@ Begin
   GraphicsOk := ResolveStartSets(IniPropStorage1.IniFileName, HaveAssets, AssetsParam, HaveSounds, SoundsParam, GraphicsFolder, SoundsFolder);
   SetAssetSet(GraphicsFolder);
   SetSoundSet(SoundsFolder);
+  // Die Ansagen eines Satzes in der Sprache des Launchers (sounds/<lang>/, siehe SoundFile)
+  SoundLanguage := SoundLanguageFromIni(IniPropStorage1.IniFileName);
   If HaveAssets And (trim(AssetsParam) <> '') And Not SameText(trim(AssetsParam), AssetSet) Then Begin
     log('Graphics set "' + AssetsParam + '" not found or not usable.', llWarning);
   End;
@@ -471,6 +473,7 @@ Begin
   End
   Else Begin
     log('Sounds: ' + SoundSet + ' (' + AssetSetsDir() + SoundSet + PathDelim + ', missing files from data)', llInfo);
+    log('Voice language: ' + SoundLanguage + ' (e.g. ' + SoundFile('res' + PathDelim + 'quitgame.wav') + ')', llInfo);
   End;
   // Kommt nur vor, wenn sich die Daten seit CheckGraphicsOrSetup (fpc_atomic.lpr) geändert haben
   If Not GraphicsOk Then log('No graphics: neither CD data nor a usable graphics set.', llWarning);

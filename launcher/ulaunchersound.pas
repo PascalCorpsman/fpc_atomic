@@ -25,6 +25,10 @@ Interface
  * Uses the BASS library like the game, but loads it dynamically (units/bass.pas links it statically, then the launcher
  * would not start at all without bass.dll / libbass.so). The library is loaded and initialized on the first Play,
  * a missing library or a failed init only disables the sound test (see Failed, Error).
+ *
+ * The spoken sounds of a set follow the language the program shows right now: this unit sets
+ * uassetpath.SoundLanguageFunc to LauncherSoundLanguage, so the file names resolved with SoundSetFile / FirstSoundFile
+ * at play time use the current language (a language switch in the launcher takes effect at the next test).
  *)
 
 Uses
@@ -79,11 +83,12 @@ Type
 
 Function SoundLibraryFile(): String; // The BASS library next to the executable
 Function SoundLibraryAvailable(): Boolean; // Can BASS be loaded at all (without loading it, Linux: assumed true)
+Function LauncherSoundLanguage(): String; // The code of the loaded language file (launcher_lang.de -> 'de'), '' = none yet
 
 Implementation
 
 Uses
-  uassetpath;
+  uassetpath, ulanguage;
 
 Const
 {$IFDEF Windows}
@@ -345,5 +350,14 @@ Function TSoundTest.Playing: Boolean;
 Begin
   result := (fStream <> 0) Or fTimer.Enabled;
 End;
+
+Function LauncherSoundLanguage: String;
+Begin
+  result := '';
+  If assigned(Language) Then result := lowercase(copy(ExtractFileExt(Language.CurrentLanguage), 2, MaxInt));
+End;
+
+Initialization
+  If Not assigned(SoundLanguageFunc) Then SoundLanguageFunc := @LauncherSoundLanguage;
 
 End.

@@ -220,6 +220,7 @@ Begin
     GuiFolder := GuiSetupFolders[Ord(s)];
     fCtx.Name := GuiFolder;
     If (Ord(s) < GuiSetupNames.Count) And (trim(GuiSetupNames[Ord(s)]) <> '') Then fCtx.Name := trim(GuiSetupNames[Ord(s)]);
+    fCtx.Origin := 'setup'; // the next setup may replace it (the other styles get it through --profile)
   End;
   PanelFlat.Visible := false;
   PanelSoft.Visible := false;

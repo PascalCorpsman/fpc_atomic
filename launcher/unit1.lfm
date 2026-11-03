@@ -1,11 +1,11 @@
 object Form1: TForm1
   Left = 347
-  Height = 688
+  Height = 659
   Top = 107
   Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Form1'
-  ClientHeight = 688
+  ClientHeight = 659
   ClientWidth = 547
   KeyPreview = True
   Position = poScreenCenter
@@ -69,7 +69,7 @@ object Form1: TForm1
     AnchorSideLeft.Control = Image1
     Left = 8
     Height = 25
-    Hint = 'Previous sound source.'#13#10'Automatic: the sounds of the selected graphics set (with "Original" the sounds from the CD).'
+    Hint = 'Previous sound source.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'
     Top = 363
     Width = 28
     Caption = #9664
@@ -96,7 +96,7 @@ object Form1: TForm1
     AnchorSideRight.Side = asrBottom
     Left = 172
     Height = 25
-    Hint = 'Next sound source.'#13#10'Automatic: the sounds of the selected graphics set (with "Original" the sounds from the CD).'
+    Hint = 'Next sound source.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'
     Top = 363
     Width = 28
     Anchors = [akTop, akRight]
@@ -112,6 +112,66 @@ object Form1: TForm1
     Caption = 'Button16'
     TabOrder = 12
     OnClick = Button16Click
+  end
+  object PanelNews: TPanel
+    AnchorSideLeft.Control = Image1
+    AnchorSideRight.Control = Image1
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Image1
+    Left = 8
+    Height = 26
+    Top = 10
+    Width = 192
+    Anchors = [akLeft, akRight, akBottom]
+    BevelOuter = bvNone
+    BorderSpacing.Bottom = 4
+    ClientHeight = 26
+    ClientWidth = 192
+    Color = clInfoBk
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 13
+    Visible = False
+    object LabelNews: TLabel
+      AnchorSideLeft.Control = PanelNews
+      AnchorSideTop.Control = PanelNews
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = ButtonNewsClose
+      Cursor = crHandPoint
+      Left = 6
+      Height = 16
+      Hint = 'Generate own graphics and sounds (four styles) in addition to the graphics from the CD.'#13#10'"Original" stays selected, switch with the arrows below the image.'
+      Top = 5
+      Width = 156
+      Anchors = [akTop, akLeft, akRight]
+      BorderSpacing.Left = 6
+      BorderSpacing.Right = 4
+      Caption = 'New: own graphics...'
+      Font.Color = clBlue
+      Font.Style = [fsUnderline]
+      ParentFont = False
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = LabelNewsClick
+    end
+    object ButtonNewsClose: TSpeedButton
+      AnchorSideTop.Control = PanelNews
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = PanelNews
+      AnchorSideRight.Side = asrBottom
+      Left = 166
+      Height = 22
+      Hint = 'Hide this notice for good.'
+      Top = 2
+      Width = 22
+      Anchors = [akTop, akRight]
+      BorderSpacing.Right = 4
+      Caption = '×'
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ButtonNewsCloseClick
+    end
   end
   object GroupBox1: TGroupBox
     Left = 208
@@ -318,11 +378,11 @@ object Form1: TForm1
   end
   object GroupBox4: TGroupBox
     Left = 8
-    Height = 109
+    Height = 80
     Top = 446
     Width = 528
     Caption = ' Installation '
-    ClientHeight = 92
+    ClientHeight = 63
     ClientWidth = 526
     TabOrder = 3
     object Label5: TLabel
@@ -373,27 +433,16 @@ object Form1: TForm1
       TabOrder = 2
       OnClick = Button12Click
     end
-    object Button13: TButton
+    object Button17: TButton
       Left = 212
       Height = 25
-      Hint = 'No game data: generate an own graphics set (and schemes) without the CD.'#13#10'The game is started without sounds then.'
-      Top = 2
-      Width = 150
-      Caption = 'Ge&nerate graphics'
-      TabOrder = 3
-      Visible = False
-      OnClick = Button13Click
-    end
-    object Button17: TButton
-      Left = 368
-      Height = 25
       Hint = 'Where the graphics and sounds come from: generate own ones (four styles) or take them from the Atomic Bomberman CD.'
-      Top = 60
+      Top = 2
       Width = 150
       Caption = 'Se&tup...'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 4
+      TabOrder = 3
       OnClick = Button17Click
     end
   end
@@ -401,7 +450,7 @@ object Form1: TForm1
     Left = 10
     Height = 22
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 563
+    Top = 534
     Width = 264
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
@@ -411,7 +460,7 @@ object Form1: TForm1
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 589
+    Top = 560
     Width = 528
     BevelOuter = bvNone
     ClientHeight = 50
@@ -450,7 +499,7 @@ object Form1: TForm1
     Left = 10
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 656
+    Top = 627
     Width = 45
     Caption = 'Manual'
     Font.Color = clBlue
@@ -466,7 +515,7 @@ object Form1: TForm1
     Left = 71
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
-    Top = 656
+    Top = 627
     Width = 79
     BorderSpacing.Left = 16
     Caption = 'Config folder'
@@ -478,7 +527,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 446
     Height = 30
-    Top = 649
+    Top = 620
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
@@ -490,7 +539,7 @@ object Form1: TForm1
     Left = 326
     Height = 26
     Hint = 'The language of the launcher.'
-    Top = 649
+    Top = 620
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10

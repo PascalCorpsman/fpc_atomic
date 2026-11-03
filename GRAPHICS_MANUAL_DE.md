@@ -20,9 +20,11 @@ Beim allerersten Start ohne CD-Daten und ohne Grafiksatz fragt der Launcher einm
 - **Von der CD übernehmen**: öffnet den CD-Extraktor (dafür braucht es die Atomic Bomberman CD).
 - **Später**: Es passiert nichts. Das Bild im Launcher zeigt dann „Noch keine Grafiken“, ein Klick darauf öffnet die Frage wieder.
 
-Von selbst kommt die Frage nur einmal. **Einrichtung...** im Launcher (Gruppe Installation) oder `atomic_launcher --setup` öffnen sie jederzeit, z.B. um die vier Stile mit einem neuen Seed noch einmal zu erzeugen (vorhandene Sätze werden nie überschrieben, die neuen heißen dann z.B. „Flach 2“). Alles andere bleibt möglich: Der CD-Extraktor ist immer da, nach dem Auslesen der CD ist „Original“ einfach eine weitere Wahl, und die erzeugten Sätze bleiben.
+Von selbst kommt die Frage nur einmal. **Einrichtung...** im Launcher (Gruppe Installation, links neben **CD-Extraktor...**; fett, solange Spieldaten fehlen) oder `atomic_launcher --setup` öffnen sie jederzeit, z.B. um die vier Stile mit einem neuen Seed noch einmal zu erzeugen. Sätze, die eine frühere Einrichtung erzeugt hat, werden dabei **ersetzt** (Flach, Weich, Pixel, Retro bekommen das neue Aussehen). Sätze, die im Grafik-Generator gespeichert wurden oder anders entstanden sind, werden nie überschrieben: Der neue Stil heißt dann z.B. „Flach 2“. Alles andere bleibt möglich: Der CD-Extraktor ist immer da, nach dem Auslesen der CD ist „Original“ einfach eine weitere Wahl, und die erzeugten Sätze bleiben.
 
-Fehlen die CD-Daten, zeigt der Launcher außerdem den Button **Grafiken erzeugen**, und ein Klick auf **Starten** erzeugt zuerst einen Grafiksatz (ein Stil nach Wahl, danach startet der Launcher das Spiel).
+Fehlen die CD-Daten, erzeugt ein Klick auf **Starten** zuerst einen Grafiksatz (ein Stil nach Wahl, danach startet der Launcher das Spiel).
+
+**Die CD-Daten sind schon da?** Dann kommt die Frage nicht von selbst. Stattdessen zeigt der Launcher einmal einen kleinen Hinweis über dem Bild: **Neu: eigene Grafiken...**. Ein Klick darauf öffnet dieselbe Stil-Auswahl wie die Einrichtung, erzeugt die vier Stile und lässt „Original“ gewählt; eine kurze Meldung sagt dann, dass man mit ◀ ▶ unter dem Bild umschaltet. Das **×** daneben blendet den Hinweis für immer aus. Er erscheint nicht, wenn es schon Grafiksätze gibt oder die Einrichtung schon lief.
 
 Wird das Spiel (`fpc_atomic`) direkt gestartet, ohne Launcher, nimmt es den Grafiksatz und die Sounds, die im Launcher gewählt sind (dieselbe Einstellungsdatei). Gibt es weder CD-Daten noch einen brauchbaren Satz, meldet es „Es sind noch keine Grafiken eingerichtet“ und bietet **Einrichtung öffnen** (startet den Launcher mit der Frage) oder **Beenden** an.
 
@@ -39,7 +41,7 @@ Der aktuelle Satz steht im Launcher **unter dem Bild links**: `◀  Name  ▶`. 
 
 Jeder Satz enthält eigene Spielgeräusche: Explosionen, Kicks, Abpraller, Teleporter und kurze Sprüche wie „Erwischt!“ oder „Beeil dich!“. Sie sind keine Aufnahmen, sondern werden wie die Grafiken berechnet (eine Interpretation der Original-Geräusche, beschrieben in `asset_generator/sounds.ini`). Dazu kommt ein eigenes Musikstück für die Menüs (`asset_generator/music.ini`).
 
-Die Sprüche gibt es auf Deutsch und Englisch. Ein neuer Satz nimmt die Sprache des Launchers (Französisch und Spanisch: Englisch), im Grafik-Generator lässt sie sich im Bereich **Töne** umstellen.
+Die Sprüche gibt es auf Deutsch und Englisch, jeder Satz enthält beide. Das Spiel und **Probehören** im Launcher spielen die Sprüche automatisch in der Sprache des Launchers (Französisch und Spanisch: Englisch), es genügt, die Sprache im Launcher umzustellen. Die Sprache im Bereich **Töne** des Grafik-Generators wählt nur, was die Vorschau spielt, und die Vorgabe für andere Programme, die nur eine Sprache kennen (die einfachen Dateien in `sounds/`, die Sprachen liegen in `sounds/en/`, `sounds/de/`).
 
 Der Klang passt zum Stil: Flach klingt klar und knackig, Weich warm mit etwas Hall, Pixel nach 16-Bit-Konsole mit Echo, Retro rau nach 8-Bit. Der Seed verändert Tonhöhe, Länge und Klangfarbe, zwei Sätze im selben Stil klingen also unterschiedlich.
 
@@ -83,6 +85,8 @@ Die Figur trägt in jedem Stil die Spielerfarbe, ebenso Bomben und Flammen.
 
 Jeder Satz ist ein Ordner unter `assets/` neben dem Spiel, z. B. `assets/Generated/`. Darin liegen dieselben Unterordner wie in `data/` (`atomic/`, `maps/`, `res/`, `schemes/`), dazu `profile.ini` (Name, Seed, Stil und alle geänderten Einstellungen) und `preview.png` (das Bild im Launcher). Einen Satz löscht man, indem man seinen Ordner löscht.
 
+In der `profile.ini` steht auch, wer den Satz erzeugt hat: `Origin=setup` bei den Sätzen der Einrichtung im Launcher (eine neue Einrichtung darf sie ersetzen), `Origin=editor`, sobald der Satz im Grafik-Generator gespeichert wurde (die Einrichtung ersetzt ihn nie). Die Kommandozeilen-Version behält den Wert, den sie vorfindet.
+
 Wer einen Satz weitergeben will, gibt einfach die `profile.ini` weiter: Daraus erzeugt der Generator denselben Satz wieder.
 
 ## Kommandozeile
@@ -103,7 +107,7 @@ asset_generator --out assets/MeinSatz --name "Mein Satz" --seed random --style r
 - `--out <Ordner>`: Ziel, eine vorhandene `profile.ini` dort wird gelesen
 - `--profile <Datei>`, `--seed <Zahl|random>`, `--style <flat|soft|pixel|retro>`, `--name <Text>`
 - `--per-player`: eigene Figur pro Spieler
-- `--language de|en`: Sprache der Sprüche
+- `--language de|en`: Vorgabe-Sprache der Sprüche (der Satz enthält immer beide)
 - `--only <a,b,...>`: nur diese Bereiche, `--list` zeigt alle
 - `--params`: alle Einstellungen mit ihren Werten ausgeben
 

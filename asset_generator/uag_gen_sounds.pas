@@ -29,8 +29,14 @@
  * differ. Music files with the same song and changes are rendered once.
  *
  * Spoken sounds exist per language: sounds.ini [name] is English (the
- * default), [name@de] German. Ctx.Language chooses; a sound without a
- * section in that language uses [name].
+ * default), [name@de] German. Every spoken sound is written in every
+ * language into a sub folder (sounds/en/<name>.wav, sounds/de/<name>.wav,
+ * res/en/quitgame.wav, ...), the game takes the one of its language (see
+ * SoundFile in units/uassetpath.pas). The plain file (sounds/<name>.wav) is
+ * the language Ctx.Language (the default of the set, for games that do not
+ * know the sub folders); a sound without a section in that language uses
+ * [name]. The editor preview (DryRun with KeepData) only renders the plain
+ * files, i.e. Ctx.Language.
  *
  * For the editor (DryRun with KeepData, see uag_output) the effects and the
  * music are separate areas: GenerateSoundEffects (area 'sounds') and
@@ -77,10 +83,37 @@ Begin
   result := 'sounds/' + Name + '.wav';
 End;
 
+(* the file of the language Lang: sounds/<lang>/<name>.wav, res/<lang>/<name>.wav *)
+Function LangSoundPath(Const Name, Lang: String): String;
+Var
+  p: String;
+Begin
+  p := SoundPath(Name);
+  result := ExtractFilePath(p) + Lang + '/' + ExtractFileName(p);
+End;
+
 (* [name@lang] is a language variant of [name] *)
 Function IsVariant(Const Section: String): Boolean;
 Begin
   result := Pos('@', Section) > 0;
+End;
+
+(* [name] has language variants ([name@de], ...): a spoken sound *)
+Function IsSpoken(Const Name: String): Boolean;
+Var
+  i: Integer;
+Begin
+  For i := 0 To Book.Count - 1 Do
+    If SameText(Copy(Book.Names[i], 1, length(Name) + 1), Name + '@') Then exit(true);
+  result := false;
+End;
+
+(* the section of [name] in the language Lang, [name] itself if there is none *)
+Function LangSection(Index: Integer; Const Lang: String): Integer;
+Begin
+  result := Index;
+  If (Lang <> '') And (Lang <> 'en') And (Book.IndexOf(Book.Names[Index] + '@' + Lang) >= 0) Then
+    result := Book.IndexOf(Book.Names[Index] + '@' + Lang);
 End;
 
 Function VoiceLanguages: TStringArray;
@@ -131,8 +164,7 @@ Begin
   n := LowerCase(ChangeFileExt(ExtractFileName(RelPath), ''));
   For i := 0 To Music.FileCount - 1 Do
     If SameText(Music.Files[i].Name, n) Then exit(sgMusic);
-  For i := 0 To Book.Count - 1 Do
-    If SameText(Copy(Book.Names[i], 1, length(n) + 1), n + '@') Then exit(sgVoice);
+  If IsSpoken(n) Then exit(sgVoice);
   If Starts('bomb_') Or Starts('expl') Then result := sgExplosion
   Else If Starts('kbomb') Or Starts('kicker') Or Starts('bmdrop') Or Starts('bmbthrw') Or Starts('bmbstop')
     Or Starts('bombstop') Or Starts('bombboun') Or Starts('grab') Or (n = '1017') Or (n = '1036') Or (n = '1045')
@@ -144,13 +176,18 @@ Begin
   Else result := sgFigure; // die, scream, warp, trans*, zen
 End;
 
+(* plain files + one file per language for every spoken sound + music *)
 Function ExpectedSounds(Ctx: TAGContext): Integer;
 Var
-  i: Integer;
+  i, langs: Integer;
 Begin
   result := Music.FileCount;
+  langs := length(VoiceLanguages);
   For i := 0 To Book.Count - 1 Do
-    If Not IsVariant(Book.Names[i]) Then inc(result);
+    If Not IsVariant(Book.Names[i]) Then Begin
+      inc(result);
+      If IsSpoken(Book.Names[i]) Then inc(result, langs);
+    End;
 End;
 
 (* the expensive rendering only if the files are written or kept *)
@@ -204,8 +241,11 @@ Var
   area: TAGArea;
   setPitch, setDecay, setBright, setNoise: Double;
   v: TAGSoundVariation;
-  i, k: Integer;
+  i, l: Integer;
   name, lang: String;
+  langs: TStringArray;
+  spoken, preview: Boolean;
+  plain: TBytes;
 Begin
   area := Ctx.Area('sounds');
   setPitch := area.Vary('pitch', 1, 0.06);
@@ -213,25 +253,34 @@ Begin
   setBright := area.Vary('bright', 1, 0.25);
   setNoise := area.Vary('noise', 0.8, 0.2); // rate of the noise, 0.6 = dull, 1 = white
   lang := LowerCase(Ctx.Language);
+  langs := VoiceLanguages;
+  preview := Output.DryRun And Output.KeepData; // the editor: only the plain files (Ctx.Language)
   For i := 0 To Book.Count - 1 Do Begin
     name := Book.Names[i];
     If IsVariant(name) Then Continue;
+    spoken := IsSpoken(name);
     If Not Render(Output) Then Begin // previews: nothing to show, only count
       Output.SaveData(SoundPath(name), Nil);
+      If spoken Then
+        For l := 0 To high(langs) Do Output.SaveData(LangSoundPath(name, langs[l]), Nil);
       Continue;
     End;
-    // spoken sounds: the section of the language, if there is one
-    k := i;
-    If (lang <> '') And (lang <> 'en') And (Book.IndexOf(name + '@' + lang) >= 0) Then
-      k := Book.IndexOf(name + '@' + lang);
-    // per sound: pitch +-1.5 %, decay +-4 % on top of the set values
+    // per sound: pitch +-1.5 %, decay +-4 % on top of the set values (the same for every language)
     v := AGNeutralVariation(DeriveSeed(area.Seed, 'noise/' + name));
     v.Kit := StyleKit[Ctx.Style];
     v.Pitch := setPitch * (1 + 0.015 * (2 * area.Rnd('pitch/' + name) - 1));
     v.Decay := setDecay * (1 + 0.04 * (2 * area.Rnd('decay/' + name) - 1));
     v.Bright := setBright;
     v.NoiseRate := setNoise;
-    Output.SaveData(SoundPath(name), AGRenderWav(Book.Parts[k], v));
+    // spoken sounds: the plain file in the language of the set, the section of the language, if there is one
+    plain := AGRenderWav(Book.Parts[LangSection(i, lang)], v);
+    Output.SaveData(SoundPath(name), plain);
+    If spoken And Not preview Then
+      For l := 0 To high(langs) Do
+        If LangSection(i, langs[l]) = LangSection(i, lang) Then
+          Output.SaveData(LangSoundPath(name, langs[l]), plain) // the same section: the same file
+        Else
+          Output.SaveData(LangSoundPath(name, langs[l]), AGRenderWav(Book.Parts[LangSection(i, langs[l])], v));
   End;
 End;
 

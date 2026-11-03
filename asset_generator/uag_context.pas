@@ -29,6 +29,9 @@
  *   Style=flat            (flat | soft | pixel | retro)
  *   PerPlayer=0           (1 = own atomic per player, atomic/p0 .. p9)
  *   Language=en           (language of the spoken sounds: en | de)
+ *   Origin=setup          (optional, who created the set: setup = the setup of
+ *                         the launcher, it replaces such a set when it runs
+ *                         again; editor = saved in the editor; the CLI keeps it)
  *   [Seeds]
  *   bomb=777              (locks the seed of an area)
  *   [Params]
@@ -89,6 +92,7 @@ Type
     Style: TAGStyle;
     PerPlayer: Boolean;
     Language: String; // of the voices (sounds.ini [name] = en, [name@de] = de), default 'en'
+    Origin: String; // who created the set: 'setup' (launcher setup, may be replaced by it), 'editor', '' = unknown / CLI
     Constructor Create;
     Destructor Destroy; override;
     Procedure Assign(Src: TAGContext); // everything except the parameter log
@@ -257,6 +261,7 @@ Begin
   Style := asFlat;
   PerPlayer := false;
   Language := 'en';
+  Origin := '';
 End;
 
 Destructor TAGContext.Destroy;
@@ -274,6 +279,7 @@ Begin
   Style := Src.Style;
   PerPlayer := Src.PerPlayer;
   Language := Src.Language;
+  Origin := Src.Origin;
   fOverrides.Assign(Src.fOverrides);
   fLockedSeeds.Assign(Src.fLockedSeeds);
 End;
@@ -391,6 +397,7 @@ Begin
     PerPlayer := ini.ReadBool('General', 'PerPlayer', PerPlayer);
     Language := LowerCase(Trim(ini.ReadString('General', 'Language', Language)));
     If Not IsAGLanguage(Language) Then Language := 'en';
+    Origin := LowerCase(Trim(ini.ReadString('General', 'Origin', Origin)));
     fLockedSeeds.Clear;
     ini.ReadSectionValues('Seeds', sl);
     For i := 0 To sl.Count - 1 Do
@@ -420,6 +427,7 @@ Begin
     sl.Add('Style=' + StyleToString(Style));
     sl.Add('PerPlayer=' + IntToStr(ord(PerPlayer)));
     sl.Add('Language=' + Language);
+    If Origin <> '' Then sl.Add('Origin=' + Origin);
     sl.Add('');
     sl.Add('[Seeds]');
     For i := 0 To fLockedSeeds.Count - 1 Do

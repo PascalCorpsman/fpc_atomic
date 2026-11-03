@@ -105,7 +105,7 @@ object Form5: TForm5
     FocusControl = ComboBox6
   end
   object ComboBox6: TComboBox
-    Hint = 'The sounds of the game. Automatic: the sounds of the selected graphics set (with "Original" the sounds from the CD). Original (CD): always the sounds from the CD. Or the sounds of a set from the graphics generator. Missing sounds of a set are taken from the original.'
+    Hint = 'The sounds of the game.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'#13#10'Original (CD): always the sounds from the CD.'#13#10'Or the sounds of a set from the graphics generator.'#13#10'Missing sounds of a set are taken from the original.'
     Left = 540
     Height = 23
     Top = 296

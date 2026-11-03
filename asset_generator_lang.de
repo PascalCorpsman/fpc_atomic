@@ -115,6 +115,7 @@ rf_folderreplace="Der Ordner "%s" existiert bereits und wird komplett ersetzt. F
 r_areasounds="Sounds"
 r_areamusic="Musik"
 r_voicelanguage="Sprache der Stimmen:"
+r_voicelanguagehint="Sprache der Stimmen in der Vorschau und der einfachen Dateien des Satzes (Vorgabe). Jeder Satz enthält die Stimmen in allen Sprachen, Spiel und Launcher spielen die ihrer aktuellen Sprache."
 r_langenglish="Englisch"
 r_langgerman="Deutsch"
 r_soundplay="▶ Abspielen"

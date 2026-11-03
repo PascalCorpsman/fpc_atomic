@@ -20,9 +20,11 @@ On the very first start without CD data and without a graphics set the launcher 
 - **Take them from the CD**: opens the CD extractor (the Atomic Bomberman CD is needed).
 - **Later**: nothing happens. The image in the launcher then shows "No graphics yet", a click on it opens the question again.
 
-The question comes by itself only once. **Setup...** in the launcher (group Installation) or `atomic_launcher --setup` open it any time, e.g. to generate the four styles again with a new seed (existing sets are never overwritten, the new ones are called e.g. "Flat 2"). Everything else stays possible: the CD extractor is always there, after extracting the CD "Original" is just one more choice, and the generated sets stay.
+The question comes by itself only once. **Setup...** in the launcher (group Installation, left of **CD extractor...**; bold as long as there are no game data) or `atomic_launcher --setup` open it any time, e.g. to generate the four styles again with a new seed. Sets that a setup created before are **replaced** (Flat, Soft, Pixel, Retro get the new look). Sets you saved in the graphics generator, or sets that came from elsewhere, are never overwritten: the new style is then called e.g. "Flat 2". Everything else stays possible: the CD extractor is always there, after extracting the CD "Original" is just one more choice, and the generated sets stay.
 
-If the CD data is missing, the launcher also shows the button **Generate graphics**, and a click on **Launch** generates a graphics set first (one style of your choice, the launcher then starts the game).
+If the CD data is missing, a click on **Launch** generates a graphics set first (one style of your choice, the launcher then starts the game).
+
+**You already have the CD data?** Then the question does not come by itself. Instead the launcher shows once a small notice above the image: **New: own graphics...**. A click on it opens the same style choice as the setup, generates the four styles and keeps "Original" selected; a short message then says that you can switch with ◀ ▶ below the image. The **×** next to it hides the notice for good. It is not shown if there are graphics sets already or the setup has run before.
 
 If the game (`fpc_atomic`) is started directly, without the launcher, it uses the graphics set and the sounds chosen in the launcher (the same settings file). If there are neither CD data nor a usable set, it says "No graphics are set up yet" and offers **Open setup** (starts the launcher with the question) or **Quit**.
 
@@ -39,7 +41,7 @@ The current set is shown in the launcher **below the image on the left**: `◀  
 
 Every set contains its own game sounds: explosions, kicks, bounces, teleporters and short callouts like "Erwischt!" or "Beeil dich!". They are not recordings, they are computed like the graphics (an interpretation of the original sounds, described in `asset_generator/sounds.ini`). There is also an own piece of music for the menus (`asset_generator/music.ini`).
 
-The callouts exist in German and English. A new set takes the language of the launcher (French and Spanish: English); in the graphics generator it can be changed in the area **Sounds**.
+The callouts exist in German and English, and every set contains both. The game and the launcher's **Test sounds** automatically play the callouts in the language of the launcher (French and Spanish: English); switching the language in the launcher is enough. The language in the area **Sounds** of the graphics generator only chooses what the preview plays and the default for other programs that know just one language (the plain files in `sounds/`, the languages are in `sounds/en/`, `sounds/de/`).
 
 The sound fits the style: flat sounds clear and punchy, soft warm with a little reverb, pixel like a 16-bit console with echo, retro rough like 8-bit. The seed changes pitch, length and timbre, so two sets of the same style sound different.
 
@@ -83,6 +85,8 @@ In every style the figure wears the player color, and so do bombs and flames.
 
 Every set is a folder under `assets/` next to the game, e.g. `assets/Generated/`. It contains the same subfolders as `data/` (`atomic/`, `maps/`, `res/`, `schemes/`), plus `profile.ini` (name, seed, style and all changed settings) and `preview.png` (the image in the launcher). To delete a set, delete its folder.
 
+`profile.ini` also notes who created the set: `Origin=setup` for the sets of the launcher setup (a new setup may replace them), `Origin=editor` once the set was saved in the graphics generator (never replaced by the setup). The command line version keeps the value it finds.
+
 To share a set, just share its `profile.ini`: the generator creates the same set from it again.
 
 ## Command line
@@ -103,7 +107,7 @@ asset_generator --out assets/MySet --name "My set" --seed random --style retro
 - `--out <folder>`: target, an existing `profile.ini` there is read
 - `--profile <file>`, `--seed <number|random>`, `--style <flat|soft|pixel|retro>`, `--name <text>`
 - `--per-player`: own figure per player
-- `--language de|en`: language of the callouts
+- `--language de|en`: default language of the callouts (the set always contains both)
 - `--only <a,b,...>`: only these areas, `--list` shows all of them
 - `--params`: print all settings with their values
 
