@@ -14,10 +14,20 @@
  * Style dependent drawing and sprite sheets.
  *
  * Generators describe shapes once, the style decides how they look:
- *   flat  = solid fill with a dark outline
- *   soft  = radial gradient (highlight top left, shadow bottom right), thin outline
- *   pixel = rendered at half resolution without anti aliasing, scaled up
- *           (nearest neighbour), solid fill, 1 px outline
+ *   flat  = "vector cartoon": thick dark outline, flat fill with one hard
+ *           cel shadow band at the bottom right, no gradient, no highlight;
+ *           afterwards the colors are made more saturated (StylePost)
+ *   soft  = "painted clay": no dark outline (only a thin, slightly darker
+ *           tone of the own color), smooth radial gradient with a specular
+ *           spot, a soft contact shadow under every shape; afterwards a
+ *           warmer, softer palette, a subtle paint texture and a vignette on
+ *           big opaque images (StylePost)
+ *   pixel = "16-bit console": rendered at half resolution without anti
+ *           aliasing, scaled up (nearest neighbour), 4 shading steps with
+ *           ordered (Bayer) dithering between them, selective outline (dark
+ *           at the bottom right, a darker tone of the own color at the lit
+ *           top left); afterwards every channel is reduced to 10 levels with
+ *           ordered dithering (StylePost)
  *   retro = rendered at a third of the resolution without anti aliasing,
  *           hard cel shading (highlight spot top left, base, shadow crescent
  *           bottom right), 1 coarse pixel outline, afterwards every pixel is
@@ -49,6 +59,8 @@ Type
     CelShade: Boolean; // hard steps instead of a gradient (retro)
     Palette: Boolean; // snap all pixels to the retro palette in RenderSheet
     MinPen: Double; // thinner strokes get gaps (no anti aliasing), in pixel of the final image
+    Dither: Boolean; // shading steps with ordered dithering (pixel)
+    Ambient: Boolean; // soft contact shadow under every shape (soft)
   End;
 
 Function GetStyleInfo(Style: TAGStyle): TAGStyleInfo;
@@ -66,10 +78,39 @@ Function AGRetroColor(c: TAGColor): TAGColor;
 Procedure AGRetroQuantize(Img: TAGImage);
 
 (*
+ * Keeps the engine rules after a color change of a pixel from Orig to c:
+ * c is green dominant exactly if Orig is, fuchsia stays fuchsia and no new
+ * color close to fuchsia appears. Alpha is taken from c.
+ *)
+Function AGKeepRules(Orig, c: TAGColor): TAGColor;
+
+(*
+ * Derived shading color c of Base (lighter / darker tone) on the same side
+ * of the player color rule as Base.
+ *)
+Function AGSameSide(Base, c: TAGColor): TAGColor;
+
+(*
+ * The whole image post processing of a style (palette, texture, dithering),
+ * RenderSheet calls it for every frame at the resolution of the style
+ * (before scaling up). Opaque images of at least 256 x 192 pixel count as
+ * backgrounds (soft: vignette).
+ *)
+Procedure AGStylePost(Img: TAGImage; Style: TAGStyle);
+
+(*
  * Retro title look: vertical gradient from y0 (top) to y1 (bottom) in user
  * space as 4 hard bands, light top, Base, dark bottom.
  *)
 Function AGBandPaint(C: TAGCanvas; y0, y1: Double; Base: TAGColor): TAGPaint;
+
+(*
+ * Vertical fill of titles / big digits from y0 (top) to y1 (bottom) in user
+ * space in the look of the style: flat = base with one hard darker band at
+ * the bottom, soft = smooth light to dark gradient, pixel = 4 steps with
+ * ordered dithering, retro = AGBandPaint.
+ *)
+Function AGTitlePaint(C: TAGCanvas; Style: TAGStyle; y0, y1: Double; Base: TAGColor): TAGPaint;
 
 (*
  * Fills the current path of C in the look of Style and draws its outline.
@@ -105,12 +146,15 @@ Begin
   result.CelShade := false;
   result.Palette := false;
   result.MinPen := 0;
+  result.Dither := false;
+  result.Ambient := false;
   Case Style Of
     asSoft: Begin
         result.AntiAlias := true;
         result.PixelScale := 1;
-        result.OutlineWidth := 1.0;
+        result.OutlineWidth := 0.9;
         result.Gradient := true;
+        result.Ambient := true;
       End;
     asPixel: Begin
         result.AntiAlias := false;
@@ -118,6 +162,7 @@ Begin
         result.OutlineWidth := 3.0; // 1.5 pixel at half resolution, thinner strokes get gaps without anti aliasing
         result.Gradient := false;
         result.MinPen := 2.2;
+        result.Dither := true;
       End;
     asRetro: Begin
         result.AntiAlias := false;
@@ -131,8 +176,9 @@ Begin
   Else Begin
       result.AntiAlias := true;
       result.PixelScale := 1;
-      result.OutlineWidth := 1.6;
+      result.OutlineWidth := 2.5;
       result.Gradient := false;
+      result.CelShade := true;
     End;
   End;
 End;
@@ -307,35 +353,219 @@ Begin
   Stop(1, sh);
 End;
 
+Function AGSameSide(Base, c: TAGColor): TAGColor;
+Var
+  m: Integer;
+Begin
+  result := c;
+  If IsGreenDominant(Base) Then Begin
+    If Not IsGreenDominant(result) Then Begin
+      m := result.r;
+      If result.b > m Then m := result.b;
+      If m < 255 Then result.g := m + 1 Else result := Base;
+    End;
+  End
+  Else
+    result := NotGreen(result);
+End;
+
+Function NearFuchsia(c: TAGColor): Boolean;
+Begin
+  result := (c.r > 180) And (c.b > 180) And (c.g < 90);
+End;
+
+Function AGKeepRules(Orig, c: TAGColor): TAGColor;
+Begin
+  If (Orig.r = 255) And (Orig.g = 0) And (Orig.b = 255) Then exit(Orig);
+  result := AGSameSide(Orig, c);
+  If NearFuchsia(result) And Not NearFuchsia(Orig) Then Begin
+    result := Orig;
+    result.a := c.a;
+  End;
+End;
+
+(* Hard shading stop color, on the same player color side as Base *)
+Function Tone(Base: TAGColor; Factor: Double): TAGColor;
+Begin
+  result := AGSameSide(Base, AGShade(Base, Factor));
+End;
+
+(* the light comes from the top left: center of the shading and the distance to the far corner *)
+Procedure LightCenter(x0, y0, x1, y1, fx, fy: Double; Out cx, cy, r: Double);
+Begin
+  cx := x0 + fx * (x1 - x0);
+  cy := y0 + fy * (y1 - y0);
+  r := AGSqrt(sqr(x1 - cx) + sqr(y1 - cy));
+  If r < 0.5 Then r := 0.5;
+End;
+
+(* paint in device space (identity matrix while it is built) *)
+Function DeviceRadial(C: TAGCanvas; cx, cy, r: Double): TAGPaint;
+Var
+  m: TAGMatrix;
+Begin
+  m := C.GetMatrix;
+  C.SetMatrix(AGIdentity);
+  result := C.Radial(cx, cy, r, [AGBlack, AGBlack]);
+  C.SetMatrix(m);
+End;
+
+Procedure SetStops(Var p: TAGPaint; Const Pos: Array Of Double; Const Cols: Array Of TAGColor);
+Var
+  i: Integer;
+Begin
+  setlength(p.Stops, length(Pos));
+  For i := 0 To high(Pos) Do Begin
+    p.Stops[i].Pos := Pos[i];
+    p.Stops[i].Color := Cols[i];
+  End;
+  p.Color := Cols[0];
+End;
+
+Function AGTitlePaint(C: TAGCanvas; Style: TAGStyle; y0, y1: Double; Base: TAGColor): TAGPaint;
+Begin
+  result := C.Linear(0, y0, 0, y1, [Base, Base]);
+  Case Style Of
+    asFlat: SetStops(result, [0, 0.58, 0.58, 1], [Base, Base, Tone(Base, 0.76), Tone(Base, 0.76)]);
+    asSoft: SetStops(result, [0, 0.3, 0.65, 1], [Tone(Base, 1.6), Tone(Base, 1.2), Base, Tone(Base, 0.78)]);
+    asPixel: Begin
+        SetStops(result, [0.05, 0.35, 0.65, 0.95], [Tone(Base, 1.5), Tone(Base, 1.18), Base, Tone(Base, 0.68)]);
+        result.DitherWidth := 0.5;
+      End;
+  Else
+    result := AGBandPaint(C, y0, y1, Base);
+  End;
+End;
+
+(* Flat: base color and one hard shadow crescent at the bottom right *)
+Function FlatPaint(C: TAGCanvas; Base: TAGColor; x0, y0, x1, y1: Double): TAGPaint;
+Var
+  cx, cy, r: Double;
+  sh: TAGColor;
+Begin
+  LightCenter(x0, y0, x1, y1, 0.36, 0.3, cx, cy, r);
+  result := DeviceRadial(C, cx, cy, r);
+  sh := Tone(Base, 0.7);
+  SetStops(result, [0, 0.66, 0.66, 1], [Base, Base, sh, sh]);
+End;
+
+(* Soft: smooth radial gradient with a specular spot *)
+Function SoftPaint(C: TAGCanvas; Base: TAGColor; x0, y0, x1, y1: Double): TAGPaint;
+Var
+  cx, cy, r: Double;
+  spec: TAGColor;
+Begin
+  LightCenter(x0, y0, x1, y1, 0.34, 0.27, cx, cy, r);
+  result := DeviceRadial(C, cx, cy, r);
+  If AGMax(x1 - x0, y1 - y0) >= 7 Then
+    spec := Tone(Base, 1.75)
+  Else
+    spec := Tone(Base, 1.35);
+  SetStops(result, [0, 0.07, 0.2, 0.5, 0.82, 1],
+    [spec, Tone(Base, 1.42), Tone(Base, 1.16), Base, Tone(Base, 0.7), Tone(Base, 0.52)]);
+End;
+
+(* Pixel: 4 shading steps with ordered dithering between them *)
+Function PixelPaint(C: TAGCanvas; Base: TAGColor; x0, y0, x1, y1: Double): TAGPaint;
+Var
+  cx, cy, r: Double;
+Begin
+  LightCenter(x0, y0, x1, y1, 0.34, 0.28, cx, cy, r);
+  result := DeviceRadial(C, cx, cy, r);
+  SetStops(result, [0, 0.36, 0.66, 0.9], [Tone(Base, 1.38), Base, Tone(Base, 0.74), Tone(Base, 0.52)]);
+  result.DitherWidth := 0.35;
+End;
+
+(*
+ * Soft: contact shadow below and right of the shape, a few translucent
+ * layers (alpha stays below the transparency key threshold, so it only shows
+ * on top of other shapes or opaque backgrounds)
+ *)
+Procedure AmbientShadow(C: TAGCanvas; sz: Double);
+Var
+  dx, dy, r: Double;
+  col: TAGColor;
+Begin
+  dx := AGClamp(0.05 * sz, 0.6, 2.5);
+  dy := AGClamp(0.09 * sz, 1, 4);
+  col := AGHex($2A1608);
+  // a cheap blur: a wide light penumbra and the core shadow
+  r := AGClamp(0.08 * sz, 0.8, 2.5);
+  C.OffsetPath(dx + r, dy + r);
+  C.Fill(AGWithAlpha(col, 16), true);
+  C.OffsetPath(-r, -r);
+  C.Fill(AGWithAlpha(col, 30), true);
+  C.OffsetPath(-dx, -dy);
+End;
+
 Procedure DrawShapeOutlined(C: TAGCanvas; Style: TAGStyle; Base, Outline: TAGColor; OutlineScale: Double);
 Var
   info: TAGStyleInfo;
-  x0, y0, x1, y1, w, h, s: Double;
+  x0, y0, x1, y1, sz, s, pw: Double;
+  keep: Boolean;
   paint: TAGPaint;
   m: TAGMatrix;
+  o: TAGColor;
 Begin
   info := GetStyleInfo(Style);
   If Not C.PathBounds(x0, y0, x1, y1) Then exit;
-  If info.CelShade And (AGMax(x1 - x0, y1 - y0) >= 2.5) Then
-    C.FillPaint(CelPaint(C, Base, x0, y0, x1, y1), OutlineScale > 0)
-  Else If info.Gradient Then Begin
-    w := x1 - x0;
-    h := y1 - y0;
-    // the paint is defined in device space, so build it with the identity matrix
-    m := C.GetMatrix;
-    C.SetMatrix(AGIdentity);
-    paint := C.Radial(x0 + 0.35 * w, y0 + 0.3 * h, 0.9 * AGMax(w, h),
-      [AGShade(Base, 1.5), Base, AGShade(Base, 0.55)]);
-    C.SetMatrix(m);
-    C.FillPaint(paint, OutlineScale > 0);
-  End
+  sz := AGMax(x1 - x0, y1 - y0); // device pixel (= coarse pixel of pixel / retro)
+  keep := OutlineScale > 0;
+  // scale of the current transformation (outline widths are in pixel of the final image)
+  m := C.GetMatrix;
+  s := (AGSqrt(sqr(m.a) + sqr(m.b)) + AGSqrt(sqr(m.c) + sqr(m.d))) / 2;
+  If s <= 0 Then s := 1;
+  Case Style Of
+    asFlat: Begin
+        If sz >= 6 Then
+          C.FillPaint(FlatPaint(C, Base, x0, y0, x1, y1), keep)
+        Else
+          C.Fill(Base, keep);
+      End;
+    asSoft: Begin
+        If info.Ambient And keep And (Base.a = 255) And (sz >= 6) Then AmbientShadow(C, sz);
+        C.FillPaint(SoftPaint(C, Base, x0, y0, x1, y1), keep);
+      End;
+    asPixel: Begin
+        If sz >= 3 Then
+          C.FillPaint(PixelPaint(C, Base, x0, y0, x1, y1), keep)
+        Else
+          C.Fill(Base, keep);
+      End;
+  Else Begin
+      If info.CelShade And (sz >= 2.5) Then
+        C.FillPaint(CelPaint(C, Base, x0, y0, x1, y1), keep)
+      Else
+        C.Fill(Base, keep);
+    End;
+  End;
+  If Not keep Then exit;
+  pw := info.OutlineWidth * OutlineScale / info.PixelScale / s;
+  Case Style Of
+    asSoft: Begin
+        // no ink line, only a slightly darker tone of the own color
+        o := AGSameSide(Base, AGMix(AGShade(Base, 0.62), Outline, 0.12));
+        o.a := Base.a;
+        C.Stroke(pw, o);
+      End;
+    asPixel: Begin
+        If sz >= 4 Then Begin
+          // selective outline: a darker tone of the own color on the lit top left, dark at the bottom right
+          o := Tone(Base, 0.55);
+          m := C.GetMatrix;
+          C.SetMatrix(AGIdentity);
+          paint := C.Linear(x0, y0, x1, y1, [o, Outline]);
+          C.SetMatrix(m);
+          paint.Stops[0].Pos := 0.3;
+          paint.Stops[1].Pos := 0.6;
+          paint.DitherWidth := 0.6;
+          C.StrokePaint(pw, paint);
+        End
+        Else
+          C.Stroke(pw, Outline);
+      End;
   Else
-    C.Fill(Base, OutlineScale > 0);
-  If OutlineScale > 0 Then Begin
-    // width in pixel of the final image, independent of the current transformation
-    s := (AGSqrt(sqr(C.GetMatrix.a) + sqr(C.GetMatrix.b)) + AGSqrt(sqr(C.GetMatrix.c) + sqr(C.GetMatrix.d))) / 2;
-    If s <= 0 Then s := 1;
-    C.Stroke(info.OutlineWidth * OutlineScale / info.PixelScale / s, Outline);
+    C.Stroke(pw, Outline);
   End;
 End;
 
@@ -343,11 +573,138 @@ Procedure DrawShape(C: TAGCanvas; Style: TAGStyle; Base: TAGColor; OutlineScale:
 Var
   o: TAGColor;
 Begin
-  If GetStyleInfo(Style).Gradient Then
-    o := AGShade(Base, 0.45)
+  Case Style Of
+    asSoft: o := AGShade(Base, 0.55);
+    asFlat: o := AGMix(AGShade(Base, 0.22), AGHex($100C18), 0.5);
   Else
     o := AGShade(Base, 0.3);
-  DrawShapeOutlined(C, Style, Base, o, OutlineScale);
+  End;
+  DrawShapeOutlined(C, Style, Base, AGSameSide(Base, o), OutlineScale);
+End;
+
+(* ---------------------------------------------------------------------- *)
+(* Post processing of whole images                                        *)
+(* ---------------------------------------------------------------------- *)
+
+(* Flat: more saturated colors (channels pushed away from their mean) *)
+Procedure PostFlat(Img: TAGImage);
+Var
+  i: Integer;
+  c, o, last, lastRes: TAGColor;
+  mean: Double;
+Begin
+  last := AGTransparent;
+  lastRes := AGTransparent;
+  For i := 0 To high(Img.Pixels) Do Begin
+    o := Img.Pixels[i];
+    If o.a = 0 Then Continue;
+    If AGSameColor(o, last) Then Begin
+      Img.Pixels[i] := lastRes;
+      Continue;
+    End;
+    mean := (o.r + o.g + o.b) / 3;
+    c := o;
+    c.r := AGClampI(AGRound(mean + 1.3 * (o.r - mean)), 0, 255);
+    c.g := AGClampI(AGRound(mean + 1.3 * (o.g - mean)), 0, 255);
+    c.b := AGClampI(AGRound(mean + 1.3 * (o.b - mean)), 0, 255);
+    c := AGKeepRules(o, c);
+    last := o;
+    lastRes := c;
+    Img.Pixels[i] := c;
+  End;
+End;
+
+(* Soft: warmer, a little less saturated, paint texture, vignette on backgrounds *)
+Procedure PostSoft(Img: TAGImage);
+Var
+  x, y, i, d: Integer;
+  c, o: TAGColor;
+  mean, n, v, dx, dy, cx, cy, f: Double;
+  opaque: Boolean;
+Begin
+  opaque := (Img.Width >= 256) And (Img.Height >= 192);
+  If opaque Then
+    For i := 0 To high(Img.Pixels) Do
+      If Img.Pixels[i].a < 255 Then Begin
+        opaque := false;
+        break;
+      End;
+  cx := Img.Width / 2;
+  cy := Img.Height / 2;
+  For y := 0 To Img.Height - 1 Do
+    For x := 0 To Img.Width - 1 Do Begin
+      i := y * Img.Width + x;
+      o := Img.Pixels[i];
+      If o.a = 0 Then Continue;
+      c := o;
+      If Not IsGreenDominant(o) Then Begin
+        mean := (o.r + o.g + o.b) / 3;
+        c.r := AGClampI(AGRound(mean + 0.9 * (o.r - mean) + 6), 0, 255);
+        c.g := AGClampI(AGRound(mean + 0.9 * (o.g - mean) + 2), 0, 255);
+        c.b := AGClampI(AGRound(mean + 0.9 * (o.b - mean) - 5), 0, 255);
+      End;
+      // paint texture: two octaves of value noise, the same offset on all channels
+      n := 4.5 * AGValueNoise(x, y, 3, 17) + 3.5 * AGValueNoise(x, y, 11, 5);
+      f := 1;
+      If opaque Then Begin
+        dx := (x - cx) / cx;
+        dy := (y - cy) / cy;
+        v := AGClamp((AGSqrt(dx * dx + dy * dy) - 0.6) / 0.85, 0, 1);
+        f := 1 - 0.24 * AGSmoothStep(v);
+      End;
+      d := AGRound(n);
+      c.r := AGClampI(AGRound((c.r + d) * f), 0, 255);
+      c.g := AGClampI(AGRound((c.g + d) * f), 0, 255);
+      c.b := AGClampI(AGRound((c.b + d) * f), 0, 255);
+      Img.Pixels[i] := AGKeepRules(o, c);
+    End;
+End;
+
+(* Pixel: 10 levels per channel, ordered dithering in the middle between two levels *)
+Procedure PostPixel(Img: TAGImage);
+Const
+  Step = 255 / 9;
+  Width = 0.2;
+Var
+  x, y, i: Integer;
+  c, o: TAGColor;
+  th: Double;
+
+  Function Q(v: Integer): Integer;
+  Var
+    qq, f: Double;
+    k: Integer;
+  Begin
+    qq := v / Step;
+    k := AGFloor(qq);
+    f := AGClamp((qq - k - 0.5) / Width + 0.5, 0, 1);
+    If f > th Then inc(k);
+    result := AGClampI(AGRound(k * Step), 0, 255);
+  End;
+
+Begin
+  For y := 0 To Img.Height - 1 Do
+    For x := 0 To Img.Width - 1 Do Begin
+      i := y * Img.Width + x;
+      o := Img.Pixels[i];
+      If o.a = 0 Then Continue;
+      th := AGBayer4(x, y);
+      c := o;
+      c.r := Q(o.r);
+      c.g := Q(o.g);
+      c.b := Q(o.b);
+      Img.Pixels[i] := AGKeepRules(o, c);
+    End;
+End;
+
+Procedure AGStylePost(Img: TAGImage; Style: TAGStyle);
+Begin
+  Case Style Of
+    asFlat: PostFlat(Img);
+    asSoft: PostSoft(Img);
+    asPixel: PostPixel(Img);
+    asRetro: AGRetroQuantize(Img);
+  End;
 End;
 
 Function RenderSheet(Ctx: TAGContext; FramesPerRow, FramesPerCol, FrameW, FrameH, Count: Integer; Draw: TAGFrameProc): TAGImage;
@@ -372,7 +729,7 @@ Begin
     Finally
       c.Free;
     End;
-    If info.Palette Then AGRetroQuantize(small);
+    AGStylePost(small, Ctx.Style);
     If info.PixelScale <> 1 Then Begin
       big := small.ScaleNearest(info.PixelScale);
       small.Free;

@@ -75,6 +75,18 @@ Function NotGreen(c: TAGColor): TAGColor; // lowers g just below max(r, b) if ne
 Function PlayerGreen(Brightness: Double): TAGColor; // 0 = dark .. 1 = light, recolored by the engine
 Function AGSameColor(c1, c2: TAGColor): Boolean;
 
+(*
+ * Threshold of the 4 x 4 ordered (Bayer) dither matrix at pixel (x, y),
+ * in 0..1 (exclusive), (k + 0.5) / 16 for k = 0..15.
+ *)
+Function AGBayer4(x, y: Integer): Double;
+
+(*
+ * Deterministic value noise in -1..1, smooth between grid points Cell pixel
+ * apart (integer hash, bilinear interpolation).
+ *)
+Function AGValueNoise(x, y, Cell: Integer; Seed: Cardinal): Double;
+
 Implementation
 
 Uses uag_math;
@@ -182,6 +194,42 @@ End;
 Function AGSameColor(c1, c2: TAGColor): Boolean;
 Begin
   result := (c1.r = c2.r) And (c1.g = c2.g) And (c1.b = c2.b) And (c1.a = c2.a);
+End;
+
+Function AGBayer4(x, y: Integer): Double;
+Const
+  M: Array[0..15] Of Integer = (0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+Begin
+  result := (M[(y And 3) * 4 + (x And 3)] + 0.5) / 16;
+End;
+
+Function HashUnit(x, y: Integer; Seed: Cardinal): Double;
+Var
+  h: Cardinal;
+Begin
+  {$PUSH}{$R-}{$Q-}
+  h := Cardinal(x) * Cardinal(374761393) + Cardinal(y) * Cardinal(668265263) + Seed * Cardinal(2246822519);
+  h := (h Xor (h Shr 13)) * Cardinal(1274126177);
+  h := h Xor (h Shr 16);
+  {$POP}
+  result := (h And $FFFF) / 65535 * 2 - 1;
+End;
+
+Function AGValueNoise(x, y, Cell: Integer; Seed: Cardinal): Double;
+Var
+  gx, gy: Integer;
+  fx, fy, a, b: Double;
+Begin
+  If Cell < 1 Then Cell := 1;
+  If x < 0 Then x := 0;
+  If y < 0 Then y := 0;
+  gx := x Div Cell;
+  gy := y Div Cell;
+  fx := (x Mod Cell) / Cell;
+  fy := (y Mod Cell) / Cell;
+  a := HashUnit(gx, gy, Seed) + (HashUnit(gx + 1, gy, Seed) - HashUnit(gx, gy, Seed)) * fx;
+  b := HashUnit(gx, gy + 1, Seed) + (HashUnit(gx + 1, gy + 1, Seed) - HashUnit(gx, gy + 1, Seed)) * fx;
+  result := a + (b - a) * fy;
 End;
 
 { TAGImage }

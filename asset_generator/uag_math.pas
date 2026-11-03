@@ -49,12 +49,18 @@ Function AGMin(a, b: Double): Double;
 Function AGMax(a, b: Double): Double;
 Function AGAbs(x: Double): Double;
 Function AGSmoothStep(t: Double): Double; // 0..1 -> 0..1, soft start and end
+Function AGExp(x: Double): Double; // e^x, x is clamped to [-700, 700]
+Function AGLn(x: Double): Double; // natural logarithm, x <= 0 gives -1e300
+Function AGPow(b, x: Double): Double; // b^x for b > 0, 0 for b <= 0
 
 Implementation
 
 Var
   SinC: Array[1..8] Of Double; // (-1)^k / (2k+1)!
   AtanC: Array[1..9] Of Double; // (-1)^k / (2k+1)
+  ExpC: Array[0..16] Of Double; // 1 / k!
+  LnC: Array[0..12] Of Double; // 1 / (2k+1)
+  Ln2: Double; // computed in the initialization from the series
 
 Function AGFloor(x: Double): Int64;
 Begin
@@ -220,6 +226,70 @@ Begin
   result := t * t * (3 - 2 * t);
 End;
 
+Function AGExp(x: Double): Double;
+Var
+  k, i: Integer;
+  r, p: Double;
+Begin
+  x := AGClamp(x, -700, 700);
+  // x = k * ln 2 + r with |r| <= ln 2 / 2, e^x = 2^k * e^r
+  k := AGRound(x / Ln2);
+  r := x - k * Ln2;
+  p := ExpC[16];
+  For i := 15 Downto 0 Do
+    p := ExpC[i] + r * p;
+  While k > 0 Do Begin
+    p := p * 2;
+    dec(k);
+  End;
+  While k < 0 Do Begin
+    p := p / 2;
+    inc(k);
+  End;
+  result := p;
+End;
+
+(*
+ * ln(m) = 2 atanh(s) with s = (m - 1) / (m + 1), m scaled by powers of 2 into
+ * [0.7071, 1.4142] so |s| < 0.172 and 13 terms are exact to Double precision.
+ *)
+Function LnReduced(m: Double): Double;
+Var
+  s, s2, p: Double;
+  k: Integer;
+Begin
+  s := (m - 1) / (m + 1);
+  s2 := s * s;
+  p := LnC[12];
+  For k := 11 Downto 0 Do
+    p := LnC[k] + s2 * p;
+  result := 2 * s * p;
+End;
+
+Function AGLn(x: Double): Double;
+Var
+  e: Integer;
+Begin
+  If x <= 0 Then exit(-1E300);
+  e := 0;
+  While x > 1.4142135623730951 Do Begin
+    x := x / 2;
+    inc(e);
+  End;
+  While x < 0.7071067811865476 Do Begin
+    x := x * 2;
+    dec(e);
+  End;
+  result := e * Ln2 + LnReduced(x);
+End;
+
+Function AGPow(b, x: Double): Double;
+Begin
+  If b <= 0 Then exit(0);
+  If x = 0 Then exit(1);
+  result := AGExp(x * AGLn(b));
+End;
+
 Procedure InitCoefficients;
 Var
   k: Integer;
@@ -237,6 +307,15 @@ Begin
     AtanC[k] := sign / (2 * k + 1);
     sign := -sign;
   End;
+  f := 1;
+  For k := 0 To 16 Do Begin
+    If k > 0 Then f := f * k;
+    ExpC[k] := 1 / f;
+  End;
+  For k := 0 To 12 Do
+    LnC[k] := 1 / (2 * k + 1);
+  // ln 2 = 2 * ln(sqrt 2), the argument is inside the fast range of the series
+  Ln2 := 2 * LnReduced(AGSqrt(2));
 End;
 
 Initialization

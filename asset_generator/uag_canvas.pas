@@ -65,6 +65,13 @@ Type
     // linear: from p0 to p1, radial: center p0, radius r (in device space, set by the canvas)
     p0, p1: TAGPoint;
     r: Double;
+    (*
+     * 0 = smooth gradient. > 0: ordered dithering (pixel art), every pixel
+     * gets exactly one stop color, between two stops the middle part of
+     * width DitherWidth (0..1, relative to the distance of the stops) is
+     * dithered with the 4 x 4 Bayer matrix, the rest is solid.
+     *)
+    DitherWidth: Double;
   End;
 
   { TAGCanvas }
@@ -113,6 +120,7 @@ Type
     Procedure CubicTo(c1x, c1y, c2x, c2y, x, y: Double);
     Procedure ArcTo(cx, cy, rx, ry, StartRad, EndRad: Double); // adds a line to the start point if a sub path is open
     Procedure ClosePath;
+    Procedure OffsetPath(dx, dy: Double); // moves the whole current path by (dx, dy) device pixel
 
     // Shapes (each one is a closed sub path)
     Procedure Rect(x, y, w, h: Double);
@@ -403,6 +411,21 @@ Begin
   FlushCurrent(true);
 End;
 
+Procedure TAGCanvas.OffsetPath(dx, dy: Double);
+Var
+  i, j: Integer;
+Begin
+  For i := 0 To high(fSubPaths) Do
+    For j := 0 To high(fSubPaths[i]) Do Begin
+      fSubPaths[i][j].x := fSubPaths[i][j].x + dx;
+      fSubPaths[i][j].y := fSubPaths[i][j].y + dy;
+    End;
+  For j := 0 To high(fCurrent) Do Begin
+    fCurrent[j].x := fCurrent[j].x + dx;
+    fCurrent[j].y := fCurrent[j].y + dy;
+  End;
+End;
+
 Procedure TAGCanvas.Rect(x, y, w, h: Double);
 Begin
   MoveTo(x, y);
@@ -531,6 +554,12 @@ Begin
   For i := 0 To high(Paint.Stops) - 1 Do Begin
     If t <= Paint.Stops[i + 1].Pos Then Begin
       If Paint.Stops[i + 1].Pos <= Paint.Stops[i].Pos Then exit(Paint.Stops[i + 1].Color);
+      If Paint.DitherWidth > 0 Then Begin
+        t := (t - Paint.Stops[i].Pos) / (Paint.Stops[i + 1].Pos - Paint.Stops[i].Pos);
+        t := AGClamp((t - 0.5) / Paint.DitherWidth + 0.5, 0, 1);
+        If t > AGBayer4(AGFloor(x), AGFloor(y)) Then exit(Paint.Stops[i + 1].Color);
+        exit(Paint.Stops[i].Color);
+      End;
       exit(AGMix(Paint.Stops[i].Color, Paint.Stops[i + 1].Color,
         (t - Paint.Stops[i].Pos) / (Paint.Stops[i + 1].Pos - Paint.Stops[i].Pos)));
     End;

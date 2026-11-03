@@ -446,6 +446,7 @@ End;
 
 Procedure GroundClassic(C: TAGCanvas; Const M: TMap);
 Var
+  R: TAGRandom;
   i, j: Integer;
   x, y: Double;
   g1, g2, col: TAGColor;
@@ -465,6 +466,17 @@ Begin
       // small corner marks, very calm
       Box(C, x + CW / 2 - 1, y + CH / 2 - 1, 2, 2, AGShade(col, 0.85));
     End;
+  If M.Style = asSoft Then Begin
+    // painted material: short grass blades in both tones
+    R := M.A.Stream('classicblades');
+    For i := 0 To 420 Do Begin
+      x := FX + 2 + R.NextUnit * (FR - FX - 4);
+      y := FY + 5 + R.NextUnit * (FB - FY - 7);
+      If R.NextUnit < 0.5 Then col := AGShade(g1, 0.78) Else col := AGShade(g2, 1.2);
+      Line(C, x, y, x - 1.2, y - 3.2, 0.9, col);
+      Line(C, x + 0.6, y, x + 1.6, y - 3.6, 0.9, col);
+    End;
+  End;
 End;
 
 Procedure GroundIce(C: TAGCanvas; Const M: TMap);
@@ -1331,6 +1343,714 @@ Begin
 End;
 
 (* ---------------------------------------------------------------------- *)
+(* Style kits: the style decides palette, ground pattern and block shapes *)
+(* ---------------------------------------------------------------------- *)
+(*
+ * The theme stays the same in every style (ice stays ice, Egypt stays
+ * Egypt), but every style has its own kit:
+ *   flat  = pop / vector: a bold palette of a few flat colors per theme
+ *           (FlatPals), large clean stripes / tiles / dots without texture,
+ *           geometric blocks (rounded rectangles) with one symbol, an ink
+ *           outline, a hard flat shadow of the frame on the ground
+ *   soft  = painted material: the naturalistic grounds above (grass blades,
+ *           sand ripples, wood grain, ...), light from the top left over the
+ *           whole field, the blocks cast a soft shadow onto the ground
+ *   pixel = 16-bit tiles: the ground is built from repeating tiles of half a
+ *           cell (20 x 18) with classic motifs (checker, bricks, cobbles,
+ *           planks, plates), bevelled blocks with a one pixel light / dark
+ *           edge, every color from a 5 step ramp per theme (PixPals)
+ *   retro = the painted shapes of soft at a third of the resolution, snapped
+ *           to the VGA palette (unchanged)
+ *)
+
+Type
+  TKitKind = (kkPaint, kkFlat, kkTile);
+
+  TFlatPal = Record
+    G1, G2: Cardinal; // ground
+    F1, F2: Cardinal; // frame, frame symbols and rim
+    Br, Br2: Cardinal; // brick, its symbol
+    So, So2: Cardinal; // solid, its details
+    Ac: Cardinal; // accent (flowers, markings)
+    GPat: Integer; // ground pattern, see GroundFlat
+    FSym, BSym: Integer; // symbols of frame and brick, see FlatSymbol
+  End;
+
+  TPixPal = Record
+    G1, G2: Cardinal; // ground ramps
+    Fr: Cardinal; // frame ramp
+    Br, So: Cardinal; // brick and solid ramps
+    GTile: Integer; // ground tile, see GroundPixel
+    BMotif: Integer; // motif of the brick, see PixelBrick
+  End;
+
+  TRamp = Array[0..4] Of TAGColor; // dark .. light
+
+Const
+  InkHex = $1A1626;
+
+  FlatPals: Array[TTheme] Of TFlatPal = (
+    (G1: $8CD65A; G2: $7AC64A; F1: $2F6B4F; F2: $F7D354; Br: $F29E4C; Br2: $FFF1C9; So: $5B6B8C; So2: $9AA8C8; Ac: $FF6F59; GPat: 0; FSym: 0; BSym: 1), // meadow
+    (G1: $56B870; G2: $46A660; F1: $35495E; F2: $F2F2F2; Br: $E4572E; Br2: $FFE0D0; So: $8D99AE; So2: $EDF2F4; Ac: $FFC914; GPat: 1; FSym: 7; BSym: 7), // classic
+    (G1: $EAF6FF; G2: $D6ECFB; F1: $2B4C7E; F2: $FFFFFF; Br: $7FD1F5; Br2: $FFFFFF; So: $3D5A80; So2: $98C1D9; Ac: $EE4266; GPat: 2; FSym: 4; BSym: 4), // ice
+    (G1: $F4D58D; G2: $EAC274; F1: $8D5524; F2: $2EC4B6; Br: $F7B05B; Br2: $8D5524; So: $6D4C3D; So2: $FFD166; Ac: $2EC4B6; GPat: 3; FSym: 3; BSym: 3), // egypt
+    (G1: $55597A; G2: $4A4E69; F1: $22223B; F2: $F2A541; Br: $E8A33D; Br2: $5A3A12; So: $9A8C98; So2: $D9C5C0; Ac: $F2A541; GPat: 4; FSym: 2; BSym: 2), // mine
+    (G1: $FFE5A8; G2: $FFD68A; F1: $00A6D6; F2: $FFFFFF; Br: $FF9F1C; Br2: $FFF3D6; So: $6C757D; So2: $ADB5BD; Ac: $FF5D73; GPat: 5; FSym: 5; BSym: 4), // beach
+    (G1: $2E1F5E; G2: $3A2A73; F1: $160F30; F2: $3DF5D8; Br: $8A5CF6; Br2: $3DF5D8; So: $8A80A8; So2: $F5D547; Ac: $3DF5D8; GPat: 6; FSym: 2; BSym: 2), // alien
+    (G1: $5E4B6E; G2: $54426A; F1: $241B2F; F2: $F7A440; Br: $A86F4C; Br2: $3A2A2E; So: $9E9AB5; So2: $D8D5E8; Ac: $F7A440; GPat: 7; FSym: 6; BSym: 1), // haunted
+    (G1: $3FB8C9; G2: $33A5BA; F1: $114B7A; F2: $FF8A5B; Br: $FF7A6B; Br2: $FFD4C9; So: $1E6E8C; So2: $9BE3EE; Ac: $FFE066; GPat: 8; FSym: 0; BSym: 5), // water
+    (G1: $6A9A44; G2: $5C8A3A; F1: $2D4A22; F2: $E9C46A; Br: $3FA34D; Br2: $B5E48C; So: $8B5E3C; So2: $D9A066; Ac: $E76F51; GPat: 9; FSym: 3; BSym: 2), // forest
+    (G1: $A7A9AC; G2: $96989C; F1: $3D405B; F2: $F4D35E; Br: $E09F3E; Br2: $FFF1D0; So: $3A86FF; So2: $BFD7FF; Ac: $F4D35E; GPat: 10; FSym: 7; BSym: 6) // city
+    );
+
+  PixPals: Array[TTheme] Of TPixPal = (
+    (G1: $4CA03A; G2: $44922F; Fr: $8A8C84; Br: $B87A3C; So: $9A9A92; GTile: 0; BMotif: 0), // meadow
+    (G1: $2F8F3A; G2: $3FA44A; Fr: $A4A8AE; Br: $B84A30; So: $A0A4AA; GTile: 1; BMotif: 1), // classic
+    (G1: $D4E6F2; G2: $C4DAEA; Fr: $5878A0; Br: $A8E0F4; So: $405878; GTile: 2; BMotif: 2), // ice
+    (G1: $D8B47A; G2: $CCA466; Fr: $C49A5C; Br: $E0B878; So: $7A6650; GTile: 3; BMotif: 3), // egypt
+    (G1: $5A5044; G2: $4A4238; Fr: $7A5430; Br: $3A3842; So: $6A5E54; GTile: 4; BMotif: 4), // mine
+    (G1: $E2D290; G2: $D6C27E; Fr: $3090C0; Br: $D8A858; So: $6A645C; GTile: 5; BMotif: 5), // beach
+    (G1: $35505A; G2: $2C444C; Fr: $3A3450; Br: $60D8E8; So: $505070; GTile: 6; BMotif: 6), // alien
+    (G1: $6A4C56; G2: $5A4048; Fr: $55505E; Br: $7A5030; So: $8A8698; GTile: 7; BMotif: 7), // haunted
+    (G1: $8EB4A8; G2: $80A89C; Fr: $1A4A6A; Br: $F07848; So: $44607A; GTile: 8; BMotif: 8), // water
+    (G1: $6A5236; G2: $4E6A2A; Fr: $3A6A2A; Br: $4C8A30; So: $7A5432; GTile: 9; BMotif: 9), // forest
+    (G1: $8C8C88; G2: $80807C; Fr: $9A4A38; Br: $B89058; So: $3A6A9A; GTile: 10; BMotif: 10) // city
+    );
+
+  (* Ground color of the painted grounds, the soft blocks cast their shadow in a darker tone of it *)
+  SoftGround: Array[TTheme] Of Cardinal = ($42902E, $338440, $CFE2EE, $D0AC72, $4A4238, $E0C690, $35505A, $4A3640, $8EB4A8, $5E5A32, $868682);
+
+Function Kit(Const M: TMap): TKitKind;
+Begin
+  Case M.Style Of
+    asFlat: result := kkFlat;
+    asPixel: result := kkTile;
+  Else
+    result := kkPaint;
+  End;
+End;
+
+(* 5 step ramp of a base color, shadows shift a bit to blue, lights to yellow (16-bit look) *)
+Procedure MakeRamp(Base: TAGColor; Out R: TRamp);
+Begin
+  R[0] := Jit(Base, 8, 1.15, 0.48);
+  R[1] := Jit(Base, 4, 1.08, 0.74);
+  R[2] := Base;
+  R[3] := Jit(Base, -5, 0.85, 1.22);
+  R[4] := Jit(Base, -9, 0.6, 1.48);
+End;
+
+(* Block with a light top / left and a dark bottom / right edge of e pixel *)
+Procedure PixBevel(C: TAGCanvas; x, y, w, h: Double; Hi, Mid, Lo: TAGColor; e: Double);
+Begin
+  Box(C, x, y, w, h, Lo);
+  Box(C, x, y, w - e, h - e, Hi);
+  Box(C, x + e, y + e, w - 2 * e, h - 2 * e, Mid);
+End;
+
+(* Flat symbols: 0 circle, 1 plus, 2 diamond, 3 triangle, 4 star, 5 ring, 6 chevron, 7 square *)
+Procedure FlatSymbol(C: TAGCanvas; Kind: Integer; cx, cy, r: Double; Col: TAGColor);
+Var
+  i: Integer;
+  a, rr: Double;
+Begin
+  C.BeginPath;
+  Case Kind Of
+    0: C.Circle(cx, cy, r);
+    1: Begin
+        C.Rect(cx - r, cy - 0.34 * r, 2 * r, 0.68 * r);
+        C.Rect(cx - 0.34 * r, cy - r, 0.68 * r, 2 * r);
+      End;
+    2: C.Polygon([cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy]);
+    3: C.Polygon([cx, cy - r, cx + 0.98 * r, cy + 0.75 * r, cx - 0.98 * r, cy + 0.75 * r]);
+    4: Begin
+        For i := 0 To 9 Do Begin
+          a := -AG_HALF_PI + AG_PI * i / 5;
+          If odd(i) Then rr := 0.45 * r Else rr := r;
+          If i = 0 Then C.MoveTo(cx + rr * AGCos(a), cy + rr * AGSin(a)) Else C.LineTo(cx + rr * AGCos(a), cy + rr * AGSin(a));
+        End;
+        C.ClosePath;
+      End;
+    5: Begin
+        C.Circle(cx, cy, r);
+        C.Circle(cx, cy, 0.5 * r);
+        C.FillRule := frEvenOdd;
+      End;
+    6: C.Polygon([cx - r, cy - 0.55 * r, cx, cy + 0.2 * r, cx + r, cy - 0.55 * r, cx + r, cy + 0.1 * r, cx, cy + 0.85 * r, cx - r, cy + 0.1 * r]);
+  Else
+    C.RoundRect(cx - 0.8 * r, cy - 0.8 * r, 1.6 * r, 1.6 * r, 0.3 * r);
+  End;
+  C.Fill(Col);
+  C.FillRule := frNonZero;
+End;
+
+(* ---------------------------------------------------------------------- *)
+(* flat kit                                                               *)
+(* ---------------------------------------------------------------------- *)
+
+Procedure GroundFlat(C: TAGCanvas; Const M: TMap);
+Var
+  P: TFlatPal;
+  g1, g2, ac, wh: TAGColor;
+  R: TAGRandom;
+  i, j, k: Integer;
+  x, y: Double;
+
+  Procedure Flower(fx, fy: Double);
+  Begin
+    Disc(C, fx - 2.4, fy, 2.2, wh);
+    Disc(C, fx + 2.4, fy, 2.2, wh);
+    Disc(C, fx, fy - 2.4, 2.2, wh);
+    Disc(C, fx, fy + 2.4, 2.2, wh);
+    Disc(C, fx, fy, 1.7, ac);
+  End;
+
+  Procedure Ring(cx, cy, rr, w: Double; Col: TAGColor);
+  Begin
+    C.BeginPath;
+    C.Circle(cx, cy, rr);
+    C.Stroke(w, Col);
+  End;
+
+Begin
+  P := FlatPals[M.Theme];
+  g1 := TC(M, P.G1);
+  g2 := TC(M, P.G2);
+  ac := TC(M, P.Ac);
+  wh := AGHex($FFFBF0);
+  R := M.A.Stream('flatground');
+  Box(C, FX, FY, FR - FX, FB - FY, g1);
+  Case P.GPat Of
+    0: Begin // mowed lawn: stripes of one cell column, a few flowers
+        For i := 0 To GW - 1 Do
+          If odd(i) Then Box(C, FX + i * CW, FY, CW, FB - FY, g2);
+        For k := 0 To 13 Do
+          Flower(FX + R.RangeI(0, GW) * CW, FY + R.RangeI(0, GH) * CH);
+      End;
+    1: Begin // checker of whole cells with a small square in the middle
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do Begin
+            If (i + j) Mod 2 = 1 Then Box(C, FX + i * CW, FY + j * CH, CW, CH, g2);
+            C.RoundRect(FX + i * CW + 16, FY + j * CH + 14, 8, 8, 2);
+            C.Fill(AGShade(g2, 0.9));
+          End;
+      End;
+    2: Begin // rink: bold flat markings
+        Box(C, FX, FY + 4 * CH, FR - FX, 3 * CH, g2);
+        Box(C, 316, FY, 8, FB - FY, ac);
+        Box(C, FX + 4 * CW - 3, FY, 7, FB - FY, AGHex($3A86FF));
+        Box(C, FX + 11 * CW - 4, FY, 7, FB - FY, AGHex($3A86FF));
+        Ring(320, 264, 54, 6, AGHex($3A86FF));
+        Disc(C, 320, 264, 6, AGHex($3A86FF));
+        For k := 0 To 3 Do Begin
+          x := FX + (2.5 + 10 * (k Mod 2)) * CW;
+          y := FY + (2.5 + 6 * (k Div 2)) * CH;
+          Ring(x, y, 34, 5, ac);
+          Disc(C, x, y, 5, ac);
+        End;
+      End;
+    3: Begin // big sandstone tiles of 2 x 2 cells, a triangle on every tile
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do
+            If ((i Div 2) + (j Div 2)) Mod 2 = 1 Then Box(C, FX + i * CW, FY + j * CH, CW, CH, g2);
+        For j := 0 To GH Div 2 Do
+          For i := 0 To GW Div 2 Do
+            FlatSymbol(C, 3, FX + (2 * i + 1) * CW, FY + (2 * j + 1) * CH, 6, AGShade(g2, 0.86));
+      End;
+    4: Begin // mine: wide diagonal stripes, a few round pebbles
+        x := FX - (FB - FY);
+        While x < FR Do Begin
+          C.Polygon([x, FB, x + 30, FB, x + 30 + (FB - FY), FY, x + (FB - FY), FY]);
+          C.Fill(g2);
+          x := x + 60;
+        End;
+        For k := 0 To 16 Do
+          Disc(C, FX + 6 + R.NextUnit * (FR - FX - 12), FY + 6 + R.NextUnit * (FB - FY - 12), 2.5 + 2 * R.NextUnit, AGShade(g1, 0.72));
+      End;
+    5: Begin // beach: wavy bands, a few starfish
+        For j := 0 To GH - 1 Do
+          If odd(j) Then Begin
+            C.BeginPath;
+            C.MoveTo(FX, FY + j * CH);
+            For i := 0 To 14 Do
+              C.QuadTo(FX + i * CW + 20, FY + j * CH - 8, FX + (i + 1) * CW, FY + j * CH);
+            C.LineTo(FR, FY + (j + 1) * CH);
+            For i := 14 Downto 0 Do
+              C.QuadTo(FX + i * CW + 20, FY + (j + 1) * CH - 8, FX + i * CW, FY + (j + 1) * CH);
+            C.ClosePath;
+            C.Fill(g2);
+          End;
+        For k := 0 To 6 Do
+          FlatSymbol(C, 4, FX + (R.RangeI(0, GW - 1) + 0.5) * CW, FY + (R.RangeI(0, GH - 1) + 0.5) * CH, 6, ac);
+      End;
+    6: Begin // alien: grid lines and glowing dots on the crossings
+        For i := 0 To GW Do
+          Box(C, FX + i * CW - 1, FY, 2, FB - FY, g2);
+        For j := 0 To GH Do
+          Box(C, FX, FY + j * CH - 1, FR - FX, 2, g2);
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do
+            Disc(C, FX + i * CW + CW / 2, FY + j * CH + CH / 2, 5, g2);
+        For j := 0 To GH Do
+          For i := 0 To GW Do
+            If (i + j) Mod 3 = 0 Then Disc(C, FX + i * CW, FY + j * CH, 2.6, ac);
+      End;
+    7: Begin // haunted: flat vertical planks with a dark gap
+        For i := 0 To 2 * GW - 1 Do Begin
+          If odd(i + (i Div 5)) Then Box(C, FX + i * 20, FY, 20, FB - FY, g2);
+          Box(C, FX + i * 20, FY, 2, FB - FY, AGShade(g1, 0.72));
+        End;
+      End;
+    8: Begin // water: fish scale waves
+        For j := 0 To 2 * GH Do
+          For i := 0 To GW Do Begin
+            x := FX + i * CW + 20 * (j Mod 2);
+            y := FY + j * 18;
+            C.BeginPath;
+            C.ArcTo(x, y, 20, 18, 0, AG_PI);
+            C.ClosePath;
+            If odd(j) Then C.Fill(g2) Else C.Fill(AGShade(g1, 1.06));
+          End;
+      End;
+    9: Begin // forest: polka dots on the cell corners
+        For j := 0 To GH Do
+          For i := 0 To GW Do
+            Disc(C, FX + i * CW, FY + j * CH, 10, g2);
+        For k := 0 To 9 Do
+          FlatSymbol(C, 2, FX + (R.RangeI(0, GW - 1) + 0.5) * CW, FY + (R.RangeI(0, GH - 1) + 0.5) * CH, 4, ac);
+      End;
+  Else Begin // city: slabs with wide joints and a crosswalk
+      Box(C, FX, FY, FR - FX, FB - FY, g2);
+      For j := 0 To GH - 1 Do
+        For i := 0 To GW - 1 Do
+          Box(C, FX + i * CW + 2, FY + j * CH + 2, CW - 4, CH - 4, g1);
+      For i := 0 To GW - 1 Do Begin
+        Box(C, FX + i * CW + 4, FY + 5 * CH + 4, 14, CH - 8, AGHex($F4F4F0));
+        Box(C, FX + i * CW + 24, FY + 5 * CH + 4, 14, CH - 8, AGHex($F4F4F0));
+      End;
+    End;
+  End;
+  // the frame casts a hard flat shadow onto the ground
+  Box(C, FX, FY, FR - FX, 6, AGRGBA(0, 0, 0, 60));
+  Box(C, FX, FY + 6, 6, FB - FY - 6, AGRGBA(0, 0, 0, 60));
+End;
+
+Procedure FrameFlat(C: TAGCanvas; Const M: TMap);
+Var
+  P: TFlatPal;
+  f1, f2: TAGColor;
+
+  Procedure S(x, y: Double; Index: Integer);
+  Begin
+    FlatSymbol(C, P.FSym, x, y, 5.5, f2);
+  End;
+
+Begin
+  P := FlatPals[M.Theme];
+  f1 := TC(M, P.F1);
+  f2 := TC(M, P.F2);
+  Box(C, 0, 44, 640, 436, f1);
+  // a lighter band along the outer edge
+  Box(C, 0, 44, 640, 4, AGShade(f1, 1.35));
+  Box(C, 0, 476, 640, 4, AGShade(f1, 0.7));
+  ForBand(40, @S);
+  FieldRim(C, M, f2, 4);
+  FieldRim(C, M, AGHex(InkHex), 1.5);
+End;
+
+Procedure FlatBlock(C: TAGCanvas; Const M: TMap; Solid: Boolean);
+Var
+  P: TFlatPal;
+  ink, so, so2: TAGColor;
+Begin
+  P := FlatPals[M.Theme];
+  ink := AGHex(InkHex);
+  If Not Solid Then Begin
+    C.RoundRect(3, 3, 34, 30, 8);
+    ShapeO(C, M, TC(M, P.Br), ink, 1.0);
+    FlatSymbol(C, P.BSym, 20, 17, 7.5, TC(M, P.Br2));
+  End
+  Else Begin
+    so := TC(M, P.So);
+    so2 := TC(M, P.So2);
+    // a heavy block: front face and top face, four bolts
+    C.RoundRect(1.5, 1.5, 37, 33, 4);
+    ShapeO(C, M, AGShade(so, 0.68), ink, 1.0);
+    C.RoundRect(1.5, 1.5, 37, 25, 4);
+    ShapeO(C, M, so, ink, 0.8);
+    Disc(C, 7, 7, 2.2, so2);
+    Disc(C, 33, 7, 2.2, so2);
+    Disc(C, 7, 21, 2.2, so2);
+    Disc(C, 33, 21, 2.2, so2);
+    C.RoundRect(13, 8, 14, 12, 3);
+    C.Fill(AGShade(so, 0.8));
+  End;
+End;
+
+(* ---------------------------------------------------------------------- *)
+(* pixel kit                                                              *)
+(* ---------------------------------------------------------------------- *)
+
+Procedure GroundPixel(C: TAGCanvas; Const M: TMap);
+Const
+  TW = 20; // tile = half a cell
+  TH = 18;
+  Leaf: Array[0..2] Of Cardinal = ($C07828, $A0502A, $D0A040);
+Var
+  P: TPixPal;
+  a, b: TRamp;
+  R: TAGRandom;
+  i, j, k: Integer;
+  x, y, w: Double;
+  col: TAGColor;
+Begin
+  P := PixPals[M.Theme];
+  MakeRamp(TC(M, P.G1), a);
+  MakeRamp(TC(M, P.G2), b);
+  R := M.A.Stream('pixtiles');
+  Box(C, FX, FY, FR - FX, FB - FY, a[2]);
+  Case P.GTile Of
+    0: Begin // grass: checker of cells, v shaped tufts on every tile
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do
+            If (i + j) Mod 2 = 1 Then Box(C, FX + i * CW, FY + j * CH, CW, CH, b[2]);
+        For j := 0 To 2 * GH - 1 Do
+          For i := 0 To 2 * GW - 1 Do Begin
+            x := FX + i * TW + 4 + 2 * R.RangeI(0, 4);
+            y := FY + j * TH + 4 + 2 * R.RangeI(0, 3);
+            Box(C, x, y, 2, 2, a[1]);
+            Box(C, x + 4, y, 2, 2, a[1]);
+            Box(C, x + 2, y + 2, 2, 2, a[1]);
+            Box(C, x + 2, y - 2, 2, 2, a[3]);
+          End;
+      End;
+    1: Begin // classic: checker of bevelled cells
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do Begin
+            If (i + j) Mod 2 = 0 Then col := a[2] Else col := b[2];
+            PixBevel(C, FX + i * CW, FY + j * CH, CW, CH, AGMix(col, a[3], 0.6), col, AGMix(col, a[1], 0.6), 2);
+            Box(C, FX + i * CW + 18, FY + j * CH + 16, 4, 4, AGMix(col, a[1], 0.5));
+          End;
+      End;
+    2: Begin // ice: shiny tiles with a glint, rink lines
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do Begin
+            If (i + j) Mod 2 = 0 Then col := a[2] Else col := b[2];
+            PixBevel(C, FX + i * CW, FY + j * CH, CW, CH, a[4], col, AGMix(col, a[1], 0.5), 2);
+            If (i * 3 + j) Mod 4 = 0 Then Begin
+              Box(C, FX + i * CW + 6, FY + j * CH + 12, 2, 2, a[4]);
+              Box(C, FX + i * CW + 8, FY + j * CH + 10, 2, 2, a[4]);
+              Box(C, FX + i * CW + 10, FY + j * CH + 8, 2, 2, a[4]);
+            End;
+          End;
+        Box(C, 316, FY, 6, FB - FY, AGHex($D03848));
+        Box(C, FX + 4 * CW - 2, FY, 4, FB - FY, AGHex($4060D0));
+        Box(C, FX + 11 * CW - 2, FY, 4, FB - FY, AGHex($4060D0));
+        C.BeginPath;
+        C.Circle(320, 264, 52);
+        C.Stroke(4, AGHex($4060D0));
+      End;
+    3: Begin // egypt: bevelled sandstone slabs of one cell with pores
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do Begin
+            If R.NextUnit < 0.5 Then col := a[2] Else col := b[2];
+            PixBevel(C, FX + i * CW, FY + j * CH, CW, CH, a[3], col, a[1], 2);
+            Box(C, FX + i * CW + 6 + 2 * R.RangeI(0, 12), FY + j * CH + 6 + 2 * R.RangeI(0, 10), 2, 2, a[1]);
+            Box(C, FX + i * CW + 6 + 2 * R.RangeI(0, 12), FY + j * CH + 6 + 2 * R.RangeI(0, 10), 2, 2, a[1]);
+          End;
+      End;
+    4, 10: Begin // mine / city: cobbles / paving bricks of half a cell, staggered
+        Box(C, FX, FY, FR - FX, FB - FY, a[0]);
+        For j := 0 To 2 * GH - 1 Do Begin
+          x := FX - 10 * (j Mod 2);
+          While x < FR Do Begin
+            If R.NextUnit < 0.5 Then col := a[2] Else col := b[2];
+            PixBevel(C, x, FY + j * TH, TW - 2, TH - 2, a[3], col, a[1], 2);
+            If (P.GTile = 4) And (R.NextUnit < 0.2) Then Box(C, x + 6, FY + j * TH + 6, 4, 2, AGHex($181618));
+            x := x + TW;
+          End;
+        End;
+        If P.GTile = 10 Then
+          For k := 0 To 8 Do
+            Box(C, FX + 2 * R.RangeI(2, 296), FY + 2 * R.RangeI(2, 194), 6, 4, AGHex($E8E4D8));
+      End;
+    5: Begin // beach: sand with a fixed dot pattern and ripple marks
+        For j := 0 To 2 * GH - 1 Do
+          For i := 0 To 2 * GW - 1 Do Begin
+            x := FX + i * TW;
+            y := FY + j * TH;
+            Box(C, x + 2 + 10 * (j Mod 2), y + 4, 2, 2, a[3]);
+            Box(C, x + 12 - 10 * (j Mod 2), y + 12, 2, 2, a[1]);
+            If R.NextUnit < 0.3 Then Begin
+              Box(C, x + 4, y + 8, 8, 2, a[3]);
+              Box(C, x + 6, y + 10, 8, 2, a[1]);
+            End;
+          End;
+      End;
+    6: Begin // alien: metal plates with rivets, some glowing grooves
+        For j := 0 To GH - 1 Do
+          For i := 0 To GW - 1 Do Begin
+            x := FX + i * CW;
+            y := FY + j * CH;
+            PixBevel(C, x, y, CW, CH, a[3], a[2], a[0], 2);
+            Box(C, x + 4, y + 4, 2, 2, a[4]);
+            Box(C, x + 34, y + 4, 2, 2, a[4]);
+            Box(C, x + 4, y + 30, 2, 2, a[1]);
+            Box(C, x + 34, y + 30, 2, 2, a[1]);
+            If (i + 2 * j) Mod 3 = 0 Then Begin
+              Box(C, x + 10, y + 16, 20, 4, a[0]);
+              If R.NextUnit < 0.5 Then Box(C, x + 12, y + 16, 16, 2, TC(M, $50E0D0));
+            End;
+          End;
+      End;
+    7: Begin // haunted: planks of 12 pixel, staggered joints
+        For j := 0 To GH * 3 - 1 Do Begin
+          y := FY + j * 12;
+          x := FX - (j Mod 4) * 20;
+          While x < FR Do Begin
+            w := 40 + 40 * R.RangeI(0, 2);
+            If R.NextUnit < 0.5 Then col := a[2] Else col := b[2];
+            Box(C, x, y, w, 12, col);
+            Box(C, x, y, w, 2, a[3]);
+            Box(C, x, y + 10, w, 2, a[0]);
+            Box(C, x + w - 2, y, 2, 12, a[0]);
+            Box(C, x + 8, y + 6, w / 2, 2, a[1]);
+            Box(C, x + 4, y + 4, 2, 2, a[0]);
+            x := x + w;
+          End;
+        End;
+      End;
+    8: Begin // sea floor: wave marks on every second tile
+        For j := 0 To 2 * GH - 1 Do
+          For i := 0 To 2 * GW - 1 Do Begin
+            x := FX + i * TW;
+            y := FY + j * TH;
+            If (i + j) Mod 2 = 0 Then Begin
+              Box(C, x + 2, y + 8, 4, 2, a[4]);
+              Box(C, x + 6, y + 6, 4, 2, a[4]);
+              Box(C, x + 10, y + 8, 4, 2, a[4]);
+              Box(C, x + 14, y + 6, 4, 2, a[4]);
+            End
+            Else
+              Box(C, x + 8, y + 10, 2, 2, a[1]);
+          End;
+      End;
+  Else Begin // forest: dirt and moss tiles with leaves
+      For j := 0 To 2 * GH - 1 Do
+        For i := 0 To 2 * GW - 1 Do Begin
+          x := FX + i * TW;
+          y := FY + j * TH;
+          If R.NextUnit < 0.45 Then Begin
+            Box(C, x, y, TW, TH, b[2]);
+            Box(C, x + 4, y + 4, 2, 2, b[3]);
+            Box(C, x + 12, y + 10, 2, 2, b[1]);
+          End;
+          For k := 0 To 1 Do Begin
+            col := Jit(AGHex(Leaf[R.RangeI(0, 2)]), 0, 1, M.Light);
+            Box(C, x + 2 * R.RangeI(1, 7), y + 2 * R.RangeI(1, 7), 4, 2, col);
+          End;
+        End;
+    End;
+  End;
+  // hard shadow of the frame
+  Box(C, FX, FY, FR - FX, 4, AGRGBA(0, 0, 0, 90));
+  Box(C, FX, FY + 4, 4, FB - FY - 4, AGRGBA(0, 0, 0, 90));
+End;
+
+Procedure FramePixel(C: TAGCanvas; Const M: TMap);
+Var
+  f: TRamp;
+  i, j: Integer;
+
+  Procedure Blk(x, y, w, h: Double; Alt: Boolean);
+  Var
+    mid: TAGColor;
+  Begin
+    If Alt Then mid := AGMix(f[2], f[1], 0.35) Else mid := f[2];
+    PixBevel(C, x, y, w - 2, h - 2, f[3], mid, f[1], 2);
+  End;
+
+Begin
+  MakeRamp(TC(M, PixPals[M.Theme].Fr), f);
+  Box(C, 0, 44, 640, 436, f[0]);
+  For i := 0 To 31 Do Begin
+    Blk(i * 20, 46, 20, 20, odd(i));
+    Blk(i * 20, FB, 20, 18, Not odd(i));
+  End;
+  For j := 0 To 2 * GH - 1 Do Begin
+    Blk(0, FY + j * 18, 20, 18, odd(j));
+    Blk(FR, FY + j * 18, 20, 18, Not odd(j));
+  End;
+  FieldRim(C, M, f[0], 2);
+End;
+
+Procedure PixelBlock(C: TAGCanvas; Const M: TMap; Solid: Boolean);
+Var
+  P: TPixPal;
+  b: TRamp;
+  R: TAGRandom;
+  k, i, j, hw: Integer;
+  x, y: Double;
+  grey: TAGColor;
+Begin
+  P := PixPals[M.Theme];
+  R := M.A.Stream('pixblock');
+  If Solid Then Begin
+    // hard block: wide bevel and a raised stud in the middle
+    MakeRamp(TC(M, P.So), b);
+    Box(C, 0, 0, 40, 36, b[0]);
+    PixBevel(C, 2, 2, 36, 32, b[4], b[2], b[1], 4);
+    PixBevel(C, 14, 12, 12, 12, b[4], b[3], b[1], 2);
+    exit;
+  End;
+  MakeRamp(TC(M, P.Br), b);
+  Box(C, 0, 0, 40, 36, b[0]);
+  PixBevel(C, 2, 2, 36, 32, b[3], b[2], b[1], 2);
+  Case P.BMotif Of
+    0: Begin // crate: planks, a stepped brace and nails
+        Box(C, 4, 12, 32, 2, b[1]);
+        Box(C, 4, 22, 32, 2, b[1]);
+        For k := 0 To 12 Do
+          Box(C, 6 + 2 * k, 28 - 2 * AGRound(k * 11 / 12), 4, 2, b[1]);
+        Box(C, 4, 4, 2, 2, b[0]);
+        Box(C, 34, 4, 2, 2, b[0]);
+        Box(C, 4, 30, 2, 2, b[0]);
+        Box(C, 34, 30, 2, 2, b[0]);
+      End;
+    1: Begin // clay bricks
+        For j := 0 To 2 Do Begin
+          y := 2 + j * 11;
+          Box(C, 2, y + 9, 36, 2, b[0]);
+          Box(C, 4, y + 2, 32, 2, b[3]);
+          If odd(j) Then Begin
+            Box(C, 12, y, 2, 10, b[0]);
+            Box(C, 28, y, 2, 10, b[0]);
+          End
+          Else
+            Box(C, 20, y, 2, 10, b[0]);
+        End;
+      End;
+    2: Begin // ice block: glints
+        Box(C, 6, 6, 10, 2, b[4]);
+        Box(C, 6, 8, 2, 6, b[4]);
+        Box(C, 22, 24, 2, 2, b[4]);
+        Box(C, 24, 22, 2, 2, b[4]);
+        Box(C, 26, 20, 2, 2, b[4]);
+        Box(C, 28, 18, 2, 2, b[4]);
+        Box(C, 12, 26, 6, 2, b[1]);
+      End;
+    3: Begin // sandstone with a carved ankh
+        Box(C, 18, 6, 4, 2, b[0]);
+        Box(C, 16, 8, 2, 6, b[0]);
+        Box(C, 22, 8, 2, 6, b[0]);
+        Box(C, 18, 14, 4, 2, b[0]);
+        Box(C, 18, 16, 4, 14, b[0]);
+        Box(C, 12, 18, 16, 2, b[0]);
+        Box(C, 20, 8, 2, 6, b[3]);
+      End;
+    4: Begin // coal: bevelled lumps
+        For j := 0 To 2 Do
+          For i := 0 To 2 Do
+            PixBevel(C, 4 + 11 * i + 2 * (j Mod 2), 4 + 10 * j, 10, 8, b[3], b[2], b[0], 2);
+        For k := 0 To 3 Do
+          Box(C, 6 + 2 * R.RangeI(0, 13), 6 + 2 * R.RangeI(0, 11), 2, 2, AGHex($A0A8C0));
+      End;
+    5: Begin // sand castle: notches, windows and a door
+        Box(C, 12, 2, 4, 6, b[1]);
+        Box(C, 24, 2, 4, 6, b[1]);
+        Box(C, 2, 8, 36, 2, b[1]);
+        Box(C, 6, 14, 4, 4, b[0]);
+        Box(C, 30, 14, 4, 4, b[0]);
+        Box(C, 16, 22, 8, 12, b[0]);
+        Box(C, 18, 20, 4, 2, b[0]);
+      End;
+    6: Begin // crystal: stepped diamond
+        For k := 0 To 11 Do Begin
+          y := 6 + 2 * k;
+          hw := 2 + 2 * AGRound(AGMin(k, 11 - k) * 0.9);
+          Box(C, 20 - hw, y, 2 * hw, 2, b[3]);
+          Box(C, 20 - hw, y, 2, 2, b[4]);
+          Box(C, 18 + hw, y, 2, 2, b[1]);
+        End;
+        Box(C, 18, 8, 2, 20, b[4]);
+      End;
+    7: Begin // barrel: staves and two metal hoops
+        grey := AGHex($6A6A74);
+        Box(C, 12, 2, 2, 32, b[1]);
+        Box(C, 26, 2, 2, 32, b[1]);
+        Box(C, 2, 8, 36, 4, grey);
+        Box(C, 2, 8, 36, 2, AGShade(grey, 1.4));
+        Box(C, 2, 24, 36, 4, grey);
+        Box(C, 2, 24, 36, 2, AGShade(grey, 1.4));
+      End;
+    8: Begin // coral: polka dots
+        For j := 0 To 2 Do
+          For i := 0 To 3 Do Begin
+            x := 5 + 8 * i + 2 * (j Mod 2);
+            y := 6 + 9 * j;
+            Box(C, x, y, 4, 4, b[4]);
+            Box(C, x + 2, y + 4, 2, 2, b[0]);
+          End;
+      End;
+    9: Begin // bush: leaf clusters and berries
+        For k := 0 To 15 Do Begin
+          x := 4 + 2 * R.RangeI(0, 14);
+          y := 4 + 2 * R.RangeI(0, 12);
+          Box(C, x, y, 4, 2, b[4]);
+          Box(C, x + 2, y + 2, 2, 2, b[1]);
+        End;
+        For k := 0 To 2 Do
+          Box(C, 6 + 2 * R.RangeI(0, 13), 6 + 2 * R.RangeI(0, 11), 2, 2, AGHex($E03838));
+      End;
+  Else Begin // cardboard box: tape and a label
+      Box(C, 16, 2, 8, 32, b[3]);
+      Box(C, 16, 2, 2, 32, b[4]);
+      Box(C, 6, 8, 8, 8, AGHex($E8E4D8));
+      Box(C, 8, 10, 4, 2, b[0]);
+      Box(C, 8, 13, 4, 2, b[0]);
+    End;
+  End;
+End;
+
+(* ---------------------------------------------------------------------- *)
+(* soft kit: light over the whole field, blocks cast a shadow             *)
+(* ---------------------------------------------------------------------- *)
+
+(* Light from the top left over the play field *)
+Procedure SoftFieldLight(C: TAGCanvas; Const M: TMap);
+Begin
+  C.Rect(FX, FY, FR - FX, FB - FY);
+  C.FillPaint(C.Linear(FX, FY, FR, FB, [AGRGBA(255, 250, 225, 46), AGRGBA(255, 250, 225, 0), AGRGBA(10, 0, 30, 0), AGRGBA(10, 0, 30, 56)]));
+End;
+
+(*
+ * Opaque soft shadow of a block towards the bottom right, in a darker tone of
+ * the ground (the cell is keyed, a translucent shadow would get lost)
+ *)
+Procedure SoftBlockShadow(Img: TAGImage; Const M: TMap);
+Var
+  src: TAGImage;
+  x, y, d: Integer;
+  g: TAGColor;
+Begin
+  src := Img.Clone;
+  Try
+    g := TC(M, SoftGround[M.Theme]);
+    For y := 0 To Img.Height - 1 Do
+      For x := 0 To Img.Width - 1 Do Begin
+        If src.GetPixel(x, y).a >= 128 Then Continue;
+        For d := 1 To 4 Do
+          If src.GetPixel(x - d, y - d).a >= 128 Then Begin
+            Img.SetPixel(x, y, AGShade(g, 0.5 + 0.08 * d));
+            break;
+          End;
+      End;
+  Finally
+    src.Free;
+  End;
+End;
+
+(* ---------------------------------------------------------------------- *)
 (* field.png                                                              *)
 (* ---------------------------------------------------------------------- *)
 
@@ -1339,6 +2059,9 @@ Var
   rim, inner: TAGColor;
 Begin
   // frame
+  If Kit(M) = kkFlat Then FrameFlat(C, M)
+  Else If Kit(M) = kkTile Then FramePixel(C, M)
+  Else
   Case M.Theme Of
     thMeadow: FrameStones(C, M, TC(M, $34362F), TC(M, $8A8C84), 12);
     thClassic: FrameTiles(C, M, TC(M, $50545A), TC(M, $A4A8AE), 20);
@@ -1354,6 +2077,9 @@ Begin
   End;
   // ground, exactly inside the play field
   ClipTo(C, M, FX, FY, FR, FB);
+  If Kit(M) = kkFlat Then GroundFlat(C, M)
+  Else If Kit(M) = kkTile Then GroundPixel(C, M)
+  Else Begin
   Case M.Theme Of
     thMeadow: GroundMeadow(C, M);
     thClassic: GroundClassic(C, M);
@@ -1367,7 +2093,9 @@ Begin
     thForest: GroundForest(C, M);
     thCity: GroundCity(C, M);
   End;
+  If M.Style = asSoft Then SoftFieldLight(C, M);
   If M.Theme <> thIce Then InnerShadow(C, M, 90) Else InnerShadow(C, M, 40);
+  End;
   C.ResetClip;
   // HUD on top
   Box(C, 0, 0, 640, 46, AGHex($0C0C10));
@@ -1385,6 +2113,8 @@ Begin
   Else
     rim := TC(M, $8A4A3A);
   End;
+  If Kit(M) = kkFlat Then rim := TC(M, FlatPals[M.Theme].F2)
+  Else If Kit(M) = kkTile Then rim := TC(M, PixPals[M.Theme].Fr);
   inner := AGHex($08080A);
   DrawHud(C, M, rim, inner);
 End;
@@ -1409,6 +2139,14 @@ Var
   i, j: Integer;
   x, y: Double;
 Begin
+  If Kit(M) = kkFlat Then Begin
+    FlatBlock(C, M, false);
+    exit;
+  End;
+  If Kit(M) = kkTile Then Begin
+    PixelBlock(C, M, false);
+    exit;
+  End;
   R := M.A.Stream('brick');
   Case M.Theme Of
     thMeadow: Begin // wooden crate
@@ -1589,6 +2327,14 @@ Var
   i: Integer;
   x: Double;
 Begin
+  If Kit(M) = kkFlat Then Begin
+    FlatBlock(C, M, true);
+    exit;
+  End;
+  If Kit(M) = kkTile Then Begin
+    PixelBlock(C, M, true);
+    exit;
+  End;
   R := M.A.Stream('solid');
   Case M.Theme Of
     thMeadow: Begin // stone pillar
@@ -1861,6 +2607,7 @@ Var
 Begin
   M := InitMap(Ctx, Index);
   result := RenderImage(Ctx, CW, CH, @DB);
+  If M.Style = asSoft Then SoftBlockShadow(result, M);
 End;
 
 Function RenderMapSolid(Ctx: TAGContext; Index: Integer): TAGImage;
@@ -1875,6 +2622,7 @@ Var
 Begin
   M := InitMap(Ctx, Index);
   result := RenderImage(Ctx, CW, CH, @DS);
+  If M.Style = asSoft Then SoftBlockShadow(result, M);
 End;
 
 Procedure GenerateMap(Ctx: TAGContext; Output: TAGOutput; Index: Integer);

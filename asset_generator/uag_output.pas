@@ -22,6 +22,18 @@
  * a copy of every image in Images (keyed images with fuchsia, as saved) and
  * of every text file (FindText).
  * Cancelled can be set from another thread, the next Save* raises EAbort.
+ *
+ * Atomic save of a set (BeginSetSave, CommitSetSave, DiscardSetSave): a set
+ * folder is always generated completely, files added to it by hand are lost
+ * on the next save. Everything is written into a temporary sibling folder
+ * .<folder>.tmp-<n> (the launcher ignores folders starting with '.' and
+ * folders without profile.ini, profile.ini is written last). On success the
+ * old folder is renamed to .<folder>.old-<n>, the temporary folder to
+ * <folder> and the old one is deleted. If a rename fails (a file of the set
+ * is in use, e.g. by the game) the old set stays and EAGSetInUse is raised.
+ * On cancel or error the temporary folder is deleted, the old set is not
+ * touched. CleanupSetLeftovers removes what a crash left behind (an old
+ * folder whose set is missing is renamed back).
  *)
 Unit uag_output;
 
@@ -29,9 +41,11 @@ Unit uag_output;
 
 Interface
 
-Uses Classes, uag_image;
+Uses Classes, SysUtils, uag_image;
 
 Type
+
+  EAGSetInUse = Class(Exception); // the old set could not be replaced (file in use)
 
   TAGSaveMode = (
     smKeyed, // fuchsia transparency (hard mask), most sprites
@@ -72,7 +86,9 @@ Type
     KeepImages: Boolean; // true = a copy of every saved image is kept in Images
     Cancelled: Boolean; // set by the UI thread, the next Save* raises EAbort
     OnProgress: TAGProgressEvent;
+    CancelAfter: Integer; // debug: Cancelled is set after this many files, 0 = off
     Constructor Create(Const aDir: String);
+    Procedure Retarget(Const aDir: String); // writes into aDir from now on (temporary folder of the atomic save)
     Destructor Destroy; override;
     Property Dir: String read fDir;
     Property Files: TStringList read fFiles; // relative paths of all written files
@@ -84,6 +100,7 @@ Type
     Procedure SaveImage(Const RelPath: String; Img: TAGImage; Mode: TAGSaveMode);
     Procedure SaveAni(Const RelPath: String; Img: TAGImage; Const Spec: TAGAniSpec); // Img is keyed with fuchsia
     Procedure SaveText(Const RelPath: String; Const Lines: Array Of String);
+    Procedure SaveData(Const RelPath: String; Const Data: TBytes); // binary file as is (e.g. WAV), Data may be Nil with DryRun
   End;
 
 Function AniSpec(AngleOffset: Single; TimePerFrame, FramesPerRow, FramesPerCol, FrameW, FrameH: Integer;
@@ -91,9 +108,243 @@ Function AniSpec(AngleOffset: Single; TimePerFrame, FramesPerRow, FramesPerCol, 
 
 Procedure WritePNG(Img: TAGImage; Mode: TAGSaveMode; Stream: TStream);
 
+(* Atomic save of a set, see the unit header. Directories with or without trailing path delimiter. *)
+Function BeginSetSave(Const TargetDir: String): String; // creates the temporary folder, result with trailing delimiter
+Procedure CommitSetSave(Const TempDir, TargetDir: String); // replaces TargetDir by TempDir, EAGSetInUse if not possible
+Procedure DiscardSetSave(Const TempDir: String); // deletes the temporary folder (if it exists)
+Procedure CleanupSetLeftovers(Const ParentDir: String); // removes .<x>.tmp-<n>, restores or removes .<x>.old-<n>, only if older than 10 minutes (another generator may still be running)
+
+Function DeleteTree(Const Dir: String): Boolean; // recursive, true if the folder is gone
+Procedure CopyTree(Const Src, Dst: String); // recursive copy of all files
+
 Implementation
 
-Uses SysUtils, FPImage, FPWritePNG, ZStream;
+Uses FPImage, FPWritePNG, ZStream;
+
+Function SplitDir(Const Dir: String; Out Parent, Name: String): Boolean;
+Var
+  d: String;
+Begin
+  d := ExcludeTrailingPathDelimiter(ExpandFileName(Dir));
+  Parent := ExtractFilePath(d);
+  Name := ExtractFileName(d);
+  result := (Name <> '') And (Parent <> '');
+End;
+
+Function FreeSibling(Const Parent, Name, Kind: String): String;
+Var
+  n: Integer;
+Begin
+  n := 1;
+  Repeat
+    result := Parent + '.' + Name + '.' + Kind + '-' + IntToStr(n);
+    inc(n);
+  Until Not DirectoryExists(result) And Not FileExists(result);
+End;
+
+(* virus scanners and the search indexer hold new files for a short time *)
+Function RenameRetry(Const OldName, NewName: String): Boolean;
+Var
+  i: Integer;
+Begin
+  For i := 0 To 9 Do Begin
+    If RenameFile(OldName, NewName) Then exit(true);
+    If Not DirectoryExists(OldName) Then exit(false);
+    Sleep(50 * (i + 1));
+  End;
+  result := false;
+End;
+
+{$PUSH}{$WARN SYMBOL_PLATFORM OFF} // faSymLink, faReadOnly
+Function DeleteTree(Const Dir: String): Boolean;
+Var
+  sr: TSearchRec;
+  d: String;
+Begin
+  d := IncludeTrailingPathDelimiter(Dir);
+  If FindFirst(d + '*', faAnyFile, sr) = 0 Then Begin
+    Repeat
+      If (sr.Name = '.') Or (sr.Name = '..') Then Continue;
+      If ((sr.Attr And faDirectory) <> 0) And ((sr.Attr And faSymLink) = 0) Then
+        DeleteTree(d + sr.Name)
+      Else If (sr.Attr And faDirectory) <> 0 Then
+        RemoveDir(d + sr.Name) // a link to a folder: only the link
+      Else Begin
+        If (sr.Attr And faReadOnly) <> 0 Then FileSetAttr(d + sr.Name, sr.Attr And Not faReadOnly);
+        DeleteFile(d + sr.Name);
+      End;
+    Until FindNext(sr) <> 0;
+    FindClose(sr);
+  End;
+  RemoveDir(ExcludeTrailingPathDelimiter(Dir));
+  result := Not DirectoryExists(ExcludeTrailingPathDelimiter(Dir));
+End;
+{$POP}
+
+Procedure CopyTree(Const Src, Dst: String);
+Var
+  sr: TSearchRec;
+  s, d: String;
+  fi, fo: TFileStream;
+Begin
+  s := IncludeTrailingPathDelimiter(Src);
+  d := IncludeTrailingPathDelimiter(Dst);
+  ForceDirectories(d);
+  If FindFirst(s + '*', faAnyFile, sr) = 0 Then Begin
+    Try
+      Repeat
+        If (sr.Name = '.') Or (sr.Name = '..') Then Continue;
+        If (sr.Attr And faDirectory) <> 0 Then
+          CopyTree(s + sr.Name, d + sr.Name)
+        Else Begin
+          fi := TFileStream.Create(s + sr.Name, fmOpenRead Or fmShareDenyWrite);
+          Try
+            fo := TFileStream.Create(d + sr.Name, fmCreate);
+            Try
+              fo.CopyFrom(fi, 0);
+            Finally
+              fo.Free;
+            End;
+          Finally
+            fi.Free;
+          End;
+        End;
+      Until FindNext(sr) <> 0;
+    Finally
+      FindClose(sr);
+    End;
+  End;
+End;
+
+Function BeginSetSave(Const TargetDir: String): String;
+Var
+  parent, name: String;
+Begin
+  If Not SplitDir(TargetDir, parent, name) Then
+    Raise Exception.CreateFmt('Invalid set folder: %s', [TargetDir]);
+  // 'auto' is reserved for the sound selection of the launcher ([Launcher] SoundSet)
+  If LowerCase(name) = 'auto' Then
+    Raise Exception.Create('The folder name "auto" is reserved, please choose another name.');
+  ForceDirectories(parent);
+  result := FreeSibling(parent, name, 'tmp');
+  If Not ForceDirectories(result) Then
+    Raise Exception.CreateFmt('Could not create the folder %s', [result]);
+  result := IncludeTrailingPathDelimiter(result);
+End;
+
+Procedure CommitSetSave(Const TempDir, TargetDir: String);
+Var
+  parent, name, target, tmp, old: String;
+Begin
+  If Not SplitDir(TargetDir, parent, name) Then
+    Raise Exception.CreateFmt('Invalid set folder: %s', [TargetDir]);
+  target := parent + name;
+  tmp := ExcludeTrailingPathDelimiter(TempDir);
+  If Not DirectoryExists(target) Then Begin
+    If Not RenameRetry(tmp, target) Then
+      Raise EAGSetInUse.CreateFmt('Could not rename %s to %s', [tmp, target]);
+    exit;
+  End;
+  old := FreeSibling(parent, name, 'old');
+  If Not RenameRetry(target, old) Then
+    Raise EAGSetInUse.CreateFmt('The set %s is in use (is the game running with it?), close the game and try again. The old set was kept.', [name]);
+  If Not RenameRetry(tmp, target) Then Begin
+    // put the old set back, if that fails too CleanupSetLeftovers does it on the next start
+    RenameRetry(old, target);
+    Raise EAGSetInUse.CreateFmt('Could not rename %s to %s, the old set was kept.', [tmp, target]);
+  End;
+  DeleteTree(old); // if something is left, CleanupSetLeftovers removes it on the next start
+End;
+
+Procedure DiscardSetSave(Const TempDir: String);
+Begin
+  If (TempDir <> '') And DirectoryExists(ExcludeTrailingPathDelimiter(TempDir)) Then
+    DeleteTree(TempDir);
+End;
+
+(* '.<name>.<kind>-<digits>' -> name *)
+Function LeftoverName(Const Entry, Kind: String; Out Name: String): Boolean;
+Var
+  i, p: Integer;
+Begin
+  result := false;
+  Name := '';
+  If (length(Entry) < 2) Or (Entry[1] <> '.') Then exit;
+  i := length(Entry);
+  While (i > 1) And (Entry[i] In ['0'..'9']) Do
+    dec(i);
+  If i = length(Entry) Then exit; // no digits
+  p := i - length(Kind) - 1; // position of the '.' before Kind
+  If p < 3 Then exit;
+  If copy(Entry, p, length(Kind) + 2) <> '.' + Kind + '-' Then exit;
+  Name := copy(Entry, 2, p - 2);
+  result := Name <> '';
+End;
+
+(*
+ * Newest modification time of all files below Dir (0 if there are none). A
+ * folder another instance is still writing has a fresh file in it.
+ *)
+Function NewestFileTime(Const Dir: String): TDateTime;
+Var
+  sr: TSearchRec;
+  d: String;
+  t: TDateTime;
+Begin
+  result := 0;
+  d := IncludeTrailingPathDelimiter(Dir);
+  If FindFirst(d + '*', faAnyFile, sr) = 0 Then Begin
+    Repeat
+      If (sr.Name = '.') Or (sr.Name = '..') Then Continue;
+      If (sr.Attr And faDirectory) <> 0 Then
+        t := NewestFileTime(d + sr.Name)
+      Else
+        t := FileDateToDateTime(sr.Time);
+      If t > result Then result := t;
+    Until FindNext(sr) <> 0;
+    FindClose(sr);
+  End;
+End;
+
+Const
+  LeftoverAge = 10 / (24 * 60); // 10 minutes: younger leftovers may belong to a generator that is still running
+
+Function IsOldLeftover(Const Dir: String): Boolean;
+Begin
+  result := Now - NewestFileTime(Dir) > LeftoverAge;
+End;
+
+Procedure CleanupSetLeftovers(Const ParentDir: String);
+Var
+  sr: TSearchRec;
+  d, name: String;
+  entries: TStringList;
+  i: Integer;
+Begin
+  d := IncludeTrailingPathDelimiter(ParentDir);
+  entries := TStringList.Create;
+  Try
+    If FindFirst(d + '.*', faDirectory, sr) = 0 Then Begin
+      Repeat
+        If (sr.Attr And faDirectory) <> 0 Then entries.Add(sr.Name);
+      Until FindNext(sr) <> 0;
+      FindClose(sr);
+    End;
+    entries.Sort;
+    For i := 0 To entries.Count - 1 Do
+      If LeftoverName(entries[i], 'tmp', name) And IsOldLeftover(d + entries[i]) Then
+        DeleteTree(d + entries[i]);
+    For i := 0 To entries.Count - 1 Do
+      If LeftoverName(entries[i], 'old', name) And IsOldLeftover(d + entries[i]) Then Begin
+        If Not DirectoryExists(d + name) Then
+          RenameFile(d + entries[i], d + name) // crash between the two renames: the old set comes back
+        Else
+          DeleteTree(d + entries[i]);
+      End;
+  Finally
+    entries.Free;
+  End;
+End;
 
 Function AniSpec(AngleOffset: Single; TimePerFrame, FramesPerRow, FramesPerCol, FrameW, FrameH: Integer;
   Const RangeOffsets, RangeCounts: Array Of Integer): TAGAniSpec;
@@ -289,6 +540,11 @@ Begin
   InitCriticalSection(fLock);
 End;
 
+Procedure TAGOutput.Retarget(Const aDir: String);
+Begin
+  fDir := IncludeTrailingPathDelimiter(aDir);
+End;
+
 Destructor TAGOutput.Destroy;
 Begin
   fImages.Free;
@@ -312,6 +568,7 @@ Begin
   Try
     fFiles.Add(RelPath);
     done := fFiles.Count;
+    If (CancelAfter > 0) And (done >= CancelAfter) Then Cancelled := true;
   Finally
     LeaveCriticalSection(fLock);
   End;
@@ -419,6 +676,22 @@ Begin
     fs := TFileStream.Create(FullPath(RelPath), fmCreate);
     Try
       If s <> '' Then fs.Write(s[1], length(s));
+    Finally
+      fs.Free;
+    End;
+  End;
+  Written(RelPath);
+End;
+
+Procedure TAGOutput.SaveData(Const RelPath: String; Const Data: TBytes);
+Var
+  fs: TFileStream;
+Begin
+  CheckCancel;
+  If Not DryRun Then Begin
+    fs := TFileStream.Create(FullPath(RelPath), fmCreate);
+    Try
+      If length(Data) > 0 Then fs.WriteBuffer(Data[0], length(Data));
     Finally
       fs.Free;
     End;

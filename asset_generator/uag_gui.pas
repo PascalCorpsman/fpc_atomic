@@ -31,11 +31,21 @@
  *                          animated preview (e.g. 6 = first die animation)
  *   --test-save <folder>   (debug) editor: switches "own figure per player"
  *                          on, moves the first slider, rolls the area seed,
- *                          saves into assets/<folder>/ and ends
+ *                          saves into assets/<folder>/ and ends (also if
+ *                          the save fails, without a dialog: exit code 1)
+ *   --cancel-after <n>     (debug) a save is cancelled after n files (as if
+ *                          the user pressed cancel)
  *
  * Contract with the launcher: after a set was written, its folder name is
  * written into assets/last_set.txt (one line). Exit code 0 = a set was
  * written, 1 = nothing was written (cancel or error).
+ *
+ * Saving is atomic (see uag_output and uag_worker): the set is written into
+ * assets/.<folder>.tmp-<n>/ and replaces assets/<folder>/ only when it is
+ * complete; on cancel, error or when the old set is in use (the game runs
+ * with it) the old set stays unchanged. A set folder is always generated
+ * completely, files added to it by hand are lost on the next save.
+ * ParseCommandLine removes leftovers of a crash (assets/.*.tmp-<n>, .old-<n>).
  *)
 Unit uag_gui;
 
@@ -56,6 +66,7 @@ Var
   GuiArea: Integer = -1; // --area
   GuiAnim: Integer = -1; // --anim
   GuiTestSave: String = ''; // --test-save
+  GuiCancelAfter: Integer = 0; // --cancel-after
   GuiWritten: Boolean = false; // a set was written -> exit code 0
 
 Procedure ParseCommandLine;
@@ -85,7 +96,7 @@ Procedure SaveFormScreenshot(Form: TCustomForm; Const Filename: String; Extra: T
 
 Implementation
 
-Uses Math, IniFiles, IntfGraphics, GraphType, LCLType, LCLIntf, ulanguage, uatomic_global;
+Uses Math, IniFiles, IntfGraphics, GraphType, LCLType, LCLIntf, ulanguage, uatomic_global, uag_output;
 
 Procedure ParseCommandLine;
 Var
@@ -113,6 +124,10 @@ Begin
           inc(i);
           GuiTestSave := ParamStr(i);
         End;
+      '--cancel-after': Begin
+          inc(i);
+          GuiCancelAfter := StrToIntDef(ParamStr(i), 0);
+        End;
       '--area': Begin
           inc(i);
           GuiArea := StrToIntDef(ParamStr(i), -1);
@@ -125,6 +140,7 @@ Begin
     inc(i);
   End;
   If (GuiMode = gmAuto) And (GuiFolder = '') Then GuiFolder := 'generated';
+  If DirectoryExists(AssetsDir()) Then CleanupSetLeftovers(AssetsDir());
 End;
 
 Procedure ApplyLanguage;

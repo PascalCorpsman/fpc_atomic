@@ -2,10 +2,11 @@
 
 [English version](GRAPHICS_MANUAL.md)
 
-FPC Atomic braucht Grafiken. Bisher kamen sie nur von der Atomic Bomberman CD (`data/`, erzeugt vom CD-Extraktor). Jetzt kann FPC Atomic auch **eigene Grafiken berechnen**: Figur, Bomben, Flammen, Powerups, alle 11 Karten, die Menübilder und die Schemes. Ein solcher **Grafiksatz** entsteht in wenigen Sekunden. Mit der CD bleibt alles wie bisher, die Originalgrafiken sind immer als „Original“ wählbar.
+FPC Atomic braucht Grafiken und Töne. Bisher kamen sie nur von der Atomic Bomberman CD (`data/`, erzeugt vom CD-Extraktor). Jetzt kann FPC Atomic auch **eigene Grafiken und Töne berechnen**: Figur, Bomben, Flammen, Powerups, alle 11 Karten, die Menübilder, die Schemes und alle Spielgeräusche. Ein solcher **Grafiksatz** entsteht in wenigen Sekunden. Mit der CD bleibt alles wie bisher, die Originalgrafiken sind immer als „Original“ wählbar.
 
 - [Ohne CD spielen](#ohne-cd-spielen)
 - [Grafiksatz wählen](#grafiksatz-wählen)
+- [Töne](#töne)
 - [Der Grafik-Generator](#der-grafik-generator)
 - [Die Stile](#die-stile)
 - [Wo die Sätze liegen](#wo-die-sätze-liegen)
@@ -21,7 +22,7 @@ Fehlen die CD-Daten, zeigt der Launcher den Button **Grafiken erzeugen**. Auch e
 
 **Abbrechen** erzeugt nichts, das Spiel startet dann nicht.
 
-Ohne CD gibt es (noch) **keine Sounds**, das Spiel läuft stumm. Die Schemes (Aufstellungen der Steine) bringt der Grafiksatz mit, sie werden beim ersten Mal nach `data/schemes` kopiert. Sind dort schon Schemes von der CD, bleiben sie unverändert.
+Die Spielgeräusche bringt der Satz mit (siehe [Töne](#töne)), nur die Menü-Musik fehlt noch. Die Schemes (Aufstellungen der Steine) bringt der Grafiksatz mit, sie werden beim ersten Mal nach `data/schemes` kopiert. Sind dort schon Schemes von der CD, bleiben sie unverändert.
 
 ## Grafiksatz wählen
 
@@ -29,6 +30,16 @@ Der aktuelle Satz steht im Launcher **unter dem Bild links**: `◀  Name  ▶`. 
 
 - Fehlt einem Satz eine Datei, nimmt das Spiel sie aus dem Original (falls vorhanden).
 - **Netzwerkspiel:** Jeder Spieler wählt seinen Satz selbst, auch unterschiedliche Sätze spielen zusammen. Die Karten sind trotzdem dieselben, nur ihr Aussehen unterscheidet sich.
+
+## Töne
+
+Jeder Satz enthält eigene Spielgeräusche: Explosionen, Kicks, Abpraller, Teleporter und kurze Sprüche wie „Erwischt!“ oder „Beeil dich!“. Sie sind keine Aufnahmen, sondern werden wie die Grafiken berechnet (eine Interpretation der Original-Geräusche, beschrieben in `asset_generator/sounds.ini`). Die Menü-Musik fehlt noch.
+
+Welche Töne das Spiel spielt, stellt man im Launcher unter **Spieloptionen...** bei **Sounds** ein:
+
+- **Automatisch** (Standard): die Töne von der CD, wenn es sie gibt, sonst die des gewählten Grafiksatzes.
+- **Original (CD)**: immer die Töne von der CD.
+- **ein Satz**: die Töne dieses Satzes, auch wenn die CD-Töne da sind. Fehlt dem Satz ein Ton, kommt er von der CD.
 
 ## Der Grafik-Generator
 
@@ -79,4 +90,4 @@ asset_generator --out assets/MeinSatz --name "Mein Satz" --seed random --style r
 - `--only <a,b,...>`: nur diese Bereiche, `--list` zeigt alle
 - `--params`: alle Einstellungen mit ihren Werten ausgeben
 
-Das Spiel selbst nimmt den Satz mit `-assets <Ordner>` (der Launcher übergibt ihn automatisch).
+Das Spiel selbst nimmt den Satz mit `-assets <Ordner>` und die Töne mit `-sounds <Ordner>` (der Launcher übergibt beides automatisch). Der Ordnername `auto` ist für die Tonauswahl reserviert.

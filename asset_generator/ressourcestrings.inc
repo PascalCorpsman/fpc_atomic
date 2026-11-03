@@ -72,3 +72,5 @@ Resourcestring
   R_AnimExplosion = 'Explosion';
   R_On = 'on';
   R_Off = 'off';
+  RF_SetInUse = 'The set "%s" is in use, probably by the running game. Close the game and try again. The old set was kept unchanged.';
+  RF_FolderReplace = 'The folder "%s" already exists and will be replaced completely. Continue?';

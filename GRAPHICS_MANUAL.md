@@ -2,10 +2,11 @@
 
 [Deutsche Version](GRAPHICS_MANUAL_DE.md)
 
-FPC Atomic needs graphics. Until now they only came from the Atomic Bomberman CD (`data/`, created by the CD extractor). Now FPC Atomic can also **compute its own graphics**: the figure, bombs, flames, power ups, all 11 maps, the menu screens and the schemes. Such a **graphics set** is created in a few seconds. With the CD everything stays as before, the original graphics can always be selected as "Original".
+FPC Atomic needs graphics and sounds. Until now they only came from the Atomic Bomberman CD (`data/`, created by the CD extractor). Now FPC Atomic can also **compute its own graphics and sounds**: the figure, bombs, flames, power ups, all 11 maps, the menu screens, the schemes and all game sounds. Such a **graphics set** is created in a few seconds. With the CD everything stays as before, the original graphics can always be selected as "Original".
 
 - [Playing without the CD](#playing-without-the-cd)
 - [Choosing a graphics set](#choosing-a-graphics-set)
+- [Sounds](#sounds)
 - [The graphics generator](#the-graphics-generator)
 - [The styles](#the-styles)
 - [Where the sets are stored](#where-the-sets-are-stored)
@@ -21,7 +22,7 @@ If the CD data is missing, the launcher shows the button **Generate graphics**. 
 
 **Cancel** generates nothing, and the game is not started.
 
-Without the CD there are no sounds (yet), the game runs silently. The schemes (layouts of the bricks) come with the graphics set and are copied to `data/schemes` the first time. If there are schemes from the CD already, they stay unchanged.
+The game sounds come with the set (see [Sounds](#sounds)), only the menu music is still missing. The schemes (layouts of the bricks) come with the graphics set and are copied to `data/schemes` the first time. If there are schemes from the CD already, they stay unchanged.
 
 ## Choosing a graphics set
 
@@ -29,6 +30,16 @@ The current set is shown in the launcher **below the image on the left**: `◀  
 
 - If a file is missing in a set, the game takes it from the original (if available).
 - **Network game:** every player chooses their own set, different sets play together. The maps are still the same, only their look differs.
+
+## Sounds
+
+Every set contains its own game sounds: explosions, kicks, bounces, teleporters and short callouts like "Erwischt!" or "Beeil dich!". They are not recordings, they are computed like the graphics (an interpretation of the original sounds, described in `asset_generator/sounds.ini`). The menu music is still missing.
+
+Which sounds the game plays is set in the launcher under **Game options...** with **Sounds**:
+
+- **Automatic** (default): the sounds from the CD if there are any, else those of the selected graphics set.
+- **Original (CD)**: always the sounds from the CD.
+- **a set**: the sounds of this set, even if the CD sounds are there. If a sound is missing in the set, it comes from the CD.
 
 ## The graphics generator
 
@@ -79,4 +90,4 @@ asset_generator --out assets/MySet --name "My set" --seed random --style retro
 - `--only <a,b,...>`: only these areas, `--list` shows all of them
 - `--params`: print all settings with their values
 
-The game itself takes the set with `-assets <folder>` (the launcher passes it automatically).
+The game itself takes the set with `-assets <folder>` and the sounds with `-sounds <folder>` (the launcher passes both automatically). The folder name `auto` is reserved for the sound selection.

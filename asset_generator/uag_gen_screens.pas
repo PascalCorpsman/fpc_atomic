@@ -27,6 +27,12 @@
  *  - loaddialog.png: 9-slice of 24 x 24 tiles (edges and center are tiled /
  *    stretched, so they only depend on the distance to the border).
  *  - bigfont.png: 4 x 3 cells of 18 x 27, digits 0..9 and ':' (game timer).
+ *
+ * Style kit (sky, decoration, halos, panels): flat = brighter pop sky in hard
+ * bands with halftone dots, geometric confetti, a sunburst, opaque cards with
+ * ink border and hard shadow; soft = painted dusk with a warm horizon, bokeh,
+ * frosted glass panels; pixel = dithered night, pixel stars, stepped hills,
+ * bevelled windows; retro = night sky, small stars, translucent panels.
  *)
 Unit uag_gen_screens;
 
@@ -80,26 +86,73 @@ Begin
   result := AGMix(Cols[i], Cols[i + 1], seg - i);
 End;
 
-(* Vertical gradient, pixel style uses steps, retro fewer and harder ones *)
+(*
+ * Vertical gradient in the look of the style: flat = 5 hard bands with a
+ * halftone dot pattern, soft = smooth, pixel = 8 steps with ordered
+ * dithering between them, retro = 7 hard bands
+ *)
 Procedure VGradient(C: TAGCanvas; Style: TAGStyle; x, y, w, h: Double; Const Cols: Array Of TAGColor);
 Var
-  k, Bands: Integer;
+  k, j, Bands, n: Integer;
+  p: TAGPaint;
+  r: Double;
 Begin
-  If Style = asRetro Then Bands := 7 Else Bands := 18;
-  If IsCoarse(Style) Then Begin
-    For k := 0 To Bands - 1 Do Begin
-      C.Rect(x, y + h * k / Bands, w, h / Bands + 1);
-      C.Fill(GradColor(Cols, (k + 0.5) / Bands));
-    End;
-  End
+  Case Style Of
+    asSoft: Begin
+        C.Rect(x, y, w, h);
+        C.FillPaint(C.Linear(x, y, x, y + h, Cols));
+      End;
+    asPixel: Begin
+        Bands := 8;
+        p := C.Linear(x, y, x, y + h, Cols);
+        setlength(p.Stops, Bands);
+        For k := 0 To Bands - 1 Do Begin
+          p.Stops[k].Pos := (k + 0.5) / Bands;
+          p.Stops[k].Color := GradColor(Cols, (k + 0.5) / Bands);
+        End;
+        p.DitherWidth := 0.6;
+        C.Rect(x, y, w, h);
+        C.FillPaint(p);
+      End;
   Else Begin
-    C.Rect(x, y, w, h);
-    C.FillPaint(C.Linear(x, y, x, y + h, Cols));
+      If Style = asRetro Then Bands := 7 Else Bands := 5;
+      For k := 0 To Bands - 1 Do Begin
+        C.Rect(x, y + h * k / Bands, w, h / Bands + 1);
+        C.Fill(GradColor(Cols, (k + 0.5) / Bands));
+      End;
+      If Style = asFlat Then Begin
+        // halftone dots, growing towards the bottom
+        n := AGRound(h / 16);
+        For j := 0 To n - 1 Do Begin
+          r := 0.6 + 3.4 * j / n;
+          For k := 0 To AGRound(w / 16) Do Begin
+            C.Circle(x + 16 * k + 8 * (j Mod 2), y + 8 + 16 * j, r);
+          End;
+          C.Fill(AGWithAlpha(AGShade(GradColor(Cols, (j + 0.5) / n), 1.35), 70));
+        End;
+      End;
+    End;
   End;
 End;
 
-Procedure Glow(C: TAGCanvas; cx, cy, r: Double; Col: TAGColor; Alpha: Integer);
+(*
+ * Light halo: soft / retro = smooth radial gradient, flat = three hard
+ * concentric discs, pixel = three hard rings (the post processing dithers them)
+ *)
+Procedure Glow(C: TAGCanvas; Style: TAGStyle; cx, cy, r: Double; Col: TAGColor; Alpha: Integer);
+Var
+  k: Integer;
 Begin
+  If Style In [asFlat, asPixel] Then Begin
+    For k := 0 To 2 Do Begin
+      C.Circle(cx, cy, r * (1 - 0.27 * k));
+      If Style = asFlat Then
+        C.Fill(AGWithAlpha(Col, Alpha * (k + 1) Div 4))
+      Else
+        C.Fill(AGWithAlpha(Col, Alpha * (k + 1) Div 5));
+    End;
+    exit;
+  End;
   C.Circle(cx, cy, r);
   C.FillPaint(C.Radial(cx, cy, r, [AGWithAlpha(Col, Alpha), AGWithAlpha(Col, Alpha Div 3), AGWithAlpha(Col, 0)]));
 End;
@@ -121,7 +174,7 @@ Begin
   C.Polygon(pts);
 End;
 
-Procedure Stars(C: TAGCanvas; Var R: TAGRandom; Count: Integer; x0, y0, w, h: Double);
+Procedure StarsPainted(C: TAGCanvas; Var R: TAGRandom; Count: Integer; x0, y0, w, h: Double);
 Var
   k: Integer;
   x, y, s: Double;
@@ -141,6 +194,158 @@ Begin
       C.Circle(x, y, s);
       C.Fill(AGWithAlpha(AGWhite, a));
     End;
+  End;
+End;
+
+(*
+ * Sky decoration in the look of the style: flat = geometric confetti (dots,
+ * plus signs, rings) in a few pop colors, soft = bokeh (blurred light discs)
+ * and a few soft stars, pixel = pixel stars and crosses on a 2 pixel grid,
+ * retro = small stars
+ *)
+Procedure Stars(C: TAGCanvas; Style: TAGStyle; Var R: TAGRandom; Count: Integer; x0, y0, w, h: Double);
+Const
+  Pop: Array[0..3] Of Cardinal = ($FFFFFF, $FFD23F, $FF6B9A, $5CE1E6);
+Var
+  k: Integer;
+  x, y, s: Double;
+  col: TAGColor;
+Begin
+  Case Style Of
+    asFlat: Begin
+        For k := 0 To Count Div 2 - 1 Do Begin
+          x := x0 + R.NextUnit * w;
+          y := y0 + R.NextUnit * h;
+          s := 1.5 + 2.5 * R.NextUnit;
+          col := AGHex(Pop[R.RangeI(0, 3)]);
+          Case k Mod 5 Of
+            0: Begin
+                C.Rect(x - s, y - s * 0.35, 2 * s, s * 0.7);
+                C.Rect(x - s * 0.35, y - s, s * 0.7, 2 * s);
+                C.Fill(col);
+              End;
+            1: Begin
+                C.BeginPath;
+                C.Circle(x, y, s);
+                C.Stroke(1.4, col);
+              End;
+          Else Begin
+              C.Circle(x, y, s * 0.6);
+              C.Fill(col);
+            End;
+          End;
+        End;
+      End;
+    asSoft: Begin
+        For k := 0 To Count Div 6 - 1 Do Begin
+          x := x0 + R.NextUnit * w;
+          y := y0 + R.NextUnit * h;
+          s := 6 + 18 * R.NextUnit;
+          col := AGHSV(30 + 300 * R.NextUnit, 0.35, 1);
+          C.Circle(x, y, s);
+          C.FillPaint(C.Radial(x, y, s, [AGWithAlpha(col, 46), AGWithAlpha(col, 30), AGWithAlpha(col, 0)]));
+        End;
+        For k := 0 To Count Div 2 - 1 Do Begin
+          x := x0 + R.NextUnit * w;
+          y := y0 + R.NextUnit * h;
+          s := 1.2 + 2.2 * R.NextUnit * R.NextUnit;
+          C.Circle(x, y, s);
+          C.FillPaint(C.Radial(x, y, s, [AGRGBA(255, 250, 235, 230), AGRGBA(255, 250, 235, 0)]));
+        End;
+      End;
+    asPixel: Begin
+        For k := 0 To Count - 1 Do Begin
+          x := x0 + 2 * AGFloor(R.NextUnit * w / 2);
+          y := y0 + 2 * AGFloor(R.NextUnit * h / 2);
+          If k Mod 3 = 0 Then col := AGHex($FFF4C0) Else col := AGHex($C8D0FF);
+          C.Rect(x, y, 2, 2);
+          If k Mod 7 = 0 Then Begin
+            C.Rect(x - 2, y, 6, 2);
+            C.Rect(x, y - 2, 2, 6);
+          End;
+          If k Mod 23 = 0 Then Begin
+            C.Rect(x - 4, y, 10, 2);
+            C.Rect(x, y - 4, 2, 10);
+          End;
+          C.Fill(col);
+        End;
+      End;
+  Else
+    StarsPainted(C, R, Count, x0, y0, w, h);
+  End;
+End;
+
+(*
+ * Text panel in the look of the style: flat = opaque card with an ink border
+ * and a hard offset shadow, soft = frosted glass with a soft shadow and a
+ * sheen, pixel = window with a one pixel bevel, retro = translucent panel
+ *)
+Procedure Panel(C: TAGCanvas; Style: TAGStyle; x, y, w, h, r: Double; Fill, Edge: TAGColor; EdgeW: Double);
+Var
+  k: Integer;
+  e, f: TAGColor;
+Begin
+  e := AGWithAlpha(Edge, 255);
+  f := AGWithAlpha(Fill, 255);
+  Case Style Of
+    asFlat: Begin
+        C.RoundRect(x + 6, y + 6, w, h, r);
+        C.Fill(AGRGBA(8, 6, 16, 200));
+        C.RoundRect(x, y, w, h, r);
+        C.Fill(AGMix(f, AGShade(e, 0.4), 0.55), true);
+        C.Stroke(3, Ol);
+        C.RoundRect(x + 5, y + 5, w - 10, 6, 3);
+        C.Fill(AGWithAlpha(AGShade(e, 0.75), 255));
+      End;
+    asSoft: Begin
+        For k := 1 To 4 Do Begin
+          C.RoundRect(x + k, y + 2 * k, w, h, r + k);
+          C.Fill(AGRGBA(0, 0, 0, 18));
+        End;
+        C.RoundRect(x, y, w, h, r);
+        C.Fill(Fill, true);
+        C.FillPaint(C.Linear(0, y, 0, y + h, [AGRGBA(255, 255, 255, 44), AGRGBA(255, 255, 255, 10), AGRGBA(255, 255, 255, 0), AGRGBA(255, 255, 255, 14)]), true);
+        C.Stroke(1.5, AGWithAlpha(AGMix(e, AGWhite, 0.5), 130));
+      End;
+    asPixel: Begin
+        x := 2 * AGRound(x / 2);
+        y := 2 * AGRound(y / 2);
+        w := 2 * AGRound(w / 2);
+        h := 2 * AGRound(h / 2);
+        C.Rect(x, y, w, h);
+        C.Fill(AGRGBA(8, 6, 16, 255));
+        C.Rect(x + 2, y + 2, w - 4, h - 4);
+        C.Fill(AGShade(e, 0.45));
+        C.Rect(x + 2, y + 2, w - 6, h - 6);
+        C.Fill(e);
+        C.Rect(x + 4, y + 4, w - 8, h - 8);
+        C.Fill(AGWithAlpha(AGMix(f, AGBlack, 0.2), 225));
+      End;
+  Else Begin
+      C.RoundRect(x, y, w, h, r);
+      C.Fill(Fill, true);
+      C.Stroke(EdgeW, Edge);
+    End;
+  End;
+End;
+
+(* pixel: stepped hills along the bottom edge instead of the round ground *)
+Procedure PixelHills(C: TAGCanvas; Var R: TAGRandom; Top: Double; Col: TAGColor);
+Var
+  x, hgt: Double;
+Begin
+  x := 0;
+  While x < 640 Do Begin
+    hgt := 4 * AGRound((Top + 18 * AGSin(x / 70) + 10 * AGSin(x / 23 + 1)) / 4);
+    C.Rect(x, 480 - hgt, 8, hgt);
+    C.Fill(Col);
+    C.Rect(x, 480 - hgt, 8, 2);
+    C.Fill(AGShade(Col, 1.6));
+    If R.NextUnit < 0.3 Then Begin
+      C.Rect(x + 2, 480 - hgt + 6, 2, 2);
+      C.Fill(AGShade(Col, 1.3));
+    End;
+    x := x + 8;
   End;
 End;
 
@@ -201,7 +406,7 @@ Begin
   C.Fill(AGWithAlpha(AGWhite, 170));
   If Lit Then Begin
     s := r * 0.42 * (0.75 + 0.5 * Phase);
-    Glow(C, ex, ey, s * 2.2, AGHex($FFC040), 110);
+    Glow(C, Style, ex, ey, s * 2.2, AGHex($FFC040), 110);
     StarPoly(C, ex, ey, s, s * 0.42, 7, rot);
     C.Fill(AGHex($FF9020));
     StarPoly(C, ex, ey, s * 0.6, s * 0.28, 7, rot + 0.3);
@@ -349,8 +554,14 @@ End;
 (* Night sky with stars, base of most screens *)
 Procedure NightSky(C: TAGCanvas; Style: TAGStyle; Var R: TAGRandom; Hue: Double; StarCount: Integer);
 Begin
-  VGradient(C, Style, 0, 0, 640, 480, [AGHSV(Hue, 0.7, 0.07), AGHSV(Hue + 15, 0.6, 0.18), AGHSV(Hue + 35, 0.55, 0.3)]);
-  Stars(C, R, StarCount, 0, 0, 640, 480);
+  // flat = brighter pop sky, soft = painted dusk with a warm horizon, pixel / retro = night
+  Case Style Of
+    asFlat: VGradient(C, Style, 0, 0, 640, 480, [AGHSV(Hue, 0.75, 0.2), AGHSV(Hue + 20, 0.7, 0.38), AGHSV(Hue + 45, 0.65, 0.56)]);
+    asSoft: VGradient(C, Style, 0, 0, 640, 480, [AGHSV(Hue, 0.6, 0.1), AGHSV(Hue + 25, 0.45, 0.26), AGHSV(Hue + 70, 0.4, 0.4), AGHSV(Hue + 115, 0.5, 0.55)]);
+  Else
+    VGradient(C, Style, 0, 0, 640, 480, [AGHSV(Hue, 0.7, 0.07), AGHSV(Hue + 15, 0.6, 0.18), AGHSV(Hue + 35, 0.55, 0.3)]);
+  End;
+  Stars(C, Style, R, StarCount, 0, 0, 640, 480);
 End;
 
 Procedure GenerateScreens(Ctx: TAGContext; Output: TAGOutput);
@@ -380,9 +591,14 @@ Var
     R := area.Sub('mainmenu').Stream('stars');
     NightSky(C, Style, R, hue, 170);
     // left: key art (launcher portrait)
-    Glow(C, 165, 300, 210, AGHSV(hue + 50, 0.6, 0.9), 90);
-    C.Ellipse(160, 540, 300, 95);
-    C.Fill(AGHSV(hue + 10, 0.5, 0.12));
+    If Style = asFlat Then Rays(C, 165, 300, 14, 760, AGHSV(hue + 40, 0.5, 0.75), 40, 0.1);
+    Glow(C, Style, 165, 300, 210, AGHSV(hue + 50, 0.6, 0.9), 90);
+    If Style = asPixel Then
+      PixelHills(C, R, 70, AGHSV(hue + 10, 0.5, 0.16))
+    Else Begin
+      C.Ellipse(160, 540, 300, 95);
+      C.Fill(AGHSV(hue + 10, 0.5, 0.12));
+    End;
     // spark trail from the fuse to the title
     For i := 0 To 26 Do Begin
       a := i / 26;
@@ -395,9 +611,7 @@ Var
     DrawTextStyled(C, Style, 160, 24, 30, 'FPC', AGHex($E8F0FF), AGHex($182040), faCenter, 0.2, -1, 0.12, 3);
     Title(C, 160, 64, 58, 'ATOMIC');
     // right: menu
-    C.RoundRect(338, 86, 284, 7 * 37 + 28, 14);
-    C.Fill(AGWithAlpha(AGHSV(hue, 0.5, 0.05), 170), true);
-    C.Stroke(2, AGWithAlpha(AGHSV(hue + 30, 0.4, 0.8), 160));
+    Panel(C, Style, 338, 86, 284, 7 * 37 + 28, 14, AGWithAlpha(AGHSV(hue, 0.5, 0.05), 170), AGWithAlpha(AGHSV(hue + 30, 0.4, 0.8), 160), 2);
     For i := 0 To 6 Do Begin
       sz := 18;
       While TextWidth(Labels[i], sz, 0.17) > 245 Do sz := sz - 0.5;
@@ -416,11 +630,9 @@ Var
       C.Polygon([i * 60, 480, i * 60 + 30, 480, i * 60 + 330, 0, i * 60 + 300, 0]);
       C.Fill(AGWithAlpha(AGWhite, 8));
     End;
-    Stars(C, R, 40, 480, 0, 160, 480);
-    C.RoundRect(10, 16, 470, 380, 14);
-    C.Fill(AGWithAlpha(AGBlack, 90), true);
-    C.Stroke(2, AGWithAlpha(AGHSV(hue, 0.4, 0.8), 110));
-    Glow(C, 560, 390, 110, AGHex($FFB040), 70);
+    Stars(C, Style, R, 40, 480, 0, 160, 480);
+    Panel(C, Style, 10, 16, 470, 380, 14, AGWithAlpha(AGHSV(hue, 0.4, 0.04), 90), AGWithAlpha(AGHSV(hue, 0.4, 0.8), 110), 2);
+    Glow(C, Style, 560, 390, 110, AGHex($FFB040), 70);
     DrawBomb(C, Style, 548, 400, 40, 0.8, 0.2);
     C.Push;
     C.Translate(572, 330);
@@ -461,8 +673,8 @@ Var
   Begin
     R := area.Sub('results').Stream('stars');
     VGradient(C, Style, 0, 0, 640, 480, [AGHSV(hue + 30, 0.7, 0.16), AGHSV(hue + 45, 0.65, 0.3), AGHSV(hue + 30, 0.7, 0.12)]);
-    Stars(C, R, 220, 0, 0, 640, 480);
-    Glow(C, 320, 45, 240, AGHex($FFB060), 70);
+    Stars(C, Style, R, 220, 0, 0, 640, 480);
+    Glow(C, Style, 320, 45, 240, AGHex($FFB060), 70);
     Title(C, 320, 20, 50, 'RESULTS');
     DrawFigure(C, Style, 55, 470, 0.5, FigureColor(area.Pick('res1', 10)), 30, 150, fpNone, false);
     DrawFigure(C, Style, 590, 470, 0.5, FigureColor(area.Pick('res2', 10)), 150, 30, fpNone, true);
@@ -476,11 +688,9 @@ Var
   Begin
     R := area.Sub('fieldsetup').Stream('stars');
     VGradient(C, Style, 0, 0, 640, 480, [AGHSV(hue - 20, 0.5, 0.1), AGHSV(hue - 10, 0.45, 0.24)]);
-    Stars(C, R, 60, 0, 0, 640, 480);
+    Stars(C, Style, R, 60, 0, 0, 640, 480);
     DrawTextStyled(C, Style, 24, 26, 36, 'FIELD SETUP', AGHex($FFC838), AGHex($501808), faLeft, 0.19, -1, 0.12, 3);
-    C.RoundRect(12, 150, 350, 90, 12);
-    C.Fill(AGWithAlpha(AGBlack, 100), true);
-    C.Stroke(2, AGWithAlpha(AGHSV(hue, 0.3, 0.8), 110));
+    Panel(C, Style, 12, 150, 350, 90, 12, AGWithAlpha(AGHSV(hue, 0.3, 0.04), 100), AGWithAlpha(AGHSV(hue, 0.3, 0.8), 110), 2);
     // frame around the preview window
     C.RoundRect(366, 68, 247, 226, 10);
     DrawShapeOutlined(C, Style, AGHex($8890A8), Ol);
@@ -492,7 +702,7 @@ Var
     C.Circle(606, 287, 3);
     C.Fill(AGHex($404858));
     DrawTextStyled(C, Style, 489, 300, 16, 'Preview', AGHex($D8E0F0), Ol, faCenter, 0.17);
-    Glow(C, 545, 400, 90, AGHex($FFB040), 60);
+    Glow(C, Style, 545, 400, 90, AGHex($FFB040), 60);
     DrawBomb(C, Style, 535, 405, 38, 0.6, 0.5);
   End;
 
@@ -503,9 +713,13 @@ Var
     R := area.Sub(Key).Stream('stars');
     NightSky(C, Style, R, hue, 150);
     Rays(C, 320, 320, 18, 560, RayCol, 34, area.Sub(Key).Rnd('rays'));
-    Glow(C, 320, 300, 220, RayCol, 80);
-    C.Ellipse(320, 530, 430, 115);
-    C.Fill(AGHSV(hue + 20, 0.45, 0.13));
+    Glow(C, Style, 320, 300, 220, RayCol, 80);
+    If Style = asPixel Then
+      PixelHills(C, R, 60, AGHSV(hue + 20, 0.45, 0.16))
+    Else Begin
+      C.Ellipse(320, 530, 430, 115);
+      C.Fill(AGHSV(hue + 20, 0.45, 0.13));
+    End;
     C.Ellipse(320, 445, 170, 26);
     C.Fill(AGWithAlpha(AGWhite, 22));
   End;
@@ -616,19 +830,31 @@ Var
   Var
     s: String;
     x, y, pen, ow: Double;
+    paint: TAGPaint;
   Begin
     If Frame = 10 Then s := ':' Else s := chr(ord('0') + Frame);
     pen := Size * Weight;
     If Style = asRetro Then ow := 3 Else If Style = asPixel Then ow := 2 Else ow := 1.4;
     x := 9 - TextWidth(s, Size, Weight) / 2;
     y := (27 - Size - pen - 2 * ow) / 2 + pen / 2 + ow;
-    StrokeText(C, x, y, Size, s, pen + 2 * ow, AGHex($200C04), Weight, 0);
-    If Style = asSoft Then Begin
-      StrokeText(C, x, y, Size, s, pen, AGHex($E07818), Weight, 0);
-      StrokeText(C, x, y, Size, s, pen * 0.55, AGHex($FFC040), Weight, 0, -0.3, -0.4);
+    If Style = asSoft Then
+      StrokeText(C, x, y, Size, s, pen + 2 * ow, AGHex($6A3010), Weight, 0)
+    Else
+      StrokeText(C, x, y, Size, s, pen + 2 * ow, AGHex($200C04), Weight, 0);
+    // style fill: flat one hard band, soft gradient, pixel dithered steps, retro 4 hard bands
+    If Style = asRetro Then Begin
+      // 3 gentle hard bands, the 4 bands of the titles are too much for 9 coarse pixel
+      paint := C.Linear(0, y - pen / 2, 0, y + Size + pen / 2, [AGHex($FFE070), AGHex($FFE070), AGHex($FFB028), AGHex($FFB028), AGHex($E07800), AGHex($E07800)]);
+      paint.Stops[1].Pos := 0.34;
+      paint.Stops[2].Pos := 0.34;
+      paint.Stops[3].Pos := 0.7;
+      paint.Stops[4].Pos := 0.7;
     End
     Else
-      StrokeText(C, x, y, Size, s, pen, AGHex($FFB028), Weight, 0);
+      paint := AGTitlePaint(C, Style, y - pen / 2, y + Size + pen / 2, AGHex($FFB028));
+    StrokeTextPaint(C, x, y, Size, s, pen, paint, Weight, 0);
+    If Style = asSoft Then
+      StrokeText(C, x, y, Size, s, pen * 0.3, AGWithAlpha(AGHex($FFF0C0), 150), Weight, 0, -0.4, -0.5);
   End;
 
   Procedure Save(Const Name: String; Mode: TAGSaveMode);

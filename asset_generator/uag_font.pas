@@ -47,11 +47,13 @@ Procedure DrawText(C: TAGCanvas; x, y, Size: Double; Const Text: String; Color: 
   Align: TAGFontAlign = faLeft; Weight: Double = AGFontWeight; Slant: Double = 0);
 
 (*
- * Title text in the look of the style: an outline of OutlineW pixel around
- * the letters, flat = solid fill, soft = darker fill with a light highlight
- * on the upper part, pixel = solid fill (the sheet renderer pixelates it),
- * retro = vertical gradient in 4 hard bands (light top, dark bottom).
- * Shadow > 0 adds a drop shadow offset by Shadow pixel.
+ * Title text in the look of the style (see AGTitlePaint for the fills):
+ * flat = thick ink outline, hard offset shadow, one hard darker band,
+ * soft = no ink outline (a thin darker tone), blurred shadow, gradient fill
+ * with a glossy streak, pixel = dark outline, hard shadow, 4 dithered steps,
+ * retro = outline and 4 hard bands (light top, dark bottom).
+ * OutlineW is the outline width in pixel, Shadow > 0 the shadow offset
+ * (flat, soft and pixel always draw a shadow, at least a small one).
  *)
 Procedure DrawTextStyled(C: TAGCanvas; Style: TAGStyle; x, y, Size: Double; Const Text: String;
   Base, Outline: TAGColor; Align: TAGFontAlign = faLeft; Weight: Double = AGFontWeight;
@@ -59,6 +61,10 @@ Procedure DrawTextStyled(C: TAGCanvas; Style: TAGStyle; x, y, Size: Double; Cons
 
 (* Strokes all glyph center lines with a pen of Pen pixel (low level, used by the functions above) *)
 Procedure StrokeText(C: TAGCanvas; x, y, Size: Double; Const Text: String; Pen: Double; Color: TAGColor;
+  Weight: Double; Slant: Double; dx: Double = 0; dy: Double = 0);
+
+(* Same with a paint (e.g. AGTitlePaint) *)
+Procedure StrokeTextPaint(C: TAGCanvas; x, y, Size: Double; Const Text: String; Pen: Double; Const Paint: TAGPaint;
   Weight: Double; Slant: Double; dx: Double = 0; dy: Double = 0);
 
 Implementation
@@ -440,30 +446,52 @@ End;
 Procedure DrawTextStyled(C: TAGCanvas; Style: TAGStyle; x, y, Size: Double; Const Text: String;
   Base, Outline: TAGColor; Align: TAGFontAlign; Weight: Double; OutlineW: Double; Slant: Double; Shadow: Double);
 Var
-  pen: Double;
+  pen, sh, y0, y1: Double;
   paint: TAGPaint;
+  k: Integer;
+  o: TAGColor;
 Begin
   x := AlignX(x, Size, Text, Align, Weight);
   pen := Weight * Size;
   If OutlineW < 0 Then OutlineW := AGMax(1.5, pen * 0.28);
-  If Style = asPixel Then OutlineW := AGMax(OutlineW, 2.5);
-  If Style = asRetro Then OutlineW := AGMax(OutlineW, 3.5);
-  If Shadow > 0 Then
-    StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, AGWithAlpha(AGBlack, 150), Weight, Slant, Shadow, Shadow);
-  StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, Outline, Weight, Slant);
+  y0 := y - pen / 2;
+  y1 := y + Size + pen / 2;
   Case Style Of
+    asFlat: Begin
+        // thick ink outline, hard offset shadow, one hard darker band
+        OutlineW := AGMax(OutlineW * 1.45, 2.2);
+        sh := AGMax(Shadow, AGMax(2, Size * 0.07));
+        StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, AGMix(Outline, AGBlack, 0.4), Weight, Slant, sh, sh);
+        StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, Outline, Weight, Slant);
+        StrokeTextPaint(C, x, y, Size, Text, pen, AGTitlePaint(C, Style, y0, y1, Base), Weight, Slant, 0, 0);
+      End;
     asSoft: Begin
-        StrokeText(C, x, y, Size, Text, pen, AGShade(Base, 0.72), Weight, Slant);
-        StrokeText(C, x, y, Size, Text, pen * 0.62, Base, Weight, Slant, -pen * 0.08, -pen * 0.1);
-        StrokeText(C, x, y, Size, Text, pen * 0.26, AGShade(Base, 1.55), Weight, Slant, -pen * 0.16, -pen * 0.2);
+        // no ink: a blurred shadow below, a thin darker tone around, gradient fill and a glossy streak
+        sh := AGMax(Shadow, AGMax(1.5, Size * 0.08));
+        For k := 0 To 2 Do
+          StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW + 2 * (3 - k), AGWithAlpha(AGHex($200C04), 34), Weight, Slant, sh * 0.4, sh);
+        o := AGMix(AGShade(Base, 0.62), Outline, 0.15);
+        StrokeText(C, x, y, Size, Text, pen + 1.3 * OutlineW, o, Weight, Slant);
+        StrokeTextPaint(C, x, y, Size, Text, pen, AGTitlePaint(C, Style, y0, y1, Base), Weight, Slant, 0, 0);
+        StrokeText(C, x, y, Size, Text, pen * 0.24, AGWithAlpha(AGShade(Base, 1.85), 170), Weight, Slant, -pen * 0.16, -pen * 0.2);
       End;
-    asRetro: Begin
-        // 4 hard bands from the top of the ink to its bottom
-        paint := AGBandPaint(C, y - pen / 2, y + Size + pen / 2, Base);
-        StrokeTextPaint(C, x, y, Size, Text, pen, paint, Weight, Slant, 0, 0);
+    asPixel: Begin
+        // dark outline, hard shadow, 4 dithered steps
+        OutlineW := AGMax(OutlineW, 2.5);
+        sh := AGMax(Shadow, 2);
+        StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, AGMix(Outline, AGBlack, 0.5), Weight, Slant, sh, sh);
+        StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, Outline, Weight, Slant);
+        StrokeTextPaint(C, x, y, Size, Text, pen, AGTitlePaint(C, Style, y0, y1, Base), Weight, Slant, 0, 0);
       End;
-  Else
-    StrokeText(C, x, y, Size, Text, pen, Base, Weight, Slant);
+  Else Begin
+      OutlineW := AGMax(OutlineW, 3.5);
+      If Shadow > 0 Then
+        StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, AGWithAlpha(AGBlack, 150), Weight, Slant, Shadow, Shadow);
+      StrokeText(C, x, y, Size, Text, pen + 2 * OutlineW, Outline, Weight, Slant);
+      // 4 hard bands from the top of the ink to its bottom
+      paint := AGBandPaint(C, y0, y1, Base);
+      StrokeTextPaint(C, x, y, Size, Text, pen, paint, Weight, Slant, 0, 0);
+    End;
   End;
 End;
 

@@ -144,30 +144,38 @@ Const
   // cell column 4 of the play field starts 24 pixel left of the image
   CropX = FX + 4 * CW + 24;
   CropY = FY + CH; // rows 1 .. 8
-  FigScale = 2.0;
-  FigX = 116;
-  BombX = 46;
-  GroundY = 270;
+  FigScale = 1.75; // the figure is about 59 pixel high (FigureHeight), about 105 here
+  BombScale = 1.75;
+  GroundY = 272;
+  Bayer: Array[0..3] Of Integer = (0, 2, 3, 1); // 2 x 2 ordered dither
 Var
   area: TAGArea;
   mapIndex, i, j, k, row, col: Integer;
   field, brick, solid, layer: TAGImage;
   fig: TFigure;
   pose: TPose;
-  facing: Double;
+  facing, FigX, BombX, d, lx, ly: Double;
   info: TAGStyleInfo;
 
   Procedure DrawLayer(C: TAGCanvas; Frame: Integer);
   Begin
-    // shadows on the ground
-    C.Ellipse(FigX, GroundY, 30, 8);
-    C.Fill(AGRGBA(0, 0, 0, 90));
-    C.Ellipse(BombX, GroundY + 1, 21, 6);
-    C.Fill(AGRGBA(0, 0, 0, 90));
+    // contact shadows on the ground: soft = smooth gradient, else hard
+    If Ctx.Style = asSoft Then Begin
+      C.Ellipse(FigX, GroundY, 36, 10);
+      C.FillPaint(C.Radial(FigX, GroundY, 36, [AGRGBA(0, 0, 0, 150), AGRGBA(0, 0, 0, 80), AGRGBA(0, 0, 0, 0)]));
+      C.Ellipse(BombX, GroundY + 1, 26, 8);
+      C.FillPaint(C.Radial(BombX, GroundY + 1, 26, [AGRGBA(0, 0, 0, 150), AGRGBA(0, 0, 0, 70), AGRGBA(0, 0, 0, 0)]));
+    End
+    Else Begin
+      C.Ellipse(FigX, GroundY, 28, 7);
+      C.Fill(AGRGBA(0, 0, 0, 100));
+      C.Ellipse(BombX, GroundY + 1, 19, 5);
+      C.Fill(AGRGBA(0, 0, 0, 100));
+    End;
     // bomb, the bottom of the ball (19.5, 35) of its cell is on the ground
     C.Push;
     C.Translate(BombX, GroundY);
-    C.Scale(FigScale, FigScale);
+    C.Scale(BombScale, BombScale);
     C.Translate(-19.5, -35);
     DrawBombPreview(Ctx, C);
     C.Pop;
@@ -182,7 +190,6 @@ Var
 Begin
   area := Ctx.Area('preview');
   mapIndex := area.Pick('map', MapCount);
-  facing := area.Vary('facing', 0.35, 0.25);
   info := GetStyleInfo(Ctx.Style);
 
   // ground and blocks
@@ -211,36 +218,120 @@ Begin
     solid.Free;
   End;
 
-  // figure in red, waving, with a bomb
+  (*
+   * Figure in red with a bomb, the pose tells the style apart at a glance:
+   *   flat  = jump with a wave, three quarter view
+   *   soft  = relaxed, head tilted, hands folded, soft light and shadow
+   *   pixel = walk frame to the right like a console sprite
+   *   retro = front view, fists on the hips (hero pose)
+   *)
   fig := MakeFigure(Ctx.Area('atomic'), false);
   If IsCoarse(Ctx.Style) Then fig.OutlineScale := fig.OutlineScale * 0.6; // like uag_gen_atomic
   If Ctx.Style = asRetro Then fig.OutlineScale := 0;
   pose := NeutralPose;
-  pose.Arm[0].Spread := 2.2;
-  pose.Arm[0].Swing := 0.2;
-  pose.Arm[0].Bend := 0.05;
-  pose.Arm[0].BendSpread := 0.6;
-  pose.Arm[1].Swing := 0.25;
-  pose.Arm[1].Bend := 0.5;
-  pose.Leg[0].Swing := 0.12;
-  pose.Leg[1].Swing := -0.1;
-  pose.HeadRoll := 0.12;
-  pose.Roll := -0.05;
+  FigX := 120;
+  BombX := 44;
+  Case Ctx.Style Of
+    asSoft: Begin
+        facing := area.Vary('facing', 0.45, 0.2);
+        For k := 0 To 1 Do Begin
+          pose.Arm[k].Swing := 0.55;
+          pose.Arm[k].Spread := 0.15;
+          pose.Arm[k].Bend := 1.0;
+          pose.Arm[k].BendSpread := -0.55;
+        End;
+        pose.HeadRoll := -0.2;
+        pose.HeadNod := 0.1;
+        pose.Roll := 0.04;
+        pose.Leg[0].Swing := 0.08;
+        pose.Leg[1].Swing := -0.05;
+        pose.LookS := -0.5;
+      End;
+    asPixel: Begin
+        facing := 0.85; // the three quarter view of the side rows of the sheets
+        pose.Leg[0].Swing := 0.55;
+        pose.Leg[0].Bend := 0.25;
+        pose.Leg[1].Swing := -0.45;
+        pose.Leg[1].Bend := 0.35;
+        pose.Arm[0].Swing := -0.6;
+        pose.Arm[1].Swing := 0.6;
+        pose.Arm[0].Bend := 0.5;
+        pose.Arm[1].Bend := 0.6;
+        pose.Lean := 0.12;
+        FigX := 124;
+      End;
+    asRetro: Begin
+        facing := FacingDown;
+        For k := 0 To 1 Do Begin
+          pose.Arm[k].Swing := -0.2;
+          pose.Arm[k].Spread := 0.95;
+          pose.Arm[k].Bend := 1.9;
+          pose.Arm[k].BendSpread := -1.5;
+          pose.Leg[k].Spread := 0.22;
+        End;
+        pose.HeadNod := -0.08;
+        pose.Lean := -0.06;
+      End;
+  Else Begin // flat
+      facing := area.Vary('facing', 0.35, 0.25);
+      pose.Arm[0].Spread := 2.2;
+      pose.Arm[0].Swing := 0.2;
+      pose.Arm[0].Bend := 0.05;
+      pose.Arm[0].BendSpread := 0.6;
+      pose.Arm[1].Swing := 0.25;
+      pose.Arm[1].Bend := 0.5;
+      pose.Leg[0].Swing := 0.7;
+      pose.Leg[0].Bend := 1.3;
+      pose.Leg[1].Swing := 0.1;
+      pose.Leg[1].Bend := 0.5;
+      pose.RootU := 7 * fig.Scale;
+      pose.HeadRoll := 0.12;
+      pose.Roll := -0.05;
+    End;
+  End;
   layer := RenderImage(Ctx, PreviewW, PreviewH, @DrawLayer);
   Try
     If info.Palette Then fig.Col.Outline := AGRetroColor(fig.Col.Outline);
-    If info.PixelScale > 1 Then PixelOutline(layer, PreviewW, PreviewH, info.PixelScale, fig.Col.Outline);
+    If info.PixelScale > 1 Then PixelOutline(layer, PreviewW, PreviewH, info.PixelScale, fig.Col.Outline, Ctx.Style = asPixel);
     RecolorPlayer(layer, AGPlayerColors[2]);
     result.Draw(layer, 0, 0);
   Finally
     layer.Free;
   End;
 
-  // darker towards the top, the figure stands out
-  For j := 0 To PreviewH Div 3 - 1 Do Begin
-    k := AGRound(70 * (1 - j / (PreviewH / 3)));
-    For i := 0 To PreviewW - 1 Do
-      result.BlendPixel(i, j, AGRGBA(8, 6, 16, 255), k);
+  // lighting: darker towards the top, so the figure stands out
+  Case Ctx.Style Of
+    asSoft: Begin
+        // warm light from the top left, smooth falloff to a dark corner bottom right
+        For j := 0 To PreviewH - 1 Do
+          For i := 0 To PreviewW - 1 Do Begin
+            lx := (i - 40) / PreviewW;
+            ly := (j - 30) / PreviewH;
+            d := AGSqrt(lx * lx + ly * ly);
+            k := AGRound(AGClamp(40 - 60 * d, 0, 40));
+            If k > 0 Then result.BlendPixel(i, j, AGRGBA(255, 236, 200, 255), k);
+            k := AGRound(AGClamp(110 * (d - 0.55), 0, 90));
+            If k > 0 Then result.BlendPixel(i, j, AGRGBA(20, 14, 30, 255), k);
+          End;
+      End;
+    asPixel: Begin
+        // 4 hard steps with an ordered dither between them, 2 pixel blocks
+        For j := 0 To PreviewH Div 3 - 1 Do Begin
+          d := 4 * (1 - j / (PreviewH / 3)); // 4 .. 0
+          For i := 0 To PreviewW - 1 Do Begin
+            k := trunc(d);
+            If (d - k) * 4 > Bayer[((j Div 2) Mod 2) * 2 + (i Div 2) Mod 2] Then inc(k);
+            If k > 0 Then result.BlendPixel(i, j, AGRGBA(8, 6, 16, 255), 20 * k);
+          End;
+        End;
+      End;
+  Else
+    For j := 0 To PreviewH Div 3 - 1 Do Begin
+      k := AGRound(70 * (1 - j / (PreviewH / 3)));
+      If Ctx.Style = asRetro Then k := 18 * ((k + 9) Div 18); // hard bands
+      For i := 0 To PreviewW - 1 Do
+        result.BlendPixel(i, j, AGRGBA(8, 6, 16, 255), k);
+    End;
   End;
   If info.Palette Then AGRetroQuantize(result);
 End;

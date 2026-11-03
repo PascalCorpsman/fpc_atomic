@@ -19,7 +19,7 @@ This repository hosts only the custom source code. To protect the intellectual p
 ## What needs to be done to play the game?
 The steps shown here are only needed to be done once (for installation).
 
-**No CD?** Skip steps 1 and 4: the launcher can compute its own graphics (figure, bombs, maps, menus, schemes) in a few seconds, the game then runs without sounds. See the [graphics manual](GRAPHICS_MANUAL.md).
+**No CD?** Skip steps 1 and 4: the launcher can compute its own graphics and sounds (figure, bombs, maps, menus, schemes, game sounds) in a few seconds, only the menu music is missing then. See the [graphics manual](GRAPHICS_MANUAL.md).
 
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/documentation/installation.plantuml)
 

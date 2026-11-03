@@ -14,6 +14,8 @@
  * Style picker (--auto --set <folder>): first start without CD data. Shows
  * the key art of one random seed in the three styles, a click on a style
  * generates the complete set into assets/<folder>/ and ends the program.
+ * The set is saved atomically (uag_worker): on cancel or error nothing is
+ * left behind, a new folder is not created and an existing set is unchanged.
  *)
 Unit Unit2;
 
@@ -63,7 +65,7 @@ Type
     fPicker: TAGPickerWorker; // running preview worker, Nil if none
     fSet: TAGSetWorker; // running generation, Nil if none
     fDead: TList; // finished workers, freed later
-    fShown, fReady, fFolderExisted: Boolean;
+    fShown, fReady: Boolean;
     Procedure StartPreviews;
     Procedure StartGenerate(s: TAGStyle);
     Procedure PickerDone(Sender: TObject);
@@ -81,7 +83,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses FileUtil, uag_random, uag_image, uag_gui, ulanguage;
+Uses uag_random, uag_image, uag_gui, ulanguage;
 
 { TForm2 }
 
@@ -220,8 +222,8 @@ Begin
   PanelProgress.Visible := true;
   ProgressBar1.Position := 0;
   LabelProgress.Caption := format(RF_Generating, [0, 0]);
-  fFolderExisted := DirectoryExists(SetDir(GuiFolder));
   fSet := TAGSetWorker.Create(fCtx, SetDir(GuiFolder), @SetDone, @SetProgress);
+  fSet.Output.CancelAfter := GuiCancelAfter;
   fSet.Start;
 End;
 
@@ -245,12 +247,11 @@ Begin
     WriteLastSet(GuiFolder);
     GuiWritten := true;
   End
-  Else Begin
-    // nothing half done stays behind
-    If Not fFolderExisted Then DeleteDirectory(SetDir(GuiFolder), false);
-    If w.Error <> '' Then
-      MessageDlg(format(RF_Error, [w.Error]), mtError, [mbOK], 0);
-  End;
+  Else If w.InUse Then
+    MessageDlg(format(RF_SetInUse, [GuiFolder]), mtError, [mbOK], 0)
+  Else If w.Error <> '' Then
+    MessageDlg(format(RF_Error, [w.Error]), mtError, [mbOK], 0);
+  // cancel or error: the worker removed its temporary folder, nothing half done stays behind
   Close;
 End;
 

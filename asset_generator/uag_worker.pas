@@ -13,7 +13,11 @@
 (*
  * Worker threads of the UI (no LCL in here):
  *   TAGAreaWorker    renders one area (e.g. the figure or a map) into memory
- *   TAGSetWorker     writes a complete set into a folder (with progress)
+ *   TAGSetWorker     writes a complete set into a folder (with progress),
+ *                    atomic: into a temporary folder that replaces the set
+ *                    only when it is complete (see uag_output). A set folder
+ *                    is always generated completely, files added to it by
+ *                    hand are lost on the next save.
  *   TAGPickerWorker  renders the key art in all three styles (style picker)
  *
  * Every worker gets its own copy of the context, the UI keeps changing its
@@ -52,6 +56,7 @@ Type
     Output: TAGOutput; // owned, may be taken by the caller (set it to Nil then)
     Error: String; // '' = ok
     Aborted: Boolean;
+    InUse: Boolean; // TAGSetWorker: the old set could not be replaced (Error is set too), it is unchanged
     Done, Total: Integer; // progress, written by the worker
     Constructor Create(aCtx: TAGContext; Const OutDir: String; OnDone: TNotifyEvent; OnProgress: TNotifyEvent = Nil);
     Destructor Destroy; override;
@@ -112,13 +117,6 @@ Function ComposeScene(Field, Brick, Solid: TAGImage; Seed: QWord): TAGImage;
 
 (* Renders all images of an area into Output (use DryRun and KeepImages), maps also get the image 'scene' *)
 Procedure RenderArea(Ctx: TAGContext; Output: TAGOutput; Kind: TAGAreaKind; Index: Integer);
-
-(*
- * Deletes the generated files (png, ani, txt, sch) in Dir that are not in
- * Written (relative paths with '/'), e.g. atomic/p3/ after "own figure per
- * player" was switched off. Empty folders are removed.
- *)
-Procedure RemoveStaleFiles(Const Dir: String; Written: TStrings);
 
 Implementation
 
@@ -203,46 +201,6 @@ Begin
   End;
 End;
 
-Procedure RemoveStaleFiles(Const Dir: String; Written: TStrings);
-Var
-  keep: TStringList;
-
-  Procedure Scan(Const Rel: String);
-  Var
-    sr: TSearchRec;
-    full, ext: String;
-  Begin
-    full := IncludeTrailingPathDelimiter(Dir) + StringReplace(Rel, '/', PathDelim, [rfReplaceAll]);
-    If FindFirst(full + '*', faAnyFile, sr) = 0 Then Begin
-      Repeat
-        If (sr.Name = '.') Or (sr.Name = '..') Then Continue;
-        If (sr.Attr And faDirectory) <> 0 Then Begin
-          Scan(Rel + sr.Name + '/');
-          RemoveDir(full + sr.Name); // only if empty
-        End
-        Else Begin
-          ext := LowerCase(ExtractFileExt(sr.Name));
-          If ((ext = '.png') Or (ext = '.ani') Or (ext = '.txt') Or (ext = '.sch')) And
-            (keep.IndexOf(Rel + sr.Name) < 0) Then
-            DeleteFile(full + sr.Name);
-        End;
-      Until FindNext(sr) <> 0;
-      FindClose(sr);
-    End;
-  End;
-
-Begin
-  keep := TStringList.Create;
-  Try
-    keep.CaseSensitive := {$IFDEF Windows}false{$ELSE}true{$ENDIF};
-    keep.Assign(Written);
-    keep.Sorted := true;
-    Scan('');
-  Finally
-    keep.Free;
-  End;
-End;
-
 { TAGWorker }
 
 Constructor TAGWorker.Create(aCtx: TAGContext; Const OutDir: String; OnDone: TNotifyEvent; OnProgress: TNotifyEvent);
@@ -296,6 +254,10 @@ Begin
   Except
     On EAbort Do
       Aborted := true;
+    On e: EAGSetInUse Do Begin
+        InUse := true;
+        Error := e.Message;
+      End;
     On e: Exception Do
       Error := e.Message;
   End;
@@ -330,12 +292,22 @@ End;
 { TAGSetWorker }
 
 Procedure TAGSetWorker.Work;
+Var
+  target, tmp: String;
 Begin
-  Output.Expected := ExpectedTotal(Ctx, Nil);
-  ForceDirectories(Output.Dir);
-  RunGenerators(Ctx, Output, Nil);
-  Ctx.SaveToFile(Output.Dir + 'profile.ini');
-  RemoveStaleFiles(Output.Dir, Output.Files);
+  target := Output.Dir; // created with the folder of the set
+  tmp := BeginSetSave(target);
+  Try
+    Output.Retarget(tmp);
+    Output.Expected := ExpectedTotal(Ctx, Nil);
+    RunGenerators(Ctx, Output, Nil);
+    If Output.Cancelled Then Raise EAbort.Create('Cancelled');
+    Ctx.SaveToFile(tmp + 'profile.ini'); // last: only now the folder is a complete set
+    CommitSetSave(tmp, target);
+  Except
+    DiscardSetSave(tmp);
+    Raise;
+  End;
 End;
 
 { TAGPickerWorker }

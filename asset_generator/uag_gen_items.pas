@@ -30,6 +30,12 @@
  *             connect without seams.
  *   objects:  res/hole.png, arrows.ani, conveyor.ani, tramp.ani, infinity.png,
  *             playerdead.png, hurry.png.
+ *
+ * Style kit: flat = pop colored cards with a light badge, bombs with a bold
+ * ink outline and a flat shine, flames with clean zigzag edges in 3 hard
+ * layers; soft = glossy buttons and glossy bombs, smooth flames in 7 layers;
+ * pixel = item boxes with a one pixel bevel and a checker pattern; retro =
+ * beveled tiles with one big symbol.
  *)
 Unit uag_gen_items;
 
@@ -345,13 +351,50 @@ Var
   img: TAGImage;
   i: Integer;
 
+  (*
+   * Tile kit of the style: flat = pop colored card with an ink border and a
+   * light round badge behind the icon, soft = glossy button (the gloss is
+   * drawn over the icon in Gloss), pixel = item box with a one pixel bevel
+   * and a checker pattern, retro = beveled tile
+   *)
   Procedure Tile(C: TAGCanvas);
   Var
-    base: TAGColor;
-    g: Integer;
+    base, pop, hi, lo: TAGColor;
+    g, x, y: Integer;
   Begin
     g := Group[icon];
     base := AGHSV(GroupHue[g] + dHue, sat, GroupVal[g]);
+    If St = asFlat Then Begin
+      pop := AGHSV(GroupHue[g] + dHue, AGMin(1, sat + 0.2), AGMin(0.95, GroupVal[g] + 0.3));
+      C.Rect(-1, -1, 42, 38);
+      C.Fill(OutlineDark);
+      C.RoundRect(1.5, 1.5, 37, 33, 7);
+      C.Fill(pop);
+      C.Polygon([1.5, 26, 38.5, 12, 38.5, 34.5, 1.5, 34.5]);
+      C.Fill(AGShade(pop, 0.86));
+      C.Circle(20, 18, 14.2);
+      C.Fill(AGMix(pop, AGWhite, 0.72));
+      exit;
+    End;
+    If St = asPixel Then Begin
+      hi := AGShade(base, 1.6);
+      lo := AGShade(base, 0.5);
+      C.Rect(-1, -1, 42, 38);
+      C.Fill(OutlineDark);
+      C.Rect(2, 2, 36, 32);
+      C.Fill(lo);
+      C.Rect(2, 2, 34, 30);
+      C.Fill(hi);
+      C.Rect(4, 4, 32, 28);
+      C.Fill(base);
+      For y := 0 To 6 Do
+        For x := 0 To 7 Do
+          If (x + y) Mod 2 = 0 Then Begin
+            C.Rect(4 + 4 * x, 4 + 4 * y, 4, 4);
+            C.Fill(AGShade(base, 0.86));
+          End;
+      exit;
+    End;
     C.Rect(-1, -1, 42, 38);
     C.Fill(AGShade(base, 0.32));
     C.RoundRect(2, 2, 37.5, 33.5, corner);
@@ -362,13 +405,197 @@ Var
     DrawShape(C, St, base, 0);
   End;
 
-  Procedure DrawIcon(C: TAGCanvas; Frame: Integer);
+  (*
+   * Retro: only 13 x 12 coarse pixel, so every icon is one big symbol
+   * without small details (no shines, speed lines, sparks or teeth).
+   *)
+  Procedure RetroIcon(C: TAGCanvas);
+  Var
+    k, pass: Integer;
+    pts: TPts;
+    skin: TAGColor;
+
+    (* pass 0: the silhouette one coarse pixel bigger in the outline color, pass 1: the cel shaded fill *)
+    Procedure Part(Col: TAGColor);
+    Begin
+      If pass = 0 Then Begin
+        C.Stroke(6, OutlineDark, true);
+        C.Fill(OutlineDark);
+      End
+      Else
+        DrawShapeOutlined(C, St, Col, OutlineDark, 0);
+    End;
+
+    Procedure RFlame(Outer, Inner: TAGColor);
+    Begin
+      C.Push;
+      C.Translate(20, 18.5);
+      C.Scale(13, 15);
+      FlamePath(C);
+      C.Pop;
+      Part(Outer);
+      If pass = 1 Then Begin
+        C.Push;
+        C.Translate(20, 23);
+        C.Scale(7, 9);
+        FlamePath(C);
+        C.Pop;
+        C.Fill(Inner);
+      End;
+    End;
+
+    Procedure RBoot(Col: TAGColor);
+    Begin
+      C.Rect(-7.5, 6, 18.5, 3.2);
+      Part(AGRGB(52, 46, 50));
+      BootPath(C);
+      Part(Col);
+      C.Rect(-7.5, -11.5, 10, 3.2);
+      Part(AGRGB(236, 232, 220));
+    End;
+
+    Procedure Line(Const P: TPts; w: Double; Col: TAGColor);
+    Begin
+      If pass = 0 Then StrokePts(C, P, w + 6, OutlineDark) Else StrokePts(C, P, w, Col);
+    End;
+
+    Procedure BigBomb(cx, cy, r: Double; Body: TAGColor);
+    Begin
+      Line([cx + 0.55 * r, cy - 0.75 * r, cx + 0.9 * r, cy - 1.25 * r], 3, AGRGB(230, 190, 110));
+      C.Circle(cx, cy, r);
+      Part(Body);
+    End;
+
+    Procedure RetroSkull(cx, cy: Double; Col: TAGColor);
+    Begin
+      C.Rect(cx - 6, cy + 3, 12, 7.5);
+      Part(AGShade(Col, 0.85));
+      C.Circle(cx, cy - 1, 10.5);
+      Part(Col);
+      If pass = 1 Then Begin
+        C.Rect(cx - 7, cy - 1.5, 5.5, 5.5);
+        C.Rect(cx + 1.5, cy - 1.5, 5.5, 5.5);
+        C.Fill(AGRGB(30, 20, 26));
+      End;
+    End;
+
+  Begin
+    For pass := 0 To 1 Do
+    Case icon Of
+      0: Begin // extra bomb: big bomb and a plus
+          BigBomb(16, 21, 10.5, AGRGB(52, 54, 76));
+          C.Rect(27, 14, 9, 3.5);
+          C.Rect(29.75, 11.25, 3.5, 9);
+          Part(AGWhite);
+        End;
+      1: RFlame(AGRGB(226, 60, 24), AGRGB(255, 220, 80));
+      2: RetroSkull(20, 16, AGRGB(214, 222, 170));
+      3: Begin // kick: a big boot
+          C.Push;
+          C.Translate(19, 19);
+          C.Rotate(AGDeg(-15));
+          C.Scale(1.3, 1.3);
+          RBoot(AGRGB(150, 92, 48));
+          C.Pop;
+        End;
+      4: Begin // speed: big red skate with two wheels
+          C.Push;
+          C.Translate(17, 13);
+          C.Scale(1.2, 1.2);
+          For k := 0 To 1 Do Begin
+            C.Circle(-3 + 11 * k, 12.5, 3.2);
+            Part(AGRGB(60, 60, 70));
+          End;
+          RBoot(AGRGB(214, 44, 40));
+          C.Pop;
+        End;
+      5: Begin // punch: glove with cuff
+          C.Rect(5, 12, 9, 14);
+          Part(AGRGB(240, 238, 232));
+          C.Ellipse(23, 18, 13, 11);
+          Part(AGRGB(214, 36, 36));
+        End;
+      6: Begin // grab: open hand, three thick fingers
+          skin := AGRGB(250, 246, 236);
+          C.Push;
+          C.Translate(20, 21);
+          C.Capsule(-5, 0, -8.5, -11, 3.2);
+          C.Capsule(0, -1, 0, -14, 3.2);
+          C.Capsule(5, 0, 8.5, -11, 3.2);
+          C.Capsule(6, 6, 13, 0, 3);
+          Part(skin);
+          C.RoundRect(-9, -3, 18, 14, 4);
+          Part(skin);
+          C.Pop;
+        End;
+      7: Begin // spooger: thick arrow over two bombs
+          BigBomb(11, 27, 6, AGRGB(52, 54, 76));
+          BigBomb(28, 27, 6, AGRGB(52, 54, 76));
+          C.Polygon([4, 4, 24, 4, 24, 1, 35, 7, 24, 13, 24, 10, 4, 10]);
+          Part(AGRGB(255, 230, 90));
+        End;
+      8: RFlame(AGRGB(196, 132, 18), AGRGB(255, 240, 150));
+      9: Begin // trigger: remote with a big red button
+          Line([26, 11, 31, 4], 3, AGRGB(190, 190, 200));
+          C.RoundRect(9, 10, 21, 22, 3);
+          Part(AGRGB(70, 72, 84));
+          C.Circle(19.5, 21, 6.5);
+          Part(AGRGB(230, 40, 40));
+        End;
+      10: Begin // jelly: big squashed blue bomb
+          C.Push;
+          C.Translate(20, 21);
+          C.Scale(1.3, 0.85);
+          C.Circle(0, 0, 11);
+          Part(AGRGB(70, 110, 220));
+          C.Pop;
+          C.Rect(5, 30, 30, 3);
+          Part(AGRGB(230, 240, 255));
+        End;
+      11: Begin // ebola: crossed bones behind a green skull
+          Line([6, 5, 34, 31], 4, AGRGB(236, 230, 212));
+          Line([34, 5, 6, 31], 4, AGRGB(236, 230, 212));
+          RetroSkull(20, 16, AGRGB(200, 226, 96));
+        End;
+      12: Begin // slow: snail, shell with one ring
+          C.Rect(5, 23, 29, 6);
+          Part(AGRGB(224, 200, 150));
+          C.Circle(31, 20, 4);
+          Part(AGRGB(224, 200, 150));
+          C.Circle(17, 15, 10.5);
+          Part(AGRGB(196, 110, 46));
+          C.Circle(17, 15, 4);
+          If pass = 1 Then C.Fill(AGRGB(100, 50, 20)) Else C.BeginPath;
+        End;
+      13: Begin // random: one big question mark
+          pts := Nil;
+          PArc(pts, 20, 12, 7.5, 6.5, AG_PI + 0.2, AG_TWO_PI + 0.9);
+          PQuad(pts, 20 + 7.5 * AGCos(0.9), 12 + 6.5 * AGSin(0.9), 20, 17, 20, 22);
+          Line(pts, 5, AGRGB(255, 220, 60));
+          C.Rect(16.5, 26, 7, 6);
+          Part(AGRGB(255, 220, 60));
+        End;
+    End;
+  End;
+
+  (* soft: glass reflection over the upper half of the button *)
+  Procedure Gloss(C: TAGCanvas);
+  Begin
+    C.RoundRect(4, 3.5, 32, 13, AGMax(1, corner - 1));
+    C.FillPaint(C.Linear(0, 3.5, 0, 16.5, [AGRGBA(255, 255, 255, 120), AGRGBA(255, 255, 255, 18)]));
+  End;
+
+  Procedure DrawIconBody(C: TAGCanvas);
   Var
     k: Integer;
     a: Double;
     pts: TPts;
   Begin
     Tile(C);
+    If St = asRetro Then Begin
+      RetroIcon(C);
+      exit;
+    End;
     Case icon Of
       0: Begin // extra bomb
           MiniBomb(C, St, 18, 21, 9.5, AGRGB(52, 54, 76), true);
@@ -539,6 +766,12 @@ Var
     End;
   End;
 
+  Procedure DrawIcon(C: TAGCanvas; Frame: Integer);
+  Begin
+    DrawIconBody(C);
+    If St = asSoft Then Gloss(C);
+  End;
+
 Begin
   area := Ctx.Area('powerups');
   St := Ctx.Style;
@@ -641,10 +874,17 @@ Var
     C.RoundRect(-3.4, -2.6, 6.8, 5, 1);
     DrawShapeOutlined(C, St, AGRGB(168, 170, 182), OutlineDark, 0.8);
     C.Pop;
-    // body
+    // body (flat: bold ink outline and a flat shine, soft: glossy, pixel / retro: two tone)
     C.Circle(0, 0, r);
-    DrawShapeOutlined(C, St, body, OutlineDark);
-    If St <> asSoft Then Begin
+    If St = asFlat Then
+      DrawShapeOutlined(C, St, body, OutlineDark, 1.4)
+    Else
+      DrawShapeOutlined(C, St, body, OutlineDark);
+    If St = asSoft Then Begin
+      C.Circle(0, 0, r);
+      C.FillPaint(C.Radial(-0.38 * r, -0.42 * r, 0.95 * r, [AGRGBA(255, 255, 255, 150), AGRGBA(255, 255, 255, 40), AGRGBA(255, 255, 255, 0)]));
+    End;
+    If IsCoarse(St) Then Begin
       // two tone shading: lighter disc to the top left
       C.Circle(-0.13 * r, -0.13 * r, 0.8 * r);
       C.Fill(PlayerGreen(AGMin(1, shade + 0.22)));
@@ -656,8 +896,20 @@ Var
       C.Stroke(SW(St, 0.2 * r), AGRGB(84, 86, 98));
       C.Pop;
     End;
-    Shine(C, St, -0.4 * r, -0.42 * r, 0.3 * r, 0.17 * r, AGDeg(-42), AGShade(PlayerGreen(0.95), 1.55));
-    If St <> asSoft Then Begin
+    If St = asFlat Then Begin
+      // flat: a white pill and a dot
+      C.Push;
+      C.Translate(-0.42 * r, -0.4 * r);
+      C.Rotate(AGDeg(-42));
+      C.RoundRect(-0.36 * r, -0.12 * r, 0.72 * r, 0.24 * r, 0.12 * r);
+      C.Fill(AGWhite);
+      C.Pop;
+      C.Circle(0.02 * r, -0.72 * r, 0.09 * r);
+      C.Fill(AGWhite);
+    End
+    Else
+      Shine(C, St, -0.4 * r, -0.42 * r, 0.3 * r, 0.17 * r, AGDeg(-42), AGShade(PlayerGreen(0.95), 1.55));
+    If IsCoarse(St) Then Begin
       C.Circle(-0.5 * r, -0.5 * r, 0.09 * r + 0.5);
       C.Fill(AGWhite);
     End;
@@ -814,16 +1066,34 @@ Var
   img: TAGImage;
   i, k: Integer;
 
+  (* flat: triangle waves instead of sine waves -> zigzag (chevron) edges *)
+  Function Wave(x: Double): Double;
+  Var
+    t: Double;
+  Begin
+    If St <> asFlat Then exit(AGSin(x));
+    t := x / AG_TWO_PI;
+    t := t - AGFloor(t);
+    If t <= 0.25 Then result := 4 * t
+    Else If t <= 0.75 Then result := 2 - 4 * t
+    Else result := 4 * t - 4;
+  End;
+
   Function HalfW(u, P: Double; Side, Layer, t: Integer): Double;
   Var
     j: Integer;
     s: Double;
   Begin
+    If St = asFlat Then Begin
+      // flat: one clean zigzag, 4 teeth per cell, all layers parallel
+      s := 0.3 * Wave(AG_TWO_PI * (4 * u / P + ph[Side, 1] + t / 5));
+      exit(LW[Layer] * wScale * (1 + 0.04 * AGCos(AG_TWO_PI * t / 5)) * (1 + amp * s));
+    End;
     s := 0;
     For j := 1 To 3 Do
-      s := s + WaveA[j] * AGSin(AG_TWO_PI * (j * u / P + ph[Side, j] + 0.07 * Layer + WaveM[j] * t / 5));
+      s := s + WaveA[j] * Wave(AG_TWO_PI * (j * u / P + ph[Side, j] + 0.07 * Layer + WaveM[j] * t / 5));
     // flame licks: sharp peaks, standing, flickering with time
-    s := s + LickA * (1 - 0.7 * Layer / high(LW)) * ((1 - AGAbs(AGSin(AG_PI * (4 * u / P + ph[Side, 1] * 2))))
+    s := s + LickA * (1 - 0.7 * Layer / high(LW)) * ((1 - AGAbs(Wave(AG_PI * (4 * u / P + ph[Side, 1] * 2))))
       - 0.36) * (0.7 + 0.3 * AGCos(AG_TWO_PI * (t / 5 + u / P + ph[Side, 2])));
     result := LW[Layer] * wScale * (1 + 0.05 * AGCos(AG_TWO_PI * t / 5)) * (1 + amp * s);
   End;
@@ -937,7 +1207,13 @@ Begin
   baseCol[2] := AGShade(PlayerGreen(0.92), 1.45);
   baseCol[3] := AGRGB(255, 252, 236);
   // soft: more layers in between for a smooth glow
-  If St = asSoft Then n := 7 Else n := 4;
+  // flat: three hard layers
+  Case St Of
+    asSoft: n := 7;
+    asFlat: n := 3;
+  Else
+    n := 4;
+  End;
   setlength(LW, n);
   setlength(LTip, n);
   setlength(LCol, n);

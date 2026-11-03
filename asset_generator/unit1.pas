@@ -1533,7 +1533,7 @@ End;
 
 Procedure TForm1.ButtonSaveAsClick(Sender: TObject);
 Var
-  aName, folder: String;
+  aName, folder, msg: String;
 Begin
   aName := fCtx.Name;
   If Not InputQuery(R_SaveAsTitle, R_SaveAsPrompt, aName) Then Begin
@@ -1543,11 +1543,17 @@ Begin
   aName := Trim(aName);
   If aName = '' Then aName := R_DefaultName;
   folder := FolderFromName(aName);
-  If (folder <> fFolder) And FileExists(SetDir(folder) + 'profile.ini') Then
-    If MessageDlg(format(RF_FolderExists, [folder]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes Then Begin
+  // the folder is replaced completely by the new set
+  If (folder <> fFolder) And DirectoryExists(SetDir(folder)) Then Begin
+    If FileExists(SetDir(folder) + 'profile.ini') Then
+      msg := format(RF_FolderExists, [folder])
+    Else
+      msg := format(RF_FolderReplace, [folder]);
+    If MessageDlg(msg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes Then Begin
       fCloseAfterSave := false;
       exit;
     End;
+  End;
   fCtx.Name := aName;
   fUpdating := true;
   EditName.Text := aName;
@@ -1573,6 +1579,7 @@ Begin
   ProgressBar1.Position := 0;
   SetStatus(format(RF_Generating, [0, 0]));
   fSaver := TAGSetWorker.Create(fCtx, SetDir(Folder), @SaveDone, @SaveProgress);
+  fSaver.Output.CancelAfter := GuiCancelAfter;
   fSaver.Start;
 End;
 
@@ -1602,15 +1609,20 @@ Begin
     fModified := false;
     SetStatus(format(RF_Saved, [fFolder]));
   End
+  Else If w.InUse Then Begin
+    SetStatus(format(RF_SetInUse, [fSaveFolder]));
+    If GuiTestSave = '' Then MessageDlg(format(RF_SetInUse, [fSaveFolder]), mtError, [mbOK], 0);
+  End
   Else If w.Error <> '' Then Begin
     SetStatus(format(RF_Error, [w.Error]));
-    MessageDlg(format(RF_Error, [w.Error]), mtError, [mbOK], 0);
+    If GuiTestSave = '' Then MessageDlg(format(RF_Error, [w.Error]), mtError, [mbOK], 0);
   End
   Else
     SetStatus(R_Cancelled);
   If fCloseAfterSave Then Begin
     fCloseAfterSave := false;
-    If ok Then Begin
+    If ok Or (GuiTestSave <> '') Then Begin
+      fModified := false; // --test-save: also ends after a failed save (exit code 1)
       Close;
       exit;
     End;

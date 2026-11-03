@@ -14,6 +14,18 @@
  * Command line handling of the asset generator. Runs all generators that are
  * registered (see uag_registry), so a test program only needs:
  *   Program test; Uses uag_cli, uag_gen_items; Begin RunCli; End.
+ *
+ * The set is saved atomically (see uag_output): everything is written into
+ * a temporary sibling folder that replaces --out only when it is complete,
+ * the old set stays untouched on an error. A set folder is always generated
+ * completely; with --only the existing set is copied into the temporary
+ * folder first and only the chosen generators are run again. Leftovers of
+ * a crash next to --out are cleaned up at start.
+ * Exit code: 0 ok, 1 error or cancelled, 2 wrong parameters, 3 the old set
+ * is in use (e.g. by the game) and was kept.
+ *
+ * Hidden debug option: --cancel-after <n> cancels after n files (as if the
+ * user cancelled), the old set must stay unchanged.
  *)
 Unit uag_cli;
 
@@ -73,7 +85,9 @@ Var
   Output: TAGOutput;
   Cli: TCli;
   OutDir, ProfileFile, OnlyList, SeedStr, StyleStr, NameStr: String;
+  TmpDir: String;
   PerPlayer, ListParams: Boolean;
+  CancelAfter: Integer;
   Only: TStringList;
   i: Integer;
   p: TAGParamInfo;
@@ -88,6 +102,8 @@ Begin
   NameStr := '';
   PerPlayer := false;
   ListParams := false;
+  CancelAfter := 0;
+  TmpDir := '';
   i := 1;
   While i <= ParamCount Do Begin
     Case ParamStr(i) Of
@@ -97,6 +113,7 @@ Begin
       '--style': Begin inc(i); StyleStr := ParamStr(i); End;
       '--name': Begin inc(i); NameStr := ParamStr(i); End;
       '--only': Begin inc(i); OnlyList := ParamStr(i); End;
+      '--cancel-after': Begin inc(i); CancelAfter := StrToIntDef(ParamStr(i), 0); End;
       '--per-player': PerPlayer := true;
       '--params': ListParams := true;
       '--list', '-h', '--help': Begin
@@ -114,14 +131,16 @@ Begin
     PrintHelp;
     halt(2);
   End;
+  OutDir := IncludeTrailingPathDelimiter(ExpandFileName(OutDir));
 
   Ctx := TAGContext.Create;
   Output := TAGOutput.Create(OutDir);
   Cli := TCli.Create;
   Only := TStringList.Create;
   Try
-    If (ProfileFile = '') And FileExists(IncludeTrailingPathDelimiter(OutDir) + 'profile.ini') Then
-      ProfileFile := IncludeTrailingPathDelimiter(OutDir) + 'profile.ini';
+    CleanupSetLeftovers(ExtractFilePath(ExcludeTrailingPathDelimiter(OutDir)));
+    If (ProfileFile = '') And FileExists(OutDir + 'profile.ini') Then
+      ProfileFile := OutDir + 'profile.ini';
     If ProfileFile <> '' Then Ctx.LoadFromFile(ProfileFile);
     If SeedStr = 'random' Then
       Ctx.Seed := NewRandomSeed
@@ -140,12 +159,22 @@ Begin
 
     Output.Expected := ExpectedTotal(Ctx, Only);
     Output.OnProgress := @Cli.OnProgress;
+    Output.CancelAfter := CancelAfter;
 
     writeln(format('Set "%s", seed %d, style %s', [Ctx.Name, Ctx.Seed, StyleToString(Ctx.Style)]));
     t0 := GetTickCount64;
-    ForceDirectories(OutDir);
+    TmpDir := BeginSetSave(OutDir);
+    If (Only.Count > 0) And DirectoryExists(OutDir) Then Begin
+      // only some generators: the rest of the set is kept
+      CopyTree(OutDir, TmpDir);
+      DeleteFile(TmpDir + 'profile.ini');
+    End;
+    Output.Retarget(TmpDir);
     RunGenerators(Ctx, Output, Only);
-    Ctx.SaveToFile(IncludeTrailingPathDelimiter(OutDir) + 'profile.ini');
+    If Output.Cancelled Then Raise EAbort.Create('Cancelled');
+    Ctx.SaveToFile(TmpDir + 'profile.ini'); // last: only now the folder is a complete set
+    CommitSetSave(TmpDir, OutDir);
+    TmpDir := '';
     writeln(format('%d files in %d ms', [Output.Files.Count, GetTickCount64 - t0]));
 
     If ListParams Then Begin
@@ -158,11 +187,20 @@ Begin
       End;
     End;
   Except
+    On EAbort Do Begin
+      writeln('Cancelled, the set was not changed.');
+      ExitCode := 1;
+    End;
+    On e: EAGSetInUse Do Begin
+      writeln('Error: ', e.Message);
+      ExitCode := 3;
+    End;
     On e: Exception Do Begin
       writeln('Error: ', e.Message);
       ExitCode := 1;
     End;
   End;
+  DiscardSetSave(TmpDir);
   Only.Free;
   Cli.Free;
   Output.Free;

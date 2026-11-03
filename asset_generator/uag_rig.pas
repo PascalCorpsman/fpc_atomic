@@ -39,6 +39,13 @@ Const
   FacingUp = 3.14159265358979323846;
   FacingLeft = -1.57079632679489661923;
 
+  (*
+   * Height of the head top above the ground point in pixel (size = 1), like
+   * the figure of the original sheets (about 66 pixel high incl. helmet
+   * decoration and outline in a 110 x 110 cell, feet at (55, 90)).
+   *)
+  FigureHeight = 59.0;
+
 Type
 
   TV3 = Record
@@ -63,6 +70,7 @@ Type
     EyeOpen: Double; // 1 = open, 0 = closed
     LookS, LookU: Double; // pupils -1..1
     Reach: Double; // arm length factor (cartoon stretch), 1 = normal
+    HandsFront: Double; // > 0.5: the gloves are drawn in front of the head (holding the carried bomb)
   End;
 
   TFigureColors = Record
@@ -82,6 +90,8 @@ Type
     EyeW, EyeH, EyeSpread: Double; // degree
     Backpack, Hunted: Boolean;
     OutlineScale: Double;
+    Scale: Double; // pixel per unit of the old fixed size figure, for offsets in poses and effects
+    Style: TAGStyle; // the proportions and details were made for this style
     Col: TFigureColors;
     // animation character
     ArmSwing, Stride, StepHeight, Bob: Double;
@@ -102,6 +112,7 @@ Procedure DrawFigure(C: TAGCanvas; Style: TAGStyle; Const Fig: TFigure; Const Po
 (* Screen position of a body space point (e.g. for effects at the head) *)
 Function FigurePoint(Const Fig: TFigure; Const Pose: TPose; Facing, AX, AY: Double; Const p: TV3): TAGPoint;
 Function HeadCenter(Const Fig: TFigure; Const Pose: TPose): TV3;
+Function HandPoint(Const Fig: TFigure; Const Pose: TPose; Arm: Integer): TV3; // center of the glove, 0 = right
 
 Implementation
 
@@ -251,6 +262,7 @@ Begin
   result.LookS := L(a.LookS, b.LookS);
   result.LookU := L(a.LookU, b.LookU);
   result.Reach := L(a.Reach, b.Reach);
+  result.HandsFront := L(a.HandsFront, b.HandsFront);
 End;
 
 Function MakeFigure(Const Area: TAGArea; Hunted: Boolean): TFigure;
@@ -258,33 +270,63 @@ Const
   AccentHue: Array[0..5] Of Cardinal = ($FF9A28, $E04040, $3C8CFF, $FFD028, $F0F0F4, $30C8E8);
   BootCol: Array[0..3] Of Cardinal = ($4A3A34, $3A3C48, $2C3460, $6A2C30);
   EyeCol: Array[0..2] Of Cardinal = ($F8F8FF, $90E8FF, $FFE870);
+  (*
+   * Proportions per style (flat, soft, pixel, retro), so the four looks
+   * differ already in the silhouette:
+   *   flat  = slim cartoon, long legs, thin limbs, big eyes
+   *   soft  = plump clay figure, wide round body, thick limbs, short legs
+   *   pixel = chibi, huge head, small body, stubby legs
+   *   retro = chunky, big head, broad body
+   * Only the ratios matter, the figure is scaled to FigureHeight afterwards.
+   *)
+  PHead: Array[TAGStyle] Of Double = (13.0, 13.0, 17.5, 14.0);
+  PBodyW: Array[TAGStyle] Of Double = (8.8, 12.0, 9.0, 12.0);
+  PBodyH: Array[TAGStyle] Of Double = (14.0, 13.5, 9.5, 13.0);
+  PDepth: Array[TAGStyle] Of Double = (0.66, 0.85, 0.75, 0.7);
+  PLeg: Array[TAGStyle] Of Double = (15.5, 11.0, 7.5, 12.5);
+  PArm: Array[TAGStyle] Of Double = (14.0, 12.0, 10.0, 11.5);
+  PLimb: Array[TAGStyle] Of Double = (3.0, 4.6, 3.7, 4.3);
+  PBoot: Array[TAGStyle] Of Double = (3.8, 4.8, 4.4, 4.7);
+  PGlove: Array[TAGStyle] Of Double = (1.45, 1.3, 1.4, 1.35);
+  PEye: Array[TAGStyle] Of Double = (1.25, 1.0, 1.5, 1.0);
+  PShoulder: Array[TAGStyle] Of Double = (0.92, 0.88, 0.95, 1.0);
+  // pixel and retro get a closed outline of one coarse pixel around the silhouette and have a wider head
+  PHeight: Array[TAGStyle] Of Double = (1.0, 1.0, 0.9, 0.94);
 Var
   r: TFigure;
-  sz: Double;
-  retro: Boolean;
-
-  // default proportions, the retro style has a bigger head and a chunkier body
-  Function D(Normal, Chunky: Double): Double;
-  Begin
-    If retro Then result := Chunky Else result := Normal;
-  End;
+  sz, k, h, ct: Double;
+  st: TAGStyle;
 
 Begin
   r := Default(TFigure);
-  retro := assigned(Area.Ctx) And (Area.Ctx.Style = asRetro);
+  If assigned(Area.Ctx) Then st := Area.Ctx.Style Else st := asFlat;
+  r.Style := st;
+  r.HeadR := Area.Vary('headsize', PHead[st], 1.3);
+  r.BodyW := Area.Vary('bodywidth', PBodyW[st], 1.3);
+  r.BodyH := Area.Vary('bodyheight', PBodyH[st], 1.4);
+  r.BodyD := r.BodyW * PDepth[st];
+  r.LegLen := Area.Vary('leglength', PLeg[st], 1.6);
+  r.ArmLen := Area.Vary('armlength', PArm[st], 1.5);
+  r.LimbR := Area.Vary('limbwidth', PLimb[st], 0.5);
+  r.BootR := Area.Vary('bootsize', PBoot[st], 0.5);
+  // scale to the on screen size of the original figure (head top FigureHeight above the ground point)
+  ct := AGCos(CamTilt);
+  h := (r.LegLen + r.BootR * 0.85 + r.BodyH + r.HeadR * 0.72) * ct + r.HeadR;
   sz := Area.Vary('size', 1.0, 0.06);
-  r.HeadR := Area.Vary('headsize', D(12.5, 14.5), 1.3) * sz;
-  r.BodyW := Area.Vary('bodywidth', D(9.5, 11.0), 1.3) * sz;
-  r.BodyH := Area.Vary('bodyheight', D(14.0, 12.5), 1.4) * sz;
-  r.BodyD := r.BodyW * 0.7;
-  r.LegLen := Area.Vary('leglength', D(14.0, 11.5), 1.6) * sz;
-  r.ArmLen := Area.Vary('armlength', D(13.0, 11.5), 1.5) * sz;
-  r.LimbR := Area.Vary('limbwidth', D(3.4, 4.3), 0.5) * sz;
+  k := FigureHeight * PHeight[st] / h * sz;
+  r.Scale := k;
+  r.HeadR := r.HeadR * k;
+  r.BodyW := r.BodyW * k;
+  r.BodyH := r.BodyH * k;
+  r.BodyD := r.BodyD * k;
+  r.LegLen := r.LegLen * k;
+  r.ArmLen := r.ArmLen * k;
+  r.LimbR := r.LimbR * k;
+  r.BootR := r.BootR * k;
   r.HipW := r.BodyW * 0.5;
-  r.ShoulderW := r.BodyW * 0.92;
-  r.BootR := Area.Vary('bootsize', D(3.9, 4.7), 0.5) * sz;
+  r.ShoulderW := r.BodyW * PShoulder[st];
   r.BootLen := r.BootR * 1.5;
-  r.GloveR := r.LimbR * Area.Vary('glovesize', 1.35, 0.15);
+  r.GloveR := r.LimbR * Area.Vary('glovesize', PGlove[st], 0.15);
   r.Helmet := Area.Pick('helmet', 4);
   r.Visor := Area.Pick('visor', 3);
   r.Eyes := Area.Pick('eyes', 4);
@@ -295,14 +337,16 @@ Begin
     2: Begin r.EyeW := 13; r.EyeH := 8; End;
   Else Begin r.EyeW := 14; r.EyeH := 14; End;
   End;
-  r.EyeSpread := Area.Vary('eyespread', 21, 3);
+  r.EyeW := r.EyeW * PEye[st];
+  r.EyeH := r.EyeH * PEye[st];
+  r.EyeSpread := Area.Vary('eyespread', 21, 3) * (0.9 + 0.1 * PEye[st]);
   r.Backpack := Area.Chance('backpack', 0.6);
   r.Hunted := Hunted;
   r.OutlineScale := Area.Vary('outline', 1.0, 0.2);
   r.ArmSwing := Area.Vary('armswing', 0.6, 0.15);
   r.Stride := Area.Vary('stride', 0.6, 0.1);
   r.StepHeight := Area.Vary('stepheight', 0.75, 0.2);
-  r.Bob := Area.Vary('bob', 1.4, 0.6);
+  r.Bob := Area.Vary('bob', 1.4, 0.6) * k;
 
   r.Col.Suit := PlayerGreen(Area.Vary('suitlight', 0.55, 0.1));
   r.Col.Limb := PlayerGreen(0.45);
@@ -604,6 +648,24 @@ Begin
   End;
 End;
 
+(* Ellipse in screen space (highlights), no outline *)
+Procedure AddFlatEllipse(Var Sc: TScene; x, y, rx, ry, Ang: Double; Col: TAGColor; Depth: Double);
+Var
+  i: Integer;
+Begin
+  i := NewItem(Sc);
+  Sc.Items[i].Kind := ikEllipse;
+  Sc.Items[i].x0 := x;
+  Sc.Items[i].y0 := y;
+  Sc.Items[i].rx := rx;
+  Sc.Items[i].ry := ry;
+  Sc.Items[i].ang := Ang;
+  Sc.Items[i].Depth := Depth;
+  Sc.Items[i].Color := Col;
+  Sc.Items[i].Outline := Col;
+  Sc.Items[i].OScale := 0;
+End;
+
 Procedure SortItems(Var Sc: TScene);
 Var
   i, j: Integer;
@@ -628,28 +690,45 @@ Begin
   End;
 End;
 
+(*
+ * Soft (clay) style: no black outline, the edge is a darker tone of the part
+ * itself. A green part keeps a green edge, so it gets the player color too.
+ *)
+Function EdgeColor(Style: TAGStyle; Col, Outline: TAGColor): TAGColor;
+Begin
+  If Style <> asSoft Then exit(Outline);
+  result := AGShade(Col, 0.52);
+  If IsGreenDominant(Col) Then Begin
+    If Not IsGreenDominant(result) Then result := Col;
+  End
+  Else
+    result := NotGreen(result);
+End;
+
 Procedure DrawItems(C: TAGCanvas; Style: TAGStyle; Var Sc: TScene; OutlineScale: Double);
 Var
   i: Integer;
+  o: TAGColor;
 Begin
   For i := 0 To Sc.Count - 1 Do
     With Sc.Items[i] Do Begin
+      o := EdgeColor(Style, Color, Outline);
       Case Kind Of
         ikEllipse: Begin
             C.Push;
             C.Translate(x0, y0);
             C.Rotate(ang);
             C.Ellipse(0, 0, rx, ry);
-            DrawShapeOutlined(C, Style, Color, Outline, OScale * OutlineScale);
+            DrawShapeOutlined(C, Style, Color, o, OScale * OutlineScale);
             C.Pop;
           End;
         ikCapsule: Begin
             C.Capsule(x0, y0, x1, y1, r);
-            DrawShapeOutlined(C, Style, Color, Outline, OScale * OutlineScale);
+            DrawShapeOutlined(C, Style, Color, o, OScale * OutlineScale);
           End;
         ikPoly: Begin
             C.Polygon(Pts);
-            DrawShapeOutlined(C, Style, Color, Outline, OScale * OutlineScale);
+            DrawShapeOutlined(C, Style, Color, o, OScale * OutlineScale);
           End;
       End;
     End;
@@ -685,7 +764,7 @@ End;
 Function BuildRig(Const Fig: TFigure; Const Pose: TPose): TRig;
 Var
   i: Integer;
-  side, a: Double;
+  side, a, sc: Double;
   root, hip: TV3;
   BF, TF: TFrame; // body frame without the torso lean (legs), torso frame
 
@@ -696,6 +775,8 @@ Var
 
 Begin
   result := Default(TRig);
+  sc := Fig.Scale;
+  If sc <= 0 Then sc := 1;
   root := V3(Pose.RootS, Pose.RootU, Pose.RootF);
   BF.S := YawV(V3(1, 0, 0), Pose.Turn);
   BF.U := V3(0, 1, 0);
@@ -705,7 +786,7 @@ Begin
   result.HF := MakeFrame(Pose, true);
   hip := VAdd(root, V3(0, Fig.LegLen + Fig.BootR * 0.85, 0));
   result.HipC := hip;
-  result.Torso := Up(V3(0, Fig.BodyH * 0.5 - 0.5, 0));
+  result.Torso := Up(V3(0, Fig.BodyH * 0.5 - 0.5 * sc, 0));
   result.Belt := Up(V3(0, Fig.BodyH * 0.1, 0));
   result.Chest := Up(V3(0, Fig.BodyH * 0.55, Fig.BodyD * 0.93));
   result.Pack := Up(V3(0, Fig.BodyH * 0.55, -Fig.BodyD * 1.05));
@@ -725,14 +806,19 @@ Begin
     result.Ankle[i] := VAdd(result.Knee[i], FrameDir(BF,
       VMul(LimbDir(Pose.Leg[i].Swing - Pose.Leg[i].Bend, Pose.Leg[i].Spread + Pose.Leg[i].BendSpread, side), Fig.LegLen * 0.5)));
     a := Pose.Leg[i].Swing - Pose.Leg[i].Bend;
-    result.Toe[i] := VAdd(result.Ankle[i], FrameDir(BF, V3(side * 0.4, AGSin(a) * Fig.BootLen, AGCos(a) * Fig.BootLen)));
-    result.Heel[i] := VAdd(result.Ankle[i], FrameDir(BF, V3(0, -AGSin(a) * 1.2, -AGCos(a) * 1.2)));
+    result.Toe[i] := VAdd(result.Ankle[i], FrameDir(BF, V3(side * 0.4 * sc, AGSin(a) * Fig.BootLen, AGCos(a) * Fig.BootLen)));
+    result.Heel[i] := VAdd(result.Ankle[i], FrameDir(BF, V3(0, -AGSin(a) * 1.2 * sc, -AGCos(a) * 1.2 * sc)));
   End;
 End;
 
 Function HeadCenter(Const Fig: TFigure; Const Pose: TPose): TV3;
 Begin
   result := BuildRig(Fig, Pose).Head;
+End;
+
+Function HandPoint(Const Fig: TFigure; Const Pose: TPose; Arm: Integer): TV3;
+Begin
+  result := BuildRig(Fig, Pose).Hand[Arm];
 End;
 
 Function FigurePoint(Const Fig: TFigure; Const Pose: TPose; Facing, AX, AY: Double; Const p: TV3): TAGPoint;
@@ -754,10 +840,13 @@ Var
   Sc: TScene;
   Rg: TRig;
   i: Integer;
-  side, hd, hx, hy, ew, eh, lx, ly, k, bw, bu, td, fd: Double;
+  side, hd, hx, hy, ew, eh, lx, ly, k, bw, bu, td, fd, S: Double;
   ol: TAGColor;
   e: Array[0..1] Of Double;
   cp: TAGPoint;
+  visorItem: Integer;
+  glove: Array[0..1] Of Integer;
+  bx0, by0, bx1: Double;
 Begin
   Sc := Default(TScene);
   Sc.AX := AX;
@@ -767,6 +856,8 @@ Begin
   Sc.st := AGSin(CamTilt);
   Rg := BuildRig(Fig, Pose);
   ol := Fig.Col.Outline;
+  S := Fig.Scale;
+  If S <= 0 Then S := 1;
 
   // legs and boots
   For i := 0 To 1 Do Begin
@@ -780,21 +871,21 @@ Begin
   td := Sc.Items[Sc.Count - 1].Depth;
   ProjectDir(Sc, Rg.TF.F, hx, hy, fd); // fd > 0: the front of the torso faces the viewer
   // belt: thin disc with the width of the torso at its height
-  bu := (Fig.BodyH * 0.1 - (Fig.BodyH * 0.5 - 0.5)) / (Fig.BodyH * 0.58);
+  bu := (Fig.BodyH * 0.1 - (Fig.BodyH * 0.5 - 0.5 * S)) / (Fig.BodyH * 0.58);
   bw := AGSqrt(AGMax(0.05, 1 - bu * bu)) * 1.04;
-  AddEllipsoid(Sc, Rg.Belt, VMul(Rg.TF.S, Fig.BodyW * bw), VMul(Rg.TF.U, 1.9), VMul(Rg.TF.F, Fig.BodyD * bw),
+  AddEllipsoid(Sc, Rg.Belt, VMul(Rg.TF.S, Fig.BodyW * bw), VMul(Rg.TF.U, 1.9 * S), VMul(Rg.TF.F, Fig.BodyD * bw),
     Fig.Col.Belt, ol, 0.7, 0);
   Sc.Items[Sc.Count - 1].Depth := td + 0.01;
   If fd > 0.15 Then Begin
-    AddEllipsoid(Sc, VAdd(Rg.Belt, VMul(Rg.TF.F, Fig.BodyD * bw * 0.98)), VMul(Rg.TF.S, 2.2), VMul(Rg.TF.U, 1.9),
-      VMul(Rg.TF.F, 0.4), Fig.Col.Accent, ol, 0.5, 0);
+    AddEllipsoid(Sc, VAdd(Rg.Belt, VMul(Rg.TF.F, Fig.BodyD * bw * 0.98)), VMul(Rg.TF.S, 2.2 * S), VMul(Rg.TF.U, 1.9 * S),
+      VMul(Rg.TF.F, 0.4 * S), Fig.Col.Accent, ol, 0.5, 0);
     Sc.Items[Sc.Count - 1].Depth := td + 0.02;
-    AddEllipsoid(Sc, Rg.Chest, VMul(Rg.TF.S, 3.0), VMul(Rg.TF.U, 3.0), VMul(Rg.TF.F, 0.5),
+    AddEllipsoid(Sc, Rg.Chest, VMul(Rg.TF.S, 3.0 * S), VMul(Rg.TF.U, 3.0 * S), VMul(Rg.TF.F, 0.5 * S),
       Fig.Col.Accent, ol, 0.6, 0);
     Sc.Items[Sc.Count - 1].Depth := td + 0.02;
   End;
   If Fig.Backpack Then Begin
-    AddEllipsoid(Sc, Rg.Pack, VMul(Rg.TF.S, Fig.BodyW * 0.62), VMul(Rg.TF.U, Fig.BodyH * 0.4), VMul(Rg.TF.F, Fig.BodyD * 0.45),
+    AddEllipsoid(Sc, Rg.Pack, VMul(Rg.TF.S, Fig.BodyW * 0.52), VMul(Rg.TF.U, Fig.BodyH * 0.4), VMul(Rg.TF.F, Fig.BodyD * 0.45),
       Fig.Col.Pack, ol, 1, 0);
     If fd < -0.1 Then
       Sc.Items[Sc.Count - 1].Depth := td + 0.03
@@ -805,6 +896,7 @@ Begin
   For i := 0 To 1 Do Begin
     AddCapsule(Sc, Rg.Shoulder[i], Rg.Elbow[i], Fig.LimbR, Fig.Col.Limb, ol, 1, 1.2);
     AddCapsule(Sc, Rg.Elbow[i], Rg.Hand[i], Fig.LimbR * 0.95, Fig.Col.Limb, ol, 1, 1.3);
+    glove[i] := Sc.Count;
     AddSphere(Sc, Rg.Hand[i], Fig.GloveR, Fig.Col.Glove, ol, 1, 1.5);
   End;
 
@@ -813,14 +905,14 @@ Begin
   hd := hd + 2.5;
   Case Fig.Helmet Of
     0: Begin // crest from front to back over the top
-        AddEllipsoid(Sc, VAdd(Rg.Head, VMul(Rg.HF.U, Fig.HeadR * 0.8)), VMul(Rg.HF.S, 1.8),
+        AddEllipsoid(Sc, VAdd(Rg.Head, VMul(Rg.HF.U, Fig.HeadR * 0.8)), VMul(Rg.HF.S, 1.8 * S),
           VMul(Rg.HF.U, Fig.HeadR * 0.42), VMul(Rg.HF.F, Fig.HeadR * 0.78), Fig.Col.Accent, ol, 1, -100);
         Sc.Items[Sc.Count - 1].Depth := hd - 0.01;
       End;
     1: Begin // ear pods
         For i := 0 To 1 Do Begin
           If i = 0 Then side := 1 Else side := -1;
-          AddEllipsoid(Sc, VAdd(Rg.Head, VMul(Rg.HF.S, side * Fig.HeadR * 0.93)), VMul(Rg.HF.S, 2.2),
+          AddEllipsoid(Sc, VAdd(Rg.Head, VMul(Rg.HF.S, side * Fig.HeadR * 0.93)), VMul(Rg.HF.S, 2.2 * S),
             VMul(Rg.HF.U, Fig.HeadR * 0.4), VMul(Rg.HF.F, Fig.HeadR * 0.4), Fig.Col.Accent, ol, 1, 0);
           // the pod belongs to the head: in front or behind it
           If Sc.Items[Sc.Count - 1].Depth < hd - Fig.HeadR * 0.3 Then
@@ -839,6 +931,9 @@ Begin
   End;
   AddSphere(Sc, Rg.Head, Fig.HeadR, Fig.Col.Helmet, ol, 1.1, 0);
   Sc.Items[Sc.Count - 1].Depth := hd;
+  If Pose.HandsFront > 0.5 Then
+    For i := 0 To 1 Do
+      Sc.Items[glove[i]].Depth := AGMax(Sc.Items[glove[i]].Depth, hd + 0.5 + 0.001 * i);
   If Fig.Helmet = 3 Then // band around the helmet
     AddHeadBand(Sc, Rg.HF, Rg.Head, Fig.HeadR * 1.01, 14, 30, Fig.Col.Accent, ol, 0.7, hd + 0.005);
   If Fig.Hunted Then Begin // crown
@@ -850,8 +945,8 @@ Begin
     Sc.Items[i].Color := Fig.Col.Crown;
     Sc.Items[i].Outline := ol;
     Sc.Items[i].OScale := 0.8;
-    Sc.Items[i].Pts := [cp.x - k, cp.y + 2, cp.x - k * 1.1, cp.y - k * 0.9, cp.x - k * 0.5, cp.y - k * 0.35,
-      cp.x, cp.y - k * 1.1, cp.x + k * 0.5, cp.y - k * 0.35, cp.x + k * 1.1, cp.y - k * 0.9, cp.x + k, cp.y + 2];
+    Sc.Items[i].Pts := [cp.x - k, cp.y + 2 * S, cp.x - k * 1.1, cp.y - k * 0.9, cp.x - k * 0.5, cp.y - k * 0.35,
+      cp.x, cp.y - k * 1.1, cp.x + k * 0.5, cp.y - k * 0.35, cp.x + k * 1.1, cp.y - k * 0.9, cp.x + k, cp.y + 2 * S];
   End;
 
   // visor
@@ -860,7 +955,9 @@ Begin
     1: Begin e[0] := 68; e[1] := 30; End;
   Else Begin e[0] := 42; e[1] := 50; End;
   End;
+  visorItem := Sc.Count;
   AddHeadCap(Sc, Rg.HF, Rg.Head, Fig.HeadR, 0, -10, e[0], e[1], Fig.Col.Visor, ol, 0.8, hd + 0.1);
+  If visorItem >= Sc.Count Then visorItem := 0; // visor on the back side, not drawn
   If Fig.Face = 0 Then // glass reflex
     AddHeadCap(Sc, Rg.HF, Rg.Head, Fig.HeadR, -e[0] * 0.45, -10 + e[1] * 0.55, e[0] * 0.18, e[1] * 0.12, Fig.Col.VisorHi, ol, 0, hd + 0.11);
   // eyes
@@ -890,6 +987,24 @@ Begin
   End;
   If Fig.Face = 1 Then // smile
     AddHeadCap(Sc, Rg.HF, Rg.Head, Fig.HeadR, 0, -24, 10, 3.5, Fig.Col.Mouth, ol, 0, hd + 0.2);
+  If Style = asSoft Then Begin
+    // specular highlights, fixed to the light (top left), not to the head
+    k := Fig.HeadR;
+    AddFlatEllipse(Sc, hx - 0.42 * k, hy - 0.5 * k, 0.34 * k, 0.2 * k, -0.7, AGMix(Fig.Col.Helmet, AGWhite, 0.5), hd + 0.4);
+    AddFlatEllipse(Sc, hx - 0.48 * k, hy - 0.55 * k, 0.13 * k, 0.09 * k, -0.7, AGWhite, hd + 0.41);
+    If (Fig.Face = 0) And (visorItem > 0) Then Begin // glint on the visor glass, top left of its outline
+      bx0 := 1E9;
+      by0 := 1E9;
+      bx1 := -1E9;
+      For i := 0 To length(Sc.Items[visorItem].Pts) Div 2 - 1 Do Begin
+        bx0 := AGMin(bx0, Sc.Items[visorItem].Pts[2 * i]);
+        bx1 := AGMax(bx1, Sc.Items[visorItem].Pts[2 * i]);
+        by0 := AGMin(by0, Sc.Items[visorItem].Pts[2 * i + 1]);
+      End;
+      If bx1 - bx0 > 0.5 * k Then
+        AddFlatEllipse(Sc, bx0 + 0.3 * (bx1 - bx0), by0 + 0.22 * k, 0.16 * k, 0.07 * k, -0.4, AGWhite, hd + 0.42);
+    End;
+  End;
 
   SortItems(Sc);
   DrawItems(C, Style, Sc, Fig.OutlineScale);
