@@ -7,7 +7,7 @@ MusicIni: Array[0..65] Of String = (
   'bpm=128',
   'beat=4',
   'key=2',
-  'rms=0.2',
+  'rms=0.15',
   'loop=1',
   'inst kick  = sine  len=150 f=160..42 vol=0.32 attack=1 curve=1.4',
   'inst kick  = noise len=10 f=22050 vol=0.12 curve=2 lp=2500',

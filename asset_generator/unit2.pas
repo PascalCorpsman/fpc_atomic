@@ -12,8 +12,10 @@
 (******************************************************************************)
 (*
  * Style picker (--auto --set <folder>): first start without CD data. Shows
- * the key art of one random seed in the three styles, a click on a style
+ * the key art of one random seed in the four styles, a click on a style
  * generates the complete set into assets/<folder>/ and ends the program.
+ * With --setup (launcher setup) the folder and name come from the style
+ * (--folders / --names, see uag_gui).
  * The set is saved atomically (uag_worker): on cancel or error nothing is
  * left behind, a new folder is not created and an existing set is unchanged.
  *)
@@ -93,6 +95,7 @@ Begin
   fCtx := TAGContext.Create;
   fCtx.Name := GuiFolder;
   fCtx.Seed := NewRandomSeed;
+  fCtx.Language := DefaultVoiceLanguage; // voices in the language of the launcher
 End;
 
 Procedure TForm2.FormDestroy(Sender: TObject);
@@ -212,6 +215,12 @@ Begin
   If assigned(fSet) Then exit;
   If assigned(fPicker) Then fPicker.Cancel;
   fCtx.Style := s;
+  If GuiSetup Then Begin
+    // setup of the launcher: every style has its own folder and name
+    GuiFolder := GuiSetupFolders[Ord(s)];
+    fCtx.Name := GuiFolder;
+    If (Ord(s) < GuiSetupNames.Count) And (trim(GuiSetupNames[Ord(s)]) <> '') Then fCtx.Name := trim(GuiSetupNames[Ord(s)]);
+  End;
   PanelFlat.Visible := false;
   PanelSoft.Visible := false;
   PanelPixel.Visible := false;

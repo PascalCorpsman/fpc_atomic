@@ -19,7 +19,7 @@ This repository hosts only the custom source code. To protect the intellectual p
 ## What needs to be done to play the game?
 The steps shown here are only needed to be done once (for installation).
 
-**No CD?** Skip steps 1 and 4: the launcher can compute its own graphics and sounds (figure, bombs, maps, menus, schemes, game sounds, menu music) in a few seconds. See the [graphics manual](GRAPHICS_MANUAL.md).
+**No CD?** Skip steps 1 and 4: on the first start the launcher asks where the graphics and sounds should come from. Choose **Generate own**, pick one of four styles and play after about 15 seconds; the launcher computes everything (figure, bombs, maps, menus, schemes, game sounds, menu music), the other three styles follow in the background. **Setup...** in the launcher asks again any time. See the [graphics manual](GRAPHICS_MANUAL.md).
 
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/documentation/installation.plantuml)
 
@@ -37,7 +37,7 @@ The steps shown here are only needed to be done once (for installation).
    >
    > sudo aptitude install libssl-dev
    >
-4. click "run cd data extractor", a wizard guides you through 4 steps, "Next" is only possible when the step is valid<br>
+4. on the first start the launcher asks where the graphics and sounds should come from: choose **Take them from the CD** (or click "CD extractor..." later), a wizard guides you through 4 steps, "Next" is only possible when the step is valid<br>
    4.1 CD content: select the folder that contains the "DATA" folder (it is searched automatically next to the game and on the CD drives), the wizard shows if the expansion pack (ani.zip) is missing<br>
    4.2 FPC Atomic folder: usually already set (the folder of the extractor)<br>
    4.3 choose "Only create missing files" or "Create all files again" and click "Start extraction"  

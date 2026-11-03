@@ -13,8 +13,16 @@ Resourcestring
   R_GameDataMissing = '✗ Game data missing';
   R_GeneratingGraphics = 'Generating graphics …';
   R_GenerateGraphicsTitle = 'Generate graphics';
-  R_AskGenerateGraphics = 'No game data found (graphics and schemes from the Atomic Bomberman CD).' + LineEnding + LineEnding + 'Generate an own graphics set now and start the game with it? This takes a few seconds, the game has no sounds then.' + LineEnding + LineEnding + 'If you have the CD, use "CD extractor..." instead.';
+  R_AskGenerateGraphics = 'No game data found (graphics and schemes from the Atomic Bomberman CD).' + LineEnding + LineEnding + 'Generate an own graphics set (with sounds) now and start the game with it? This takes a few seconds.' + LineEnding + LineEnding + 'If you have the CD, use "CD extractor..." instead.';
   R_GenerateFailed = 'No graphics set was generated, the game can not start without game data.' + LineEnding + 'Use "CD extractor..." or try "Generate graphics" again.';
+  R_StyleFlat = 'Flat'; // Namen (und Ordner) der Sätze, die die Einrichtung erzeugt
+  R_StyleSoft = 'Soft';
+  R_StylePixel = 'Pixel';
+  R_StyleRetro = 'Retro';
+  R_NoGraphicsYet = 'No graphics yet';
+  R_NoGraphicsYetClick = 'Click here to set up';
+  RF_MoreStyles = 'Generating %d more styles …';
+  R_MoreStylesHint = 'The other styles of the setup are generated in the background (same seed, other look). They appear below the image as graphics sets when they are ready. You can already play.';
   R_GameVersionUnknown = 'Game ver. unknown';
   R_GameVersion = 'Game ver. ';
   R_VersionUpToDate = ', up to date';

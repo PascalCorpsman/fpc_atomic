@@ -27,6 +27,14 @@
  * colour of the whole set and a little per sound, its own noise; the music
  * is transposed (+-2 semitones), a bit faster or slower and its pulse widths
  * differ. Music files with the same song and changes are rendered once.
+ *
+ * Spoken sounds exist per language: sounds.ini [name] is English (the
+ * default), [name@de] German. Ctx.Language chooses; a sound without a
+ * section in that language uses [name].
+ *
+ * For the editor (DryRun with KeepData, see uag_output) the effects and the
+ * music are separate areas: GenerateSoundEffects (area 'sounds') and
+ * GenerateMusic (area 'music').
  *)
 Unit uag_gen_sounds;
 
@@ -34,9 +42,20 @@ Unit uag_gen_sounds;
 
 Interface
 
+Uses SysUtils, uag_context, uag_output;
+
+Type
+  TAGSoundGroup = (sgExplosion, sgBomb, sgPowerup, sgFigure, sgVoice, sgHurry, sgWinner, sgMenu, sgMusic);
+
+Procedure GenerateSoundEffects(Ctx: TAGContext; Output: TAGOutput); // sounds/*.wav, res/menuexit + quitgame
+Procedure GenerateMusic(Ctx: TAGContext; Output: TAGOutput); // res/<music>.wav
+Function SoundGroup(Const RelPath: String): TAGSoundGroup; // e.g. 'sounds/bomb_01.wav' -> sgExplosion
+Function VoiceLanguages: TStringArray; // 'en' first, then the languages of sounds.ini ('de')
+Function IsVoiceLanguage(Const Lang: String): Boolean;
+
 Implementation
 
-Uses Classes, SysUtils, uag_context, uag_output, uag_registry, uag_random, uag_sound;
+Uses Classes, uag_registry, uag_random, uag_sound;
 
 Const
 {$I uag_sounds_ini.inc}
@@ -58,9 +77,86 @@ Begin
   result := 'sounds/' + Name + '.wav';
 End;
 
-Function ExpectedSounds(Ctx: TAGContext): Integer;
+(* [name@lang] is a language variant of [name] *)
+Function IsVariant(Const Section: String): Boolean;
 Begin
-  result := Book.Count + Music.FileCount;
+  result := Pos('@', Section) > 0;
+End;
+
+Function VoiceLanguages: TStringArray;
+Var
+  i, k: Integer;
+  lang: String;
+  found: Boolean;
+Begin
+  result := Nil;
+  setlength(result, 1);
+  result[0] := 'en';
+  For i := 0 To Book.Count - 1 Do
+    If IsVariant(Book.Names[i]) Then Begin
+      lang := LowerCase(Copy(Book.Names[i], Pos('@', Book.Names[i]) + 1, MaxInt));
+      found := false;
+      For k := 0 To high(result) Do
+        If result[k] = lang Then found := true;
+      If Not found Then Begin
+        setlength(result, length(result) + 1);
+        result[high(result)] := lang;
+      End;
+    End;
+End;
+
+Function IsVoiceLanguage(Const Lang: String): Boolean;
+Var
+  l: TStringArray;
+  i: Integer;
+Begin
+  l := VoiceLanguages;
+  For i := 0 To high(l) Do
+    If SameText(l[i], Lang) Then exit(true);
+  result := false;
+End;
+
+Function SoundGroup(Const RelPath: String): TAGSoundGroup;
+Var
+  n: String;
+
+  Function Starts(Const Prefix: String): Boolean;
+  Begin
+    result := Copy(n, 1, length(Prefix)) = Prefix;
+  End;
+
+Var
+  i: Integer;
+Begin
+  n := LowerCase(ChangeFileExt(ExtractFileName(RelPath), ''));
+  For i := 0 To Music.FileCount - 1 Do
+    If SameText(Music.Files[i].Name, n) Then exit(sgMusic);
+  For i := 0 To Book.Count - 1 Do
+    If SameText(Copy(Book.Names[i], 1, length(n) + 1), n + '@') Then exit(sgVoice);
+  If Starts('bomb_') Or Starts('expl') Then result := sgExplosion
+  Else If Starts('kbomb') Or Starts('kicker') Or Starts('bmdrop') Or Starts('bmbthrw') Or Starts('bmbstop')
+    Or Starts('bombstop') Or Starts('bombboun') Or Starts('grab') Or (n = '1017') Or (n = '1036') Or (n = '1045')
+    Or (n = 'trampo') Then result := sgBomb
+  Else If Starts('get') Or Starts('disease') Or (n = 'coolpop') Or (n = 'schwing') Then result := sgPowerup
+  Else If Starts('sqrdrop') Or (n = 'clikplat') Then result := sgHurry
+  Else If n = '1000' Then result := sgWinner
+  Else If n = 'menuexit' Then result := sgMenu
+  Else result := sgFigure; // die, scream, warp, trans*, zen
+End;
+
+Function ExpectedSounds(Ctx: TAGContext): Integer;
+Var
+  i: Integer;
+Begin
+  result := Music.FileCount;
+  For i := 0 To Book.Count - 1 Do
+    If Not IsVariant(Book.Names[i]) Then inc(result);
+End;
+
+(* the expensive rendering only if the files are written or kept *)
+Function Render(Output: TAGOutput): Boolean;
+Begin
+  result := (Not Output.DryRun) Or Output.KeepData;
 End;
 
 Procedure GenerateMusic(Ctx: TAGContext; Output: TAGOutput);
@@ -84,7 +180,7 @@ Begin
   Try
     data := Nil;
     For i := 0 To Music.FileCount - 1 Do Begin
-      If Output.DryRun Then Begin
+      If Not Render(Output) Then Begin
         Output.SaveData('res/' + Music.Files[i].Name + '.wav', Nil);
         Continue;
       End;
@@ -103,25 +199,31 @@ Begin
   End;
 End;
 
-Procedure GenerateSounds(Ctx: TAGContext; Output: TAGOutput);
+Procedure GenerateSoundEffects(Ctx: TAGContext; Output: TAGOutput);
 Var
   area: TAGArea;
   setPitch, setDecay, setBright, setNoise: Double;
   v: TAGSoundVariation;
-  i: Integer;
-  name: String;
+  i, k: Integer;
+  name, lang: String;
 Begin
   area := Ctx.Area('sounds');
   setPitch := area.Vary('pitch', 1, 0.06);
   setDecay := area.Vary('decay', 1, 0.15);
   setBright := area.Vary('bright', 1, 0.25);
   setNoise := area.Vary('noise', 0.8, 0.2); // rate of the noise, 0.6 = dull, 1 = white
+  lang := LowerCase(Ctx.Language);
   For i := 0 To Book.Count - 1 Do Begin
     name := Book.Names[i];
-    If Output.DryRun Then Begin // previews: nothing to show, only count
+    If IsVariant(name) Then Continue;
+    If Not Render(Output) Then Begin // previews: nothing to show, only count
       Output.SaveData(SoundPath(name), Nil);
       Continue;
     End;
+    // spoken sounds: the section of the language, if there is one
+    k := i;
+    If (lang <> '') And (lang <> 'en') And (Book.IndexOf(name + '@' + lang) >= 0) Then
+      k := Book.IndexOf(name + '@' + lang);
     // per sound: pitch +-1.5 %, decay +-4 % on top of the set values
     v := AGNeutralVariation(DeriveSeed(area.Seed, 'noise/' + name));
     v.Kit := StyleKit[Ctx.Style];
@@ -129,8 +231,13 @@ Begin
     v.Decay := setDecay * (1 + 0.04 * (2 * area.Rnd('decay/' + name) - 1));
     v.Bright := setBright;
     v.NoiseRate := setNoise;
-    Output.SaveData(SoundPath(name), AGRenderWav(Book.Parts[i], v));
+    Output.SaveData(SoundPath(name), AGRenderWav(Book.Parts[k], v));
   End;
+End;
+
+Procedure GenerateSounds(Ctx: TAGContext; Output: TAGOutput);
+Begin
+  GenerateSoundEffects(Ctx, Output);
   GenerateMusic(Ctx, Output);
 End;
 

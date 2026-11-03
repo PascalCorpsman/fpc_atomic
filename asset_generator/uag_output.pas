@@ -20,7 +20,9 @@
  *
  * For previews: DryRun = true and KeepImages = true writes nothing and keeps
  * a copy of every image in Images (keyed images with fuchsia, as saved) and
- * of every text file (FindText).
+ * of every text file (FindText). KeepData additionally keeps the binary
+ * files (sounds) in memory (FindData), generators that skip expensive work
+ * in a DryRun do it then.
  * Cancelled can be set from another thread, the next Save* raises EAbort.
  *
  * Atomic save of a set (BeginSetSave, CommitSetSave, DiscardSetSave): a set
@@ -65,6 +67,12 @@ Type
     Ranges: Array Of TAGAniRange; // 1 or 4 entries, angle ranges are split evenly
   End;
 
+  { TAGData: a kept binary file }
+
+  TAGData = Class
+    Bytes: TBytes;
+  End;
+
   TAGProgressEvent = Procedure(Sender: TObject; Const RelPath: String; Done, Total: Integer) Of Object;
 
   { TAGOutput }
@@ -77,6 +85,7 @@ Type
     fExpected: Integer;
     fImages: TStringList;
     fTexts: TStringList;
+    fData: TStringList;
     Function FullPath(Const RelPath: String): String;
     Procedure Written(Const RelPath: String);
     Procedure CheckCancel;
@@ -84,6 +93,7 @@ Type
   public
     DryRun: Boolean; // true = nothing is written, only counted (for the progress total)
     KeepImages: Boolean; // true = a copy of every saved image is kept in Images
+    KeepData: Boolean; // true = every binary file (SaveData) is kept in KeptData, rendered also with DryRun
     Cancelled: Boolean; // set by the UI thread, the next Save* raises EAbort
     OnProgress: TAGProgressEvent;
     CancelAfter: Integer; // debug: Cancelled is set after this many files, 0 = off
@@ -96,6 +106,8 @@ Type
     Property Images: TStringList read fImages; // RelPath, Objects = TAGImage (owned), only with KeepImages
     Function FindImage(Const RelPath: String): TAGImage; // Nil if not kept
     Function FindText(Const RelPath: String): String; // lines separated by #10, '' if not kept (only with KeepImages)
+    Property KeptData: TStringList read fData; // RelPath, Objects = TAGData (owned), only with KeepData
+    Function FindData(Const RelPath: String): TBytes; // Nil if not kept
 
     Procedure SaveImage(Const RelPath: String; Img: TAGImage; Mode: TAGSaveMode);
     Procedure SaveAni(Const RelPath: String; Img: TAGImage; Const Spec: TAGAniSpec); // Img is keyed with fuchsia
@@ -537,6 +549,8 @@ Begin
   fImages := TStringList.Create;
   fImages.OwnsObjects := true;
   fTexts := TStringList.Create;
+  fData := TStringList.Create;
+  fData.OwnsObjects := true;
   InitCriticalSection(fLock);
 End;
 
@@ -549,6 +563,7 @@ Destructor TAGOutput.Destroy;
 Begin
   fImages.Free;
   fTexts.Free;
+  fData.Free;
   fFiles.Free;
   DoneCriticalSection(fLock);
   Inherited Destroy;
@@ -683,11 +698,36 @@ Begin
   Written(RelPath);
 End;
 
+Function TAGOutput.FindData(Const RelPath: String): TBytes;
+Var
+  i: Integer;
+Begin
+  result := Nil;
+  EnterCriticalSection(fLock);
+  Try
+    i := fData.IndexOf(RelPath);
+    If i >= 0 Then result := TAGData(fData.Objects[i]).Bytes;
+  Finally
+    LeaveCriticalSection(fLock);
+  End;
+End;
+
 Procedure TAGOutput.SaveData(Const RelPath: String; Const Data: TBytes);
 Var
   fs: TFileStream;
+  d: TAGData;
 Begin
   CheckCancel;
+  If KeepData Then Begin
+    d := TAGData.Create;
+    d.Bytes := Copy(Data);
+    EnterCriticalSection(fLock);
+    Try
+      fData.AddObject(RelPath, d);
+    Finally
+      LeaveCriticalSection(fLock);
+    End;
+  End;
   If Not DryRun Then Begin
     fs := TFileStream.Create(FullPath(RelPath), fmCreate);
     Try

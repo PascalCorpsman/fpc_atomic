@@ -1,11 +1,11 @@
 object Form1: TForm1
   Left = 347
-  Height = 659
+  Height = 688
   Top = 107
   Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Form1'
-  ClientHeight = 659
+  ClientHeight = 688
   ClientWidth = 547
   KeyPreview = True
   Position = poScreenCenter
@@ -23,6 +23,7 @@ object Form1: TForm1
     Width = 192
     Center = True
     Stretch = True
+    OnClick = Image1Click
     OnDblClick = Button12Click
   end
   object Button10: TButton
@@ -317,11 +318,11 @@ object Form1: TForm1
   end
   object GroupBox4: TGroupBox
     Left = 8
-    Height = 80
+    Height = 109
     Top = 446
     Width = 528
     Caption = ' Installation '
-    ClientHeight = 63
+    ClientHeight = 92
     ClientWidth = 526
     TabOrder = 3
     object Label5: TLabel
@@ -383,12 +384,24 @@ object Form1: TForm1
       Visible = False
       OnClick = Button13Click
     end
+    object Button17: TButton
+      Left = 368
+      Height = 25
+      Hint = 'Where the graphics and sounds come from: generate own ones (four styles) or take them from the Atomic Bomberman CD.'
+      Top = 60
+      Width = 150
+      Caption = 'Se&tup...'
+      ParentShowHint = False
+      ShowHint = True
+      TabOrder = 4
+      OnClick = Button17Click
+    end
   end
   object CheckBox6: TCheckBox
     Left = 10
     Height = 22
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 534
+    Top = 563
     Width = 264
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
@@ -398,7 +411,7 @@ object Form1: TForm1
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 560
+    Top = 589
     Width = 528
     BevelOuter = bvNone
     ClientHeight = 50
@@ -437,7 +450,7 @@ object Form1: TForm1
     Left = 10
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 627
+    Top = 656
     Width = 45
     Caption = 'Manual'
     Font.Color = clBlue
@@ -453,7 +466,7 @@ object Form1: TForm1
     Left = 71
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
-    Top = 627
+    Top = 656
     Width = 79
     BorderSpacing.Left = 16
     Caption = 'Config folder'
@@ -465,7 +478,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 446
     Height = 30
-    Top = 620
+    Top = 649
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
@@ -477,7 +490,7 @@ object Form1: TForm1
     Left = 326
     Height = 26
     Hint = 'The language of the launcher.'
-    Top = 620
+    Top = 649
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10

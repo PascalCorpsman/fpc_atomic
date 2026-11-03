@@ -23,7 +23,9 @@ Uses
   cthreads,
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, uag_gui, Unit1, Unit2,
+  Forms, uag_gui,
+  ulaunchersound in '../launcher/ulaunchersound.pas', // sound test of the launcher, plays the editor's sounds
+  Unit1, Unit2,
   // every generator unit registers itself, the order here is the order of generation (same as the command line version)
   uag_gen_items,
   uag_gen_atomic,

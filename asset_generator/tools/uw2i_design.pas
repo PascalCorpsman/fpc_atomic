@@ -17,6 +17,10 @@
  * pitch level, number of late hits). Spoken sounds get OWN phrases, spoken by
  * the formant voice of uag_sound with ring modulation; of the recording only
  * the length and the pitch level are used.
+ *
+ * Spoken sounds exist per language (DesignLanguage): 'de' German phrases,
+ * 'en' English phrases (own wording too). sounds.ini keeps the English one
+ * as [name] (default) and the German one as [name@de].
  *)
 Unit uw2i_design;
 
@@ -49,7 +53,11 @@ Var
   NoiseBrightness: TNoiseCalib = Nil; // set by the main program (renders and measures)
   NoiseGain: TNoiseCalib = Nil; // low pass -> factor that gives the loudness of white noise
 
+Var
+  DesignLanguage: String = 'de'; // language of the phrases: de | en
+
 Function DesignSound(Const Name: String; Const F: TFeatures): TDesign;
+Function IsSpokenSound(Const Name: String): Boolean; // the phrase depends on the language
 Function PartLine(Const P: TDPart): String;
 Procedure ScaleVolumes(Var D: TDesign; Factor: Double);
 
@@ -560,7 +568,7 @@ Type
   End;
 
 Const
-  PhonCount = 37;
+  PhonCount = 42;
 
 Var
   Phons: Array[0..PhonCount - 1] Of TPhon;
@@ -602,6 +610,11 @@ Begin
   DefPhon('ai', 'D', 750, 1250, 2500, 320, 2150, 2900, 140, 0, 0, true);
   DefPhon('au', 'D', 750, 1250, 2500, 350, 820, 2300, 140, 0, 0, true);
   DefPhon('oi', 'D', 520, 900, 2400, 320, 2100, 2800, 140, 0, 0, true);
+  // English: "day", "go", "cup", "bird"
+  DefPhon('ei', 'D', 480, 1900, 2600, 320, 2200, 2900, 130, 0, 0, true);
+  DefPhon('ou', 'D', 500, 950, 2400, 330, 800, 2300, 130, 0, 0, true);
+  DefPhon('A', 'V', 640, 1190, 2390, 0, 0, 0, 75, 0, 0, true);
+  DefPhon('3', 'V', 490, 1350, 1690, 0, 0, 0, 90, 0, 0, true);
   // nasals, liquids
   DefPhon('m', 'N', 250, 1100, 2300, 0, 0, 0, 65, 0, 0, true);
   DefPhon('n', 'N', 250, 1650, 2600, 0, 0, 0, 60, 0, 0, true);
@@ -619,6 +632,8 @@ Begin
   DefPhon('C', 'F', 0, 0, 0, 0, 0, 0, 85, 11000, 0.12, false);
   DefPhon('x', 'F', 0, 0, 0, 0, 0, 0, 85, 3200, 0.13, false);
   DefPhon('h', 'H', 0, 0, 0, 0, 0, 0, 50, 5000, 0.07, false);
+  DefPhon('T', 'F', 0, 0, 0, 0, 0, 0, 80, 9000, 0.06, false); // "th"
+
   // plosives: closure, then burst
   DefPhon('p', 'P', 0, 0, 0, 0, 0, 0, 55, 1500, 0.22, false);
   DefPhon('t', 'P', 0, 0, 0, 0, 0, 0, 55, 9000, 0.24, false);
@@ -1067,6 +1082,54 @@ End;
 
 { ---------- table: file -> recipe ---------- }
 
+Const
+  SpokenNames: Array[0..24] Of String = ('hurry', 'hurytuf', 'woohoo1', 'allrite', 'ohno1', 'disease1',
+    'disease2', 'gotcha', 'later', 'cul8r', 'roasted', 'toeasy', 'youblow', 'eatdust', 'smelsmok',
+    'stupidio', 'suckitdn', 'tastpain', 'tastpai2', 'gotahurt', 'cribrown', 'proud', 'theman',
+    'youwin1', 'quitgame');
+
+Function IsSpokenSound(Const Name: String): Boolean;
+Var
+  i: Integer;
+Begin
+  For i := 0 To high(SpokenNames) Do
+    If SameText(SpokenNames[i], Name) Then exit(true);
+  result := false;
+End;
+
+(* own English phrases, true if Name is one of them *)
+Function DesignEnglish(Const n: String; Const F: TFeatures; Var D: TDesign): Boolean;
+Begin
+  result := true;
+  If n = 'hurry' Then Say(F, D, 'Hurry up!', 'h ''A r i | ''A p', mUrgent, 55, 120, 200, 1)
+  Else If n = 'hurytuf' Then Say(F, D, 'Faster, faster!', 'f ''ae s t 3 _ f ''ae s t 3', mUrgent, 55, 120, 200, 1)
+  Else If n = 'woohoo1' Then Say(F, D, 'Yippee!', 'j I p ''i:', mExcited, 30, 160, 280, 1)
+  Else If n = 'allrite' Then Say(F, D, 'Nice one!', 'n ''ai s | w A n', mExcited, 30, 140, 240, 1)
+  Else If n = 'ohno1' Then Say(F, D, 'Oh dear!', '''ou | d ''i 6', mSad, 40, 130, 220, 1)
+  Else If n = 'disease1' Then Say(F, D, 'Achoo!', 'a | t S ''u', mExcited, 40, 150, 260, 1)
+  Else If n = 'disease2' Then Say(F, D, 'Eww, yuck!', '''i u _ j ''A k', mDisgust, 45, 180, 300, 1)
+  Else If n = 'gotcha' Then Say(F, D, 'Got you!', 'g ''O t | j u', mMock, 45, 120, 220, 1)
+  Else If n = 'later' Then Say(F, D, 'See ya!', 's ''i | j a', mMock, 45, 140, 240, 1)
+  Else If n = 'cul8r' Then Say(F, D, 'So long!', 's ou | l ''O N', mFarewell, 45, 120, 220, 1)
+  Else If n = 'roasted' Then Say(F, D, 'Toasted!', 't ''ou s t I d', mMock, 45, 120, 220, 1)
+  Else If n = 'toeasy' Then Say(F, D, 'Way too easy!', 'w ei | t u | ''i z i', mMock, 45, 110, 200, 1)
+  Else If n = 'youblow' Then Say(F, D, 'Not even close!', 'n O t | ''i v @ n | k l ou s', mMock, 45, 110, 200, 1)
+  Else If n = 'eatdust' Then Say(F, D, 'Bite the dust!', 'b ai t | d @ | d ''A s t', mNeutral, 45, 110, 200, 1)
+  Else If n = 'smelsmok' Then Say(F, D, 'Something''s burning!', 's ''A m T I N z | b ''3 n I N', mMock, 45, 110, 200, 1)
+  Else If n = 'stupidio' Then Say(F, D, 'Oh, come on!', 'ou _ k A m | ''O n', mSad, 45, 110, 200, 1)
+  Else If n = 'suckitdn' Then Say(F, D, 'Too bad!', 't u | b ''ae d', mMock, 45, 110, 200, 1)
+  Else If n = 'tastpain' Then Say(F, D, 'Ouch! Ow!', '''au t S _ ''au', mExcited, 45, 140, 240, 1)
+  Else If n = 'tastpai2' Then Say(F, D, 'That hurt!', 'd ae t | h ''3 t', mMock, 45, 110, 200, 1)
+  Else If n = 'gotahurt' Then Say(F, D, 'That must sting!', 'd ae t | m A s t | s t ''I N', mMock, 45, 110, 200, 1)
+  Else If n = 'cribrown' Then Say(F, D, 'Lights out!', 'l ''ai t s | ''au t', mNeutral, 45, 110, 200, 1)
+  Else If n = 'proud' Then Say(F, D, 'Well done!', 'w E l | d ''A n', mProud, 30, 130, 220, 1)
+  Else If n = 'theman' Then Say(F, D, 'Number one!', 'n ''A m b 3 | w ''A n', mProud, 30, 120, 200, 1)
+  Else If n = 'youwin1' Then Say(F, D, 'You win!', 'j u | w ''I n', mProud, 30, 140, 240, 1)
+  Else If n = 'quitgame' Then Say(F, D, 'Goodbye!', 'g U d | b ''ai', mFarewell, 35, 110, 200, 1)
+  Else
+    result := false;
+End;
+
 Function DesignSound(Const Name: String; Const F: TFeatures): TDesign;
 Var
   n: String;
@@ -1074,6 +1137,7 @@ Begin
   If PhonN = 0 Then InitPhons;
   result := Default(TDesign);
   n := LowerCase(Name);
+  If (DesignLanguage = 'en') And DesignEnglish(n, F, result) Then exit;
   // explosions
   If (Copy(n, 1, 5) = 'bomb_') Or (Copy(n, 1, 4) = 'expl') Then Explosion(n, F, result)
   // bombs

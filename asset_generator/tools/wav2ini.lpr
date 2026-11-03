@@ -19,6 +19,10 @@
  *       data/res/menuexit.wav, quitgame.wav) and writes an own design per
  *       file (see uw2i_design). Loudness is matched to the original (one
  *       number per sound). The result is a draft to be refined by hand.
+ *   wav2ini --voices <data dir> <de | en> <out.ini>
+ *       Only the spoken sounds, with the phrases of the language (see
+ *       uw2i_design), sections [name] for en (the default of the
+ *       generator), [name@de] for de. Paste them into sounds.ini.
  *   wav2ini --inc <sounds.ini | music.ini> <out.inc>
  *       Converts sounds.ini (music.ini) into the include file that is
  *       compiled into the asset generator (uag_sounds_ini.inc,
@@ -169,21 +173,76 @@ Begin
   result := FNV1a64(Name);
 End;
 
-Procedure DoDesign(Const DataDir, OutFile: String);
+(* own design of one original file, loudness matched; Section = name of the ini section *)
+Procedure DesignFile(Const FileName, Section: String; OutL: TStrings);
 Var
-  files, outL, lines: TStringList;
-  sr: TSearchRec;
-  i, pass: Integer;
   sig, ours: TFloatBuf;
-  rate: Integer;
+  rate, pass: Integer;
   f, g: TFeatures;
   d: TDesign;
-  name, dir: String;
+  name: String;
   scale: Double;
+  lines: TStringList;
+Begin
+  name := ChangeFileExt(ExtractFileName(FileName), '');
+  If Not LoadWav(FileName, sig, rate) Then Begin
+    WriteLn('cannot read ', FileName);
+    exit;
+  End;
+  f := Analyze(name, sig, rate);
+  d := DesignSound(name, f);
+  // loudness: match the RMS of the original (one number), keep the peak below full scale
+  If f.Rms > 0 Then
+    For pass := 1 To 4 Do Begin
+      ours := RenderDesign(d, SeedOf(name));
+      g := Analyze(name, ours, AG_SOUND_RATE);
+      If g.Rms <= 0 Then break;
+      // the soft limiter compresses the peaks, so iterate on the rendered RMS;
+      // do not push the limiter too hard (peak of the mix before it at most 1.3)
+      scale := f.Rms / g.Rms;
+      If RawPeak * scale > 1.3 Then scale := 1.3 / RawPeak;
+      ScaleVolumes(d, scale);
+    End;
+  OutL.Add('');
+  OutL.Add('[' + Section + ']');
+  OutL.Add('; ' + d.Kind + ': ' + d.Text);
+  If f.LenMs > 0 Then
+    OutL.Add('; measured: ' + FeatureLine(f));
+  lines := DesignLines(d);
+  Try
+    OutL.AddStrings(lines);
+  Finally
+    lines.Free;
+  End;
+  WriteLn(Section: 14, ' ', d.Kind: 10, ' ', length(d.Parts), ' lines');
+End;
+
+Procedure CalibrateNoise;
 Begin
   Calibrate;
   NoiseBrightness := @CalibLookup;
   NoiseGain := @CalibGain;
+End;
+
+Function OriginalFile(Const DataDir, Name: String): String;
+Var
+  dir: String;
+Begin
+  dir := IncludeTrailingPathDelimiter(DataDir);
+  If SameText(Name, 'menuexit') Or SameText(Name, 'quitgame') Then
+    result := dir + 'res' + PathDelim + Name + '.wav'
+  Else
+    result := dir + 'sounds' + PathDelim + Name + '.wav';
+End;
+
+Procedure DoDesign(Const DataDir, OutFile: String);
+Var
+  files, outL: TStringList;
+  sr: TSearchRec;
+  i: Integer;
+  dir: String;
+Begin
+  CalibrateNoise;
   files := TStringList.Create;
   outL := TStringList.Create;
   outL.LineBreak := #10;
@@ -209,45 +268,42 @@ Begin
     outL.Add('; fpcTesttone ignores). Section name = file name of the game (sounds/, menuexit + quitgame: res/).');
     outL.Add('; "measured" lines: the coarse features of the original the draft was derived from (env = level');
     outL.Add('; in dB at ms, at most 8 points; onsets = count and times of hits).');
-    For i := 0 To files.Count - 1 Do Begin
-      name := ChangeFileExt(ExtractFileName(files[i]), '');
-      If Not LoadWav(files[i], sig, rate) Then Begin
-        WriteLn('cannot read ', files[i]);
-        Continue;
-      End;
-      f := Analyze(name, sig, rate);
-      d := DesignSound(name, f);
-      // loudness: match the RMS of the original (one number), keep the peak below full scale
-      If f.Rms > 0 Then
-        For pass := 1 To 4 Do Begin
-          ours := RenderDesign(d, SeedOf(name));
-          g := Analyze(name, ours, AG_SOUND_RATE);
-          If g.Rms <= 0 Then break;
-          // the soft limiter compresses the peaks, so iterate on the rendered RMS;
-          // do not push the limiter too hard (peak of the mix before it at most 1.3)
-          scale := f.Rms / g.Rms;
-          If RawPeak * scale > 1.3 Then scale := 1.3 / RawPeak;
-          ScaleVolumes(d, scale);
-        End;
-      outL.Add('');
-      outL.Add('[' + name + ']');
-      outL.Add('; ' + d.Kind + ': ' + d.Text);
-      If f.LenMs > 0 Then
-        outL.Add('; measured: ' + FeatureLine(f));
-      lines := DesignLines(d);
-      Try
-        outL.AddStrings(lines);
-      Finally
-        lines.Free;
-      End;
-      WriteLn(name: 10, ' ', d.Kind: 10, ' ', length(d.Parts), ' lines');
-    End;
+    For i := 0 To files.Count - 1 Do
+      DesignFile(files[i], ChangeFileExt(ExtractFileName(files[i]), ''), outL);
     outL.SaveToFile(OutFile);
     For i := 0 To high(CalibRates) Do
       Write(Round(CalibRates[i]), ':', Round(CalibBright[i]), ' ');
     WriteLn;
   Finally
     files.Free;
+    outL.Free;
+  End;
+End;
+
+Procedure DoVoices(Const DataDir, Lang, OutFile: String);
+Const
+  Names: Array[0..24] Of String = ('allrite', 'cribrown', 'cul8r', 'disease1', 'disease2', 'eatdust',
+    'gotahurt', 'gotcha', 'hurry', 'hurytuf', 'later', 'ohno1', 'proud', 'roasted', 'smelsmok',
+    'stupidio', 'suckitdn', 'tastpai2', 'tastpain', 'theman', 'toeasy', 'woohoo1', 'youblow',
+    'youwin1', 'quitgame');
+Var
+  outL: TStringList;
+  i: Integer;
+  section: String;
+Begin
+  CalibrateNoise;
+  DesignLanguage := LowerCase(Lang);
+  outL := TStringList.Create;
+  outL.LineBreak := #10;
+  Try
+    For i := 0 To high(Names) Do Begin
+      If Not IsSpokenSound(Names[i]) Then Raise Exception.Create('not a spoken sound: ' + Names[i]);
+      section := Names[i];
+      If DesignLanguage <> 'en' Then section := section + '@' + DesignLanguage;
+      DesignFile(OriginalFile(DataDir, Names[i]), section, outL);
+    End;
+    outL.SaveToFile(OutFile);
+  Finally
     outL.Free;
   End;
 End;
@@ -423,13 +479,15 @@ Var
   pngFiles: Array Of String;
 Begin
   If ParamCount < 1 Then Begin
-    WriteLn('wav2ini --design <data dir> <out.ini> | --inc <ini> <out.inc> | --render <ini> <dir> [names] |');
+    WriteLn('wav2ini --design <data dir> <out.ini> | --voices <data dir> <de|en> <out.ini> |');
+    WriteLn('        --inc <ini> <out.inc> | --render <ini> <dir> [names] |');
     WriteLn('        --music <ini> <dir> [kit [seed]] |');
     WriteLn('        --features <wav>... | --compare <dir a> <dir b> | --png <out.png> <wav>...');
     Halt(1);
   End;
   Try
     If (ParamStr(1) = '--design') And (ParamCount >= 3) Then DoDesign(ParamStr(2), ParamStr(3))
+    Else If (ParamStr(1) = '--voices') And (ParamCount >= 4) Then DoVoices(ParamStr(2), ParamStr(3), ParamStr(4))
     Else If (ParamStr(1) = '--inc') And (ParamCount >= 3) Then DoInc(ParamStr(2), ParamStr(3))
     Else If (ParamStr(1) = '--render') And (ParamCount >= 3) Then Begin
       only := TStringList.Create;

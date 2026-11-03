@@ -12,7 +12,8 @@
 (******************************************************************************)
 (*
  * Worker threads of the UI (no LCL in here):
- *   TAGAreaWorker    renders one area (e.g. the figure or a map) into memory
+ *   TAGAreaWorker    renders one area (e.g. the figure or a map) into memory,
+ *                    the sound areas keep their WAVs too (Output.KeptData)
  *   TAGSetWorker     writes a complete set into a folder (with progress),
  *                    atomic: into a temporary folder that replaces the set
  *                    only when it is complete (see uag_output). A set folder
@@ -36,7 +37,7 @@ Uses Classes, SysUtils, uag_context, uag_output, uag_image;
 
 Type
 
-  TAGAreaKind = (akFigure, akPlayer, akBomb, akFlame, akPowerups, akObjects, akMap, akScreens, akPreview, akHunted);
+  TAGAreaKind = (akFigure, akPlayer, akBomb, akFlame, akPowerups, akObjects, akMap, akScreens, akPreview, akHunted, akSounds, akMusic);
 
   TAGParamList = Array Of TAGParamInfo;
 
@@ -115,12 +116,15 @@ Function AreaName(Kind: TAGAreaKind; Index: Integer): String; // e.g. 'atomic/p3
  *)
 Function ComposeScene(Field, Brick, Solid: TAGImage; Seed: QWord): TAGImage;
 
-(* Renders all images of an area into Output (use DryRun and KeepImages), maps also get the image 'scene' *)
+(*
+ * Renders all images of an area into Output (use DryRun and KeepImages), maps
+ * also get the image 'scene'. The sound areas need KeepData.
+ *)
 Procedure RenderArea(Ctx: TAGContext; Output: TAGOutput; Kind: TAGAreaKind; Index: Integer);
 
 Implementation
 
-Uses uag_registry, uag_random, uag_gen_atomic, uag_gen_world, uag_preview;
+Uses uag_registry, uag_random, uag_gen_atomic, uag_gen_world, uag_gen_sounds, uag_preview;
 
 Function AreaName(Kind: TAGAreaKind; Index: Integer): String;
 Begin
@@ -134,6 +138,8 @@ Begin
     akMap: result := format('map:Field%.2d', [Index]);
     akScreens: result := 'screens';
     akHunted: result := 'atomic'; // the base figure with a crown, same parameters
+    akSounds: result := 'sounds';
+    akMusic: result := 'music';
   Else
     result := 'preview';
   End;
@@ -198,6 +204,8 @@ Begin
     akHunted: GenerateFigure(Ctx, Output, Ctx.Area('atomic'), 'atomic/hunted/', true);
     akScreens: RunGenerator(Ctx, Output, 'screens');
     akPreview: RunGenerator(Ctx, Output, 'preview');
+    akSounds: GenerateSoundEffects(Ctx, Output);
+    akMusic: GenerateMusic(Ctx, Output);
   End;
 End;
 
@@ -274,6 +282,7 @@ Var
 Begin
   Output.DryRun := true;
   Output.KeepImages := true;
+  Output.KeepData := Kind In [akSounds, akMusic];
   Ctx.ClearParamLog;
   RenderArea(Ctx, Output, Kind, Index);
   name := AreaName(Kind, Index);

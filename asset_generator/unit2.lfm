@@ -28,7 +28,7 @@ object Form2: TForm2
     Top = 38
     Width = 842
     AutoSize = False
-    Caption = 'There is no game data from the CD yet, so FPC Atomic computes its own graphics. Click on a style.'
+    Caption = 'FPC Atomic computes its own graphics, sounds and music, no CD needed. Click on a style.'
     WordWrap = True
   end
   object PanelFlat: TPanel

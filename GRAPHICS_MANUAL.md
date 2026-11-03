@@ -14,13 +14,17 @@ FPC Atomic needs graphics and sounds. Until now they only came from the Atomic B
 
 ## Playing without the CD
 
-If the CD data is missing, the launcher shows the button **Generate graphics**. A click on **Launch** also generates a graphics set first:
+On the very first start without CD data and without a graphics set the launcher asks once: **Welcome to FPC Atomic — where should the graphics and sounds of the game come from?**
 
-1. A window shows **four styles** side by side, each with the same figure. **Roll again** shows four new variants.
-2. A click on a style generates the whole set, a progress bar shows how far it is.
-3. Then the launcher selects the new set and starts the game.
+- **Generate own (recommended)**: a window shows **four styles** side by side, each with the same figure (**Roll again** shows four new variants). A click on a style generates that set in about 15 seconds, named after the style (Flat, Soft, Pixel, Retro; in German Flach, Weich, Pixel, Retro). The launcher selects it (sounds "Automatic") and you can play at once. The other three styles are generated **in the background** with the same seed (same figure and maps, other look); the status in the launcher shows how many are still running, they appear below the image when they are ready. If you close the launcher before, it waits invisibly until they are done. **Cancel** in the style window generates nothing and shows the question again.
+- **Take them from the CD**: opens the CD extractor (the Atomic Bomberman CD is needed).
+- **Later**: nothing happens. The image in the launcher then shows "No graphics yet", a click on it opens the question again.
 
-**Cancel** generates nothing, and the game is not started.
+The question comes by itself only once. **Setup...** in the launcher (group Installation) or `atomic_launcher --setup` open it any time, e.g. to generate the four styles again with a new seed (existing sets are never overwritten, the new ones are called e.g. "Flat 2"). Everything else stays possible: the CD extractor is always there, after extracting the CD "Original" is just one more choice, and the generated sets stay.
+
+If the CD data is missing, the launcher also shows the button **Generate graphics**, and a click on **Launch** generates a graphics set first (one style of your choice, the launcher then starts the game).
+
+If the game (`fpc_atomic`) is started directly, without the launcher, it uses the graphics set and the sounds chosen in the launcher (the same settings file). If there are neither CD data nor a usable set, it says "No graphics are set up yet" and offers **Open setup** (starts the launcher with the question) or **Quit**.
 
 Game sounds and menu music come with the set (see [Sounds](#sounds)). The schemes (layouts of the bricks) come with the graphics set and are copied to `data/schemes` the first time. If there are schemes from the CD already, they stay unchanged.
 
@@ -34,6 +38,8 @@ The current set is shown in the launcher **below the image on the left**: `◀  
 ## Sounds
 
 Every set contains its own game sounds: explosions, kicks, bounces, teleporters and short callouts like "Erwischt!" or "Beeil dich!". They are not recordings, they are computed like the graphics (an interpretation of the original sounds, described in `asset_generator/sounds.ini`). There is also an own piece of music for the menus (`asset_generator/music.ini`).
+
+The callouts exist in German and English. A new set takes the language of the launcher (French and Spanish: English); in the graphics generator it can be changed in the area **Sounds**.
 
 The sound fits the style: flat sounds clear and punchy, soft warm with a little reverb, pixel like a 16-bit console with echo, retro rough like 8-bit. The seed changes pitch, length and timbre, so two sets of the same style sound different.
 
@@ -56,6 +62,7 @@ The sounds are switched on and off in the launcher under **Game settings**: **Pl
 - **Top:** name of the set, **style**, **seed** with **Roll dice** and **Own figure per player**. The seed is the number everything is computed from: same seed, same style and same settings always give exactly the same graphics.
 - **Left:** the areas: figure (with the hunted and, if switched on, players 1 to 10), bombs, flames, power ups, field objects, the 11 maps, menu screens and the image for the launcher.
 - **Middle:** the preview of the area. The figure walks in the selected **player color**, animation and direction can be chosen (walk, with bomb, kick, die, idle, ...). For the maps a scene shows bricks, the figure, a ticking bomb and an explosion.
+- **Sounds** and **Music** are areas of their own: sliders for pitch, length, brightness and noise, or key, tempo and timbre, plus a list of all sounds to listen to (▶) and **Play music**.
 - **Right:** the settings of the area as sliders (size, proportions, hue, ...), each with **Reset**. **New seed** rolls only this area again, **Lock seed** keeps it when the seed at the top is rolled.
 - **Save** writes the set, **Save as set...** creates a new one.
 
@@ -85,6 +92,7 @@ Graphics generator with user interface (`asset_generator_gui`):
 - `--new`: new set with a random seed
 - `--set <folder>`: open the set `assets/<folder>`
 - `--auto --set <folder>`: only the style choice and the progress, as when starting without the CD; with `--style flat|soft|pixel|retro` without the choice
+- `--auto --setup --folders <flat,soft,pixel,retro> --names <flat,soft,pixel,retro>`: the style choice of the setup, the chosen style is generated into its own folder (one folder and name per style, comma separated). The folder is written to `assets/last_set.txt`, the launcher then generates the other styles with `asset_generator --out assets/<folder> --profile assets/<first set>/profile.ini --style <style> --name <name>` (same seed)
 
 Without user interface (`asset_generator`):
 
@@ -95,7 +103,10 @@ asset_generator --out assets/MySet --name "My set" --seed random --style retro
 - `--out <folder>`: target, an existing `profile.ini` there is read
 - `--profile <file>`, `--seed <number|random>`, `--style <flat|soft|pixel|retro>`, `--name <text>`
 - `--per-player`: own figure per player
+- `--language de|en`: language of the callouts
 - `--only <a,b,...>`: only these areas, `--list` shows all of them
 - `--params`: print all settings with their values
 
-The game itself takes the set with `-assets <folder>` and the sounds with `-sounds <folder>` (the launcher passes both automatically). The folder name `auto` is reserved for the sound selection.
+The game itself takes the set with `-assets <folder>` and the sounds with `-sounds <folder>` (the launcher passes both automatically). Without these parameters it uses the settings of the launcher (`[Launcher] AssetSet` and `SoundSet`). The folder name `auto` is reserved for the sound selection.
+
+The launcher opens the setup with `--setup` (also `-setup`).

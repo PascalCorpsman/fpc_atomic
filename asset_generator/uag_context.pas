@@ -28,6 +28,7 @@
  *   Seed=123456
  *   Style=flat            (flat | soft | pixel | retro)
  *   PerPlayer=0           (1 = own atomic per player, atomic/p0 .. p9)
+ *   Language=en           (language of the spoken sounds: en | de)
  *   [Seeds]
  *   bomb=777              (locks the seed of an area)
  *   [Params]
@@ -87,6 +88,7 @@ Type
     Seed: QWord;
     Style: TAGStyle;
     PerPlayer: Boolean;
+    Language: String; // of the voices (sounds.ini [name] = en, [name@de] = de), default 'en'
     Constructor Create;
     Destructor Destroy; override;
     Procedure Assign(Src: TAGContext); // everything except the parameter log
@@ -106,6 +108,10 @@ Type
     Procedure SaveToFile(Const Filename: String);
   End;
 
+Const
+  AGLanguages: Array[0..1] Of String = ('en', 'de'); // languages of the spoken sounds (sounds.ini)
+
+Function IsAGLanguage(Const Lang: String): Boolean;
 Function StyleToString(s: TAGStyle): String;
 Function StringToStyle(Const s: String; Default: TAGStyle = asFlat): TAGStyle;
 Function AGFloatToStr(v: Double): String; // with '.', independent of the locale
@@ -117,6 +123,15 @@ Uses SysUtils, IniFiles, uag_math;
 
 Var
   InvFormat: TFormatSettings;
+
+Function IsAGLanguage(Const Lang: String): Boolean;
+Var
+  i: Integer;
+Begin
+  For i := 0 To high(AGLanguages) Do
+    If AGLanguages[i] = Lang Then exit(true);
+  result := false;
+End;
 
 Function StyleToString(s: TAGStyle): String;
 Begin
@@ -241,6 +256,7 @@ Begin
   Seed := 1;
   Style := asFlat;
   PerPlayer := false;
+  Language := 'en';
 End;
 
 Destructor TAGContext.Destroy;
@@ -257,6 +273,7 @@ Begin
   Seed := Src.Seed;
   Style := Src.Style;
   PerPlayer := Src.PerPlayer;
+  Language := Src.Language;
   fOverrides.Assign(Src.fOverrides);
   fLockedSeeds.Assign(Src.fLockedSeeds);
 End;
@@ -372,6 +389,8 @@ Begin
     Seed := StrToQWordDef(ini.ReadString('General', 'Seed', IntToStr(Seed)), Seed);
     Style := StringToStyle(ini.ReadString('General', 'Style', StyleToString(Style)), Style);
     PerPlayer := ini.ReadBool('General', 'PerPlayer', PerPlayer);
+    Language := LowerCase(Trim(ini.ReadString('General', 'Language', Language)));
+    If Not IsAGLanguage(Language) Then Language := 'en';
     fLockedSeeds.Clear;
     ini.ReadSectionValues('Seeds', sl);
     For i := 0 To sl.Count - 1 Do
@@ -400,6 +419,7 @@ Begin
     sl.Add('Seed=' + IntToStr(Seed));
     sl.Add('Style=' + StyleToString(Style));
     sl.Add('PerPlayer=' + IntToStr(ord(PerPlayer)));
+    sl.Add('Language=' + Language);
     sl.Add('');
     sl.Add('[Seeds]');
     For i := 0 To fLockedSeeds.Count - 1 Do

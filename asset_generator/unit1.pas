@@ -23,6 +23,12 @@
  * (all animations of the sheets and of die/, idle/, locked_in/), bombs and a
  * growing explosion. The scene of a map shows a ticking bomb, an explosion
  * and the figure, all in the selected player color.
+ *
+ * The areas "Sounds" and "Music" show the rendered WAVs instead of images
+ * (grouped by event) and play them with BASS (ulaunchersound of the
+ * launcher, the WAV is written into a temporary folder first). "Play music"
+ * plays the first 15 s of the menu music. The language of the voices is
+ * chosen in the Sounds area (profile Language).
  *)
 Unit Unit1;
 
@@ -32,7 +38,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  ComCtrls, uag_context, uag_output, uag_image, uag_preview, uag_worker;
+  ComCtrls, uag_context, uag_output, uag_image, uag_preview, uag_worker, ulaunchersound;
 
 Type
 
@@ -165,6 +171,29 @@ Type
     fRowBars: Array Of TTrackBar; // Nil for a check box
     fRowChecks: Array Of TCheckBox; // Nil for a slider
     fTestStep: Integer; // --test-save
+    fTestSoundDone: Boolean; // --test-sound
+    // sound areas
+    fSoundPanel, fSoundBar: TPanel;
+    fLabelLang, fLabelSoundHint: TLabel;
+    fComboLang: TComboBox;
+    fLangCodes: TStringArray;
+    fButtonPlay, fButtonPlayMusic, fButtonStop: TButton;
+    fListSounds: TListBox;
+    fSoundFiles: TStringList; // RelPath per line of fListSounds ('' = no sound)
+    fSoundNode: TAreaNode; // node of fSoundFiles
+    fSoundTest: TSoundTest;
+    fSoundDir: String; // temporary folder of the played WAVs
+    Procedure CreateSoundPanel;
+    Procedure SoundPanelCaptions;
+    Procedure FillSoundList(Node: TAreaNode);
+    Procedure UpdateSoundButtons;
+    Function PlayData(Const RelPath: String; Const Data: TBytes; MaxMs, Volume: Integer): Boolean;
+    Procedure ButtonPlayClick(Sender: TObject);
+    Procedure ButtonPlayMusicClick(Sender: TObject);
+    Procedure ButtonStopClick(Sender: TObject);
+    Procedure ComboLangChange(Sender: TObject);
+    Procedure SoundFinished(Sender: TObject);
+    Procedure TestSound;
     Procedure CreateNodes;
     Procedure BuildTree;
     Function SelectedNode: TAreaNode;
@@ -210,7 +239,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses Math, uag_math, uag_random, uag_gen_world, uag_gui, ulanguage;
+Uses Math, FileUtil, uag_math, uag_random, uag_gen_world, uag_gen_sounds, uag_gui, ulanguage;
 
 Const
   RowHeight = 62;
@@ -364,6 +393,11 @@ Begin
   PaintBoxAnim.Color := RGBToColor(48, 48, 56);
   fPrevColor := 2;
   fAnimStart := GetTickCount64;
+  fSoundFiles := TStringList.Create;
+  fSoundTest := TSoundTest.Create;
+  fSoundTest.OnFinished := @SoundFinished;
+  fSoundDir := IncludeTrailingPathDelimiter(GetTempDir(false)) + 'fpc_atomic_sounds_' + IntToStr(GetProcessID) + PathDelim;
+  CreateSoundPanel;
 End;
 
 Procedure TForm1.FormDestroy(Sender: TObject);
@@ -385,6 +419,9 @@ Begin
   fAnimSheet.Free;
   fAnimGround.Free;
   fCtx.Free;
+  fSoundTest.Free;
+  fSoundFiles.Free;
+  If DirectoryExists(fSoundDir) Then DeleteDirectory(fSoundDir, false);
 End;
 
 Procedure TForm1.FormShow(Sender: TObject);
@@ -395,6 +432,8 @@ Begin
   fShown := true;
   // the language is loaded now, so the resource strings can be used
   err := '';
+  SoundPanelCaptions;
+  fCtx.Language := DefaultVoiceLanguage; // new sets and sets of older versions: the language of the launcher
   If (GuiMode = gmSet) And FileExists(SetDir(GuiFolder) + 'profile.ini') Then Begin
     Try
       fCtx.LoadFromFile(SetDir(GuiFolder) + 'profile.ini');
@@ -422,6 +461,8 @@ Begin
 End;
 
 Procedure TForm1.ContextToControls;
+Var
+  i: Integer;
 Begin
   fUpdating := true;
   Try
@@ -429,6 +470,9 @@ Begin
     ComboStyle.ItemIndex := ord(fCtx.Style);
     EditSeed.Text := IntToStr(fCtx.Seed);
     CheckPerPlayer.Checked := fCtx.PerPlayer;
+    fComboLang.ItemIndex := 0;
+    For i := 0 To high(fLangCodes) Do
+      If fLangCodes[i] = fCtx.Language Then fComboLang.ItemIndex := i;
     ButtonSave.Enabled := true;
   Finally
     fUpdating := false;
@@ -464,7 +508,9 @@ Begin
     Add(akMap, i, format('Field%.2d  %s', [i, ThemeCaption(i)]));
   Add(akScreens, 0, R_AreaScreens);
   Add(akPreview, 0, R_AreaPreview);
-  Add(akHunted, 0, R_AreaHunted); // last, so the numbers of --area stay; shown below the figure
+  Add(akHunted, 0, R_AreaHunted); // after the others, so the numbers of --area stay; shown below the figure
+  Add(akSounds, 0, R_AreaSounds);
+  Add(akMusic, 0, R_AreaMusic);
 End;
 
 Procedure TForm1.BuildTree;
@@ -624,6 +670,10 @@ Begin
     n := FindNode(akFigure, 0)
   Else If assigned(sel) And (sel.Kind = akFlame) And FindNode(akMap, 0).Dirty Then
     n := FindNode(akMap, 0) // ground below the explosion
+  Else If assigned(sel) And (sel.Kind = akSounds) And FindNode(akMusic, 0).Dirty Then
+    n := FindNode(akMusic, 0) // "Play music"
+  Else If assigned(sel) And (sel.Kind = akMusic) And FindNode(akSounds, 0).Dirty Then
+    n := FindNode(akSounds, 0)
   Else Begin
     // the launcher image first, then everything in the order of the tree (players only when selected)
     If FindNode(akPreview, 0).Dirty Then
@@ -654,6 +704,15 @@ Begin
       End;
       fTestStep := -fTestStep;
       exit;
+    End;
+    If (GuiTestSound <> '') And Not fTestSoundDone Then Begin
+      fTestSoundDone := true;
+      TestSound;
+      If GuiScreenshot = '' Then Begin
+        fModified := false;
+        Close;
+        exit;
+      End;
     End;
     If (GuiScreenshot <> '') And Not fScreenshotDone Then Begin
       fScreenshotDone := true;
@@ -694,7 +753,9 @@ Begin
     If n = SelectedNode Then
       ShowNode(false)
     Else If assigned(SelectedNode) And (SelectedNode.Kind In [akMap, akFlame]) And (n.Kind In [akFigure, akBomb, akFlame, akMap]) Then
-      UpdateView; // the scene or the explosion use the images of other areas
+      UpdateView // the scene or the explosion use the images of other areas
+    Else If n.Kind = akMusic Then
+      UpdateSoundButtons; // "Play music" in the Sounds area
   End;
   If Not TimerDebounce.Enabled Then Schedule;
 End;
@@ -723,6 +784,11 @@ Begin
   End;
   anim := n.IsFigure Or (n.Kind In [akBomb, akFlame]);
   PanelAnim.Visible := anim;
+  // the sound areas show the list of their WAVs instead of images
+  fSoundPanel.Visible := n.Kind In [akSounds, akMusic];
+  PanelView.Visible := Not fSoundPanel.Visible;
+  ScrollBox1.Visible := Not fSoundPanel.Visible;
+  If fSoundPanel.Visible Then FillSoundList(n);
   LabelColor.Visible := anim Or (n.Kind = akMap);
   ComboColor.Visible := LabelColor.Visible;
   LabelDir.Visible := n.IsFigure;
@@ -1200,6 +1266,318 @@ Begin
   PaintBoxAnim.Invalidate;
 End;
 
+
+(* ------------------------------------------------------------------------ *)
+(* Sounds                                                                   *)
+
+Procedure TForm1.CreateSoundPanel;
+Begin
+  fSoundPanel := TPanel.Create(self);
+  fSoundPanel.Parent := PanelCenter;
+  fSoundPanel.Align := alClient;
+  fSoundPanel.BevelOuter := bvNone;
+  fSoundPanel.Visible := false;
+  fSoundBar := TPanel.Create(self);
+  fSoundBar.Parent := fSoundPanel;
+  fSoundBar.Align := alTop;
+  fSoundBar.BevelOuter := bvNone;
+  fSoundBar.AutoSize := true; // the language row is hidden in the music area, the hint may wrap
+  fLabelLang := TLabel.Create(self);
+  fLabelLang.Parent := fSoundBar;
+  fComboLang := TComboBox.Create(self);
+  fComboLang.Parent := fSoundBar;
+  fComboLang.Style := csDropDownList;
+  fComboLang.OnChange := @ComboLangChange;
+  fButtonPlay := TButton.Create(self);
+  fButtonPlay.Parent := fSoundBar;
+  fButtonPlay.OnClick := @ButtonPlayClick;
+  fButtonPlayMusic := TButton.Create(self);
+  fButtonPlayMusic.Parent := fSoundBar;
+  fButtonPlayMusic.OnClick := @ButtonPlayMusicClick;
+  fButtonStop := TButton.Create(self);
+  fButtonStop.Parent := fSoundBar;
+  fButtonStop.OnClick := @ButtonStopClick;
+  fLabelSoundHint := TLabel.Create(self);
+  fLabelSoundHint.Parent := fSoundBar;
+  fListSounds := TListBox.Create(self);
+  fListSounds.Parent := fSoundPanel;
+  fListSounds.Align := alClient;
+  fListSounds.BorderSpacing.Left := 8;
+  fListSounds.BorderSpacing.Bottom := 8;
+  fListSounds.OnDblClick := @ButtonPlayClick;
+  // layout: language in the first row, the buttons and the hint in the second
+  fLabelLang.AnchorSideLeft.Control := fSoundBar;
+  fLabelLang.AnchorSideTop.Control := fComboLang;
+  fLabelLang.AnchorSideTop.Side := asrCenter;
+  fLabelLang.BorderSpacing.Left := 8;
+  fComboLang.AnchorSideLeft.Control := fLabelLang;
+  fComboLang.AnchorSideLeft.Side := asrBottom;
+  fComboLang.AnchorSideTop.Control := fSoundBar;
+  fComboLang.BorderSpacing.Left := 6;
+  fComboLang.BorderSpacing.Top := 6;
+  fComboLang.Width := 140;
+  fButtonPlay.AnchorSideLeft.Control := fSoundBar;
+  fButtonPlay.AnchorSideTop.Control := fComboLang;
+  fButtonPlay.AnchorSideTop.Side := asrBottom;
+  fButtonPlay.BorderSpacing.Left := 8;
+  fButtonPlay.BorderSpacing.Top := 8;
+  fButtonPlay.AutoSize := true;
+  fButtonPlay.Constraints.MinWidth := 90;
+  fButtonPlayMusic.AnchorSideLeft.Control := fButtonPlay;
+  fButtonPlayMusic.AnchorSideLeft.Side := asrBottom;
+  fButtonPlayMusic.AnchorSideTop.Control := fButtonPlay;
+  fButtonPlayMusic.BorderSpacing.Left := 6;
+  fButtonPlayMusic.AutoSize := true;
+  fButtonPlayMusic.Constraints.MinWidth := 90;
+  fButtonStop.AnchorSideLeft.Control := fButtonPlayMusic;
+  fButtonStop.AnchorSideLeft.Side := asrBottom;
+  fButtonStop.AnchorSideTop.Control := fButtonPlay;
+  fButtonStop.BorderSpacing.Left := 6;
+  fButtonStop.AutoSize := true;
+  fButtonStop.Constraints.MinWidth := 90;
+  fLabelSoundHint.AnchorSideLeft.Control := fButtonStop;
+  fLabelSoundHint.AnchorSideLeft.Side := asrBottom;
+  fLabelSoundHint.AnchorSideTop.Control := fButtonPlay;
+  fLabelSoundHint.AnchorSideTop.Side := asrCenter;
+  fLabelSoundHint.AnchorSideRight.Control := fSoundBar;
+  fLabelSoundHint.AnchorSideRight.Side := asrBottom;
+  fLabelSoundHint.Anchors := [akLeft, akTop, akRight];
+  fLabelSoundHint.BorderSpacing.Left := 12;
+  fLabelSoundHint.BorderSpacing.Right := 8;
+  fLabelSoundHint.WordWrap := true;
+  fButtonPlay.BorderSpacing.Bottom := 8;
+  fButtonPlay.ShowHint := true;
+  fButtonPlayMusic.ShowHint := true;
+End;
+
+(* after the language is loaded *)
+Procedure TForm1.SoundPanelCaptions;
+Var
+  langs: TStringArray;
+  i: Integer;
+Begin
+  fLabelLang.Caption := R_VoiceLanguage;
+  fButtonPlay.Caption := R_SoundPlay;
+  fButtonPlay.Hint := R_SoundPlayHint;
+  fButtonPlayMusic.Caption := R_SoundPlayMusic;
+  fButtonPlayMusic.Hint := R_SoundPlayMusicHint;
+  fButtonStop.Caption := R_SoundStop;
+  langs := VoiceLanguages;
+  fLangCodes := langs;
+  fComboLang.Items.Clear;
+  For i := 0 To high(langs) Do
+    Case langs[i] Of
+      'en': fComboLang.Items.Add(R_LangEnglish);
+      'de': fComboLang.Items.Add(R_LangGerman);
+    Else
+      fComboLang.Items.Add(langs[i]);
+    End;
+  fComboLang.ItemIndex := 0;
+  UpdateSoundButtons;
+End;
+
+Function GroupCaption(g: TAGSoundGroup): String;
+Begin
+  Case g Of
+    sgExplosion: result := R_GroupExplosion;
+    sgBomb: result := R_GroupBomb;
+    sgPowerup: result := R_GroupPowerup;
+    sgFigure: result := R_GroupFigure;
+    sgVoice: result := R_GroupVoice;
+    sgHurry: result := R_GroupHurry;
+    sgWinner: result := R_GroupWinner;
+    sgMenu: result := R_GroupMenu;
+  Else
+    result := R_GroupMusic;
+  End;
+End;
+
+Function WavSeconds(Const Data: TBytes): Double;
+Begin
+  result := Max(0, length(Data) - 44) / 2 / 22050; // 16 bit mono 22050 Hz (uag_sound)
+End;
+
+Procedure TForm1.FillSoundList(Node: TAreaNode);
+Var
+  old: String;
+  sl: TStringList;
+  i, idx: Integer;
+  g: TAGSoundGroup;
+  d: TBytes;
+Begin
+  old := '';
+  If (fSoundNode = Node) And (fListSounds.ItemIndex >= 0) And (fListSounds.ItemIndex < fSoundFiles.Count) Then
+    old := fSoundFiles[fListSounds.ItemIndex];
+  fSoundNode := Node;
+  fLabelLang.Visible := Node.Kind = akSounds;
+  fComboLang.Visible := Node.Kind = akSounds;
+  // sorted by group (order of TAGSoundGroup), then by name
+  sl := TStringList.Create;
+  Try
+    If assigned(Node.Output) Then
+      For i := 0 To Node.Output.KeptData.Count - 1 Do
+        sl.Add(format('%.2d%s', [ord(SoundGroup(Node.Output.KeptData[i])), Node.Output.KeptData[i]]));
+    sl.Sort;
+    fListSounds.Items.BeginUpdate;
+    Try
+      fListSounds.Items.Clear;
+      fSoundFiles.Clear;
+      If Node.Output = Nil Then Begin
+        fListSounds.Items.Add(R_Rendering);
+        fSoundFiles.Add('');
+      End;
+      For i := 0 To sl.Count - 1 Do Begin
+        g := TAGSoundGroup(StrToInt(Copy(sl[i], 1, 2)));
+        fSoundFiles.Add(Copy(sl[i], 3, MaxInt));
+        d := Node.Output.FindData(fSoundFiles[i]);
+        fListSounds.Items.Add(format('%s:   %s   (%s s)', [GroupCaption(g),
+          ChangeFileExt(ExtractFileName(fSoundFiles[i]), ''), FormatFloat('0.0', WavSeconds(d))]));
+      End;
+    Finally
+      fListSounds.Items.EndUpdate;
+    End;
+  Finally
+    sl.Free;
+  End;
+  idx := fSoundFiles.IndexOf(old);
+  If (idx < 0) And (fSoundFiles.Count > 0) And (fSoundFiles[0] <> '') Then idx := 0;
+  fListSounds.ItemIndex := idx;
+  UpdateSoundButtons;
+End;
+
+Procedure TForm1.UpdateSoundButtons;
+Var
+  ok: Boolean;
+  m: TAreaNode;
+Begin
+  ok := SoundLibraryAvailable() And Not fSoundTest.Failed;
+  m := Nil;
+  If length(fNodes) > 0 Then m := FindNode(akMusic, 0);
+  fButtonPlay.Enabled := ok And (fSoundFiles.Count > 0) And (fSoundFiles[0] <> '');
+  fButtonPlayMusic.Enabled := ok And assigned(m) And assigned(m.Output) And (m.Output.KeptData.Count > 0);
+  fButtonStop.Enabled := ok And fSoundTest.Playing;
+  If Not SoundLibraryAvailable() Then
+    fLabelSoundHint.Caption := R_SoundNoLibrary
+  Else If fSoundTest.Failed Then
+    fLabelSoundHint.Caption := format(RF_SoundError, [fSoundTest.Error])
+  Else
+    fLabelSoundHint.Caption := R_SoundHint;
+End;
+
+(* writes the WAV into the temporary folder (BASS plays files) and plays it *)
+Function TForm1.PlayData(Const RelPath: String; Const Data: TBytes; MaxMs, Volume: Integer): Boolean;
+Var
+  steps: TSoundTestSteps;
+  fn: String;
+  fs: TFileStream;
+Begin
+  result := false;
+  If length(Data) = 0 Then exit;
+  fSoundTest.Stop; // the file may be open
+  ForceDirectories(fSoundDir);
+  fn := fSoundDir + StringReplace(RelPath, '/', '_', [rfReplaceAll]);
+  Try
+    fs := TFileStream.Create(fn, fmCreate);
+    Try
+      fs.WriteBuffer(Data[0], length(Data));
+    Finally
+      fs.Free;
+    End;
+  Except
+    On e: Exception Do Begin
+      SetStatus(format(RF_Error, [e.Message]));
+      exit;
+    End;
+  End;
+  steps := Nil;
+  setlength(steps, 1);
+  steps[0].Filename := fn;
+  steps[0].MaxMs := MaxMs;
+  result := fSoundTest.Play(steps, Volume);
+  UpdateSoundButtons;
+End;
+
+Procedure TForm1.ButtonPlayClick(Sender: TObject);
+Var
+  i: Integer;
+Begin
+  i := fListSounds.ItemIndex;
+  If (fSoundNode = Nil) Or (fSoundNode.Output = Nil) Or (i < 0) Or (i >= fSoundFiles.Count) Or (fSoundFiles[i] = '') Then exit;
+  If Not fButtonPlay.Enabled Then exit; // double click without BASS
+  PlayData(fSoundFiles[i], fSoundNode.Output.FindData(fSoundFiles[i]), 0, SoundVolume);
+End;
+
+Procedure TForm1.ButtonPlayMusicClick(Sender: TObject);
+Var
+  m: TAreaNode;
+Begin
+  m := FindNode(akMusic, 0);
+  If (m = Nil) Or (m.Output = Nil) Or (m.Output.KeptData.Count = 0) Then exit;
+  PlayData(m.Output.KeptData[0], m.Output.FindData(m.Output.KeptData[0]), 15000, SoundVolume);
+End;
+
+Procedure TForm1.ButtonStopClick(Sender: TObject);
+Begin
+  fSoundTest.Stop;
+  UpdateSoundButtons;
+End;
+
+Procedure TForm1.SoundFinished(Sender: TObject);
+Begin
+  UpdateSoundButtons;
+End;
+
+Procedure TForm1.ComboLangChange(Sender: TObject);
+Var
+  i: Integer;
+Begin
+  If fUpdating Then exit;
+  i := fComboLang.ItemIndex;
+  If (i < 0) Or (i > high(fLangCodes)) Or (fCtx.Language = fLangCodes[i]) Then exit;
+  fCtx.Language := fLangCodes[i];
+  MarkDirty(FindNode(akSounds, 0));
+End;
+
+(* --test-sound: BASS loads and a stream plays (volume 0) *)
+Procedure TForm1.TestSound;
+Var
+  m: TAreaNode;
+  sl: TStringList;
+  ok: Boolean;
+  t: QWord;
+Begin
+  sl := TStringList.Create;
+  Try
+    m := FindNode(akMusic, 0);
+    If (m = Nil) Or (m.Output = Nil) Or (m.Output.KeptData.Count = 0) Then
+      sl.Add('error: the music was not rendered')
+    Else If Not SoundLibraryAvailable() Then
+      sl.Add('error: ' + SoundLibraryFile() + ' missing, play buttons enabled: ' + BoolToStr(fButtonPlay.Enabled, true))
+    Else Begin
+      ok := PlayData(m.Output.KeptData[0], m.Output.FindData(m.Output.KeptData[0]), 15000, 0);
+      If ok Then Begin
+        // keeps playing for a moment
+        t := GetTickCount64;
+        While (GetTickCount64 - t < 700) And fSoundTest.Playing Do Begin
+          Application.ProcessMessages;
+          Sleep(20);
+        End;
+        sl.Add(format('ok: %s played %d ms at volume 0 (%d bytes), still playing: %s',
+          [m.Output.KeptData[0], GetTickCount64 - t, length(m.Output.FindData(m.Output.KeptData[0])), BoolToStr(fSoundTest.Playing, true)]));
+        fSoundTest.Stop;
+      End
+      Else
+        sl.Add('error: ' + fSoundTest.Error);
+    End;
+    If assigned(FindNode(akSounds, 0).Output) And assigned(m.Output) Then
+      sl.Add(format('sounds: %d files, music: %d files, language %s', [FindNode(akSounds, 0).Output.KeptData.Count,
+        m.Output.KeptData.Count, fCtx.Language]));
+    sl.SaveToFile(GuiTestSound);
+  Finally
+    sl.Free;
+  End;
+End;
+
 (* ------------------------------------------------------------------------ *)
 (* Parameters                                                               *)
 
@@ -1522,6 +1900,7 @@ Begin
   PanelTop.Enabled := Value;
   PanelRight.Enabled := Value;
   TreeView1.Enabled := Value;
+  fComboLang.Enabled := Value;
   ButtonSave.Enabled := Value;
   ButtonSaveAs.Enabled := Value;
   ProgressBar1.Visible := Not Value;

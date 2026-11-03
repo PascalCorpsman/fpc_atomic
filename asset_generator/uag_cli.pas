@@ -70,6 +70,7 @@ Begin
   writeln('  --style <s>        flat | soft | pixel | retro');
   writeln('  --name <text>      name of the set');
   writeln('  --per-player       own atomic per player (atomic/p0 .. p9)');
+  writeln('  --language <l>     language of the spoken sounds: en | de (default en)');
   writeln('  --only <a,b,..>    only these generators');
   writeln('  --params           list all parameters after generating');
   writeln('  --list             list the generators and exit');
@@ -84,7 +85,7 @@ Var
   Ctx: TAGContext;
   Output: TAGOutput;
   Cli: TCli;
-  OutDir, ProfileFile, OnlyList, SeedStr, StyleStr, NameStr: String;
+  OutDir, ProfileFile, OnlyList, SeedStr, StyleStr, NameStr, LangStr: String;
   TmpDir: String;
   PerPlayer, ListParams: Boolean;
   CancelAfter: Integer;
@@ -100,6 +101,7 @@ Begin
   SeedStr := '';
   StyleStr := '';
   NameStr := '';
+  LangStr := '';
   PerPlayer := false;
   ListParams := false;
   CancelAfter := 0;
@@ -112,6 +114,14 @@ Begin
       '--seed': Begin inc(i); SeedStr := ParamStr(i); End;
       '--style': Begin inc(i); StyleStr := ParamStr(i); End;
       '--name': Begin inc(i); NameStr := ParamStr(i); End;
+      '--language': Begin
+          inc(i);
+          LangStr := LowerCase(ParamStr(i));
+          If Not IsAGLanguage(LangStr) Then Begin
+            writeln('Unknown language: ', ParamStr(i), ' (en or de)');
+            halt(2);
+          End;
+        End;
       '--only': Begin inc(i); OnlyList := ParamStr(i); End;
       '--cancel-after': Begin inc(i); CancelAfter := StrToIntDef(ParamStr(i), 0); End;
       '--per-player': PerPlayer := true;
@@ -148,6 +158,7 @@ Begin
       Ctx.Seed := StrToQWord(SeedStr);
     If StyleStr <> '' Then Ctx.Style := StringToStyle(StyleStr, Ctx.Style);
     If NameStr <> '' Then Ctx.Name := NameStr;
+    If LangStr <> '' Then Ctx.Language := LangStr;
     If PerPlayer Then Ctx.PerPlayer := true;
 
     Only.CommaText := OnlyList;
@@ -161,7 +172,7 @@ Begin
     Output.OnProgress := @Cli.OnProgress;
     Output.CancelAfter := CancelAfter;
 
-    writeln(format('Set "%s", seed %d, style %s', [Ctx.Name, Ctx.Seed, StyleToString(Ctx.Style)]));
+    writeln(format('Set "%s", seed %d, style %s, language %s', [Ctx.Name, Ctx.Seed, StyleToString(Ctx.Style), Ctx.Language]));
     t0 := GetTickCount64;
     TmpDir := BeginSetSave(OutDir);
     If (Only.Count > 0) And DirectoryExists(OutDir) Then Begin

@@ -41,14 +41,15 @@
  *
  * Differences to fpcTesttone: 22050 Hz (the rate of the game sounds), Double,
  * deterministic math (uag_math) and seeded noise (TAGRandom), so the same
- * seed gives bit identical WAVs on every platform. Levels above 0.6 are
- * compressed by a soft limiter instead of being clipped (loud explosions).
+ * seed gives bit identical WAVs on every platform. Levels above 0.75 are
+ * compressed by a soft limiter instead of being clipped; the gain staging
+ * (HeadroomGain) keeps the level so low that it is rarely active.
  *
  * Sound kits (TAGSoundKit, one per graphics style) change the parts while
  * rendering, sounds.ini stays the same: flat = clean and punchy, soft = warm
  * (darker, softer attacks, lower, short room reverb), pixel = 16 bit console
  * (pulse waves with varying duty, vibrato, short echo), retro = harsh 8 bit
- * (square / triangle only, coarse noise, 8 kHz sample hold, 6 bit). Voice
+ * (square / triangle only, coarse noise, 8 kHz sample hold, 7 bit). Voice
  * parts keep their wave and get lighter effects, so they stay intelligible.
  *
  * Music (TAGMusicBook, music.ini): a small step sequencer on top of the same
@@ -60,7 +61,8 @@
  *   bpm=128              ; tempo
  *   beat=4               ; steps per beat (4 = 16th notes)
  *   key=2                ; transpose of all notes in semitones
- *   rms=0.2              ; loudness of the result (RMS, before the limiter)
+ *   rms=0.15             ; loudness of the result (RMS; lower if the limiter would
+ *                        ; be active in more than 1 % of the time)
  *   loop=1               ; seamless loop: the tail of the end continues at the start
  *   inst lead = square vol=0.12 duty=0.25 attack=4 curve=0.5 gate=0.9 echo=3,0.3
  *   inst kick = sine len=140 f=160..42 vol=0.6 curve=1.4
@@ -254,7 +256,7 @@ Function AGSoundLength(Const Parts: TAGSoundParts): Integer; // samples
 (* parts through the kit, synthesized and kit effects (reverb, echo, crush) *)
 Procedure AGSynthSound(Const Parts: TAGSoundParts; Const Variation: TAGSoundVariation; Out Buf: TAGSamples);
 Function AGRenderMusic(Const Song: TAGSong; Const OrderText: String; Const Variation: TAGMusicVariation): TAGSamples;
-Function AGSamplesToPcm(Const Buf: TAGSamples): TAGPcm; // soft limiter above 0.6, never clips
+Function AGSamplesToPcm(Const Buf: TAGSamples): TAGPcm; // soft limiter above 0.75, never clips
 Function AGPcmToWav(Const Pcm: TAGPcm): TBytes; // 16 bit mono AG_SOUND_RATE
 Function AGRenderWav(Const Parts: TAGSoundParts; Const Variation: TAGSoundVariation): TBytes;
 
@@ -623,6 +625,16 @@ Begin
 End;
 
 (*
+ * Loudness of a pulse wave (+-1) with this duty relative to a square: 3/4
+ * of its AC level in dB (narrow pulses sound thinner, but not that much
+ * quieter as their energy says)
+ *)
+Function PulseLevel(Duty: Double): Double;
+Begin
+  result := AGPow(AGMax(0.2, 2 * AGSqrt(AGClamp(Duty, 0, 1) * (1 - AGClamp(Duty, 0, 1)))), 0.75);
+End;
+
+(*
  * Sound kit and the set variation applied to one part. Voice parts keep wave
  * and filters (intelligible), they only follow the pitch of the kit.
  *)
@@ -653,7 +665,7 @@ Begin
           P.Wave := awSquare;
           P.Duty := 0.5;
         End;
-        P.Attack := AGMin(P.Attack, 2);
+        If P.Wave <> awNoise Then P.Attack := AGMin(P.Attack, 2); // noise keeps its attack (no click)
         If P.Curve > 0 Then P.Curve := P.Curve * 1.25;
         P.VibDepth := P.VibDepth * 0.5;
       End;
@@ -662,11 +674,15 @@ Begin
         If P.Lp0 > 0 Then Begin
           P.Lp0 := P.Lp0 * 0.6;
           P.Lp1 := P.Lp1 * 0.6;
+          If P.Wave = awNoise Then P.Vol := P.Vol / AGSqrt(0.6); // noise: power ~ cutoff
         End
         Else Begin
           If P.Wave = awNoise Then d := 3500 Else d := 2600;
           P.Lp0 := d * V.Bright;
           P.Lp1 := P.Lp0;
+          // high tones (pickup sparkles) keep their loudness behind the low pass
+          If P.Wave <> awNoise Then
+            P.Vol := P.Vol / AGMax(0.6, 1 / (1 + AGPow(0.5 * (P.F0 + P.F1) / P.Lp0, 2)));
         End;
         If P.Wave = awNoise Then
           P.Attack := AGMax(P.Attack, 3)
@@ -680,8 +696,16 @@ Begin
       End;
     skPixel: Begin // 16 bit console: pulse waves with a duty per line, vibrato, some filtering
         If P.Wave In [awSine, awSaw, awSquare] Then Begin
+          // same loudness as the wave it replaces (see retro), narrow pulses have less energy
+          Case P.Wave Of
+            awSine: d := 0.6;
+            awSaw: d := 0.75;
+          Else
+            d := PulseLevel(P.Duty);
+          End;
           P.Wave := awSquare;
           P.Duty := Duties[AGClampI(AGFloor(HashUnitI(V.Seed, 'duty', P.Tag) * 3), 0, 2)];
+          P.Vol := P.Vol * d / PulseLevel(P.Duty);
         End;
         If IsTonal(P.Wave) And (P.VibHz = 0) And (P.Len >= 150) Then Begin
           P.VibHz := 6;
@@ -695,12 +719,20 @@ Begin
         Else Begin
           P.Lp0 := P.Lp0 * 0.85;
           P.Lp1 := P.Lp1 * 0.85;
+          If P.Wave = awNoise Then P.Vol := P.Vol / AGSqrt(0.85); // noise: power ~ cutoff
         End;
       End;
     skRetro: Begin // harsh 8 bit: square and triangle only, coarse noise, no filters on tones
-        If P.Wave In [awSine, awSaw] Then Begin
+        // a square has more energy than the sine (+3 dB) or saw it replaces: same loudness
+        If P.Wave = awSine Then Begin
           P.Wave := awSquare;
           P.Duty := 0.5;
+          P.Vol := P.Vol * 0.6;
+        End
+        Else If P.Wave = awSaw Then Begin
+          P.Wave := awSquare;
+          P.Duty := 0.5;
+          P.Vol := P.Vol * 0.75;
         End;
         If P.Wave = awSquare Then Begin
           If P.Duty < 0.19 Then P.Duty := 0.125
@@ -710,7 +742,7 @@ Begin
         If P.Wave = awNoise Then Begin
           P.F0 := AGMin(P.F0, 22050) * 0.35;
           P.F1 := AGMin(P.F1, 22050) * 0.35;
-          P.Vol := P.Vol * 0.7; // the coarse noise has more energy below the low pass
+          P.Vol := P.Vol * 0.5; // the coarse noise has more energy below the low pass
           If P.Lp0 > 0 Then Begin
             P.Lp0 := P.Lp0 * 1.5;
             P.Lp1 := P.Lp1 * 1.5;
@@ -914,7 +946,7 @@ Begin
   End;
 End;
 
-(* retro: sample and hold at 8 kHz and 6 bit (Amount 1), lighter below *)
+(* retro: sample and hold at 8 kHz and 7 bit (Amount 1), lighter below *)
 Procedure KitCrush(Var Buf: TAGSamples; Kit: TAGSoundKit; Amount: Double);
 Var
   s: Integer;
@@ -922,7 +954,7 @@ Var
 Begin
   If Kit <> skRetro Then exit;
   rate := (8000 + (1 - Amount) * 4000) / AG_SOUND_RATE;
-  q := AGPow(2, AGRound(6 + 2 * (1 - Amount)) - 1);
+  q := AGPow(2, AGRound(7 + 2 * (1 - Amount)) - 1);
   acc := 1;
   hold := 0;
   For s := 0 To high(Buf) Do Begin
@@ -933,6 +965,59 @@ Begin
     acc := acc + rate;
     Buf[s] := hold;
   End;
+End;
+
+(*
+ * Gain staging: the soft limiter (SoftLimit) only catches single peaks.
+ * HeadroomGain returns the largest gain <= Gain at which at most
+ * MaxLimitShare of the 10 ms blocks of Buf reach the knee of the limiter, so
+ * it is rarely active (no audible squashing, the retro crush gets a clean
+ * signal). The kits keep the loudness of the parts they change (KitPart:
+ * squares instead of sines, darker low passes), so all kits sound about
+ * equally loud.
+ *)
+Const
+  LimitKnee = 0.75;
+  BlockSamples = 220; // 10 ms
+  MaxLimitShare = 0.01;
+
+Function HeadroomGain(Const Buf: TAGSamples; Gain: Double): Double;
+Var
+  peaks: Array Of Double;
+  n, i, b, k, allowed: Integer;
+  p, t: Double;
+Begin
+  result := Gain;
+  n := (length(Buf) + BlockSamples - 1) Div BlockSamples;
+  If n = 0 Then exit;
+  peaks := Nil;
+  setlength(peaks, n);
+  For b := 0 To n - 1 Do
+    peaks[b] := 0;
+  For i := 0 To high(Buf) Do Begin
+    b := i Div BlockSamples;
+    If AGAbs(Buf[i]) > peaks[b] Then peaks[b] := AGAbs(Buf[i]);
+  End;
+  // the (allowed + 1)-th largest block peak must stay below the knee
+  allowed := AGFloor(MaxLimitShare * n);
+  For k := 0 To allowed Do
+    For b := k + 1 To n - 1 Do
+      If peaks[b] > peaks[k] Then Begin
+        t := peaks[k];
+        peaks[k] := peaks[b];
+        peaks[b] := t;
+      End;
+  p := peaks[AGClampI(allowed, 0, n - 1)];
+  If p * Gain > 0.99 * LimitKnee Then result := 0.99 * LimitKnee / p;
+End;
+
+Procedure ApplyGain(Var Buf: TAGSamples; Gain: Double);
+Var
+  s: Integer;
+Begin
+  If Gain = 1 Then exit;
+  For s := 0 To high(Buf) Do
+    Buf[s] := Buf[s] * Gain;
 End;
 
 Function HasVoice(Const Parts: TAGSoundParts): Boolean;
@@ -952,13 +1037,14 @@ Begin
   If Variation.Kit = skNone Then exit;
   If HasVoice(Parts) Then amount := 0.4 Else amount := 1;
   KitSpace(Buf, Variation.Kit, amount, false);
+  ApplyGain(Buf, HeadroomGain(Buf, 1));
   KitCrush(Buf, Variation.Kit, amount);
 End;
 
-(* identity below Knee, above it approaches 0.98 smoothly (tanh) *)
+(* identity below the knee, above it approaches 0.98 smoothly (tanh) *)
 Function SoftLimit(x: Double): Double;
 Const
-  Knee = 0.6;
+  Knee = LimitKnee;
   Room = 0.98 - Knee;
 Var
   a, e: Double;
@@ -1538,7 +1624,7 @@ Type
 Var
   order: TAGIntArray;
   err: String;
-  stepMs, rms, gain: Double;
+  stepMs, rms: Double;
   i, o, e, k, s, total, offset, len, transpose, n, cur: Integer;
   parts: TAGSoundParts;
   events: Array Of TEvent;
@@ -1649,11 +1735,8 @@ Begin
     For s := 0 To high(mix) Do
       rms := rms + mix[s] * mix[s];
     rms := AGSqrt(rms / AGMax(1, length(mix)));
-    If rms > 0 Then Begin
-      gain := Song.Rms / rms;
-      For s := 0 To high(mix) Do
-        mix[s] := mix[s] * gain;
-    End;
+    If rms > 0 Then
+      ApplyGain(mix, HeadroomGain(mix, Song.Rms / rms)); // quieter if the limiter would be busy
   End;
   KitCrush(mix, Variation.Sound.Kit, 0.7);
   result := mix;

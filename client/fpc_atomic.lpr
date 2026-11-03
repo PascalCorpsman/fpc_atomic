@@ -30,6 +30,8 @@ Begin
 {$ENDIF}
   Application.Title:='';
   Application.Initialize;
+  // Ohne Grafiken (weder CD-Daten noch ein Grafiksatz) gar nicht erst starten, sondern die Einrichtung anbieten
+  If Not CheckGraphicsOrSetup() Then exit;
   Application.CreateForm(TForm1, Form1);
   Application.CreateForm(TForm18, Form18);
   Application.Run;

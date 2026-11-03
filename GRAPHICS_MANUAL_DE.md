@@ -14,13 +14,17 @@ FPC Atomic braucht Grafiken und Töne. Bisher kamen sie nur von der Atomic Bombe
 
 ## Ohne CD spielen
 
-Fehlen die CD-Daten, zeigt der Launcher den Button **Grafiken erzeugen**. Auch ein Klick auf **Starten** erzeugt zuerst einen Grafiksatz:
+Beim allerersten Start ohne CD-Daten und ohne Grafiksatz fragt der Launcher einmal: **Willkommen bei FPC Atomic – woher sollen die Grafiken und Sounds des Spiels kommen?**
 
-1. Ein Fenster zeigt **vier Stile** nebeneinander, jeweils mit derselben Figur. **Neu würfeln** zeigt vier neue Varianten.
-2. Ein Klick auf einen Stil erzeugt den ganzen Satz, ein Fortschrittsbalken zeigt den Stand.
-3. Danach wählt der Launcher den neuen Satz aus und startet das Spiel.
+- **Eigene erzeugen (empfohlen)**: Ein Fenster zeigt **vier Stile** nebeneinander, jeweils mit derselben Figur (**Neu würfeln** zeigt vier neue Varianten). Ein Klick auf einen Stil erzeugt diesen Satz in etwa 15 Sekunden, benannt nach dem Stil (Flach, Weich, Pixel, Retro; auf Englisch Flat, Soft, Pixel, Retro). Der Launcher wählt ihn aus (Sounds „Automatisch“), du kannst sofort spielen. Die anderen drei Stile entstehen **im Hintergrund** mit demselben Seed (gleiche Figur und Karten, anderes Aussehen); der Status im Launcher zeigt, wie viele noch laufen, sie erscheinen unter dem Bild, sobald sie fertig sind. Schließt du den Launcher vorher, wartet er unsichtbar, bis sie fertig sind. **Abbrechen** im Stil-Fenster erzeugt nichts und zeigt die Frage wieder.
+- **Von der CD übernehmen**: öffnet den CD-Extraktor (dafür braucht es die Atomic Bomberman CD).
+- **Später**: Es passiert nichts. Das Bild im Launcher zeigt dann „Noch keine Grafiken“, ein Klick darauf öffnet die Frage wieder.
 
-**Abbrechen** erzeugt nichts, das Spiel startet dann nicht.
+Von selbst kommt die Frage nur einmal. **Einrichtung...** im Launcher (Gruppe Installation) oder `atomic_launcher --setup` öffnen sie jederzeit, z.B. um die vier Stile mit einem neuen Seed noch einmal zu erzeugen (vorhandene Sätze werden nie überschrieben, die neuen heißen dann z.B. „Flach 2“). Alles andere bleibt möglich: Der CD-Extraktor ist immer da, nach dem Auslesen der CD ist „Original“ einfach eine weitere Wahl, und die erzeugten Sätze bleiben.
+
+Fehlen die CD-Daten, zeigt der Launcher außerdem den Button **Grafiken erzeugen**, und ein Klick auf **Starten** erzeugt zuerst einen Grafiksatz (ein Stil nach Wahl, danach startet der Launcher das Spiel).
+
+Wird das Spiel (`fpc_atomic`) direkt gestartet, ohne Launcher, nimmt es den Grafiksatz und die Sounds, die im Launcher gewählt sind (dieselbe Einstellungsdatei). Gibt es weder CD-Daten noch einen brauchbaren Satz, meldet es „Es sind noch keine Grafiken eingerichtet“ und bietet **Einrichtung öffnen** (startet den Launcher mit der Frage) oder **Beenden** an.
 
 Spielgeräusche und Menü-Musik bringt der Satz mit (siehe [Töne](#töne)). Die Schemes (Aufstellungen der Steine) bringt der Grafiksatz mit, sie werden beim ersten Mal nach `data/schemes` kopiert. Sind dort schon Schemes von der CD, bleiben sie unverändert.
 
@@ -34,6 +38,8 @@ Der aktuelle Satz steht im Launcher **unter dem Bild links**: `◀  Name  ▶`. 
 ## Töne
 
 Jeder Satz enthält eigene Spielgeräusche: Explosionen, Kicks, Abpraller, Teleporter und kurze Sprüche wie „Erwischt!“ oder „Beeil dich!“. Sie sind keine Aufnahmen, sondern werden wie die Grafiken berechnet (eine Interpretation der Original-Geräusche, beschrieben in `asset_generator/sounds.ini`). Dazu kommt ein eigenes Musikstück für die Menüs (`asset_generator/music.ini`).
+
+Die Sprüche gibt es auf Deutsch und Englisch. Ein neuer Satz nimmt die Sprache des Launchers (Französisch und Spanisch: Englisch), im Grafik-Generator lässt sie sich im Bereich **Töne** umstellen.
 
 Der Klang passt zum Stil: Flach klingt klar und knackig, Weich warm mit etwas Hall, Pixel nach 16-Bit-Konsole mit Echo, Retro rau nach 8-Bit. Der Seed verändert Tonhöhe, Länge und Klangfarbe, zwei Sätze im selben Stil klingen also unterschiedlich.
 
@@ -56,6 +62,7 @@ Ein- und ausschalten lassen sich die Töne im Launcher unter **Spieleinstellunge
 - **Oben:** Name des Satzes, **Stil**, **Seed** mit **Würfeln** und **Eigene Figur pro Spieler**. Der Seed ist die Zahl, aus der alles berechnet wird: gleicher Seed, gleicher Stil und gleiche Einstellungen ergeben immer genau dieselben Grafiken.
 - **Links:** die Bereiche, also Figur (mit dem Gejagten und, falls eingeschaltet, Spieler 1 bis 10), Bomben, Flammen, Powerups, Spielfeld-Objekte, die 11 Karten, Menübilder und das Bild für den Launcher.
 - **Mitte:** die Vorschau des Bereichs. Die Figur läuft in der gewählten **Spielerfarbe**, Animation und Richtung sind wählbar (Laufen, mit Bombe, Treten, Tod, Idle, ...). Bei den Karten zeigt eine Szene Steine, die Figur, eine tickende Bombe und eine Explosion.
+- **Töne** und **Musik** sind eigene Bereiche: Schieberegler für Tonhöhe, Länge, Helligkeit und Rauschen bzw. Tonart, Tempo und Klangfarbe, dazu eine Liste aller Töne zum Anhören (▶) und **Musik abspielen**.
 - **Rechts:** die Einstellungen des Bereichs als Schieberegler (Größe, Proportionen, Farbton, ...), jeweils mit **Zurück**. **Neuer Seed** würfelt nur diesen Bereich neu, **Seed sperren** hält ihn fest, wenn oben neu gewürfelt wird.
 - **Speichern** schreibt den Satz, **Als Satz speichern...** legt einen neuen an.
 
@@ -85,6 +92,7 @@ Grafik-Generator mit Oberfläche (`asset_generator_gui`):
 - `--new`: neuer Satz mit zufälligem Seed
 - `--set <Ordner>`: Satz `assets/<Ordner>` öffnen
 - `--auto --set <Ordner>`: nur die Stil-Auswahl und der Fortschritt, wie beim Start ohne CD; mit `--style flat|soft|pixel|retro` ohne Auswahl
+- `--auto --setup --folders <flat,soft,pixel,retro> --names <flat,soft,pixel,retro>`: die Stil-Auswahl der Einrichtung, der gewählte Stil wird in seinen eigenen Ordner erzeugt (ein Ordner und Name pro Stil, durch Kommas getrennt). Der Ordner steht danach in `assets/last_set.txt`, die anderen Stile erzeugt der Launcher mit `asset_generator --out assets/<Ordner> --profile assets/<erster Satz>/profile.ini --style <Stil> --name <Name>` (gleicher Seed)
 
 Ohne Oberfläche (`asset_generator`):
 
@@ -95,7 +103,10 @@ asset_generator --out assets/MeinSatz --name "Mein Satz" --seed random --style r
 - `--out <Ordner>`: Ziel, eine vorhandene `profile.ini` dort wird gelesen
 - `--profile <Datei>`, `--seed <Zahl|random>`, `--style <flat|soft|pixel|retro>`, `--name <Text>`
 - `--per-player`: eigene Figur pro Spieler
+- `--language de|en`: Sprache der Sprüche
 - `--only <a,b,...>`: nur diese Bereiche, `--list` zeigt alle
 - `--params`: alle Einstellungen mit ihren Werten ausgeben
 
-Das Spiel selbst nimmt den Satz mit `-assets <Ordner>` und die Töne mit `-sounds <Ordner>` (der Launcher übergibt beides automatisch). Der Ordnername `auto` ist für die Tonauswahl reserviert.
+Das Spiel selbst nimmt den Satz mit `-assets <Ordner>` und die Töne mit `-sounds <Ordner>` (der Launcher übergibt beides automatisch). Ohne diese Parameter nimmt es die Einstellungen des Launchers (`[Launcher] AssetSet` und `SoundSet`). Der Ordnername `auto` ist für die Tonauswahl reserviert.
+
+Der Launcher öffnet die Einrichtung mit `--setup` (auch `-setup`).

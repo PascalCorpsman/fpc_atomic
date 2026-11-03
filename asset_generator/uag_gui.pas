@@ -21,6 +21,14 @@
  *                          assets/<folder>/ and the program ends
  *   --style <s>            with --auto: no picker, generate with style s
  *                          (flat | soft | pixel)
+ *   --setup --folders <f,s,p,r> --names <f,s,p,r>
+ *                          with --auto (setup of the launcher): one folder
+ *                          and set name per style (comma separated, order
+ *                          flat, soft, pixel, retro), the chosen style is
+ *                          generated into its folder (instead of --set).
+ *                          The launcher reads the seed from the profile.ini
+ *                          of that set and generates the other styles with
+ *                          the command line version in the background.
  *   --screenshot <file>    (debug) saves the window as png once everything
  *                          is rendered and ends
  *   --area <n>             (debug) selects the n-th area of the editor
@@ -35,6 +43,17 @@
  *                          the save fails, without a dialog: exit code 1)
  *   --cancel-after <n>     (debug) a save is cancelled after n files (as if
  *                          the user pressed cancel)
+ *   --test-sound <file>    (debug) editor: when everything is rendered, plays
+ *                          the menu music at volume 0 for a moment (BASS like
+ *                          the launcher, see ulaunchersound) and writes
+ *                          "ok ..." or "error: ..." into <file>, then ends
+ *                          (or takes the --screenshot first)
+ *
+ * The editor areas "Sounds" and "Music" (after the hunted figure, --area 29
+ * and 30) list the rendered WAVs and play them with the BASS library next to
+ * the program (bass.dll / libbass.so, loaded at runtime); without it the play
+ * buttons are disabled. The language of the voices (profile Language) of a
+ * new set is the one of the launcher (de -> de, all others -> en).
  *
  * Contract with the launcher: after a set was written, its folder name is
  * written into assets/last_set.txt (one line). Exit code 0 = a set was
@@ -67,10 +86,17 @@ Var
   GuiAnim: Integer = -1; // --anim
   GuiTestSave: String = ''; // --test-save
   GuiCancelAfter: Integer = 0; // --cancel-after
+  GuiTestSound: String = ''; // --test-sound
   GuiWritten: Boolean = false; // a set was written -> exit code 0
+  GuiSetup: Boolean = false; // --setup
+  GuiSetupFolders: TStringList = Nil; // --folders, one per style (Ord(TAGStyle))
+  GuiSetupNames: TStringList = Nil; // --names
 
 Procedure ParseCommandLine;
 Procedure ApplyLanguage; // same language as the launcher
+Function LauncherLanguage: String; // code of the launcher language, e.g. 'de'
+Function DefaultVoiceLanguage: String; // language of the voices of a new set: 'de' or 'en'
+Function SoundVolume: Integer; // volume of the game 0..10000 ([FPC_Atomic] Volume)
 Function AppDir: String; // with trailing path delimiter
 Function AssetsDir: String; // <AppDir>assets/
 Function SetDir(Const Folder: String): String; // <AppDir>assets/<Folder>/
@@ -112,6 +138,20 @@ Begin
           If GuiMode <> gmAuto Then GuiMode := gmSet;
         End;
       '--auto': GuiMode := gmAuto;
+      '--setup': GuiSetup := true;
+      '--folders', '--names': Begin
+          If Not assigned(GuiSetupFolders) Then Begin
+            GuiSetupFolders := TStringList.Create;
+            GuiSetupFolders.StrictDelimiter := true;
+            GuiSetupNames := TStringList.Create;
+            GuiSetupNames.StrictDelimiter := true;
+          End;
+          If ParamStr(i) = '--folders' Then
+            GuiSetupFolders.CommaText := ParamStr(i + 1)
+          Else
+            GuiSetupNames.CommaText := ParamStr(i + 1);
+          inc(i);
+        End;
       '--screenshot': Begin
           inc(i);
           GuiScreenshot := ParamStr(i);
@@ -128,6 +168,10 @@ Begin
           inc(i);
           GuiCancelAfter := StrToIntDef(ParamStr(i), 0);
         End;
+      '--test-sound': Begin
+          inc(i);
+          GuiTestSound := ParamStr(i);
+        End;
       '--area': Begin
           inc(i);
           GuiArea := StrToIntDef(ParamStr(i), -1);
@@ -140,18 +184,49 @@ Begin
     inc(i);
   End;
   If (GuiMode = gmAuto) And (GuiFolder = '') Then GuiFolder := 'generated';
+  // --setup needs a folder per style
+  If GuiSetup And Not (assigned(GuiSetupFolders) And (GuiSetupFolders.Count = 4)) Then GuiSetup := false;
   If DirectoryExists(AssetsDir()) Then CleanupSetLeftovers(AssetsDir());
+End;
+
+Function LauncherLanguage: String;
+Var
+  ini: TIniFile;
+Begin
+  ini := TIniFile.Create(GetAtomicConfigFile());
+  Try
+    result := LowerCase(Trim(ini.ReadString('Launcher', 'Language', 'en')));
+  Finally
+    ini.free;
+  End;
+End;
+
+Function DefaultVoiceLanguage: String;
+Begin
+  If LauncherLanguage() = 'de' Then
+    result := 'de'
+  Else
+    result := 'en'; // fr, es, ...: English voices
+End;
+
+Function SoundVolume: Integer;
+Var
+  ini: TIniFile;
+Begin
+  ini := TIniFile.Create(GetAtomicConfigFile());
+  Try
+    result := EnsureRange(ini.ReadInteger('FPC_Atomic', 'Volume', 10000), 0, 10000);
+  Finally
+    ini.free;
+  End;
 End;
 
 Procedure ApplyLanguage;
 Var
-  ini: TIniFile;
   Code, Filename: String;
   i: Integer;
 Begin
-  ini := TIniFile.Create(GetAtomicConfigFile());
-  Code := ini.ReadString('Launcher', 'Language', 'en');
-  ini.free;
+  Code := LauncherLanguage();
   For i := 1 To ParamCount Do Begin
     If SameText(ParamStr(i), '-lazarus-ide') Then Begin
       Language.AskNameChanges := true;
@@ -336,4 +411,7 @@ Begin
   End;
 End;
 
+Finalization
+  GuiSetupFolders.Free;
+  GuiSetupNames.Free;
 End.

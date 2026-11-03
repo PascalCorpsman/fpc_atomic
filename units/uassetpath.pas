@@ -145,6 +145,25 @@ Function FirstSoundFile(Const Folder: String; Const RelPaths: Array Of String): 
 
 Function AssetSetName(Const Folder: String): String; // Name from profile.ini, '' = Folder
 
+Function HasOriginalGraphics(): Boolean; // True if data/res/mainmenu.png exists (CD data)
+Function SetHasGraphics(Const Folder: String): Boolean; // True if assets/<Folder>/ has profile.ini and res/mainmenu.png
+Function FirstGraphicsSet(): String; // The first set (sorted by folder) with SetHasGraphics, '' = none
+
+(*
+ * The graphics and sound set the game starts with (client fpc_atomic, also when it is started without the launcher):
+ *   graphics: -assets <Folder> if HaveAssets, else [Launcher] AssetSet from IniFile ('' / unknown = original)
+ *   sounds:   -sounds <Folder|auto> if HaveSounds, else [Launcher] SoundSet from IniFile (default SoundSetAuto),
+ *             resolved with ResolveSoundSet
+ * Without CD graphics a selected set that can not be played (or the original) is replaced by FirstGraphicsSet, like the
+ * launcher does. Result = the game has graphics (CD graphics or a usable set); False -> nothing is set up yet.
+ * IniFile = '' or a file that does not exist: the defaults of the launcher (original graphics, sounds automatic).
+ *)
+Function ResolveStartSets(Const IniFile: String; HaveAssets: Boolean; Const AssetsParam: String;
+  HaveSounds: Boolean; Const SoundsParam: String; Out Graphics, Sounds: String): Boolean;
+
+Var
+  AppDirOverride: String = ''; // Tests only: AppDir() returns this (with trailing path delimiter) instead of the exe folder
+
 Function SchemesDir(): String; // <AppDir>data/schemes/
 Function HasSchemeFiles(Const Dir: String): Boolean; // True if Dir contains at least one *.SCH
 
@@ -167,7 +186,90 @@ Uses
 
 Function AppDir(): String;
 Begin
+  If AppDirOverride <> '' Then Begin
+    result := IncludeTrailingPathDelimiter(AppDirOverride);
+    exit;
+  End;
   result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+End;
+
+// Only a plain folder name below assets/, no way out of it
+Function IsPlainFolder(Const f: String): Boolean;
+Begin
+  result := (f <> '') And (f <> '.') And (f <> '..') And (pos('/', f) = 0) And (pos('\', f) = 0);
+End;
+
+Function HasOriginalGraphics(): Boolean;
+Begin
+  result := FileExists(AssetDataDir() + 'res' + PathDelim + 'mainmenu.png');
+End;
+
+Function SetHasGraphics(Const Folder: String): Boolean;
+Var
+  f: String;
+Begin
+  f := trim(Folder);
+  result := IsPlainFolder(f) And FileExists(AssetSetsDir() + f + PathDelim + AssetProfileFile) And
+    FileExists(AssetSetsDir() + f + PathDelim + 'res' + PathDelim + 'mainmenu.png');
+End;
+
+Function FirstGraphicsSet(): String;
+Var
+  Folders, Names: TStringList;
+  i: integer;
+Begin
+  result := '';
+  Folders := TStringList.Create;
+  Names := TStringList.Create;
+  Try
+    ListAssetSets(Folders, Names);
+    For i := 0 To Folders.Count - 1 Do Begin
+      If SetHasGraphics(Folders[i]) Then Begin
+        result := Folders[i];
+        exit;
+      End;
+    End;
+  Finally
+    Folders.free;
+    Names.free;
+  End;
+End;
+
+Function ResolveStartSets(Const IniFile: String; HaveAssets: Boolean; Const AssetsParam: String;
+  HaveSounds: Boolean; Const SoundsParam: String; Out Graphics, Sounds: String): Boolean;
+Var
+  ini: TIniFile;
+  IniAssets, IniSounds, SoundSetting: String;
+Begin
+  IniAssets := '';
+  IniSounds := SoundSetAuto; // The default of the launcher
+  If (IniFile <> '') And FileExists(IniFile) And ((Not HaveAssets) Or (Not HaveSounds)) Then Begin
+    ini := TIniFile.Create(IniFile);
+    Try
+      IniAssets := ini.ReadString('Launcher', 'AssetSet', '');
+      IniSounds := ini.ReadString('Launcher', 'SoundSet', SoundSetAuto);
+    Finally
+      ini.free;
+    End;
+  End;
+  // Parameters override the config
+  If HaveAssets Then Begin
+    Graphics := trim(AssetsParam);
+  End
+  Else Begin
+    Graphics := trim(IniAssets);
+  End;
+  If Not (IsPlainFolder(Graphics) And DirectoryExists(AssetSetsDir() + Graphics)) Then Graphics := '';
+  // Without CD graphics: a set that can be played (like SelectUsableAssetSet in the launcher)
+  If (Not HasOriginalGraphics()) And (Not SetHasGraphics(Graphics)) Then Graphics := FirstGraphicsSet();
+  If HaveSounds Then Begin
+    SoundSetting := SoundsParam;
+  End
+  Else Begin
+    SoundSetting := IniSounds;
+  End;
+  Sounds := ResolveSoundSet(SoundSetting, Graphics);
+  result := HasOriginalGraphics() Or SetHasGraphics(Graphics);
 End;
 
 Function AssetDataDir(): String;
