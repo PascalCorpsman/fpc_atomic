@@ -89,6 +89,7 @@ Resourcestring
   R_SoundTest = '♪  Test sounds';
   R_SoundTestStop = '■  Stop';
   R_SoundTestHint = 'Listen to the selected sounds: an explosion, a voice and the start of the menu music (also when music or sounds are switched off). Click again to stop.';
+  RF_SoundTestNoDevice = 'The sound library was loaded, but no audio device could be opened (BASS error %d).~0On Linux / WSL ALSA needs a default output device, e.g. via PulseAudio (package libasound2-plugins).';
   R_SoundTestUnavailable = 'The sound test needs the BASS library (bass.dll / libbass.so) like the game, it could not be loaded.';
   R_SoundTestNothing = 'Nothing to play: the selected sounds have none of the test sounds and the CD sounds are missing.';
   R_KeyboardSettings = 'Configure controls';

@@ -96,12 +96,12 @@ Graphics generator with user interface (`asset_generator_gui`):
 - `--new`: new set with a random seed
 - `--set <folder>`: open the set `assets/<folder>`
 - `--auto --set <folder>`: only the style choice and the progress, as when starting without the CD; with `--style flat|soft|pixel|retro` without the choice
-- `--auto --setup --folders <flat,soft,pixel,retro> --names <flat,soft,pixel,retro>`: the style choice of the setup, the chosen style is generated into its own folder (one folder and name per style, comma separated). The folder is written to `assets/last_set.txt`, the launcher then generates the other styles with `asset_generator --out assets/<folder> --profile assets/<first set>/profile.ini --style <style> --name <name>` (same seed)
+- `--auto --setup --folders <flat,soft,pixel,retro> --names <flat,soft,pixel,retro>`: the style choice of the setup, the chosen style is generated into its own folder (one folder and name per style, comma separated). The folder is written to `assets/last_set.txt`, the launcher then generates the other styles with `asset_generator_cli --out assets/<folder> --profile assets/<first set>/profile.ini --style <style> --name <name>` (same seed)
 
-Without user interface (`asset_generator`):
+Without user interface (`asset_generator_cli`):
 
 ```
-asset_generator --out assets/MySet --name "My set" --seed random --style retro
+asset_generator_cli --out assets/MySet --name "My set" --seed random --style retro
 ```
 
 - `--out <folder>`: target, an existing `profile.ini` there is read

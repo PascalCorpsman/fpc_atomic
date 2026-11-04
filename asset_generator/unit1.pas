@@ -435,6 +435,8 @@ Begin
   // the language is loaded now, so the resource strings can be used
   err := '';
   SoundPanelCaptions;
+  // wider fonts (GTK) or longer translations: the right panel grows until "Reset all" fits
+  PanelRight.Width := Max(PanelRight.Width, ButtonResetAll.Left + ButtonResetAll.Width + 12);
   fCtx.Language := DefaultVoiceLanguage; // new sets and sets of older versions: the language of the launcher
   If (GuiMode = gmSet) And FileExists(SetDir(GuiFolder) + 'profile.ini') Then Begin
     Try

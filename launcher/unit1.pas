@@ -546,7 +546,10 @@ Begin
   Else Begin
     log('Sound test: ' + fSoundTest.Error, llWarning);
     If fSoundTest.Failed Then Begin
-      showmessage(R_SoundTestUnavailable + LineEnding + LineEnding + fSoundTest.Error);
+      If fSoundTest.InitErrorCode <> 0 Then
+        showmessage(format(RF_SoundTestNoDevice, [fSoundTest.InitErrorCode]))
+      Else
+        showmessage(R_SoundTestUnavailable + LineEnding + LineEnding + fSoundTest.Error);
     End
     Else Begin
       showmessage(R_SoundTestNothing);
@@ -1046,7 +1049,7 @@ End;
 
 Function TForm1.AssetGeneratorCliExe: String;
 Begin
-  result := AppDir() + 'asset_generator'{$IFDEF Windows} + '.exe'{$ENDIF};
+  result := AppDir() + 'asset_generator_cli'{$IFDEF Windows} + '.exe'{$ENDIF};
 End;
 
 Function TForm1.SelectedAssetFolder: String;
@@ -1113,6 +1116,12 @@ Begin
     // Platz zwischen den Pfeilen (Label12.Width taugt nicht, das Label passt seine Breite dem Text an)
     Label12.Canvas.Font.Assign(Label12.Font);
     If Label12.Canvas.TextWidth(s) <= Min(Label12.ClientWidth, Button15.Left - (Button14.Left + Button14.Width)) - 8 Then Label12.Caption := s;
+  End;
+  // Passt der Text nicht zwischen die Pfeile (breitere Schrift unter GTK), nur der Name ohne "Sounds:"
+  If HandleAllocated Then Begin
+    Label12.Canvas.Font.Assign(Label12.Font);
+    If Label12.Canvas.TextWidth(Label12.Caption) > Min(Label12.ClientWidth, Button15.Left - (Button14.Left + Button14.Width)) - 8 Then
+      Label12.Caption := fSoundNames[fSoundIndex];
   End;
   Label12.Hint := R_SoundSetHint + LineEnding + LineEnding + format(RF_SoundSetPlays, [Plays]);
   // Hört man gerade eine andere Quelle probe, dann aufhören
@@ -1326,7 +1335,7 @@ Begin
    * wählt ihn aus und kopiert seine Schemes nach data/schemes (wenn dort keine sind). Result = das Spiel kann jetzt starten.
    * - asset_generator_gui --auto --set <Ordner>: zeigt die Stil-Auswahl und den Fortschritt, schreibt den Ordner nach
    *   assets/last_set.txt, Exit-Code 0 = erzeugt, sonst abgebrochen oder Fehler.
-   * - Ohne GUI: asset_generator (Kommandozeile) mit zufälligem Seed im Stil "flat", der Fortschritt steht im Status.
+   * - Ohne GUI: asset_generator_cli (Kommandozeile) mit zufälligem Seed im Stil "flat", der Fortschritt steht im Status.
    *)
   result := false;
   UseGui := FileExists(AssetGeneratorExe());
@@ -1481,10 +1490,10 @@ Begin
    * im Editor gespeicherter Satz) z.B. Flat2. Vertrag mit dem Generator:
    * 1. asset_generator_gui --auto --setup --folders <f,s,p,r> --names <f,s,p,r>: die Stil-Auswahl, der gewählte Stil wird
    *    in seinen Ordner erzeugt, der Ordner steht danach in assets/last_set.txt, Exit-Code 0 = erzeugt.
-   *    (Ohne GUI: asset_generator mit Stil flat und zufälligem Seed.)
+   *    (Ohne GUI: asset_generator_cli mit Stil flat und zufälligem Seed.)
    * 2. Der Satz wird gewählt (Sounds Automatisch), man kann sofort spielen. KeepSelection (Hinweis "Neu: eigene Grafiken"):
    *    die Auswahl bleibt (z.B. Original).
-   * 3. Die anderen drei Stile erzeugt asset_generator im Hintergrund mit --profile <profile.ini des ersten Satzes> (gleicher
+   * 3. Die anderen drei Stile erzeugt asset_generator_cli im Hintergrund mit --profile <profile.ini des ersten Satzes> (gleicher
    *    Seed, gleiche Sprache der Ansagen), --style und --name; parallel, OnJobTimer liest die Sätze neu ein, wenn sie fertig sind.
    * Result = false: abgebrochen oder Fehler (die Einrichtung erscheint wieder). Count = die neuen Sätze (mit denen, die
    * noch im Hintergrund entstehen).

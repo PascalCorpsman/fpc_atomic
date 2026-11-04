@@ -50,6 +50,7 @@ Type
     fLib: TLibHandle;
     fInitDone: Boolean; // BASS_Init was successful
     fFailed: Boolean; // Library missing or BASS_Init failed, then for the whole run
+    fInitErrorCode: Integer; // BASS error of BASS_Init (e.g. 3 = no audio device), 0 = the library could not be loaded
     fError: String;
     fSteps: TSoundTestSteps;
     fStep: integer;
@@ -77,6 +78,7 @@ Type
     Procedure Stop(); // Stops immediately, OnFinished is called if something was playing
     Function Playing(): Boolean;
     Property Failed: Boolean read fFailed;
+    Property InitErrorCode: Integer read fInitErrorCode; // <> 0: the library is there, but BASS_Init failed (3 = no audio device)
     Property Error: String read fError;
     Property OnFinished: TNotifyEvent read fOnFinished write fOnFinished; // Played to the end or stopped
   End;
@@ -235,7 +237,8 @@ Begin
   End;
   // Like the game (client/unit1.pas): default device, DMIX so that other applications can still play sounds (ALSA)
   If Not BASS_Init(-1, 44100, BASS_DEVICE_DMIX, Nil, Nil) Then Begin
-    fError := 'BASS_Init failed, error code ' + inttostr(BASS_ErrorGetCode());
+    fInitErrorCode := BASS_ErrorGetCode();
+    fError := 'BASS_Init failed, error code ' + inttostr(fInitErrorCode);
     fFailed := true;
     exit;
   End;

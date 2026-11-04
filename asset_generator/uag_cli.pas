@@ -60,9 +60,9 @@ Procedure PrintHelp;
 Var
   i: Integer;
 Begin
-  writeln('asset_generator - computes graphic sets for FPC Atomic');
+  writeln('asset_generator_cli - computes graphic sets for FPC Atomic');
   writeln;
-  writeln('Usage: asset_generator --out <dir> [options]');
+  writeln('Usage: asset_generator_cli --out <dir> [options]');
   writeln('  --out <dir>        target folder of the set, e.g. assets/myset');
   writeln('  --profile <file>   load seed, style, locked seeds and parameters');
   writeln('                     (default: <dir>/profile.ini if it exists)');

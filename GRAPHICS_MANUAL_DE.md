@@ -96,12 +96,12 @@ Grafik-Generator mit Oberfläche (`asset_generator_gui`):
 - `--new`: neuer Satz mit zufälligem Seed
 - `--set <Ordner>`: Satz `assets/<Ordner>` öffnen
 - `--auto --set <Ordner>`: nur die Stil-Auswahl und der Fortschritt, wie beim Start ohne CD; mit `--style flat|soft|pixel|retro` ohne Auswahl
-- `--auto --setup --folders <flat,soft,pixel,retro> --names <flat,soft,pixel,retro>`: die Stil-Auswahl der Einrichtung, der gewählte Stil wird in seinen eigenen Ordner erzeugt (ein Ordner und Name pro Stil, durch Kommas getrennt). Der Ordner steht danach in `assets/last_set.txt`, die anderen Stile erzeugt der Launcher mit `asset_generator --out assets/<Ordner> --profile assets/<erster Satz>/profile.ini --style <Stil> --name <Name>` (gleicher Seed)
+- `--auto --setup --folders <flat,soft,pixel,retro> --names <flat,soft,pixel,retro>`: die Stil-Auswahl der Einrichtung, der gewählte Stil wird in seinen eigenen Ordner erzeugt (ein Ordner und Name pro Stil, durch Kommas getrennt). Der Ordner steht danach in `assets/last_set.txt`, die anderen Stile erzeugt der Launcher mit `asset_generator_cli --out assets/<Ordner> --profile assets/<erster Satz>/profile.ini --style <Stil> --name <Name>` (gleicher Seed)
 
-Ohne Oberfläche (`asset_generator`):
+Ohne Oberfläche (`asset_generator_cli`):
 
 ```
-asset_generator --out assets/MeinSatz --name "Mein Satz" --seed random --style retro
+asset_generator_cli --out assets/MeinSatz --name "Mein Satz" --seed random --style retro
 ```
 
 - `--out <Ordner>`: Ziel, eine vorhandene `profile.ini` dort wird gelesen
