@@ -241,7 +241,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses Math, FileUtil, uag_math, uag_random, uag_gen_world, uag_gen_sounds, uassetpath, uag_gui, ulanguage;
+Uses Math, FileUtil, LCLIntf, LCLType, uag_math, uag_random, uag_gen_world, uag_gen_sounds, uassetpath, uag_gui, ulanguage;
 
 Const
   RowHeight = 62;
@@ -1651,7 +1651,8 @@ Begin
     setlength(fRowLabels, length(Node.Params));
     setlength(fRowBars, length(Node.Params));
     setlength(fRowChecks, length(Node.Params));
-    w := ScrollBoxParams.ClientWidth - 16;
+    // Platz für die senkrechte Bildlaufleiste von vornherein freihalten, sie erscheint erst mit vielen Zeilen
+    w := ScrollBoxParams.ClientWidth - 16 - GetSystemMetrics(SM_CXVSCROLL);
     If length(Node.Params) = 0 Then Begin
       l := TLabel.Create(ScrollBoxParams);
       l.Parent := ScrollBoxParams;
@@ -1672,7 +1673,7 @@ Begin
       fRowLabels[i] := l;
       r := TButton.Create(ScrollBoxParams);
       r.Parent := ScrollBoxParams;
-      r.SetBounds(w - 62, 2 + i * RowHeight, 66, 24);
+      r.SetBounds(w - 66, 2 + i * RowHeight, 70, 24);
       r.Caption := R_Reset;
       r.Tag := i;
       r.OnClick := @ParamResetClick;
