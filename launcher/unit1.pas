@@ -1005,7 +1005,7 @@ Begin
   Folder := ini.ReadString('Launcher', 'AssetSet', '');
   fAssetIndex := 0;
   For i := 1 To fAssetFolders.Count - 1 Do Begin
-    If SameText(fAssetFolders[i], Folder) Then Begin
+    If SameFolderName(fAssetFolders[i], Folder) Then Begin
       fAssetIndex := i;
       break;
     End;
@@ -1112,7 +1112,7 @@ Begin
     End;
     // Platz zwischen den Pfeilen (Label12.Width taugt nicht, das Label passt seine Breite dem Text an)
     Label12.Canvas.Font.Assign(Label12.Font);
-    If Label12.Canvas.TextWidth(s) <= Button15.Left - (Button14.Left + Button14.Width) - 8 Then Label12.Caption := s;
+    If Label12.Canvas.TextWidth(s) <= Min(Label12.ClientWidth, Button15.Left - (Button14.Left + Button14.Width)) - 8 Then Label12.Caption := s;
   End;
   Label12.Hint := R_SoundSetHint + LineEnding + LineEnding + format(RF_SoundSetPlays, [Plays]);
   // Hört man gerade eine andere Quelle probe, dann aufhören
@@ -1596,7 +1596,7 @@ Begin
     pini.free;
   End;
   For i := 0 To 3 Do Begin
-    If (Styles[i] = FirstStyle) Or SameText(Folders[i], First) Then Continue;
+    If (Styles[i] = FirstStyle) Or SameFolderName(Folders[i], First) Then Continue;
     If StartStyleJob(Folders[i], Names[i], Styles[i], AssetSetsDir() + First + PathDelim + AssetProfileFile) Then inc(Count);
   End;
   UpdateStatus();
@@ -2091,8 +2091,8 @@ Begin
       fSoundNames[Index] := AssetSetDisplayName(fSoundFolders[Index]);
     End;
   End;
-  UpdateSoundCaption();
   FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
+  UpdateSoundCaption(); // erst nach FitLayout, sonst wird mit den Breiten vor dem Layout gemessen
 End;
 
 Procedure TForm1.StoreSettings;

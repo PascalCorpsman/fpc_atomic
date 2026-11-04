@@ -158,6 +158,7 @@ Procedure ListSoundChoices(Const Folders, Names: TStrings; Const AutoName, Origi
  * The index of Setting in Folders (from ListSoundChoices): 0 = SoundSetAuto, a set by its folder name, everything else
  * (also a set that no longer exists or has no sounds) is 1 = original, like the game treats it.
  *)
+Function SameFolderName(Const a, b: String): Boolean; // folder names: case sensitive on Linux, like the file system
 Function SoundChoiceIndex(Const Folders: TStrings; Const Setting: String): integer;
 
 (*
@@ -555,6 +556,15 @@ Begin
   Names.Insert(0, AutoName);
 End;
 
+Function SameFolderName(Const a, b: String): Boolean;
+Begin
+{$IFDEF UNIX}
+  result := a = b;
+{$ELSE}
+  result := SameText(a, b);
+{$ENDIF}
+End;
+
 Function SoundChoiceIndex(Const Folders: TStrings; Const Setting: String): integer;
 Var
   i: integer;
@@ -565,7 +575,7 @@ Begin
     exit;
   End;
   For i := 2 To Folders.Count - 1 Do Begin
-    If SameText(Folders[i], trim(Setting)) Then Begin
+    If SameFolderName(Folders[i], trim(Setting)) Then Begin
       result := i;
       exit;
     End;
