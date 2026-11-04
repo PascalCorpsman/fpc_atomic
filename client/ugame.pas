@@ -222,6 +222,7 @@ Type
      *)
     Function StartHost: Boolean;
     Function GetServerIPAddress(): String; // Get local network IP address for server display
+    Function LocalhostOnly(): Boolean; // -localhost: the hosted server only listens on 127.0.0.1
     Procedure SendSettings();
     Procedure UpdateFieldSetup(FieldName: String; FieldHash: Uint64; NeededWins: integer);
     Procedure SwitchToPlayerSetup;
@@ -494,7 +495,7 @@ Begin
       exit;
     End
     Else Begin
-      If FileExists('data' + PathDelim + 'schemes' + PathDelim + Settings.SchemeFile) Then Begin
+      If FileExists(AssetDataDir() + 'schemes' + PathDelim + Settings.SchemeFile) Then Begin
         StartPingingForGames;
       End
       Else Begin
@@ -1053,6 +1054,7 @@ Var
   i: Integer;
 Begin
   Result := '127.0.0.1'; // Default to localhost
+  If LocalhostOnly() Then exit; // Nobody else can reach the server, so do not show the network address
   Try
     adapters := GetLocalIPs();
     // Find first non-localhost IP address (prefer network IP over localhost)
@@ -1073,11 +1075,20 @@ Begin
   End;
 End;
 
+Function TGame.LocalhostOnly: Boolean;
+Var
+  i: Integer;
+Begin
+  result := false;
+  For i := 1 To ParamCount Do
+    If lowercase(ParamStrUTF8(i)) = '-localhost' Then exit(true);
+End;
+
 Function TGame.StartHost: Boolean;
 Var
   serv: String;
   p: TProcessUTF8;
-  EnterID, i: Integer;
+  EnterID: Integer;
 Begin
   EnterID := LogEnter('TGame.StartHost');
   result := false;
@@ -1102,13 +1113,11 @@ Begin
     p.Parameters.Add('-l');
     p.Parameters.Add(IntToStr(GetLoggerLoglevel()));
     // -localhost: the server only listens on 127.0.0.1 (local game, no firewall question, nobody else can join)
-    For i := 1 To ParamCount Do
-      If lowercase(ParamStrUTF8(i)) = '-localhost' Then Begin
-        p.Parameters.Add('-bind');
-        p.Parameters.Add('127.0.0.1');
-        log('Server only listens on 127.0.0.1 (-localhost)', llInfo);
-        break;
-      End;
+    If LocalhostOnly() Then Begin
+      p.Parameters.Add('-bind');
+      p.Parameters.Add('127.0.0.1');
+      log('Server only listens on 127.0.0.1 (-localhost)', llInfo);
+    End;
     p.Execute;
     p.free;
   End
@@ -2093,7 +2102,7 @@ Var
 Begin
   EnterID := LogEnter('TGame.LoadScheme: ' + SchemeFileName);
   result := false;
-  fn := 'data' + PathDelim + 'schemes' + PathDelim + SchemeFileName;
+  fn := AssetDataDir() + 'schemes' + PathDelim + SchemeFileName;
   If Not FileExistsUTF8(fn) Then Begin
     logshow('Error, could not find scheme file:' + SchemeFileName, llCritical);
     LogLeave(EnterID);

@@ -325,7 +325,8 @@ Function TAtomic.InitAsColor(Const Paths: TStringArray; aTargetColor: TRGB): Boo
     End;
   End;
 
-  // Dir ist relativ zu Paths (z.B. 'idle' + PathDelim), jede Datei kommt über F aus dem ersten Verzeichnis, das sie hat
+  // Dir ist relativ zu Paths (z.B. 'idle' + PathDelim). files.txt und die darin genannten Sheets kommen aus
+  // demselben Verzeichnis (dem ersten, das files.txt hat), sonst passen Rastermaße und Sheet nicht zusammen
   Function LoadDir(Dir: String; Var Animations: TAnimations): Boolean;
   Var
     sl: TStringList;
@@ -333,15 +334,16 @@ Function TAtomic.InitAsColor(Const Paths: TStringArray; aTargetColor: TRGB): Boo
     sa: TStringArray;
   Begin
     result := true;
+    dir := ExtractFilePath(F(dir + 'files.txt'));
     sl := TStringList.Create;
-    sl.LoadFromFile(F(dir + 'files.txt'));
+    sl.LoadFromFile(dir + 'files.txt');
     For i := 0 To sl.Count - 1 Do Begin
       If trim(sl[i]) = '' Then Continue;
       If pos('#', trim(sl[i])) = 1 Then Continue;
       sa := sl[i].Split(';');
       If length(sa) <> 9 Then exit(false);
-      If Not FileExists(F(dir + sa[0])) Then Begin
-        Log(format('Warning, can not load animation, file: %s does not exist', [F(dir + sa[0])]), llWarning);
+      If Not FileExists(dir + sa[0]) Then Begin
+        Log(format('Warning, can not load animation, file: %s does not exist', [dir + sa[0]]), llWarning);
         Continue; // Gibt es die eine Animation nicht, dann wird sie ignoriert
       End;
       tpf := strtointdef(sa[1], -1);
@@ -360,7 +362,7 @@ Function TAtomic.InitAsColor(Const Paths: TStringArray; aTargetColor: TRGB): Boo
       roy := strtointdef(sa[8], 0);
 
       setlength(Animations, high(Animations) + 2);
-      Animations[high(Animations)].Ani := CreateAnimation(F(dir + sa[0]), 0, tpf, w, h, fpr, fpc, c, [0]);
+      Animations[high(Animations)].Ani := CreateAnimation(dir + sa[0], 0, tpf, w, h, fpr, fpc, c, [0]);
       Animations[high(Animations)].OffsetX := rox;
       Animations[high(Animations)].Offsety := roy;
 {$IFDEF Only1Directory}

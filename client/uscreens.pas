@@ -694,7 +694,7 @@ Var
   sl: TStringList;
   i: Integer;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'schemes';
+  p := AssetDataDir() + 'schemes';
   sl := FindAllfiles(p, '*.sch', false);
   Listbox1.Clear;
   Listbox1.Sorted := true;
@@ -1460,7 +1460,7 @@ End;
 
 Procedure TScreen.LoadFromDisk(ResPath: String);
 Begin
-  // Die Sounds aus dem gewählten Soundsatz, wenn er sie hat, sonst aus data/res (ResPath)
+  // Grafiken und Sounds aus dem gewählten Satz, wenn er sie hat, sonst aus data/res (ResPath wird nicht mehr verwendet)
   fSoundExitScreen := SoundFile('res' + PathDelim + 'menuexit.wav');
   If fSoundFile <> '' Then Begin
     fSoundFile := SoundFile('res' + PathDelim + fSoundFile);

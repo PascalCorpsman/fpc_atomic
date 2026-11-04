@@ -231,19 +231,37 @@ Implementation
 Uses
   IniFiles;
 
+{$IFDEF WINDOWS}
+// Only this one function, the unit Windows would hide FindClose of SysUtils
+Function GetModuleFileNameW(hModule: PtrUInt; lpFilename: PWideChar; nSize: DWord): DWord; stdcall; external 'kernel32' name 'GetModuleFileNameW';
+{$ENDIF}
+
 Function AppDir(): String;
+{$IFDEF WINDOWS}
+Var
+  Buf: Array[0..1023] Of WideChar;
+  Len: DWord;
+{$ENDIF}
 Begin
   If AppDirOverride <> '' Then Begin
     result := IncludeTrailingPathDelimiter(AppDirOverride);
     exit;
   End;
+{$IFDEF WINDOWS}
+  // ParamStr(0) is ANSI and breaks with non-ASCII folders once the LCL switches the strings to UTF-8
+  Len := GetModuleFileNameW(0, @Buf[0], length(Buf));
+  If (Len > 0) And (Len < length(Buf)) Then Begin
+    result := IncludeTrailingPathDelimiter(ExtractFilePath(UTF8Encode(UnicodeString(Buf))));
+    exit;
+  End;
+{$ENDIF}
   result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
 End;
 
 // Only a plain folder name below assets/, no way out of it
 Function IsPlainFolder(Const f: String): Boolean;
 Begin
-  result := (f <> '') And (f <> '.') And (f <> '..') And (pos('/', f) = 0) And (pos('\', f) = 0);
+  result := (f <> '') And (f <> '.') And (f <> '..') And (pos('/', f) = 0) And (pos('\', f) = 0) And (pos(':', f) = 0);
 End;
 
 Function HasOriginalGraphics(): Boolean;
@@ -344,9 +362,7 @@ Var
   f: String;
 Begin
   f := trim(Folder);
-  // Only a plain folder name below assets/, no way out of it
-  result := (f <> '') And (f <> '.') And (f <> '..') And (pos('/', f) = 0) And (pos('\', f) = 0) And
-    DirectoryExists(AssetSetsDir() + f);
+  result := IsPlainFolder(f) And DirectoryExists(AssetSetsDir() + f);
   If result Then Begin
     AssetSet := f;
   End
@@ -428,10 +444,8 @@ Function SetHasSounds(Const Folder: String): Boolean;
 Var
   f: String;
 Begin
-  // Only a plain folder name below assets/, no way out of it
   f := trim(Folder);
-  result := (f <> '') And (f <> '.') And (f <> '..') And (pos('/', f) = 0) And (pos('\', f) = 0) And
-    HasWavFiles(AssetSetsDir() + f + PathDelim + 'sounds');
+  result := IsPlainFolder(f) And HasWavFiles(AssetSetsDir() + f + PathDelim + 'sounds');
 End;
 
 Function SetSoundSet(Const Folder: String): Boolean;

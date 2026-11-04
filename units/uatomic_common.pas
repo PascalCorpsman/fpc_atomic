@@ -182,10 +182,12 @@ Const
    *                       FIX: keyboard auto repeat of the action keys was sent as double press
    *                       FIX: grab and punch could find bombs that already exploded
    *                       ADD: statistic "Carried bombs"
+   *             0.14002 = ADD: own graphics, sounds and music without the CD (asset generator, sets in assets/, selectable in the launcher)
+   *                       ADD: the map hash only covers info.txt, so clients with different graphics sets can play the same map -> need change in ProtocollVersion
    *)
 
-  ProtocollVersion: uint32 = 17; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
-  Version = '0.14001';
+  ProtocollVersion: uint32 = 18; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  Version = '0.14002';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
