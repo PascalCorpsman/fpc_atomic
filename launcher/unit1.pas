@@ -90,7 +90,7 @@ Type
     Procedure Button17Click(Sender: TObject);
     Procedure Image1Click(Sender: TObject);
     Procedure LabelNewsClick(Sender: TObject);
-    Procedure ShiftLeftColumn(Delta: Integer); // verschiebt Bild und die Zeilen darunter, merkt sich die Summe in fLeftColumnShift
+    Procedure ShiftLeftColumn(Delta: Integer); // verschiebt das Bild (die Zeilen darunter hängen daran), merkt sich die Summe in fLeftColumnShift
     Procedure ButtonNewsCloseClick(Sender: TObject);
     Procedure Label8Click(Sender: TObject);
     Procedure Label9Click(Sender: TObject);
@@ -631,21 +631,10 @@ Begin
 End;
 
 Procedure TForm1.ShiftLeftColumn(Delta: Integer);
-Var
-  c: Array[0..7] Of TControl;
-  i: Integer;
 Begin
+  // Die Zeilen darunter (Satz, Sounds, Probehören) hängen per Anker am Bild und rücken mit
   If Delta = 0 Then exit;
-  c[0] := Image1;
-  c[1] := Button10;
-  c[2] := Label11;
-  c[3] := Button11;
-  c[4] := Button14;
-  c[5] := Label12;
-  c[6] := Button15;
-  c[7] := Button16;
-  For i := 0 To high(c) Do
-    c[i].Top := c[i].Top + Delta;
+  Image1.Top := Image1.Top + Delta;
   fLeftColumnShift := fLeftColumnShift + Delta;
 End;
 

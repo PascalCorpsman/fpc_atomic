@@ -27,17 +27,22 @@ object Form1: TForm1
     OnDblClick = Button12Click
   end
   object Button10: TButton
+    AnchorSideTop.Control = Image1
+    AnchorSideTop.Side = asrBottom
     AnchorSideLeft.Control = Image1
     Left = 8
     Height = 25
     Hint = 'Previous graphics set.'
     Top = 334
     Width = 28
+    BorderSpacing.Top = 6
     Caption = #9664
     TabOrder = 8
     OnClick = Button10Click
   end
   object Label11: TLabel
+    AnchorSideTop.Control = Button10
+    AnchorSideTop.Side = asrCenter
     AnchorSideLeft.Control = Button10
     AnchorSideLeft.Side = asrBottom
     AnchorSideRight.Control = Button11
@@ -53,6 +58,7 @@ object Form1: TForm1
     Caption = 'Label11'
   end
   object Button11: TButton
+    AnchorSideTop.Control = Button10
     AnchorSideRight.Control = Image1
     AnchorSideRight.Side = asrBottom
     Left = 172
@@ -66,17 +72,22 @@ object Form1: TForm1
     OnClick = Button10Click
   end
   object Button14: TButton
+    AnchorSideTop.Control = Button10
+    AnchorSideTop.Side = asrBottom
     AnchorSideLeft.Control = Image1
     Left = 8
     Height = 25
     Hint = 'Previous sound source.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'
     Top = 363
     Width = 28
+    BorderSpacing.Top = 4
     Caption = #9664
     TabOrder = 10
     OnClick = Button14Click
   end
   object Label12: TLabel
+    AnchorSideTop.Control = Button14
+    AnchorSideTop.Side = asrCenter
     AnchorSideLeft.Control = Button14
     AnchorSideLeft.Side = asrBottom
     AnchorSideRight.Control = Button15
@@ -92,6 +103,7 @@ object Form1: TForm1
     Caption = 'Label12'
   end
   object Button15: TButton
+    AnchorSideTop.Control = Button14
     AnchorSideRight.Control = Image1
     AnchorSideRight.Side = asrBottom
     Left = 172
@@ -105,10 +117,13 @@ object Form1: TForm1
     OnClick = Button14Click
   end
   object Button16: TButton
+    AnchorSideTop.Control = Button14
+    AnchorSideTop.Side = asrBottom
     Left = 8
     Height = 25
     Top = 392
     Width = 192
+    BorderSpacing.Top = 4
     Caption = 'Button16'
     TabOrder = 12
     OnClick = Button16Click

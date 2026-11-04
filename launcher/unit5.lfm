@@ -81,6 +81,8 @@ object Form5: TForm5
     Width = 320
   end
   object Label10: TLabel
+    AnchorSideTop.Control = ComboBox5
+    AnchorSideTop.Side = asrCenter
     Left = 436
     Height = 15
     Top = 268
@@ -88,16 +90,21 @@ object Form5: TForm5
     FocusControl = ComboBox5
   end
   object ComboBox5: TComboBox
+    AnchorSideTop.Control = Image1
+    AnchorSideTop.Side = asrBottom
     Hint = 'The graphics of the game: Original (from the CD) or a set from the graphics generator (folders in assets). Missing graphics of a set are taken from the original.'
     Left = 540
     Height = 23
     Top = 264
     Width = 216
+    BorderSpacing.Top = 12
     ItemHeight = 15
     Style = csDropDownList
     OnChange = ComboBox2Change
   end
   object Label11: TLabel
+    AnchorSideTop.Control = ComboBox6
+    AnchorSideTop.Side = asrCenter
     Left = 436
     Height = 15
     Top = 300
@@ -105,11 +112,14 @@ object Form5: TForm5
     FocusControl = ComboBox6
   end
   object ComboBox6: TComboBox
+    AnchorSideTop.Control = ComboBox5
+    AnchorSideTop.Side = asrBottom
     Hint = 'The sounds of the game.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'#13#10'Original (CD): always the sounds from the CD.'#13#10'Or the sounds of a set from the graphics generator.'#13#10'Missing sounds of a set are taken from the original.'
     Left = 540
     Height = 23
     Top = 296
     Width = 216
+    BorderSpacing.Top = 9
     ItemHeight = 15
     Style = csDropDownList
   end
