@@ -80,6 +80,7 @@ Var
 Function SetAssetSet(Const Folder: String): Boolean;
 
 Function AppDir(): String; // Folder of the executable, with trailing path delimiter
+Function IsPlainFolder(Const f: String): Boolean; // A plain folder name below assets/ (no path, no '..', no drive)
 Function AssetDataDir(): String; // <AppDir>data/
 Function AssetSetsDir(): String; // <AppDir>assets/
 Function AssetSetDir(): String; // <AppDir>assets/<AssetSet>/ or '' if no set is selected
@@ -258,7 +259,6 @@ Begin
   result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
 End;
 
-// Only a plain folder name below assets/, no way out of it
 Function IsPlainFolder(Const f: String): Boolean;
 Begin
   result := (f <> '') And (f <> '.') And (f <> '..') And (pos('/', f) = 0) And (pos('\', f) = 0) And (pos(':', f) = 0);

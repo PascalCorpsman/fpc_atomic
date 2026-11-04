@@ -81,6 +81,19 @@ Begin
     writeln(format('  %-12s %s', [GetGenerator(i).Name, GetGenerator(i).Description]));
 End;
 
+Function IsEmptyDir(Const Dir: String): Boolean;
+Var
+  sr: TSearchRec;
+Begin
+  result := true;
+  If FindFirst(IncludeTrailingPathDelimiter(Dir) + '*', faAnyFile, sr) = 0 Then Begin
+    Repeat
+      If (sr.Name <> '.') And (sr.Name <> '..') Then result := false;
+    Until (Not result) Or (FindNext(sr) <> 0);
+    FindClose(sr);
+  End;
+End;
+
 Procedure RunCli;
 Var
   Ctx: TAGContext;
@@ -143,13 +156,19 @@ Begin
     halt(2);
   End;
   OutDir := IncludeTrailingPathDelimiter(ExpandFileName(OutDir));
+  // The save replaces the whole folder: only an empty folder or an existing set, never any other folder
+  If DirectoryExists(OutDir) And (Not FileExists(OutDir + 'profile.ini')) And (Not IsEmptyDir(OutDir)) Then Begin
+    writeln('The folder ', OutDir, ' is not empty and not a graphics set (no profile.ini), it would be replaced. Please choose another folder.');
+    halt(2);
+  End;
 
   Ctx := TAGContext.Create;
   Output := TAGOutput.Create(OutDir);
   Cli := TCli.Create;
   Only := TStringList.Create;
   Try
-    CleanupSetLeftovers(ExtractFilePath(ExcludeTrailingPathDelimiter(OutDir)));
+    // Only the leftovers of this set: the parent can be any folder (e.g. the home folder)
+    CleanupSetLeftovers(ExtractFilePath(ExcludeTrailingPathDelimiter(OutDir)), ExtractFileName(ExcludeTrailingPathDelimiter(OutDir)));
     If (ProfileFile = '') And FileExists(OutDir + 'profile.ini') Then
       ProfileFile := OutDir + 'profile.ini';
     If ProfileFile <> '' Then Ctx.LoadFromFile(ProfileFile);

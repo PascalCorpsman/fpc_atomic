@@ -190,9 +190,17 @@ Begin
     End;
     inc(i);
   End;
+  // Only plain folder names below assets/, '' or '..' would replace (and delete) assets/ or the program folder
+  If (GuiFolder <> '') And Not IsPlainFolder(GuiFolder) Then Begin
+    GuiFolder := '';
+    If GuiMode = gmSet Then GuiMode := gmNew;
+  End;
   If (GuiMode = gmAuto) And (GuiFolder = '') Then GuiFolder := 'generated';
   // --setup needs a folder per style
   If GuiSetup And Not (assigned(GuiSetupFolders) And (GuiSetupFolders.Count = 4)) Then GuiSetup := false;
+  If GuiSetup Then
+    For i := 0 To GuiSetupFolders.Count - 1 Do
+      If Not IsPlainFolder(GuiSetupFolders[i]) Then GuiSetup := false;
   If DirectoryExists(AssetsDir()) Then CleanupSetLeftovers(AssetsDir());
 End;
 
@@ -261,7 +269,7 @@ End;
 
 Function AppDir: String;
 Begin
-  result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  result := uassetpath.AppDir(); // also for folders with non-ASCII characters on Windows
 End;
 
 Function AssetsDir: String;

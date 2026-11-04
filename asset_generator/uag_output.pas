@@ -124,7 +124,7 @@ Procedure WritePNG(Img: TAGImage; Mode: TAGSaveMode; Stream: TStream);
 Function BeginSetSave(Const TargetDir: String): String; // creates the temporary folder, result with trailing delimiter
 Procedure CommitSetSave(Const TempDir, TargetDir: String); // replaces TargetDir by TempDir, EAGSetInUse if not possible
 Procedure DiscardSetSave(Const TempDir: String); // deletes the temporary folder (if it exists)
-Procedure CleanupSetLeftovers(Const ParentDir: String); // removes .<x>.tmp-<n>, restores or removes .<x>.old-<n>, only if older than 10 minutes (another generator may still be running)
+Procedure CleanupSetLeftovers(Const ParentDir: String; Const OnlyName: String = ''); // removes .<x>.tmp-<n>, restores or removes .<x>.old-<n>, only if older than 10 minutes (another generator may still be running); OnlyName <> '': only those of this set
 
 Function DeleteTree(Const Dir: String): Boolean; // recursive, true if the folder is gone
 Procedure CopyTree(Const Src, Dst: String); // recursive copy of all files
@@ -167,6 +167,21 @@ Begin
   result := false;
 End;
 
+Const
+  LeftoverMarker = '.replacing';
+
+Procedure TouchMarker(Const Dir: String);
+Var
+  fs: TFileStream;
+Begin
+  Try
+    fs := TFileStream.Create(IncludeTrailingPathDelimiter(Dir) + LeftoverMarker, fmCreate);
+    fs.Free;
+  Except
+    // only a protection against a parallel cleanup
+  End;
+End;
+
 {$PUSH}{$WARN SYMBOL_PLATFORM OFF} // faSymLink, faReadOnly
 Function DeleteTree(Const Dir: String): Boolean;
 Var
@@ -174,7 +189,8 @@ Var
   d: String;
 Begin
   d := IncludeTrailingPathDelimiter(Dir);
-  If FindFirst(d + '*', faAnyFile, sr) = 0 Then Begin
+  // faSymLink: on Unix FindFirst would otherwise follow a link and report its target as a plain folder
+  If FindFirst(d + '*', faAnyFile Or faSymLink, sr) = 0 Then Begin
     Repeat
       If (sr.Name = '.') Or (sr.Name = '..') Then Continue;
       If ((sr.Attr And faDirectory) <> 0) And ((sr.Attr And faSymLink) = 0) Then
@@ -231,6 +247,7 @@ End;
 Function BeginSetSave(Const TargetDir: String): String;
 Var
   parent, name: String;
+  n: Integer;
 Begin
   If Not SplitDir(TargetDir, parent, name) Then
     Raise Exception.CreateFmt('Invalid set folder: %s', [TargetDir]);
@@ -238,9 +255,15 @@ Begin
   If LowerCase(name) = 'auto' Then
     Raise Exception.Create('The folder name "auto" is reserved, please choose another name.');
   ForceDirectories(parent);
-  result := FreeSibling(parent, name, 'tmp');
-  If Not ForceDirectories(result) Then
-    Raise Exception.CreateFmt('Could not create the folder %s', [result]);
+  // CreateDir fails if the folder exists, so two generators never write into the same temp folder
+  n := 1;
+  Repeat
+    result := parent + '.' + name + '.tmp-' + IntToStr(n);
+    If CreateDir(result) Then break;
+    If ((Not DirectoryExists(result)) And (Not FileExists(result))) Or (n > 1000) Then
+      Raise Exception.CreateFmt('Could not create the folder %s', [result]);
+    inc(n);
+  Until false;
   result := IncludeTrailingPathDelimiter(result);
 End;
 
@@ -260,10 +283,15 @@ Begin
   old := FreeSibling(parent, name, 'old');
   If Not RenameRetry(target, old) Then
     Raise EAGSetInUse.CreateFmt('The set %s is in use (is the game running with it?), close the game and try again. The old set was kept.', [name]);
+  // A rename keeps the file times: a fresh file, so the cleanup of another instance does not take it for an old leftover
+  TouchMarker(old);
   If Not RenameRetry(tmp, target) Then Begin
-    // put the old set back, if that fails too CleanupSetLeftovers does it on the next start
-    RenameRetry(old, target);
-    Raise EAGSetInUse.CreateFmt('Could not rename %s to %s, the old set was kept.', [tmp, target]);
+    // put the old set back, if that fails too CleanupSetLeftovers does it on the next start (after 10 minutes)
+    DeleteFile(IncludeTrailingPathDelimiter(old) + LeftoverMarker);
+    If RenameRetry(old, target) Then
+      Raise EAGSetInUse.CreateFmt('Could not rename %s to %s, the old set was kept.', [tmp, target])
+    Else
+      Raise EAGSetInUse.CreateFmt('Could not rename %s to %s, the old set is in %s and comes back on the next start.', [tmp, target, old]);
   End;
   DeleteTree(old); // if something is left, CleanupSetLeftovers removes it on the next start
 End;
@@ -304,6 +332,11 @@ Var
   t: TDateTime;
 Begin
   result := 0;
+  // The folder itself too: a temp folder that was just created is still empty
+  If FindFirst(ExcludeTrailingPathDelimiter(Dir), faDirectory, sr) = 0 Then Begin
+    result := FileDateToDateTime(sr.Time);
+    FindClose(sr);
+  End;
   d := IncludeTrailingPathDelimiter(Dir);
   If FindFirst(d + '*', faAnyFile, sr) = 0 Then Begin
     Repeat
@@ -326,7 +359,7 @@ Begin
   result := Now - NewestFileTime(Dir) > LeftoverAge;
 End;
 
-Procedure CleanupSetLeftovers(Const ParentDir: String);
+Procedure CleanupSetLeftovers(Const ParentDir: String; Const OnlyName: String);
 Var
   sr: TSearchRec;
   d, name: String;
@@ -344,12 +377,14 @@ Begin
     End;
     entries.Sort;
     For i := 0 To entries.Count - 1 Do
-      If LeftoverName(entries[i], 'tmp', name) And IsOldLeftover(d + entries[i]) Then
+      If LeftoverName(entries[i], 'tmp', name) And ((OnlyName = '') Or (name = OnlyName)) And IsOldLeftover(d + entries[i]) Then
         DeleteTree(d + entries[i]);
     For i := 0 To entries.Count - 1 Do
-      If LeftoverName(entries[i], 'old', name) And IsOldLeftover(d + entries[i]) Then Begin
-        If Not DirectoryExists(d + name) Then
-          RenameFile(d + entries[i], d + name) // crash between the two renames: the old set comes back
+      If LeftoverName(entries[i], 'old', name) And ((OnlyName = '') Or (name = OnlyName)) And IsOldLeftover(d + entries[i]) Then Begin
+        If Not DirectoryExists(d + name) Then Begin
+          DeleteFile(d + entries[i] + PathDelim + LeftoverMarker);
+          RenameFile(d + entries[i], d + name); // crash between the two renames: the old set comes back
+        End
         Else
           DeleteTree(d + entries[i]);
       End;
