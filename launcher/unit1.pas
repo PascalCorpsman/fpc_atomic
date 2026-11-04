@@ -159,6 +159,7 @@ Type
     Procedure PrepareSchemes();
     Function GenerateAssetSet(): Boolean;
     Function RunGenerator(p: TProcessUTF8): Boolean;
+    Procedure RunAndWait(p: TProcessUTF8);
     Procedure RunSetup();
     Procedure StartSetupAsync(Data: PtrInt);
     Function SetupGenerate(KeepSelection: Boolean; Out Count: integer): Boolean;
@@ -319,9 +320,11 @@ Begin
   ReleaseSoundTest(); // Der Launcher wartet auf den Extraktor
   p := TProcessUTF8.Create(Nil);
   p.Executable := 'cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF};
-  p.Options := p.Options + [poWaitOnExit];
-  p.Execute;
-  p.free;
+  Try
+    RunAndWait(p);
+  Finally
+    p.free;
+  End;
   UpdateStatus();
 End;
 
@@ -1335,6 +1338,7 @@ Begin
     inc(n);
     Folder := 'Generated' + inttostr(n);
   End;
+  If FileExists(AssetSetsDir() + 'last_set.txt') Then DeleteFile(AssetSetsDir() + 'last_set.txt'); // Nur was dieser Lauf schreibt
   p := TProcessUTF8.Create(Nil);
   Try
     If UseGui Then Begin
@@ -1364,6 +1368,11 @@ Begin
     // Die GUI schreibt den tatsächlich erzeugten Ordner hierher
     s := ReadLastSet();
     If s <> '' Then Folder := s;
+  End;
+  If (Not result) And UseGui Then Begin
+    // Abbrechen in der Stil-Auswahl ist kein Fehler (wie bei der Einrichtung), Fehler zeigt die GUI selbst
+    UpdateStatus();
+    exit;
   End;
   If result Then result := FileExists(AssetSetsDir() + Folder + PathDelim + AssetProfileFile);
   If Not result Then Begin
@@ -1654,7 +1663,8 @@ Begin
       If c > SizeOf(Buffer) Then c := SizeOf(Buffer);
       If j.Process.Output.Read(Buffer, c) <= 0 Then break;
     End;
-    If j.Process.Running Then Continue;
+    // Solange ein Generator oder der Extraktor läuft (Launcher gesperrt), werden fertige Jobs erst danach übernommen
+    If j.Process.Running Or (Not Enabled) Then Continue;
     If j.Process.ExitCode <> 0 Then Begin
       QuietLog := true;
       log(format('Graphics generator for %s ended with exit code %d', [j.Folder, j.Process.ExitCode]));
@@ -1695,12 +1705,26 @@ Begin
     Else Begin
       p.Parameters.Add('--new');
     End;
-    p.Options := p.Options + [poWaitOnExit];
-    p.Execute;
+    RunAndWait(p);
   Finally
     p.free;
   End;
   ReadAssetSets();
+End;
+
+Procedure TForm1.RunAndWait(p: TProcessUTF8);
+Begin
+  // Wie poWaitOnExit, aber der Timer liest weiter die Ausgabe der Stile, die im Hintergrund erzeugt werden (sonst läuft deren Pipe voll)
+  Enabled := false;
+  Try
+    p.Execute;
+    While p.Running Do Begin
+      Application.ProcessMessages;
+      Sleep(20);
+    End;
+  Finally
+    Enabled := true;
+  End;
 End;
 
 Procedure TForm1.OnDoLog(Const LogText: String);

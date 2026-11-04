@@ -77,6 +77,7 @@ Type
     Procedure ReadAssetSets(Const Selected: String);
     Procedure ReadSoundSets(Const Selected: String);
     Function MapGfx(Const Dir, Filename: String): String;
+    Function MapGfxComplete(Const Dir: String): Boolean;
     Procedure SetMap(Const Value: String);
     Procedure UpdatePreview();
   public
@@ -94,23 +95,11 @@ Implementation
 Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage, ulayout, uassetpath;
 
 Const
-  MapFiles: Array[0..5] Of String = ('brick.png', 'field.png', 'info.txt', 'solid.png', 'sound.wav', 'xbrick.ani');
+  MapGfxFiles: Array[0..3] Of String = ('brick.png', 'field.png', 'solid.png', 'xbrick.ani');
   PreviewScale = 2; // Die Vorschau ist halb so groß wie das Spiel (640 x 480)
 
 Type
   TSchemeRows = Array[0..FieldHeight - 1] Of String;
-
-Function MapComplete(Const Dir: String): Boolean;
-Var
-  i: integer;
-Begin
-  // Nur vollständige Karten lädt auch das Spiel
-  result := false;
-  For i := 0 To high(MapFiles) Do Begin
-    If Not FileExists(Dir + MapFiles[i]) Then exit;
-  End;
-  result := true;
-End;
 
 Function MapHash(Const Dir: String): UInt64;
 Var
@@ -241,7 +230,7 @@ Begin
   Names.free;
   ComboBox5.ItemIndex := 0;
   For i := 1 To fAssetFolders.Count - 1 Do Begin
-    If SameText(fAssetFolders[i], Selected) Then ComboBox5.ItemIndex := i;
+    If SameFolderName(fAssetFolders[i], Selected) Then ComboBox5.ItemIndex := i;
   End;
 End;
 
@@ -262,7 +251,7 @@ Begin
   ComboBox6.ItemIndex := 1; // Ein unbekannter Satz (gelöscht oder ohne Sounds) ist im Spiel auch Original
   If SameText(trim(Selected), SoundSetAuto) Then ComboBox6.ItemIndex := 0;
   For i := 2 To fSoundFolders.Count - 1 Do Begin
-    If SameText(fSoundFolders[i], trim(Selected)) Then ComboBox6.ItemIndex := i;
+    If SameFolderName(fSoundFolders[i], trim(Selected)) Then ComboBox6.ItemIndex := i;
   End;
 End;
 
@@ -276,6 +265,18 @@ Begin
   Folder := AssetSetsDir() + fAssetFolders[ComboBox5.ItemIndex] + PathDelim + 'maps' + PathDelim +
     ExtractFileName(ExcludeTrailingPathDelimiter(Dir)) + PathDelim + Filename;
   If FileExists(Folder) Then result := Folder;
+End;
+
+Function TForm5.MapGfxComplete(Const Dir: String): Boolean;
+Var
+  i: integer;
+Begin
+  // Wie im Spiel: alle Grafiken aus dem Grafiksatz oder aus data/maps, sound.wav ist optional
+  result := false;
+  For i := 0 To high(MapGfxFiles) Do Begin
+    If Not FileExists(MapGfx(Dir, MapGfxFiles[i])) Then exit;
+  End;
+  result := true;
 End;
 
 Procedure TForm5.FormShow(Sender: TObject);
@@ -300,14 +301,14 @@ Var
   dir, aName: String;
   i: integer;
 Begin
-  // Alle vollständigen Karten mit ihrem Namen aus info.txt, die Zufallskarte ist wie im Spiel die letzte
+  // Alle Karten mit ihrem Namen aus info.txt (wie im Spiel, die Grafiken können aus dem Grafiksatz kommen), die Zufallskarte ist wie im Spiel die letzte
   ComboBox4.Items.Clear;
   fMapDirs.Clear;
   sl := FindAllDirectories('data' + PathDelim + 'maps', false);
   sl.Sort;
   For i := 0 To sl.Count - 1 Do Begin
     dir := IncludeTrailingPathDelimiter(sl[i]);
-    If Not MapComplete(dir) Then Continue;
+    If Not FileExists(dir + 'info.txt') Then Continue;
     ini := TIniFile.Create(dir + 'info.txt');
     aName := ini.ReadString('General', 'Name', '');
     ini.free;
@@ -357,7 +358,7 @@ Begin
   bmp := TBitmap.Create;
   bmp.PixelFormat := pf24bit;
   bmp.SetSize(640 Div PreviewScale, 480 Div PreviewScale);
-  If (dir <> '') And (dir <> '?') And MapComplete(dir) Then Begin
+  If (dir <> '') And (dir <> '?') And MapGfxComplete(dir) Then Begin
     Field := LoadPng(MapGfx(dir, 'field.png'));
     Brick := LoadPng(MapGfx(dir, 'brick.png'));
     Solid := LoadPng(MapGfx(dir, 'solid.png'));
