@@ -356,6 +356,64 @@
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/cd_data_extractor_lang.de",
           "Filename":"cd_data_extractor_lang.de"
         }
+      },
+      {
+        "file":
+        {
+          "HASH":"70ca0a347ebf1b5996a557ac05dd719d",
+          "SIZE":"933376",
+          "HASH2":"0",
+          "SIZE2":"0",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/asset_generator_cli.exe",
+          "Filename":"asset_generator_cli.exe"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"ab0c97416017ffad5c35cfb3e7318f3e",
+          "SIZE":"4006400",
+          "HASH2":"b32bb709bcae45da771388708460b415",
+          "SIZE2":"9266840",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/asset_generator_gui.exe",
+          "Filename":"asset_generator_gui.exe"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"4943c6a67e1bdcd551ce4a94fe818349",
+          "SIZE":"5132",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.en",
+          "Filename":"asset_generator_lang.en"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"3abb02176a866278c1cc8a0faaea9da2",
+          "SIZE":"5417",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.de",
+          "Filename":"asset_generator_lang.de"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"33a8b29e0421be996460f1542fc488a3",
+          "SIZE":"5486",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.fr",
+          "Filename":"asset_generator_lang.fr"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"5229e7701a8e9830d2a75a2b4d669d82",
+          "SIZE":"5559",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.es",
+          "Filename":"asset_generator_lang.es"
+        }
       }
     ]
   }
