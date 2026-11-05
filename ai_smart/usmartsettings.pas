@@ -14,6 +14,10 @@
  * Settings of the smart ai (ai_smart.ini). Every ability has a Chance 0..100:
  * 0 = never, 100 = always, otherwise rolled per opportunity (see TSmartAi.Roll).
  *
+ * [General] Difficulty (0..100) sets the chances, the reaction time, the
+ * mistakes and the remote trigger time. A key that is set in the file (not
+ * commented out) overrides the value of the difficulty.
+ *
  * The file is searched next to the server (= next to the lib, for tests) and
  * then in the config folder of the game (%LOCALAPPDATA%\fpc_atomic,
  * ~/.config/fpc_atomic). If there is none, the defaults are written to the
@@ -36,6 +40,7 @@ Type
     sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd);
 
   TSmartSettings = Record
+    Difficulty: integer; // 0 = easy .. 100 = strong
     Seed: QWord; // 0 = random
     LogDecisions: Boolean;
     RerollMs: integer; // a Chance is rolled again after this time
@@ -56,12 +61,13 @@ Const
     'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd');
 
   SettingsFileName = 'ai_smart.ini';
+  DefaultDifficulty = 50;
 
 Var
   Settings: TSmartSettings;
   SettingsFile: String = ''; // the file that was read ('' = defaults only)
 
-Procedure DefaultSettings(Out s: TSmartSettings);
+Procedure DefaultSettings(Out s: TSmartSettings; Difficulty: integer = DefaultDifficulty);
 Procedure LoadSettings(); // reads ai_smart.ini, writes the defaults if there is none
 Procedure SmartLog(Const Msg: String); // only if LogDecisions, into ai_smart.log next to the ini
 
@@ -75,11 +81,20 @@ Const
   PowerupFields: Array[0..9] Of TAiField = (fExtraBomb, fLongerFlame, fGoldflame, fExtraSpeed, fKick, fSpooger, fPunch, fGrab, fTrigger, fJelly);
   PowerupDefaults: Array[0..9] Of integer = (5, 5, 6, 3, 4, 2, 2, 2, 3, 1);
 
-  FeatureDefaults: Array[TSmartFeature] Of integer = (
+  (*
+   * The chance of each ability at difficulty 0 and at 100, linear in between. Surviving (timed danger map,
+   * conveyors, hurry) and not hitting team mates stay on at every difficulty: easier, but not stupid.
+   *)
+  FeatureEasy: Array[TSmartFeature] Of integer = (
+    30, 40, 30, 100, 100,
+    0, 0, 0, 0, 0,
+    100, 50, 0, 30,
+    0, 0, 100, 100);
+  FeatureStrong: Array[TSmartFeature] Of integer = (
     100, 100, 100, 100, 100,
-    70, 50, 50, 50, 50,
-    100, 100, 50, 70,
-    100, 50, 100, 100);
+    90, 70, 70, 70, 100,
+    100, 100, 70, 100,
+    100, 100, 100, 100);
 
   FeatureComments: Array[TSmartFeature] Of String = (
     'Attack enemies with bombs in every game mode (the old ai only attacks in hunter mode).',
@@ -101,25 +116,39 @@ Const
     'Do not step onto a conveyor that pushes into a dangerous field.',
     'Hurry: the fields that are walled up within HurryLookAheadMs count as dangerous.');
 
-Procedure DefaultSettings(Out s: TSmartSettings);
+Function Clamp(Value, aMin, aMax: integer): integer;
+Begin
+  result := Value;
+  If result < aMin Then result := aMin;
+  If result > aMax Then result := aMax;
+End;
+
+Function Lerp(Easy, Strong, Difficulty: integer): integer;
+Begin
+  result := Easy + (Strong - Easy) * Difficulty Div 100;
+End;
+
+Procedure DefaultSettings(Out s: TSmartSettings; Difficulty: integer);
 Var
   f: TSmartFeature;
   i: integer;
   a: TAiField;
 Begin
+  Difficulty := Clamp(Difficulty, 0, 100);
+  s.Difficulty := Difficulty;
   s.Seed := 0;
   s.LogDecisions := false;
   s.RerollMs := 3000;
   For f := low(TSmartFeature) To high(TSmartFeature) Do Begin
-    s.Chance[f] := FeatureDefaults[f];
+    s.Chance[f] := Lerp(FeatureEasy[f], FeatureStrong[f], Difficulty);
   End;
   s.SafetyMs := 250;
-  s.MinReactionMs := 600;
+  s.MinReactionMs := Lerp(1000, 300, Difficulty);
   s.MaxWaitMs := 2000;
   s.AnticipateCost := 3;
   s.HurryLookAheadMs := 3000;
-  s.DelayMs := 0;
-  s.MistakeChance := 0;
+  s.DelayMs := Lerp(250, 0, Difficulty);
+  s.MistakeChance := Lerp(10, 0, Difficulty);
   For a := low(TAiField) To high(TAiField) Do Begin
     s.PowerupWeight[a] := 0;
   End;
@@ -129,27 +158,14 @@ Begin
 End;
 
 Function ConfigDir(): String;
-Var
-  Old: TGetAppNameEvent;
 Begin
   // Same folder as the game and the server use (uatomic_global, application name fpc_atomic)
-  Old := OnGetApplicationName;
-  OnGetApplicationName := Nil;
-  Try
-    result := IncludeTrailingPathDelimiter(ExtractFileDir(ExcludeTrailingPathDelimiter(GetAppConfigDir(false)))) + 'fpc_atomic' + PathDelim;
-  Finally
-    OnGetApplicationName := Old;
-  End;
-End;
-
-Function Clamp(Value, aMin, aMax: integer): integer;
-Begin
-  result := Value;
-  If result < aMin Then result := aMin;
-  If result > aMax Then result := aMax;
+  result := IncludeTrailingPathDelimiter(ExtractFileDir(ExcludeTrailingPathDelimiter(GetAppConfigDir(false)))) + 'fpc_atomic' + PathDelim;
 End;
 
 Procedure WriteDefaults(Const Filename: String);
+Const
+  ByDifficulty = ' (set by Difficulty, remove the ; to fix it)';
 Var
   sl: TStringList;
   d: TSmartSettings;
@@ -162,8 +178,11 @@ Begin
     sl.Add('; Settings of the smart ai (ai_smart.dll / libai_smart.so), see ai_smart/README.md');
     sl.Add('; Every ability has a Chance from 0 to 100: 0 = never, 100 = always, otherwise rolled');
     sl.Add('; per opportunity and kept for RerollMs. Changes take effect with the next round.');
+    sl.Add('; Difficulty sets the values that are commented out here, a value without ; overrides it.');
     sl.Add('');
     sl.Add('[General]');
+    sl.Add('; 0 = easy, 50 = normal, 100 = strong');
+    sl.Add('Difficulty=' + IntToStr(d.Difficulty));
     sl.Add('; 0 = random, any other number = the same decisions in the same situations (for tests)');
     sl.Add('Seed=' + IntToStr(d.Seed));
     sl.Add('; 1 = write every new goal into ai_smart.log next to this file');
@@ -173,16 +192,19 @@ Begin
     For f := low(TSmartFeature) To high(TSmartFeature) Do Begin
       sl.Add('');
       sl.Add('[' + FeatureSection[f] + ']');
-      sl.Add('; ' + FeatureComments[f]);
-      sl.Add('Chance=' + IntToStr(d.Chance[f]));
+      If FeatureEasy[f] = FeatureStrong[f] Then
+        sl.Add('; ' + FeatureComments[f] + ' The same at every difficulty, remove the ; to change it.')
+      Else
+        sl.Add('; ' + FeatureComments[f] + ByDifficulty);
+      sl.Add(';Chance=' + IntToStr(d.Chance[f]));
       Case f Of
         sfTimedDanger: Begin
             sl.Add('; Extra time in ms the ai keeps between itself and an explosion');
             sl.Add('SafetyMs=' + IntToStr(d.SafetyMs));
           End;
         sfTrigger: Begin
-            sl.Add('; A remote bomb lies at least this long (ms) before it is triggered at an enemy. Smaller = faster and less fair');
-            sl.Add('MinReactionMs=' + IntToStr(d.MinReactionMs));
+            sl.Add('; A remote bomb lies at least this long (ms) before it is triggered at an enemy. Smaller = faster and less fair' + ByDifficulty);
+            sl.Add(';MinReactionMs=' + IntToStr(d.MinReactionMs));
             sl.Add('; A remote bomb is triggered after this time (ms) at the latest, also without an enemy');
             sl.Add('MaxWaitMs=' + IntToStr(d.MaxWaitMs));
           End;
@@ -198,10 +220,10 @@ Begin
     End;
     sl.Add('');
     sl.Add('[Reaction]');
-    sl.Add('; The ai decides only every DelayMs (0 = every frame, 10 ms). Larger = slower, more human');
-    sl.Add('DelayMs=' + IntToStr(d.DelayMs));
-    sl.Add('; Chance in % that a decision is replaced by a random step (never into flames)');
-    sl.Add('MistakeChance=' + IntToStr(d.MistakeChance));
+    sl.Add('; The ai decides only every DelayMs (0 = every frame, 10 ms). Larger = slower, more human' + ByDifficulty);
+    sl.Add(';DelayMs=' + IntToStr(d.DelayMs));
+    sl.Add('; Chance in % that a decision is replaced by a random step (never into flames or a dangerous field)' + ByDifficulty);
+    sl.Add(';MistakeChance=' + IntToStr(d.MistakeChance));
     sl.Add('');
     sl.Add('[PowerupWeights]');
     sl.Add('; How much the ai wants each good powerup (0 = ignore, 10 = very much), used with [Powerups]');
@@ -221,6 +243,14 @@ Var
   Candidate: String;
   f: TSmartFeature;
   i: integer;
+  Old: Boolean;
+
+  // A key in the file overrides the value of the difficulty
+  Procedure Read(Const Section, Key: String; Var Value: integer; aMin, aMax: integer);
+  Begin
+    If ini.ValueExists(Section, Key) Then Value := Clamp(ini.ReadInteger(Section, Key, Value), aMin, aMax);
+  End;
+
 Begin
   DefaultSettings(Settings);
   SettingsFile := '';
@@ -228,6 +258,20 @@ Begin
   Candidate := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + SettingsFileName;
   If Not FileExists(Candidate) Then Begin
     Candidate := ConfigDir() + SettingsFileName;
+    // A file of version 0.01 has every value set, Difficulty would have no effect: keep it as .bak, write a new one
+    Old := false;
+    If FileExists(Candidate) Then Begin
+      ini := TIniFile.Create(Candidate);
+      Try
+        Old := Not ini.ValueExists('General', 'Difficulty');
+      Finally
+        ini.Free;
+      End;
+      If Old Then Begin
+        DeleteFile(Candidate + '.bak');
+        RenameFile(Candidate, Candidate + '.bak');
+      End;
+    End;
     If Not FileExists(Candidate) Then Begin
       Try
         WriteDefaults(Candidate);
@@ -240,21 +284,22 @@ Begin
   SettingsFile := Candidate;
   ini := TIniFile.Create(Candidate);
   Try
+    DefaultSettings(Settings, ini.ReadInteger('General', 'Difficulty', DefaultDifficulty));
     Settings.Seed := StrToQWordDef(ini.ReadString('General', 'Seed', '0'), 0);
     Settings.LogDecisions := ini.ReadInteger('General', 'LogDecisions', 0) <> 0;
-    Settings.RerollMs := Clamp(ini.ReadInteger('General', 'RerollMs', Settings.RerollMs), 100, 60000);
+    Read('General', 'RerollMs', Settings.RerollMs, 100, 60000);
     For f := low(TSmartFeature) To high(TSmartFeature) Do Begin
-      Settings.Chance[f] := Clamp(ini.ReadInteger(FeatureSection[f], 'Chance', Settings.Chance[f]), 0, 100);
+      Read(FeatureSection[f], 'Chance', Settings.Chance[f], 0, 100);
     End;
-    Settings.SafetyMs := Clamp(ini.ReadInteger('TimedDanger', 'SafetyMs', Settings.SafetyMs), 0, 2000);
-    Settings.MinReactionMs := Clamp(ini.ReadInteger('Trigger', 'MinReactionMs', Settings.MinReactionMs), 0, 10000);
-    Settings.MaxWaitMs := Clamp(ini.ReadInteger('Trigger', 'MaxWaitMs', Settings.MaxWaitMs), Settings.MinReactionMs, 60000);
-    Settings.AnticipateCost := Clamp(ini.ReadInteger('Anticipate', 'Cost', Settings.AnticipateCost), 0, 10);
-    Settings.HurryLookAheadMs := Clamp(ini.ReadInteger('RoundEnd', 'HurryLookAheadMs', Settings.HurryLookAheadMs), 0, 20000);
-    Settings.DelayMs := Clamp(ini.ReadInteger('Reaction', 'DelayMs', Settings.DelayMs), 0, 2000);
-    Settings.MistakeChance := Clamp(ini.ReadInteger('Reaction', 'MistakeChance', Settings.MistakeChance), 0, 100);
+    Read('TimedDanger', 'SafetyMs', Settings.SafetyMs, 0, 2000);
+    Read('Trigger', 'MinReactionMs', Settings.MinReactionMs, 0, 10000);
+    Read('Trigger', 'MaxWaitMs', Settings.MaxWaitMs, Settings.MinReactionMs, 60000);
+    Read('Anticipate', 'Cost', Settings.AnticipateCost, 0, 10);
+    Read('RoundEnd', 'HurryLookAheadMs', Settings.HurryLookAheadMs, 0, 20000);
+    Read('Reaction', 'DelayMs', Settings.DelayMs, 0, 2000);
+    Read('Reaction', 'MistakeChance', Settings.MistakeChance, 0, 100);
     For i := 0 To high(PowerupKeys) Do Begin
-      Settings.PowerupWeight[PowerupFields[i]] := Clamp(ini.ReadInteger('PowerupWeights', PowerupKeys[i], PowerupDefaults[i]), 0, 10);
+      Read('PowerupWeights', PowerupKeys[i], Settings.PowerupWeight[PowerupFields[i]], 0, 10);
     End;
   Finally
     ini.Free;

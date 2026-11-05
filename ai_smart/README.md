@@ -44,6 +44,24 @@ Without `-GameDir` / `--gamedir` the repository root is used. Close the server f
 If there is none, the ai writes it with the default values and a comment for every key.
 The file is read again at the start of every round, so changes take effect with the next round without a restart.
 
+## Difficulty
+
+`[General] Difficulty` from 0 to 100 sets the strength with one number (default 50):
+
+| | 0 (easy) | 50 (default) | 100 (strong) |
+| --- | --- | --- | --- |
+| Reaction (`DelayMs`) | 250 ms | 125 ms | 0 |
+| Mistakes (`MistakeChance`) | 10 % | 5 % | 0 |
+| Remote trigger at the earliest (`MinReactionMs`) | 1000 ms | 650 ms | 300 ms |
+| Attack | 30 % | 65 % | 100 % |
+| Spooger, punch, grab | 0 | 35 % | 70 % |
+| Kick | 0 | 45 % | 90 % |
+| Traps, chain reactions, anticipating | 0 | 50 % | 100 % |
+
+Surviving (timed danger map, conveyors, hurry) and not hitting team mates stay on at every difficulty: an easier ai is slower and makes mistakes, but it does not blow itself up on purpose.
+
+In the file the values that the difficulty sets are commented out (`;Chance=65`). Remove the `;` to fix a value yourself, it then overrides the difficulty. A file of version 0.01 (without `Difficulty`) is kept as `ai_smart.ini.bak` and written again.
+
 ## How Chance works
 
 Every ability has a `Chance` from 0 to 100:
@@ -57,51 +75,52 @@ Invalid values are limited to their range, missing keys get the default.
 
 ### [General]
 
-| Key | Default | Meaning |
+| Key | Default (difficulty 0 / 50 / 100) | Meaning |
 | --- | --- | --- |
+| `Difficulty` | 50 | 0 = easy, 50 = normal, 100 = strong. Sets the values marked 0 / 50 / 100 below. |
 | `Seed` | 0 | 0 = random. Any other number gives the same decisions in the same situations, for reproducible tests. |
 | `LogDecisions` | 0 | 1 = every new goal of every ai player is written to `ai_smart.log` next to the ini (e.g. `P1 t=4200 attack (6,3)`). |
 | `RerollMs` | 3000 | How long a rolled Chance is kept (100..60000 ms). |
 
 ### Abilities
 
-| Section | Default | Meaning |
+| Section | Default (difficulty 0 / 50 / 100) | Meaning |
 | --- | --- | --- |
-| `[Attack]` | 100 | Places bombs to hit enemies in every game mode. In hunter mode it always attacks, like the original ai. |
-| `[Powerups]` | 100 | Walks to good powerups on purpose and avoids burning them. How much it wants each one: `[PowerupWeights]`. |
-| `[Approach]` | 100 | Without any other goal it walks towards the nearest enemy and keeps a distance of about 3 fields. |
+| `[Attack]` | 30 / 65 / 100 | Places bombs to hit enemies in every game mode. In hunter mode it always attacks, like the original ai. |
+| `[Powerups]` | 40 / 70 / 100 | Walks to good powerups on purpose and avoids burning them. How much it wants each one: `[PowerupWeights]`. |
+| `[Approach]` | 30 / 65 / 100 | Without any other goal it walks towards the nearest enemy and keeps a distance of about 3 fields. |
 | `[TimedDanger]` | 100 | Danger map with the explosion time of each bomb: it walks through fields that explode later and checks that its escape is fast enough. `0` = every bomb counts as dangerous at once, like the original ai. |
 | `[Trigger]` | 100 | Remote bombs: triggered at an enemy only after `MinReactionMs`. `0` = triggered only after `MaxWaitMs`, never at an enemy. |
-| `[Kick]` | 70 | Needs the kick item. Kicks a bomb towards an enemy in the same line, or kicks a bomb away when it has no other escape. |
-| `[Punch]` | 50 | Needs the punch item. Punches an adjacent bomb 3 fields towards an enemy. Only when it has no remote bombs (the same key triggers them). |
-| `[Grab]` | 50 | Needs the grab item. Places a bomb and throws it 3 fields onto an enemy. |
-| `[Spooger]` | 50 | Needs the spooger item. Places a row of bombs towards an enemy in the same line. |
-| `[Traps]` | 50 | Prefers attack fields after which the enemy has fewer free fields around it. |
+| `[Kick]` | 0 / 45 / 90 | Needs the kick item. Kicks a bomb towards an enemy in the same line, or kicks a bomb away when it has no other escape. |
+| `[Punch]` | 0 / 35 / 70 | Needs the punch item. Punches an adjacent bomb 3 fields towards an enemy. Only when it has no remote bombs (the same key triggers them). |
+| `[Grab]` | 0 / 35 / 70 | Needs the grab item. Places a bomb and throws it 3 fields onto an enemy. |
+| `[Spooger]` | 0 / 35 / 70 | Needs the spooger item. Places a row of bombs towards an enemy in the same line. |
+| `[Traps]` | 0 / 50 / 100 | Prefers attack fields after which the enemy has fewer free fields around it. |
 | `[TeamSafety]` | 100 | Never places a bomb that hits a team mate (teamplay, and hunters among each other). |
-| `[OpenSpace]` | 100 | Of two about equal goals it takes the one with more free neighbour fields (fewer dead ends). |
-| `[Infect]` | 50 | When it is ill, it walks to the nearest enemy to pass the disease on. |
-| `[HuntedFlees]` | 70 | Hunter mode: the hunted keeps away from the hunters while it has at most one bomb. |
-| `[Anticipate]` | 100 | Fields in the flame line of an enemy who still has bombs are less attractive as a goal. |
-| `[ChainAttack]` | 50 | Also counts enemies that are hit through a chain reaction (the new bomb ignites another one). |
+| `[OpenSpace]` | 50 / 75 / 100 | Of two about equal goals it takes the one with more free neighbour fields (fewer dead ends). |
+| `[Infect]` | 0 / 35 / 70 | When it is ill, it walks to the nearest enemy to pass the disease on. |
+| `[HuntedFlees]` | 30 / 65 / 100 | Hunter mode: the hunted keeps away from the hunters while it has at most one bomb. |
+| `[Anticipate]` | 0 / 50 / 100 | Fields in the flame line of an enemy who still has bombs are less attractive as a goal. |
+| `[ChainAttack]` | 0 / 50 / 100 | Also counts enemies that are hit through a chain reaction (the new bomb ignites another one). |
 | `[Conveyors]` | 100 | Does not step onto a conveyor that pushes it into a dangerous field. |
 | `[RoundEnd]` | 100 | Hurry (the last 80 s of a timed round): the fields that are walled up soon count as dangerous. |
 
 ### Further keys of the abilities
 
-| Key | Default | Meaning |
+| Key | Default (difficulty 0 / 50 / 100) | Meaning |
 | --- | --- | --- |
 | `[TimedDanger] SafetyMs` | 250 | Extra time in ms it keeps between itself and an explosion. Larger = more careful. |
-| `[Trigger] MinReactionMs` | 600 | A remote bomb lies at least this long before it is triggered at an enemy. Smaller = faster and less fair, about 600 is a human reaction. |
+| `[Trigger] MinReactionMs` | 1000 / 650 / 300 | A remote bomb lies at least this long before it is triggered at an enemy. Smaller = faster and less fair, about 600 is a human reaction. |
 | `[Trigger] MaxWaitMs` | 2000 | A remote bomb is triggered after this time at the latest, also without an enemy (like a normal bomb). |
 | `[Anticipate] Cost` | 3 | How much less attractive such a field is (0..10). |
 | `[RoundEnd] HurryLookAheadMs` | 3000 | How far ahead it looks for fields that the hurry walls up. |
 
 ### [Reaction]
 
-| Key | Default | Meaning |
+| Key | Default (difficulty 0 / 50 / 100) | Meaning |
 | --- | --- | --- |
-| `DelayMs` | 0 | It decides only every `DelayMs` and keeps walking in between. 0 = every frame. Larger = slower, more human, easier. |
-| `MistakeChance` | 0 | Chance in % that a decision is replaced by a random step (never into flames or a dangerous field). |
+| `DelayMs` | 250 / 125 / 0 | It decides only every `DelayMs` and keeps walking in between. 0 = every frame. Larger = slower, more human, easier. |
+| `MistakeChance` | 10 / 5 / 0 | Chance in % that a decision is replaced by a random step (never into flames or a dangerous field). |
 
 ### [PowerupWeights]
 
@@ -109,15 +128,9 @@ How much it wants each good powerup, 0 (ignore) to 10. Defaults: `ExtraBomb=5`, 
 
 ## Profiles
 
-Copy the values into the sections of `ai_smart.ini`.
+**Easy**: `Difficulty=0`. **Normal**: `Difficulty=50` (default). **Strong**: `Difficulty=100`.
 
-**Like the original ai** (with the bug fixes: no bombs without a reason, correct flames): every `Chance=0`.
-
-**Fair** (default): the values of the tables above.
-
-**Strong**: every `Chance=100`, `MinReactionMs=300`, `SafetyMs=150`.
-
-**Easy**: `Attack 30`, `Kick`/`Punch`/`Grab`/`Spooger 0`, `DelayMs=150`, `MistakeChance=5`.
+**Like the original ai** (with the bug fixes: no bombs without a reason, correct flames): set every `Chance=0` (remove the `;`).
 
 ## Finding the cause of a problem
 

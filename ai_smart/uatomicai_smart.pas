@@ -39,8 +39,10 @@ Const
   (*
    * History:
    *             0.01 - Initial version, based on "Atomic ai ver. 0.08 by Corpsman"
+   *             0.02 - ADD: [General] Difficulty 0..100 (default 50) sets the chances, reaction, mistakes and remote trigger time
+   *                    FIX: shaking (centring, goal switching, turning for spooger / grab, escape at the border of a field)
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.01';
+  Ai_Version = 'Atomic smart ai ver. 0.02';
 
   FieldWidth = 15;
   FieldHeight = 11;
