@@ -112,6 +112,8 @@ Type
     fBombTryCell, fNoBombCell: TPoint;
     fNoBombUntil: Int64;
     fGoal: TGoal; // the goal of the last decision, it gets a bonus so that the ai does not switch back and forth
+    fLastMove: TAiMoveState; // for the log of steps back (LogDecisions)
+    fLastMoveTime: Int64;
 
     Function IsLastGoal(x, y: integer; Kind: TGoalKind): Boolean;
 
@@ -244,6 +246,8 @@ Begin
   fGoal.Kind := gkNone;
   fGoal.x := -1;
   fGoal.y := -1;
+  fLastMove := amNone;
+  fLastMoveTime := 0;
 End;
 
 Function TSmartAi.IsLastGoal(x, y: integer; Kind: TGoalKind): Boolean;
@@ -991,13 +995,15 @@ Begin
         Cells[high(Cells)] := Point(bx, by);
       End;
     End;
-    If (length(Cells) >= 2) And EnemyInLine(fX, fY, m, high(Cells) + Me.FlameLength, Range) Then Begin
+    // First check, then turn: turning towards an enemy and walking away again every other frame made the ai shake
+    If (length(Cells) >= 2) And EnemyInLine(fX, fY, m, high(Cells) + Me.FlameLength, Range) And
+      CanSurviveBombs(Cells, fX, fY, 0, HitFriend) And Not (HitFriend And Roll(sfTeamSafety)) Then Begin
       If fFacing <> m Then Begin
         Cmd.MoveState := m; // turn first (one frame)
         Cmd.Action := apNone;
         exit(true);
       End;
-      If CanSurviveBombs(Cells, fX, fY, 0, HitFriend) And Not (HitFriend And Roll(sfTeamSafety)) Then Begin
+      Begin
         Cmd.Action := apFirstDouble;
         Cmd.MoveState := amNone;
         LogGoal('spooger', fX, fY);
@@ -1014,11 +1020,6 @@ Begin
           If (Not IsEnemy(i)) Or (Not Usable(i)) Then Continue;
           e := PlayerField(i);
           If (abs(e.x - bx) + abs(e.y - by) <= 1) Then Begin
-            If fFacing <> m Then Begin
-              Cmd.MoveState := m;
-              Cmd.Action := apNone;
-              exit(true);
-            End;
             // The ai does not stand on the thrown bomb: check from its own field. With the carry bombs mod the
             // range can be 1..6 (the ai does not know it), so every possible landing field must be survivable
             setlength(Cells, 1);
@@ -1027,6 +1028,12 @@ Begin
               Cells[0] := Point(fX + DirX[m] * k, fY + DirY[m] * k);
               If Not Inside(Cells[0].x, Cells[0].y) Then break;
               If Not (CanSurviveBombs(Cells, fX, fY, ThrowMs, HitFriend) And Not (HitFriend And Roll(sfTeamSafety))) Then Ok := false;
+            End;
+            // Turn only if the throw will really follow (see spooger)
+            If Ok And (fFacing <> m) Then Begin
+              Cmd.MoveState := m;
+              Cmd.Action := apNone;
+              exit(true);
             End;
             If Ok Then Begin
               Cmd.Action := apFirstDouble;
@@ -1202,6 +1209,15 @@ Begin
   BuildEnemyLines;
   result := Decide();
   If result.Action <> apFirst Then fBombTries := 0; // only presses in a row count
+  // Log: a step back within 100 ms (the cause of shaking), with the reason of the last goal
+  If Settings.LogDecisions And (result.MoveState <> amNone) Then Begin
+    If (fLastMove <> amNone) And (fTime - fLastMoveTime <= 100) And
+      (DirX[result.MoveState] = -DirX[fLastMove]) And (DirY[result.MoveState] = -DirY[fLastMove]) Then
+      SmartLog(format('P%d t=%d reverse at (%d,%d) pos %.2f/%.2f, last goal: %s', [fIndex, fTime, fX, fY,
+        Me.Position.x, Me.Position.y, fLastGoal]));
+    fLastMove := result.MoveState;
+    fLastMoveTime := fTime;
+  End;
   If result.MoveState <> amNone Then fFacing := result.MoveState;
   fLastCommand := result;
 End;
