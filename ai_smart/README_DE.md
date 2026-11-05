@@ -99,7 +99,7 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[ChainAttack]` | 0 / 50 / 100 | Zählt auch Gegner, die über eine Kettenreaktion getroffen werden (die neue Bombe zündet eine andere). |
 | `[Conveyors]` | 100 | Betritt kein Laufband, das sie in ein gefährliches Feld schiebt. |
 | `[RoundEnd]` | 100 | Hurry (die letzten 80 s einer Runde mit Zeitlimit): Felder, die bald zugemauert werden, gelten als gefährlich. |
-| `[KickSnipe]` | 0 / 40 / 80 | Braucht Kick und Fernzünder. Legt eine Fernzünder-Bombe, kickt sie in eine freie Linie zu einem Gegner und zündet, wenn der Gegner in den Flammen steht, auch mehrere Bomben nacheinander. |
+| `[KickSnipe]` | 0 / 40 / 80 | Braucht Kick und Fernzünder. Legt eine Fernzünder-Bombe, kickt sie in eine freie Linie zu einem Gegner und zündet, wenn der Gegner in den Flammen steht. Eine gekickte Bombe hält vor Spielern an, ein Gegner in der Linie ist daher das beste Ziel. Mehrere Bomben reihen sich hintereinander auf (sie gehen zusammen hoch). Mit Jelly pendelt die Bombe zwischen dem nächsten Hindernis und der KI, die danach seitlich aus der Linie tritt. |
 
 ### Weitere Schlüssel der Fähigkeiten
 

@@ -99,7 +99,7 @@ Invalid values are limited to their range, missing keys get the default.
 | `[ChainAttack]` | 0 / 50 / 100 | Also counts enemies that are hit through a chain reaction (the new bomb ignites another one). |
 | `[Conveyors]` | 100 | Does not step onto a conveyor that pushes it into a dangerous field. |
 | `[RoundEnd]` | 100 | Hurry (the last 80 s of a timed round): the fields that are walled up soon count as dangerous. |
-| `[KickSnipe]` | 0 / 40 / 80 | Needs kick and remote bombs. Places a remote bomb, kicks it into a free line towards an enemy and triggers it when the enemy is in its flames, also several bombs one after the other. |
+| `[KickSnipe]` | 0 / 40 / 80 | Needs kick and remote bombs. Places a remote bomb, kicks it into a free line towards an enemy and triggers it when the enemy is in its flames. A kicked bomb stops in front of a player, so an enemy in the line is the best target. Several bombs line up one behind the other (they go off together). With jelly the bomb bounces between the next obstacle and the ai, which then steps out of the line. |
 
 ### Further keys of the abilities
 

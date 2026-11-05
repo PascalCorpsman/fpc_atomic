@@ -45,8 +45,9 @@ Const
    *                    FIX: reaction delay only within a field (ran up and down around the goal), mistakes only change steps
    *                    ADD: log of deaths (suicide?) and of an ai stuck on a field
    *             0.04 - ADD: KickSnipe: remote bomb, step back, kick it into a line towards an enemy, trigger it with a hit chance
+   *             0.05 - KickSnipe: the bomb stops in front of players (aim at enemies in the line), series in the same direction with chain reaction, jelly: the whole bouncing way counts, step out of the line; trigger also while escaping; [TeamSafety] for sniping
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.04';
+  Ai_Version = 'Atomic smart ai ver. 0.05';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -139,6 +140,8 @@ Type
     fSnipeStage: integer;
     fSnipeCell, fSnipeBack: TPoint;
     fSnipeDir: TAiMoveState;
+    fSnipeLastDir: TAiMoveState; // the direction of the last kicked bomb: the next one lines up behind it
+    fSnipeJelly: Boolean; // the kicked bomb bounces (jelly): step out of its line afterwards
     fSnipeUntil, fSnipePauseUntil: Int64;
     fTriggerDecided: Boolean; // KickSnipe: the hit chance for the current enemy was rolled
     fTriggerAt: Int64; // KickSnipe: a missed moment, the bombs go off now (too late)
@@ -158,6 +161,7 @@ Type
     Function IsFriend(i: integer): Boolean;
     Function PlayerField(i: integer): TPoint;
     Function Usable(i: integer): Boolean; // alive, on the field, not flying
+    Function PlayerAt(x, y: integer): integer; // the first usable player on this field, -1 = none
 
     Procedure FlameCells(x, y, Len: integer; Var Grid: TBoolGrid);
     Procedure BuildBombs;
@@ -306,6 +310,7 @@ Begin
   fGoalMarginMs := 0;
   fAvoidDangerUntil := 0;
   fSnipeStage := 0;
+  fSnipeLastDir := amNone;
   fSnipePauseUntil := 0;
   fTriggerDecided := false;
   fTriggerAt := 0;
@@ -425,6 +430,15 @@ Begin
   If fInfo^.PlayerInfos[i].Flying Then exit;
   p := PlayerField(i);
   result := Inside(p.x, p.y);
+End;
+
+Function TSmartAi.PlayerAt(x, y: integer): integer;
+Var
+  i: integer;
+Begin
+  For i := 0 To high(fInfo^.PlayerInfos) Do
+    If (i <> fIndex) And Usable(i) And (PlayerField(i) = Point(x, y)) Then exit(i);
+  result := -1;
 End;
 
 Procedure TSmartAi.FlameCells(x, y, Len: integer; Var Grid: TBoolGrid);
@@ -1117,7 +1131,8 @@ End;
 
 Function TSmartAi.SnipeAction(Var Cmd: TAiCommand): Boolean;
 Var
-  d, k, bestScore, score, i, sx, sy: integer;
+  d, k, bestScore, score, i, sx, sy, Stopper: integer;
+  Jelly: Boolean;
   m, bestDir: TAiMoveState;
   b, e, bestEnd: TPoint;
   g: TBoolGrid;
@@ -1161,14 +1176,38 @@ Begin
     If fSnipeStage = 3 Then Begin
       // Kicked as soon as the bomb has left its field
       If (fBombAt[fSnipeCell.x, fSnipeCell.y] < 0) Then Begin
-        fSnipeStage := 0;
+        fSnipeLastDir := fSnipeDir;
         fSnipePauseUntil := fTime + 800; // then maybe the next one
         LogGoal('snipe bomb kicked', fSnipeCell.x, fSnipeCell.y);
-        exit;
+        If fSnipeJelly Then Begin
+          fSnipeStage := 4; // the bomb comes back: leave its line
+          fSnipeUntil := fTime + 1000;
+        End
+        Else Begin
+          fSnipeStage := 0;
+          exit;
+        End;
+      End
+      Else Begin
+        Cmd.Action := apNone;
+        Cmd.MoveState := fSnipeDir;
+        exit(true);
       End;
-      Cmd.Action := apNone;
-      Cmd.MoveState := fSnipeDir;
-      exit(true);
+    End;
+    If fSnipeStage = 4 Then Begin
+      // Sideways out of the line of the bouncing bomb, to a free field
+      For d := 0 To 3 Do Begin
+        m := Moves[d];
+        If (DirX[m] <> 0) = (DirX[fSnipeDir] <> 0) Then Continue; // only across the line
+        b := Point(fX + DirX[m], fY + DirY[m]);
+        If Inside(b.x, b.y) And (fInfo^.Field[b.x, b.y] In WalkableFields) And (fBombAt[b.x, b.y] = -1) Then Begin
+          Cmd.Action := apNone;
+          Cmd.MoveState := m;
+          If (fX <> fSnipeBack.x) Or (fY <> fSnipeBack.y) Then fSnipeStage := 0; // out of the line
+          exit(true);
+        End;
+      End;
+      fSnipeStage := 0; // nowhere to go, the normal goals take over
     End;
     exit;
   End;
@@ -1186,20 +1225,36 @@ Begin
     b := Point(fX - DirX[m], fY - DirY[m]); // the field to step back to
     If (Not Inside(b.x, b.y)) Or Not (fInfo^.Field[b.x, b.y] In WalkableFields) Or (fBombAt[b.x, b.y] <> -1) Or
       (fDanger[b.x, b.y] <> Safe) Then Continue;
-    // Where the bomb stops: before the first field that is not free
+    (*
+     * Where the bomb stops, like TAtomicField.HandleBombs: before a field that is not free, a bomb, a hole, a
+     * trampoline or a player. An enemy in the line is the best target: the bomb stops right in front of him.
+     * With jelly it bounces between that field and the ai, the whole way counts.
+     *)
     k := 0;
     sx := fX;
     sy := fY;
-    While Inside(sx + DirX[m], sy + DirY[m]) And (fInfo^.Field[sx + DirX[m], sy + DirY[m]] In WalkableFields) And
+    Stopper := -1;
+    FillChar(g, SizeOf(g), 0);
+    Jelly := (Me.Abilities And Ability_CanJelly) <> 0;
+    If Jelly Then FlameCells(fX, fY, Me.FlameLength, g);
+    While Inside(sx + DirX[m], sy + DirY[m]) And (fInfo^.Field[sx + DirX[m], sy + DirY[m]] In WalkableFields - [fHole, fTramp]) And
       (fBombAt[sx + DirX[m], sy + DirY[m]] = -1) Do Begin
+      Stopper := PlayerAt(sx + DirX[m], sy + DirY[m]);
+      If Stopper <> -1 Then break;
       sx := sx + DirX[m];
       sy := sy + DirY[m];
       inc(k);
+      If Jelly Then FlameCells(sx, sy, Me.FlameLength, g);
     End;
-    If k < 2 Then Continue; // it has to slide a bit
-    FillChar(g, SizeOf(g), 0);
+    If k < 1 Then Continue; // it has to slide
     FlameCells(sx, sy, Me.FlameLength, g);
+    // The own remote bombs in the flames go off with it (a row of bombs towards the enemy)
+    For i := 0 To high(fBombs) Do
+      If fBombs[i].Manual And (fBombs[i].Owner = fIndex) And g[fBombs[i].x, fBombs[i].y] Then
+        FlameCells(fBombs[i].x, fBombs[i].y, fBombs[i].Len, g);
     score := 0;
+    If (Stopper <> -1) And IsEnemy(Stopper) Then score := score + 5; // stops right in front of the enemy
+    If m = fSnipeLastDir Then score := score + 3; // the series: behind the last one
     For i := 0 To high(fInfo^.PlayerInfos) Do Begin
       If Not Usable(i) Then Continue;
       e := PlayerField(i);
@@ -1219,6 +1274,7 @@ Begin
     End;
   End;
   If bestDir = amNone Then exit;
+  fSnipeJelly := (Me.Abilities And Ability_CanJelly) <> 0;
   fSnipeStage := 1;
   fSnipeCell := Point(fX, fY);
   fSnipeBack := Point(fX - DirX[bestDir], fY - DirY[bestDir]);
