@@ -1074,7 +1074,7 @@ Begin
     If Not Usable(i) Then Continue;
     p := PlayerField(i);
     If Not g[p.x, p.y] Then Continue;
-    If IsFriend(i) Then exit; // no friendly fire
+    If IsFriend(i) And Roll(sfTeamSafety) Then exit; // no friendly fire ([TeamSafety], like all bombs of the ai)
     If IsEnemy(i) Then EnemyHit := true;
   End;
   // KickSnipe: the kicked remote bombs wait longer for an enemy, and the moment is not always hit
@@ -1194,7 +1194,7 @@ Begin
     For i := 0 To high(fInfo^.PlayerInfos) Do Begin
       If Not Usable(i) Then Continue;
       e := PlayerField(i);
-      If IsFriend(i) And g[e.x, e.y] Then Begin
+      If IsFriend(i) And g[e.x, e.y] And Roll(sfTeamSafety) Then Begin
         score := -1000; // would hit a team mate
         break;
       End;

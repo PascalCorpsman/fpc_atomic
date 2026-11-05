@@ -91,7 +91,7 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[Grab]` | 0 / 35 / 70 | Braucht das Grab-Item. Legt eine Bombe und wirft sie 3 Felder weit auf einen Gegner. |
 | `[Spooger]` | 0 / 35 / 70 | Braucht das Spooger-Item. Legt eine Bombenreihe zu einem Gegner in derselben Linie. |
 | `[Traps]` | 0 / 50 / 100 | Bevorzugt Angriffsfelder, nach denen der Gegner weniger freie Felder um sich hat. |
-| `[TeamSafety]` | 100 | Legt nie eine Bombe, die einen Mitspieler trifft (Teamplay, und Jäger untereinander). |
+| `[TeamSafety]` | 100 | Legt, kickt oder zündet nie eine Bombe, die einen Mitspieler trifft (Teamplay, und Jäger untereinander). Unter 100 achtet sie manchmal nicht darauf. |
 | `[OpenSpace]` | 50 / 75 / 100 | Von zwei etwa gleich guten Zielen nimmt sie das mit mehr freien Nachbarfeldern (weniger Sackgassen). |
 | `[Infect]` | 0 / 35 / 70 | Ist sie krank, läuft sie zum nächsten Gegner und steckt ihn an. |
 | `[HuntedFlees]` | 30 / 65 / 100 | Hunter-Modus: Der Gejagte hält Abstand zu den Jägern, solange er höchstens eine Bombe hat. |

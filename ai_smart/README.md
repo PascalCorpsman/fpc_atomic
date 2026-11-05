@@ -91,7 +91,7 @@ Invalid values are limited to their range, missing keys get the default.
 | `[Grab]` | 0 / 35 / 70 | Needs the grab item. Places a bomb and throws it 3 fields onto an enemy. |
 | `[Spooger]` | 0 / 35 / 70 | Needs the spooger item. Places a row of bombs towards an enemy in the same line. |
 | `[Traps]` | 0 / 50 / 100 | Prefers attack fields after which the enemy has fewer free fields around it. |
-| `[TeamSafety]` | 100 | Never places a bomb that hits a team mate (teamplay, and hunters among each other). |
+| `[TeamSafety]` | 100 | Never places, kicks or triggers a bomb that hits a team mate (teamplay, and hunters among each other). Below 100 it sometimes does not look out for them. |
 | `[OpenSpace]` | 50 / 75 / 100 | Of two about equal goals it takes the one with more free neighbour fields (fewer dead ends). |
 | `[Infect]` | 0 / 35 / 70 | When it is ill, it walks to the nearest enemy to pass the disease on. |
 | `[HuntedFlees]` | 30 / 65 / 100 | Hunter mode: the hunted keeps away from the hunters while it has at most one bomb. |

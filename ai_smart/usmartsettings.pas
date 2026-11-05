@@ -110,7 +110,7 @@ Const
     'Grab and throw (needs the grab item): place a bomb and throw it 3 fields onto an enemy.',
     'Spooger (needs the spooger item): place a row of bombs towards an enemy in the same line.',
     'Prefer attack fields after which the enemy has fewer free neighbour fields.',
-    'Never place a bomb that hits a team mate (teamplay, hunters among each other).',
+    'Never place, kick or trigger a bomb that hits a team mate (teamplay, hunters among each other), below 100 sometimes not.',
     'If two goals are about equal, prefer the field with more free neighbour fields (fewer dead ends).',
     'When the ai is ill, walk to the nearest enemy to pass the disease on.',
     'Hunter mode: the hunted keeps away from the hunters while it has at most one bomb.',
