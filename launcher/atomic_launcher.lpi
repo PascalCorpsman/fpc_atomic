@@ -99,11 +99,23 @@
         <UnitName Value="Unit6"/>
       </Unit>
       <Unit>
+        <Filename Value="unit7.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form7"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="Unit7"/>
+      </Unit>
+      <Unit>
         <Filename Value="uitemsedit.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uupdatecheck.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ulaunchersound.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

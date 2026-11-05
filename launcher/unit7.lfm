@@ -1,0 +1,90 @@
+object Form7: TForm7
+  Left = 400
+  Height = 318
+  Top = 160
+  Width = 520
+  BorderStyle = bsDialog
+  Caption = 'FPC Atomic setup'
+  ClientHeight = 318
+  ClientWidth = 520
+  Position = poMainFormCenter
+  ShowHint = True
+  LCLVersion = '5.99.0.0'
+  OnShow = FormShow
+  object LabelTitle: TLabel
+    Left = 12
+    Height = 21
+    Top = 12
+    Width = 200
+    Caption = 'Welcome to FPC Atomic'
+    Font.Height = -16
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object LabelQuestion: TLabel
+    Left = 12
+    Height = 16
+    Top = 42
+    Width = 496
+    AutoSize = False
+    Caption = 'Where should the graphics and sounds of the game come from?'
+    WordWrap = True
+  end
+  object ButtonGenerate: TButton
+    Left = 12
+    Height = 44
+    Top = 68
+    Width = 496
+    Caption = '&Generate own (recommended)'
+    Font.Style = [fsBold]
+    ModalResult = 6
+    ParentFont = False
+    TabOrder = 0
+  end
+  object LabelGenerate: TLabel
+    Left = 12
+    Height = 32
+    Top = 116
+    Width = 496
+    AutoSize = False
+    Caption = 'Playable at once: choose one of four styles, it is ready in about 15 seconds. The other three styles follow in the background. With own sounds and music, no CD needed.'
+    WordWrap = True
+  end
+  object ButtonCD: TButton
+    Left = 12
+    Height = 44
+    Top = 160
+    Width = 496
+    Caption = 'Take them from the &CD'
+    ModalResult = 7
+    TabOrder = 1
+  end
+  object LabelCD: TLabel
+    Left = 12
+    Height = 32
+    Top = 208
+    Width = 496
+    AutoSize = False
+    Caption = 'Needs the original Atomic Bomberman CD. The CD extractor copies the original graphics, sounds and schemes; generated sets stay and can still be chosen.'
+    WordWrap = True
+  end
+  object LabelLater: TLabel
+    Left = 12
+    Height = 32
+    Top = 274
+    Width = 370
+    AutoSize = False
+    Caption = 'You can open this setup any time with "Setup..." in the launcher.'
+    WordWrap = True
+  end
+  object ButtonLater: TButton
+    Left = 398
+    Height = 30
+    Top = 276
+    Width = 110
+    Cancel = True
+    Caption = '&Later'
+    ModalResult = 2
+    TabOrder = 2
+  end
+end

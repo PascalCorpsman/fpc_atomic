@@ -1,11 +1,11 @@
 object Form1: TForm1
   Left = 347
-  Height = 635
+  Height = 659
   Top = 107
   Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Form1'
-  ClientHeight = 635
+  ClientHeight = 659
   ClientWidth = 547
   KeyPreview = True
   Position = poScreenCenter
@@ -18,10 +18,175 @@ object Form1: TForm1
   object Image1: TImage
     Left = 8
     Height = 288
+    Hint = 'The graphics set of the game.'#13#10'Double click: open it in the graphics generator.'
     Top = 40
     Width = 192
     Center = True
     Stretch = True
+    OnClick = Image1Click
+    OnDblClick = Button12Click
+  end
+  object Button10: TButton
+    AnchorSideTop.Control = Image1
+    AnchorSideTop.Side = asrBottom
+    AnchorSideLeft.Control = Image1
+    Left = 8
+    Height = 25
+    Hint = 'Previous graphics set.'
+    Top = 334
+    Width = 28
+    BorderSpacing.Top = 6
+    Caption = #9664
+    TabOrder = 8
+    OnClick = Button10Click
+  end
+  object Label11: TLabel
+    AnchorSideTop.Control = Button10
+    AnchorSideTop.Side = asrCenter
+    AnchorSideLeft.Control = Button10
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideRight.Control = Button11
+    Left = 40
+    Height = 16
+    Top = 338
+    Width = 128
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    AutoSize = False
+    BorderSpacing.Left = 4
+    BorderSpacing.Right = 4
+    Caption = 'Label11'
+  end
+  object Button11: TButton
+    AnchorSideTop.Control = Button10
+    AnchorSideRight.Control = Image1
+    AnchorSideRight.Side = asrBottom
+    Left = 172
+    Height = 25
+    Hint = 'Next graphics set.'
+    Top = 334
+    Width = 28
+    Anchors = [akTop, akRight]
+    Caption = #9654
+    TabOrder = 9
+    OnClick = Button10Click
+  end
+  object Button14: TButton
+    AnchorSideTop.Control = Button10
+    AnchorSideTop.Side = asrBottom
+    AnchorSideLeft.Control = Image1
+    Left = 8
+    Height = 25
+    Hint = 'Previous sound source.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'
+    Top = 363
+    Width = 28
+    BorderSpacing.Top = 4
+    Caption = #9664
+    TabOrder = 10
+    OnClick = Button14Click
+  end
+  object Label12: TLabel
+    AnchorSideTop.Control = Button14
+    AnchorSideTop.Side = asrCenter
+    AnchorSideLeft.Control = Button14
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideRight.Control = Button15
+    Left = 40
+    Height = 16
+    Top = 367
+    Width = 128
+    Alignment = taCenter
+    Anchors = [akTop, akLeft, akRight]
+    AutoSize = False
+    BorderSpacing.Left = 4
+    BorderSpacing.Right = 4
+    Caption = 'Label12'
+  end
+  object Button15: TButton
+    AnchorSideTop.Control = Button14
+    AnchorSideRight.Control = Image1
+    AnchorSideRight.Side = asrBottom
+    Left = 172
+    Height = 25
+    Hint = 'Next sound source.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'
+    Top = 363
+    Width = 28
+    Anchors = [akTop, akRight]
+    Caption = #9654
+    TabOrder = 11
+    OnClick = Button14Click
+  end
+  object Button16: TButton
+    AnchorSideTop.Control = Button14
+    AnchorSideTop.Side = asrBottom
+    Left = 8
+    Height = 25
+    Top = 392
+    Width = 192
+    BorderSpacing.Top = 4
+    Caption = 'Button16'
+    TabOrder = 12
+    OnClick = Button16Click
+  end
+  object PanelNews: TPanel
+    AnchorSideLeft.Control = Image1
+    AnchorSideRight.Control = Image1
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Image1
+    Left = 8
+    Height = 26
+    Top = 10
+    Width = 192
+    Anchors = [akLeft, akRight, akBottom]
+    BevelOuter = bvNone
+    BorderSpacing.Bottom = 4
+    ClientHeight = 26
+    ClientWidth = 192
+    Color = clInfoBk
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 13
+    Visible = False
+    object LabelNews: TLabel
+      AnchorSideLeft.Control = PanelNews
+      AnchorSideTop.Control = PanelNews
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = ButtonNewsClose
+      Cursor = crHandPoint
+      Left = 6
+      Height = 16
+      Hint = 'Generate own graphics and sounds (four styles) in addition to the graphics from the CD.'#13#10'"Original" stays selected, switch with the arrows below the image.'
+      Top = 5
+      Width = 156
+      Anchors = [akTop, akLeft, akRight]
+      BorderSpacing.Left = 6
+      BorderSpacing.Right = 4
+      Caption = 'New: own graphics...'
+      Font.Color = clBlue
+      Font.Style = [fsUnderline]
+      ParentFont = False
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = LabelNewsClick
+    end
+    object ButtonNewsClose: TSpeedButton
+      AnchorSideTop.Control = PanelNews
+      AnchorSideTop.Side = asrCenter
+      AnchorSideRight.Control = PanelNews
+      AnchorSideRight.Side = asrBottom
+      Left = 166
+      Height = 22
+      Hint = 'Hide this notice for good.'
+      Top = 2
+      Width = 22
+      Anchors = [akTop, akRight]
+      BorderSpacing.Right = 4
+      Caption = '×'
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ButtonNewsCloseClick
+    end
   end
   object GroupBox1: TGroupBox
     Left = 208
@@ -71,83 +236,92 @@ object Form1: TForm1
   end
   object GroupBox3: TGroupBox
     Left = 208
-    Height = 158
+    Height = 182
     Top = 128
     Width = 328
     Caption = ' Game settings '
-    ClientHeight = 141
+    ClientHeight = 165
     ClientWidth = 326
     TabOrder = 1
+    object CheckBox4: TCheckBox
+      Left = 8
+      Height = 22
+      Hint = 'Play the music (menu and game).'
+      Top = 4
+      Width = 87
+      Caption = 'Play mu&sic'
+      TabOrder = 0
+    end
+    object CheckBox8: TCheckBox
+      Left = 164
+      Height = 22
+      Hint = 'Play the sound effects (explosions, items, voices, ...). The same as "Play sound effects" in Game options...'
+      Top = 4
+      Width = 92
+      Caption = 'Pla&y sounds'
+      TabOrder = 1
+    end
     object CheckBox2: TCheckBox
       Left = 8
       Height = 22
       Hint = 'Start the game in fullscreen mode.'
-      Top = 4
+      Top = 28
       Width = 84
       Caption = '&Fullscreen'
-      TabOrder = 0
-    end
-    object CheckBox4: TCheckBox
-      Left = 164
-      Height = 22
-      Hint = 'Play the music. The sound effects can be switched off in Game options...'
-      Top = 4
-      Width = 87
-      Caption = 'Play mu&sic'
-      TabOrder = 1
+      TabOrder = 2
     end
     object CheckBox5: TCheckBox
-      Left = 8
+      Left = 164
       Height = 22
       Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
       Top = 28
       Width = 90
       Caption = 'Fill &window'
-      TabOrder = 2
+      TabOrder = 3
     end
     object CheckBox1: TCheckBox
-      Left = 164
+      Left = 8
       Height = 22
       Hint = 'Show the frames per second in the game.'
-      Top = 28
+      Top = 52
       Width = 82
       Caption = 'S&how FPS'
-      TabOrder = 3
+      TabOrder = 4
     end
     object CheckBox7: TCheckBox
       Left = 8
       Height = 22
       Hint = 'Start the game window with the size and position of the last game. Off: centered with 640x480 (helps with several monitors or when the window is no longer visible).'
-      Top = 52
+      Top = 76
       Width = 192
       Caption = 'Re&member window position'
-      TabOrder = 4
+      TabOrder = 5
     end
     object Button8: TButton
       Left = 8
       Height = 25
       Hint = 'The options of the game (team play, scheme, play time, ...), the same as in the options of the game.'
-      Top = 80
+      Top = 104
       Width = 178
       Caption = '&Game options...'
-      TabOrder = 5
+      TabOrder = 6
       OnClick = Button8Click
     end
     object Button7: TButton
       Left = 192
       Height = 25
       Hint = 'Optional game mods like stun, ghosts or hit points. They apply when a game is hosted on this PC.'
-      Top = 80
+      Top = 104
       Width = 126
       Caption = '&Mods...'
-      TabOrder = 6
+      TabOrder = 7
       OnClick = Button7Click
     end
     object Label10: TLabel
       Left = 8
       Height = 16
       Hint = 'The game mode of the next game hosted on this PC.'
-      Top = 115
+      Top = 139
       Width = 178
       AutoSize = False
       Caption = 'Label10'
@@ -156,17 +330,17 @@ object Form1: TForm1
       Left = 192
       Height = 25
       Hint = 'Choose the game mode (Classic or Hunter) and its settings. It applies when a game is hosted on this PC.'
-      Top = 110
+      Top = 134
       Width = 126
       Caption = 'Game mo&de...'
-      TabOrder = 7
+      TabOrder = 8
       OnClick = Button9Click
     end
   end
   object GroupBox2: TGroupBox
     Left = 208
     Height = 120
-    Top = 294
+    Top = 318
     Width = 328
     Caption = ' Internet game (optional) '
     ClientHeight = 103
@@ -220,7 +394,7 @@ object Form1: TForm1
   object GroupBox4: TGroupBox
     Left = 8
     Height = 80
-    Top = 422
+    Top = 446
     Width = 528
     Caption = ' Installation '
     ClientHeight = 63
@@ -230,7 +404,7 @@ object Form1: TForm1
       Left = 8
       Height = 15
       Top = 7
-      Width = 352
+      Width = 196
       AutoSize = False
       Caption = 'Label5'
       ParentFont = False
@@ -250,7 +424,7 @@ object Form1: TForm1
       Height = 15
       Hint = 'Installed game version. "up to date" is only shown after "Updates...".'
       Top = 36
-      Width = 352
+      Width = 196
       AutoSize = False
       Caption = 'Label6'
     end
@@ -264,12 +438,34 @@ object Form1: TForm1
       TabOrder = 1
       OnClick = Button1Click
     end
+    object Button12: TButton
+      Left = 212
+      Height = 25
+      Hint = 'Open the graphics generator: create or change graphics sets for the game.'
+      Top = 31
+      Width = 150
+      Caption = 'Graphics...'
+      TabOrder = 2
+      OnClick = Button12Click
+    end
+    object Button17: TButton
+      Left = 212
+      Height = 25
+      Hint = 'Where the graphics and sounds come from: generate own ones (four styles) or take them from the Atomic Bomberman CD.'
+      Top = 2
+      Width = 150
+      Caption = 'Se&tup...'
+      ParentShowHint = False
+      ShowHint = True
+      TabOrder = 3
+      OnClick = Button17Click
+    end
   end
   object CheckBox6: TCheckBox
     Left = 10
     Height = 22
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 510
+    Top = 534
     Width = 264
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
@@ -279,7 +475,7 @@ object Form1: TForm1
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 536
+    Top = 560
     Width = 528
     BevelOuter = bvNone
     ClientHeight = 50
@@ -318,7 +514,7 @@ object Form1: TForm1
     Left = 10
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 603
+    Top = 627
     Width = 45
     Caption = 'Manual'
     Font.Color = clBlue
@@ -334,7 +530,7 @@ object Form1: TForm1
     Left = 71
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
-    Top = 603
+    Top = 627
     Width = 79
     BorderSpacing.Left = 16
     Caption = 'Config folder'
@@ -346,7 +542,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 446
     Height = 30
-    Top = 596
+    Top = 620
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
@@ -358,7 +554,7 @@ object Form1: TForm1
     Left = 326
     Height = 26
     Hint = 'The language of the launcher.'
-    Top = 596
+    Top = 620
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10

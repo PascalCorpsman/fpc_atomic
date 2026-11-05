@@ -163,7 +163,7 @@ Type
     Procedure ApplyStartItems(Var Powers: TAtomicPowers; Items: String);
     Procedure HandleDebugCommand(Const Stream: TStream; UID: integer);
   public
-    Constructor Create(Port, AutoTimeOut: Integer);
+    Constructor Create(Port, AutoTimeOut: Integer; Const BindAddress: String = ''); // BindAddress '' = all interfaces
     Destructor Destroy(); override;
     Procedure Execute;
     Procedure LoadStatistics();
@@ -178,10 +178,11 @@ Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global;
 
 { TServer }
 
-Constructor TServer.Create(Port, AutoTimeOut: Integer);
+Constructor TServer.Create(Port, AutoTimeOut: Integer; Const BindAddress: String);
 Var
   sl: TStringList;
   i, EnterID: Integer;
+  bind: String;
 Begin
   EnterID := LogEnter('TServer.create');
   Inherited create;
@@ -231,12 +232,18 @@ Begin
   fFields[high(fFields)] := TAtomicRandomField.Create();
   ApplyModSettingsToFields(); // Bis der Master seine Mods schickt sind alle aus (siehe HandleSwitchToWaitForPlayersToConnect)
   LoadAi();
-  If Not fUDP.Listen(UDPPingPort) Then Begin
+  If BindAddress <> '' Then Begin
+    bind := BindAddress;
+    log('Listening only on ' + bind, llInfo);
+  End
+  Else
+    bind := LADDR_ANY;
+  If Not fUDP.Listen(UDPPingPort, bind) Then Begin
     log('Error, unable to listen on port: ' + inttostr(UDPPingPort), llFatal);
     LogLeave(EnterID);
     exit;
   End;
-  If Not fChunkManager.Listen(Port) Then Begin
+  If Not fChunkManager.Listen(Port, bind) Then Begin
     log('Error could not listen on port: ' + inttostr(port), llFatal);
     LogLeave(EnterID);
     exit;

@@ -42,6 +42,8 @@ Type
     ComboBox2: TComboBox;
     ComboBox3: TComboBox;
     ComboBox4: TComboBox;
+    ComboBox5: TComboBox;
+    ComboBox6: TComboBox;
     Image1: TImage;
     Label1: TLabel;
     Label2: TLabel;
@@ -52,6 +54,8 @@ Type
     Label7: TLabel;
     Label8: TLabel;
     Label9: TLabel;
+    Label10: TLabel;
+    Label11: TLabel;
     SpinEdit1: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
@@ -63,11 +67,17 @@ Type
     Procedure Label9Click(Sender: TObject);
   private
     fMapDirs: TStringList; // Zu jedem Eintrag in ComboBox4 das Verzeichnis der Karte, '' = Zufallskarte, '?' = gibt es hier nicht
+    fAssetFolders: TStringList; // Zu jedem Eintrag in ComboBox5 der Ordner des Grafiksatzes unter assets/, '' = Original
+    fSoundFolders: TStringList; // Zu jedem Eintrag in ComboBox6 der Wert von [Launcher] SoundSet: SoundSetAuto, '' = Original, sonst der Ordner
     Procedure SetPlayTime(Value: integer);
     Function GetPlayTime(): integer;
     Procedure SetScheme(Const Value: String);
     Procedure ReadSchemes();
     Procedure ReadMaps();
+    Procedure ReadAssetSets(Const Selected: String);
+    Procedure ReadSoundSets(Const Selected: String);
+    Function MapGfx(Const Dir, Filename: String): String;
+    Function MapGfxComplete(Const Dir: String): Boolean;
     Procedure SetMap(Const Value: String);
     Procedure UpdatePreview();
   public
@@ -82,48 +92,34 @@ Implementation
 
 {$R *.lfm}
 
-Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage, ulayout;
+Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage, ulayout, uassetpath;
 
 Const
-  MapFiles: Array[0..5] Of String = ('brick.png', 'field.png', 'info.txt', 'solid.png', 'sound.wav', 'xbrick.ani'); // In der Reihenfolge, in der TAtomicField.Create sie hasht
+  MapGfxFiles: Array[0..3] Of String = ('brick.png', 'field.png', 'solid.png', 'xbrick.ani');
   PreviewScale = 2; // Die Vorschau ist halb so groß wie das Spiel (640 x 480)
 
 Type
   TSchemeRows = Array[0..FieldHeight - 1] Of String;
 
-Function MapComplete(Const Dir: String): Boolean;
-Var
-  i: integer;
-Begin
-  // Nur vollständige Karten lädt auch das Spiel
-  result := false;
-  For i := 0 To high(MapFiles) Do Begin
-    If Not FileExists(Dir + MapFiles[i]) Then exit;
-  End;
-  result := true;
-End;
-
 Function MapHash(Const Dir: String): UInt64;
 Var
   d: TMD5Digest;
   val: UInt64;
-  i, j: integer;
+  j: integer;
 Begin
-  // Wie TAtomicField.Create: Von jeder Datei werden beide Hälften des MD5 per Xor eingerechnet
+  // Wie TAtomicField.loadFromDirectory: Nur info.txt, beide Hälften des MD5 werden per Xor eingerechnet
   result := 0;
-  For i := 0 To high(MapFiles) Do Begin
-    d := MD5File(Dir + MapFiles[i]);
-    val := 0;
-    For j := 0 To 7 Do Begin
-      val := (val Shl 8) Or d[j];
-    End;
-    result := result Xor val;
-    val := 0;
-    For j := 8 To 15 Do Begin
-      val := (val Shl 8) Or d[j];
-    End;
-    result := result Xor val;
+  d := MD5File(Dir + 'info.txt');
+  val := 0;
+  For j := 0 To 7 Do Begin
+    val := (val Shl 8) Or d[j];
   End;
+  result := result Xor val;
+  val := 0;
+  For j := 8 To 15 Do Begin
+    val := (val Shl 8) Or d[j];
+  End;
+  result := result Xor val;
 End;
 
 Function LoadSchemeRows(Const FileName: String; Out Rows: TSchemeRows): Boolean;
@@ -185,6 +181,8 @@ Var
 Begin
   caption := 'Game options';
   fMapDirs := TStringList.Create;
+  fAssetFolders := TStringList.Create;
+  fSoundFolders := TStringList.Create;
   // Die Spielzeit wie im Spiel: unendlich oder 90 .. 600 s in 30 s Schritten
   ComboBox3.Items.Clear;
   ComboBox3.Items.Add('Infinity');
@@ -214,6 +212,71 @@ End;
 Procedure TForm5.FormDestroy(Sender: TObject);
 Begin
   fMapDirs.free;
+  fAssetFolders.free;
+  fSoundFolders.free;
+End;
+
+Procedure TForm5.ReadAssetSets(Const Selected: String);
+Var
+  Names: TStringList;
+  i: integer;
+Begin
+  // Original und alle Grafiksätze in assets/ (jedes Mal neu, der Generator kann inzwischen welche angelegt haben)
+  Names := TStringList.Create;
+  ListAssetSets(fAssetFolders, Names);
+  fAssetFolders.Insert(0, '');
+  Names.Insert(0, R_AssetSetOriginal);
+  ComboBox5.Items.Assign(Names);
+  Names.free;
+  ComboBox5.ItemIndex := 0;
+  For i := 1 To fAssetFolders.Count - 1 Do Begin
+    If SameFolderName(fAssetFolders[i], Selected) Then ComboBox5.ItemIndex := i;
+  End;
+End;
+
+Procedure TForm5.ReadSoundSets(Const Selected: String);
+Var
+  Names: TStringList;
+  i: integer;
+Begin
+  // Automatisch, Original und alle Sätze in assets/, die Sounds haben
+  Names := TStringList.Create;
+  ListSoundSets(fSoundFolders, Names);
+  fSoundFolders.Insert(0, '');
+  Names.Insert(0, R_SoundSetOriginal);
+  fSoundFolders.Insert(0, SoundSetAuto);
+  Names.Insert(0, R_SoundSetAuto);
+  ComboBox6.Items.Assign(Names);
+  Names.free;
+  ComboBox6.ItemIndex := 1; // Ein unbekannter Satz (gelöscht oder ohne Sounds) ist im Spiel auch Original
+  If SameText(trim(Selected), SoundSetAuto) Then ComboBox6.ItemIndex := 0;
+  For i := 2 To fSoundFolders.Count - 1 Do Begin
+    If SameFolderName(fSoundFolders[i], trim(Selected)) Then ComboBox6.ItemIndex := i;
+  End;
+End;
+
+Function TForm5.MapGfx(Const Dir, Filename: String): String;
+Var
+  Folder: String;
+Begin
+  // Die Kartengrafik aus dem gewählten Grafiksatz, wenn es sie dort gibt, sonst die aus data/maps (wie im Spiel)
+  result := Dir + Filename;
+  If (ComboBox5.ItemIndex <= 0) Or (ComboBox5.ItemIndex >= fAssetFolders.Count) Then exit;
+  Folder := AssetSetsDir() + fAssetFolders[ComboBox5.ItemIndex] + PathDelim + 'maps' + PathDelim +
+    ExtractFileName(ExcludeTrailingPathDelimiter(Dir)) + PathDelim + Filename;
+  If FileExists(Folder) Then result := Folder;
+End;
+
+Function TForm5.MapGfxComplete(Const Dir: String): Boolean;
+Var
+  i: integer;
+Begin
+  // Wie im Spiel: alle Grafiken aus dem Grafiksatz oder aus data/maps, sound.wav ist optional
+  result := false;
+  For i := 0 To high(MapGfxFiles) Do Begin
+    If Not FileExists(MapGfx(Dir, MapGfxFiles[i])) Then exit;
+  End;
+  result := true;
 End;
 
 Procedure TForm5.FormShow(Sender: TObject);
@@ -238,14 +301,14 @@ Var
   dir, aName: String;
   i: integer;
 Begin
-  // Alle vollständigen Karten mit ihrem Namen aus info.txt, die Zufallskarte ist wie im Spiel die letzte
+  // Alle Karten mit ihrem Namen aus info.txt (wie im Spiel, die Grafiken können aus dem Grafiksatz kommen), die Zufallskarte ist wie im Spiel die letzte
   ComboBox4.Items.Clear;
   fMapDirs.Clear;
   sl := FindAllDirectories('data' + PathDelim + 'maps', false);
   sl.Sort;
   For i := 0 To sl.Count - 1 Do Begin
     dir := IncludeTrailingPathDelimiter(sl[i]);
-    If Not MapComplete(dir) Then Continue;
+    If Not FileExists(dir + 'info.txt') Then Continue;
     ini := TIniFile.Create(dir + 'info.txt');
     aName := ini.ReadString('General', 'Name', '');
     ini.free;
@@ -295,10 +358,10 @@ Begin
   bmp := TBitmap.Create;
   bmp.PixelFormat := pf24bit;
   bmp.SetSize(640 Div PreviewScale, 480 Div PreviewScale);
-  If (dir <> '') And (dir <> '?') And MapComplete(dir) Then Begin
-    Field := LoadPng(dir + 'field.png');
-    Brick := LoadPng(dir + 'brick.png');
-    Solid := LoadPng(dir + 'solid.png');
+  If (dir <> '') And (dir <> '?') And MapGfxComplete(dir) Then Begin
+    Field := LoadPng(MapGfx(dir, 'field.png'));
+    Brick := LoadPng(MapGfx(dir, 'brick.png'));
+    Solid := LoadPng(MapGfx(dir, 'solid.png'));
     For j := 0 To FieldHeight - 1 Do Begin
       For i := 0 To FieldWidth - 1 Do Begin
         If length(Rows[j]) <> FieldWidth Then Continue;
@@ -390,6 +453,8 @@ Begin
   SpinEdit1.Value := 5521;
   SpinEdit3.Value := 100;
   CheckBox4.Checked := true;
+  ComboBox5.ItemIndex := 0;
+  ComboBox6.ItemIndex := 0; // Automatisch
   UpdatePreview();
 End;
 
@@ -436,6 +501,8 @@ Begin
   SpinEdit1.Value := ini.ReadInteger(FPC_AtomicIniSection, 'Port', 5521);
   SpinEdit3.Value := ini.ReadInteger(FPC_AtomicIniSection, 'Volume', 10000) Div 100;
   CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
+  ReadAssetSets(ini.ReadString('Launcher', 'AssetSet', ''));
+  ReadSoundSets(ini.ReadString('Launcher', 'SoundSet', SoundSetAuto));
   UpdatePreview();
 End;
 
@@ -466,6 +533,14 @@ Begin
   // Das Spiel ändert die Lautstärke in 5 % Schritten (0 .. 10000)
   ini.WriteInteger(FPC_AtomicIniSection, 'Volume', SpinEdit3.Value * 100);
   ini.WriteBool(FPC_AtomicIniSection, 'PlaySoundEffects', CheckBox4.Checked);
+  // Der Grafiksatz, die selbe Einstellung wie die Pfeile unter dem Bild im Hauptfenster
+  If (ComboBox5.ItemIndex >= 0) And (ComboBox5.ItemIndex < fAssetFolders.Count) Then Begin
+    ini.WriteString('Launcher', 'AssetSet', fAssetFolders[ComboBox5.ItemIndex]);
+  End;
+  // Die Sounds, unabhängig vom Grafiksatz (SoundSetAuto, '' = Original oder ein Ordner unter assets/)
+  If (ComboBox6.ItemIndex >= 0) And (ComboBox6.ItemIndex < fSoundFolders.Count) Then Begin
+    ini.WriteString('Launcher', 'SoundSet', fSoundFolders[ComboBox6.ItemIndex]);
+  End;
 End;
 
 End.

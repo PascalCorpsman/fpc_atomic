@@ -19,6 +19,8 @@ This repository hosts only the custom source code. To protect the intellectual p
 ## What needs to be done to play the game?
 The steps shown here are only needed to be done once (for installation).
 
+**No CD?** Skip steps 1 and 4: on the first start the launcher asks where the graphics and sounds should come from. Choose **Generate own**, pick one of four styles and play after about 15 seconds; the launcher computes everything (figure, bombs, maps, menus, schemes, game sounds, menu music), the other three styles follow in the background. **Setup...** in the launcher asks again any time. See the [graphics manual](GRAPHICS_MANUAL.md).
+
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/PascalCorpsman/fpc_atomic/main/documentation/installation.plantuml)
 
 1. get the Atomic Bomberman CD-content (buy the game it is worth it!) and store it on your harddrive  
@@ -35,13 +37,14 @@ The steps shown here are only needed to be done once (for installation).
    >
    > sudo aptitude install libssl-dev
    >
-4. click "run cd data extractor", a wizard guides you through 4 steps, "Next" is only possible when the step is valid<br>
+4. on the first start the launcher asks where the graphics and sounds should come from: choose **Take them from the CD** (or click "CD extractor..." later), a wizard guides you through 4 steps, "Next" is only possible when the step is valid<br>
    4.1 CD content: select the folder that contains the "DATA" folder (it is searched automatically next to the game and on the CD drives), the wizard shows if the expansion pack (ani.zip) is missing<br>
    4.2 FPC Atomic folder: usually already set (the folder of the extractor)<br>
    4.3 choose "Only create missing files" or "Create all files again" and click "Start extraction"  
 5. read the [manual](MANUAL.md)<br>
    5.5 if you are a Linux user run the "Linux_sound_install_script.sh"
 6. start the game by executing "atomic_launcher" and enjoy
+7. optional: create own graphics sets with **Graphics...** in the launcher and switch between them and the original with the arrows below the image, see the [graphics manual](GRAPHICS_MANUAL.md)
 
 ## How do i get updates ?
 By using the launcher you can click the "check for update" feature to check wether there are updates available. If so, the launcher automatically asks you to download the updates.
@@ -115,5 +118,5 @@ Read the manual section [Console commands](MANUAL.md#console-commands) to load a
 ## Contributors
 Idea : Interplay Productions  
 Implementation : Uwe Schächterle  
-Graphics & Leveldesign: Original assets copyrighted by Interplay Productions (must be provided by the user via CD extraction)<br>
+Graphics & Leveldesign: Original assets copyrighted by Interplay Productions (must be provided by the user via CD extraction), or own graphics sets computed by the included graphics generator<br>
 Testing : Uwe Schächterle

@@ -47,6 +47,7 @@ Begin
   writeln('               0 = Disabled, typing "ESC" will terminate');
   writeln('-ats <factor> = overwrite default atomic speed (default = 5)');
   writeln('-d = if set do not ignore docker ip when reporting own ip');
+  writeln('-bind <IP> = only listen on this address, e.g. 127.0.0.1 (default = all)');
   writeln('-h = This screen');
   writeln('');
   writeln('Commands during execution:');
@@ -65,6 +66,7 @@ Var
   Params: Array Of Boolean = Nil; // Zum Prüfen ob auch alle übergebenen Parameter verwendet wurden.
   adapters: TNetworkAdapterList;
   serverIP: String;
+  BindAddress: String = ''; // -bind, '' = all interfaces
   showdockerip: Boolean;
 Begin
   InitLogger();
@@ -110,6 +112,11 @@ Begin
         Params[i] := true;
         Params[i + 1] := true;
       End;
+      If lowercase(paramstr(i)) = '-bind' Then Begin
+        BindAddress := paramstr(i + 1);
+        Params[i] := true;
+        Params[i + 1] := true;
+      End;
       If lowercase(paramstr(i)) = '-t' Then Begin
         Autotimeout := strtointdef(paramstr(i + 1), ServerAutoTimeout);
         Params[i] := true;
@@ -146,6 +153,7 @@ Begin
   Else Begin
     // Get server IP address for display
     serverIP := '127.0.0.1'; // Default to localhost
+    If BindAddress <> '' Then serverIP := BindAddress Else
     Try
       adapters := GetLocalIPs();
       // Find first non-localhost IP address (prefer network IP over localhost)
@@ -178,7 +186,7 @@ Begin
   // 2. Server Erstellen
   Randomize;
   Try
-    Server := TServer.create(Port, Autotimeout);
+    Server := TServer.create(Port, Autotimeout, BindAddress);
   Except
     On e: exception Do Begin
       log(e.Message, llFatal);

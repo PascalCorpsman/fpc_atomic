@@ -63,7 +63,9 @@ Type
   private
     fSounds: Array Of TSoundEffektHandles;
     fBassSong: DWORD; // One Song playes over a long period
+    fMissing: TStringList; // Sound files that do not exist (no CD data), each one is logged only once
     Procedure StopPlayingSong;
+    Function SoundExists(Const Filename: String): Boolean;
   public
     Constructor Create(); virtual;
     Destructor Destroy(); override;
@@ -137,6 +139,21 @@ Constructor TSoundManager.Create;
 Begin
   fSounds := Nil;
   fBassSong := 0;
+  fMissing := TStringList.Create;
+  fMissing.Sorted := true;
+End;
+
+Function TSoundManager.SoundExists(Const Filename: String): Boolean;
+Begin
+  (*
+   * Without the CD data there are no sounds at all (only a generated graphics set), then the game simply stays silent.
+   * The missing file is logged only the first time, not with every explosion.
+   *)
+  result := (Filename <> '') And FileExists(Filename);
+  If (Not result) And (Filename <> '') And (fMissing.IndexOf(Filename) < 0) Then Begin
+    fMissing.Add(Filename);
+    log('Sound not found, playing nothing: ' + Filename, llWarning);
+  End;
 End;
 
 Destructor TSoundManager.Destroy;
@@ -150,6 +167,7 @@ Begin
     BASS_StreamFree(fSounds[i].BassStream);
   End;
   setlength(fSounds, 0);
+  fMissing.free;
   Inherited Destroy;
 End;
 
@@ -169,8 +187,9 @@ Begin
     StopPlayingSong;
   End;
   // ggf. neu starten des Songs
-  If game.Settings.PlaySounds And (FileExists(Filename)) And (Filename <> '') Then Begin
+  If game.Settings.PlaySounds And SoundExists(Filename) Then Begin
     // Start des Liedes in Endlosschleife
+    log('Song: ' + Filename, llDebug);
     fBassSong := BASS_StreamCreateFile(0, Pchar(filename), 0, 0, BASS_MUSIC_LOOP);
     If fBassSong = 0 Then Begin
       LogShow('Error unable to load :' + LineEnding + filename + LineEnding + 'Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
@@ -190,10 +209,7 @@ Var
   p: PEndFileInfo;
 Begin
   result := false;
-  If Not FileExists(Filename) Then Begin
-    log('Error could not find soundeffect:' + Filename, llWarning);
-    exit;
-  End;
+  If Not SoundExists(Filename) Then exit;
   For i := 0 To high(fSounds) Do Begin
     If fSounds[i].Filename = Filename Then Begin
       // Wir kennen den Sound schon, dann spielen wir ihn einfach ab und gut
@@ -211,6 +227,7 @@ Begin
     LogShow('Error unable to load :' + LineEnding + filename + LineEnding + 'Error code :' + inttostr(BASS_ErrorGetCode), llCritical);
     exit;
   End;
+  log('Sound loaded: ' + Filename, llDebug); // Nur beim ersten Mal, zeigt woher (data oder Soundsatz) der Sound kommt
   setlength(fSounds, high(fSounds) + 2);
   fSounds[high(fSounds)].Filename := Filename;
   fSounds[high(fSounds)].BassStream := Song;

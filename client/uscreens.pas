@@ -259,6 +259,7 @@ Uses LCLType, Math, Graphics, Dialogs, fileutil, StrUtils
   , uatomic_global
   , uopengl_shaderprimitives
   , usdl_input
+  , uassetpath
   ;
 
 Type
@@ -479,18 +480,18 @@ End;
 Procedure TVictoryMenu.LoadFromDisk(ResPath: String);
 Begin
   Inherited LoadFromDisk(ResPath);
-  fbackGrounds[vWhiteTeam] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'team0.png', smClamp);
-  fbackGrounds[vRedTeam] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'team1.png', smClamp);
-  fbackGrounds[vCol0] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory0.png', smClamp);
-  fbackGrounds[vCol1] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory1.png', smClamp);
-  fbackGrounds[vCol2] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory2.png', smClamp);
-  fbackGrounds[vCol3] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory3.png', smClamp);
-  fbackGrounds[vCol4] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory4.png', smClamp);
-  fbackGrounds[vCol5] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory5.png', smClamp);
-  fbackGrounds[vCol6] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory6.png', smClamp);
-  fbackGrounds[vCol7] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory7.png', smClamp);
-  fbackGrounds[vCol8] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory8.png', smClamp);
-  fbackGrounds[vCol9] := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + 'victory9.png', smClamp);
+  fbackGrounds[vWhiteTeam] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'team0.png'), smClamp);
+  fbackGrounds[vRedTeam] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'team1.png'), smClamp);
+  fbackGrounds[vCol0] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory0.png'), smClamp);
+  fbackGrounds[vCol1] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory1.png'), smClamp);
+  fbackGrounds[vCol2] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory2.png'), smClamp);
+  fbackGrounds[vCol3] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory3.png'), smClamp);
+  fbackGrounds[vCol4] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory4.png'), smClamp);
+  fbackGrounds[vCol5] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory5.png'), smClamp);
+  fbackGrounds[vCol6] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory6.png'), smClamp);
+  fbackGrounds[vCol7] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory7.png'), smClamp);
+  fbackGrounds[vCol8] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory8.png'), smClamp);
+  fbackGrounds[vCol9] := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + 'victory9.png'), smClamp);
 End;
 
 Procedure TVictoryMenu.Render;
@@ -693,7 +694,7 @@ Var
   sl: TStringList;
   i: Integer;
 Begin
-  p := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'data' + PathDelim + 'schemes';
+  p := AssetDataDir() + 'schemes';
   sl := FindAllfiles(p, '*.sch', false);
   Listbox1.Clear;
   Listbox1.Sorted := true;
@@ -759,9 +760,9 @@ Begin
    * Neu Laden der Hintergrundgraphik mit Transparenz
    *)
   OpenGL_GraphikEngine.RemoveGraphik(fBackTex);
-  fBackTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fBackFile, ColorToRGB(clfuchsia), smClamp);
-  //fBackTex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(ResPath + fBackFile, smClamp);
-  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fCursorFile, ColorToRGB(clfuchsia), smClamp);
+  fBackTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(AssetFile('res' + PathDelim + fBackFile), ColorToRGB(clfuchsia), smClamp);
+  //fBackTex := OpenGL_GraphikEngine.LoadAlphaGraphikItem(AssetFile('res' + PathDelim + fBackFile), smClamp);
+  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(AssetFile('res' + PathDelim + fCursorFile), ColorToRGB(clfuchsia), smClamp);
 End;
 
 Procedure TFieldSetupMenu.Render;
@@ -916,7 +917,7 @@ End;
 Procedure TPlayerSetupMenu.LoadFromDisk(ResPath: String);
 Begin
   Inherited LoadFromDisk(ResPath);
-  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fCursorFile, ColorToRGB(clfuchsia), smClamp);
+  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(AssetFile('res' + PathDelim + fCursorFile), ColorToRGB(clfuchsia), smClamp);
 End;
 
 Procedure TPlayerSetupMenu.Render;
@@ -1255,7 +1256,7 @@ End;
 Procedure TOptionsMenu.LoadFromDisk(ResPath: String);
 Begin
   Inherited LoadFromDisk(ResPath);
-  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(ResPath + fCursorFile, ColorToRGB(clfuchsia), smClamp);
+  fcursorTex := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(AssetFile('res' + PathDelim + fCursorFile), ColorToRGB(clfuchsia), smClamp);
 End;
 
 Procedure TOptionsMenu.Render;
@@ -1398,7 +1399,7 @@ End;
 Procedure TMainMenu.LoadFromDisk(ResPath: String);
 Begin
   Inherited LoadFromDisk(ResPath);
-  fCursor.LoadFromFile(ResPath + fCursorFile);
+  fCursor.LoadFromFile(AssetFile('res' + PathDelim + fCursorFile));
 End;
 
 Procedure TMainMenu.Render;
@@ -1459,12 +1460,13 @@ End;
 
 Procedure TScreen.LoadFromDisk(ResPath: String);
 Begin
-  fSoundExitScreen := ResPath + 'menuexit.wav';
+  // Grafiken und Sounds aus dem gewählten Satz, wenn er sie hat, sonst aus data/res (ResPath wird nicht mehr verwendet)
+  fSoundExitScreen := SoundFile('res' + PathDelim + 'menuexit.wav');
   If fSoundFile <> '' Then Begin
-    fSoundFile := ResPath + fSoundFile;
+    fSoundFile := SoundFile('res' + PathDelim + fSoundFile);
   End;
   If fBackFile <> '' Then Begin
-    fBackTex := OpenGL_GraphikEngine.LoadGraphikItem(ResPath + fBackFile, smClamp);
+    fBackTex := OpenGL_GraphikEngine.LoadGraphikItem(AssetFile('res' + PathDelim + fBackFile), smClamp);
   End
   Else Begin
     fBackTex.Image := 0;

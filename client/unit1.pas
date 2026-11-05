@@ -139,6 +139,13 @@ Var
 
 Procedure ShowUserMessage(Msg: String; WarnLevel: TLogLevel);
 
+(*
+ * Vor dem Anlegen des Hauptfensters (fpc_atomic.lpr): hat das Spiel Grafiken (CD-Daten oder einen brauchbaren Grafiksatz,
+ * aus -assets oder den Einstellungen des Launchers, siehe ResolveStartSets)? Wenn nicht, fragt es, ob die Einrichtung des
+ * Launchers starten soll (startet ihn ggf. mit --setup), Result = false -> das Spiel beendet sich.
+ *)
+Function CheckGraphicsOrSetup(): Boolean;
+
 Implementation
 
 {$R *.lfm}
@@ -152,6 +159,8 @@ Uses lazfileutils, LazUTF8, LCLType, Types
   , uatomicfont
   , uscreens // sHost / sJoinNetwork für die Parameter -host / -join (und den AUTOMODE)
   , usdl_input
+  , uassetpath
+  , IniFiles, process, UTF8Process
   , uopengl_legacychecker
   , uopengl_shaderprimitives
   ;
@@ -162,6 +171,119 @@ Var
 Procedure ShowUserMessage(Msg: String; WarnLevel: TLogLevel);
 Begin
   form1.AddUserMessage(msg, WarnLevel);
+End;
+
+(*
+ * Weder CD-Grafiken noch ein brauchbarer Grafiksatz (das Spiel wurde ohne Launcher gestartet): kurz fragen, ob die
+ * Einrichtung des Launchers (atomic_launcher --setup) starten soll, danach endet das Spiel. Die Texte in der Sprache des
+ * Launchers ([Launcher] Language), das Spiel selbst hat keine Übersetzungen.
+ *)
+Procedure AskForSetup(Const IniFile: String);
+Const
+  // en, de, fr, es
+  Texts: Array[0..3] Of String = (
+    'No graphics are set up yet.' + LineEnding + LineEnding +
+    'The setup in the launcher generates own graphics and sounds' + LineEnding +
+    '(playable at once) or takes them from the Atomic Bomberman CD.',
+    'Es sind noch keine Grafiken eingerichtet.' + LineEnding + LineEnding +
+    'Die Einrichtung im Launcher erzeugt eigene Grafiken und Sounds' + LineEnding +
+    '(sofort spielbar) oder übernimmt sie von der Atomic Bomberman CD.',
+    'Aucun graphisme n''est encore configuré.' + LineEnding + LineEnding +
+    'La configuration du lanceur génère ses propres graphismes et sons' + LineEnding +
+    '(jouable tout de suite) ou les reprend du CD d''Atomic Bomberman.',
+    'Todavía no hay gráficos configurados.' + LineEnding + LineEnding +
+    'La configuración del lanzador genera gráficos y sonidos propios' + LineEnding +
+    '(se puede jugar enseguida) o los toma del CD de Atomic Bomberman.');
+  Opens: Array[0..3] Of String = ('Open setup', 'Einrichtung öffnen', 'Ouvrir la configuration', 'Abrir configuración');
+  Quits: Array[0..3] Of String = ('Quit', 'Beenden', 'Quitter', 'Salir');
+Var
+  ini: TIniFile;
+  Code, Launcher: String;
+  l: integer;
+  p: TProcessUTF8;
+  r: TModalResult;
+Begin
+  Code := 'en';
+  If FileExists(IniFile) Then Begin
+    ini := TIniFile.Create(IniFile);
+    Try
+      Code := lowercase(ini.ReadString('Launcher', 'Language', 'en'));
+    Finally
+      ini.free;
+    End;
+  End;
+  Case Code Of
+    'de': l := 1;
+    'fr': l := 2;
+    'es': l := 3;
+  Else
+    l := 0;
+  End;
+  Launcher := AppDir() + 'atomic_launcher'{$IFDEF Windows} + '.exe'{$ENDIF};
+  If FileExists(Launcher) Then Begin
+    r := QuestionDlg('FPC Atomic', Texts[l], mtWarning, [mrYes, Opens[l], 'IsDefault', mrCancel, Quits[l], 'IsCancel'], 0);
+  End
+  Else Begin
+    r := QuestionDlg('FPC Atomic', Texts[l], mtWarning, [mrCancel, Quits[l], 'IsDefault', 'IsCancel'], 0);
+  End;
+  If r = mrYes Then Begin
+    p := TProcessUTF8.Create(Nil);
+    Try
+      p.Executable := Launcher;
+      p.CurrentDirectory := AppDir();
+      p.Parameters.Add('--setup');
+      p.Options := [poDetached];
+      Try
+        p.Execute;
+      Except
+        On av: Exception Do log('Could not start the launcher: ' + av.Message, llError);
+      End;
+    Finally
+      p.free;
+    End;
+  End;
+End;
+
+// Die Konfiguration des Spiels (wie in FormCreate, -localsettings = fpc_atomic.cfg im aktuellen Verzeichnis)
+Function ClientConfigFile(): String;
+Var
+  i: integer;
+Begin
+  result := GetAtomicConfigFile();
+  For i := 1 To ParamCount Do Begin
+    If lowercase(ParamStr(i)) = '-localsettings' Then result := 'fpc_atomic.cfg';
+  End;
+End;
+
+// Die Parameter -assets und -sounds (überschreiben die Einstellungen des Launchers)
+Procedure GetSetParams(Out HaveAssets, HaveSounds: Boolean; Out AssetsParam, SoundsParam: String);
+Var
+  i: integer;
+Begin
+  HaveAssets := false;
+  HaveSounds := false;
+  AssetsParam := '';
+  SoundsParam := '';
+  For i := 1 To Paramcount - 1 Do Begin
+    If lowercase(ParamStrUTF8(i)) = '-assets' Then Begin
+      HaveAssets := true;
+      AssetsParam := ParamStrUTF8(i + 1);
+    End;
+    If lowercase(ParamStrUTF8(i)) = '-sounds' Then Begin
+      HaveSounds := true;
+      SoundsParam := ParamStrUTF8(i + 1);
+    End;
+  End;
+End;
+
+Function CheckGraphicsOrSetup(): Boolean;
+Var
+  HaveAssets, HaveSounds: Boolean;
+  AssetsParam, SoundsParam, g, s: String;
+Begin
+  GetSetParams(HaveAssets, HaveSounds, AssetsParam, SoundsParam);
+  result := ResolveStartSets(ClientConfigFile(), HaveAssets, AssetsParam, HaveSounds, SoundsParam, g, s);
+  If Not result Then AskForSetup(ClientConfigFile());
 End;
 
 { TForm1 }
@@ -277,6 +399,8 @@ End;
 Procedure TForm1.FormCreate(Sender: TObject);
 Var
   EnterID, i: integer;
+  HaveAssets, HaveSounds, GraphicsOk: Boolean;
+  AssetsParam, SoundsParam, GraphicsFolder, SoundsFolder: String;
 Begin
   InitLogger();
   GameInitialized := false;
@@ -317,6 +441,42 @@ Begin
   End;
   EnterID := LogEnter('TForm1.FormCreate');
   log('TForm1.FormCreate', llInfo);
+  (*
+   * Grafiksatz und Sounds: -assets <Ordner unter assets/> und -sounds <Ordner | auto> (so startet der Launcher),
+   * ohne Parameter die Einstellungen des Launchers ([Launcher] AssetSet / SoundSet in der selben Konfiguration), siehe
+   * ResolveStartSets. Leer oder unbekannt = Original aus data/, "auto" = die Sounds des Grafiksatzes. Fehlende Dateien
+   * eines Satzes kommen aus data/. Ohne CD-Grafiken und ohne brauchbaren Satz fragt schon CheckGraphicsOrSetup.
+   *)
+  GetSetParams(HaveAssets, HaveSounds, AssetsParam, SoundsParam);
+  GraphicsOk := ResolveStartSets(IniPropStorage1.IniFileName, HaveAssets, AssetsParam, HaveSounds, SoundsParam, GraphicsFolder, SoundsFolder);
+  SetAssetSet(GraphicsFolder);
+  SetSoundSet(SoundsFolder);
+  // Die Ansagen eines Satzes in der Sprache des Launchers (sounds/<lang>/, siehe SoundFile)
+  SoundLanguage := SoundLanguageFromIni(IniPropStorage1.IniFileName);
+  If HaveAssets And (trim(AssetsParam) <> '') And Not SameText(trim(AssetsParam), AssetSet) Then Begin
+    log('Graphics set "' + AssetsParam + '" not found or not usable.', llWarning);
+  End;
+  If HaveSounds And (trim(SoundsParam) <> '') And Not SameText(trim(SoundsParam), SoundSetAuto) And Not SameText(trim(SoundsParam), SoundSet) Then Begin
+    log('Sound set "' + SoundsParam + '" not found or without sounds, using the original sounds.', llWarning);
+  End;
+  If AssetSet = '' Then Begin
+    log('Graphics set: original (data)', llInfo);
+  End
+  Else Begin
+    log('Graphics set: ' + AssetSet + ' (' + AssetSetDir() + ', missing files from data)', llInfo);
+    // Ohne CD-Daten gibt es keine Schemes in data/schemes, dann die des generierten Satzes (macht sonst der Launcher)
+    i := CopySetSchemes(AssetSet);
+    If i <> 0 Then log(format('Copied %d schemes from the graphics set to %s', [i, SchemesDir()]), llInfo);
+  End;
+  If SoundSet = '' Then Begin
+    log('Sounds: original (data)', llInfo);
+  End
+  Else Begin
+    log('Sounds: ' + SoundSet + ' (' + AssetSetsDir() + SoundSet + PathDelim + ', missing files from data)', llInfo);
+    log('Voice language: ' + SoundLanguage + ' (e.g. ' + SoundFile('res' + PathDelim + 'quitgame.wav') + ')', llInfo);
+  End;
+  // Kommt nur vor, wenn sich die Daten seit CheckGraphicsOrSetup (fpc_atomic.lpr) geändert haben
+  If Not GraphicsOk Then log('No graphics: neither CD data nor a usable graphics set.', llWarning);
   caption := defCaption;
 
   If (BASS_GetVersion() Shr 16) <> Bassversion Then Begin
@@ -565,7 +725,7 @@ End;
 
 Procedure TForm1.Load_Atomic_Settings;
 Var
-  SectionBakup: String;
+  SectionBakup, s: String;
 Begin
   // Read the Remote settings from "Launcher" Section
   SectionBakup := IniPropStorage1.IniSection;
@@ -587,6 +747,12 @@ Begin
     Game.Settings.ConveyorSpeed := csMiddle;
   End;
   Game.Settings.SchemeFile := IniPropStorage1.ReadString('SchemeFile', 'BASIC.SCH');
+  // Gibt es das Scheme nicht (z.B. nur generierte Schemes, die haben kein BASIC.SCH), dann BASIC.SCH oder das erste vorhandene
+  s := ResolveSchemeFile(Game.Settings.SchemeFile);
+  If s <> Game.Settings.SchemeFile Then Begin
+    log('Scheme "' + Game.Settings.SchemeFile + '" not found, using "' + s + '"', llWarning);
+    Game.Settings.SchemeFile := s;
+  End;
   Game.Settings.PlayTime := IniPropStorage1.ReadInteger('PlayTime', 2 * 60 + 30);
   Game.Settings.LostPlayersRevertToAI := IniPropStorage1.ReadBoolean('LostPlayersRevertToAI', false);
   Game.Settings.PlaySounds := IniPropStorage1.ReadBoolean('PlaySounds', true);

@@ -169,7 +169,7 @@ Type
     Procedure DropCarriedBomb(Const Player: TPlayer; PlayerIndex: integer); // Mod Bomben tragen: Die getragene Bombe fällt auf das Feld des Spielers (Treffer, Disconnect)
     Procedure UpdateCarriedBombs(Var Players: TPlayers); // Mod Bomben tragen: jeden Frame, Position, Wurf beim Loslassen / nach der Zeit, fallen lassen bei Stun / Tod
 {$ENDIF}
-    Property Hash: UInt64 read fHash; // Pseudo MD5Hash über alle Dateien der Karte
+    Property Hash: UInt64 read fHash; // Pseudo MD5Hash über info.txt der Karte (Grafiken zählen nicht, die kann jeder Client aus seinem eigenen Grafiksatz laden)
     Property OpenTopBottom: Boolean read fWrapTopBottom; // Mod offene Grenzen, für die Pfeile im Client
     Property OpenLeftRight: Boolean read fWrapLeftRight;
     Property OpenWarnTopBottom: Boolean read fWrapWarnTopBottom;
@@ -184,9 +184,14 @@ Type
       ); virtual;
 
     Destructor Destroy(); override;
+    (*
+     * Dir: Das Verzeichnis der Karte in data/maps (info.txt, sound.wav)
+     * GfxDir (nur Client): Verzeichnis eines Grafiksatzes für diese Karte, '' = keiner. Jede Grafik (brick.png, field.png,
+     *                      solid.png, xbrick.ani), die es dort gibt, wird von dort geladen, alle anderen aus Dir.
+     *)
     Function loadFromDirectory(Dir: String
 {$IFDEF Client}
-      ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle: TGraphikItem; Const aTrampStatic: Integer
+      ; GfxDir: String; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle: TGraphikItem; Const aTrampStatic: Integer
 {$ENDIF}
       ): Boolean;
 {$IFDEF Client}
@@ -238,7 +243,7 @@ Uses
   , math
 {$ENDIF}
 {$IFDEF Client}
-  , uvectormath
+  , uvectormath, uassetpath
   , dglOpenGL
   , uopengl_spriteengine
   , uopengl_shaderprimitives
@@ -488,17 +493,29 @@ End;
 // Die IDE Code Vervollständigung killt manchmal den Korrekten Header, deswegen hier die "Kopiervorlage"
 //Function TAtomicField.loadFromDirectory(Dir: String
 //{$IFDEF Client}
-//  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle: TGraphikItem; aTrampStatic: integer
+//  ; GfxDir: String; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle: TGraphikItem; aTrampStatic: integer
 //{$ENDIF}
 //  ): Boolean;
 
 Function TAtomicField.loadFromDirectory(Dir: String
 {$IFDEF Client}
-  ; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle: TGraphikItem; Const aTrampStatic: integer
+  ; GfxDir: String; Const aArrows: TOpenGL_Animation; Const aConveyors: TOpenGL_Animation; Const aTramp: TOpenGL_Animation; Const aHohle: TGraphikItem; Const aTrampStatic: integer
 {$ENDIF}
   ): Boolean;
 Var
   tmphash: TMD5Digest;
+{$IFDEF Client}
+
+  // Die Grafik aus dem Grafiksatz, wenn es sie dort gibt, sonst die aus Dir
+  Function Gfx(Const Filename: String): String;
+  Begin
+    If GfxDir <> '' Then Begin
+      result := GfxDir + Filename;
+      If FileExists(result) Then exit;
+    End;
+    result := Dir + Filename;
+  End;
+{$ENDIF}
 
   Procedure AppendHash;
   Var
@@ -525,6 +542,7 @@ Var
 {$IFDEF Client}
   i, j: Integer;
   xBrick: TOpenGL_Animation;
+  MapSound: String;
 {$ENDIF}
 Begin
   result := false;
@@ -536,21 +554,14 @@ Begin
 {$ENDIF}
   fHash := 0;
   dir := IncludeTrailingPathDelimiter(dir);
-
-  If Not FileExists(dir + 'brick.png') Then exit;
 {$IFDEF Client}
-  fBrickTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(dir + 'brick.png', ColorToRGB(clfuchsia), smStretchHard);
+  If GfxDir <> '' Then GfxDir := IncludeTrailingPathDelimiter(GfxDir);
 {$ENDIF}
-  tmphash := MD5File(dir + 'brick.png');
-  AppendHash;
 
-  If Not FileExists(dir + 'field.png') Then exit;
-{$IFDEF Client}
-  fFieldTex := OpenGL_GraphikEngine.LoadGraphik(dir + 'field.png', smStretchHard);
-{$ENDIF}
-  tmphash := MD5File(dir + 'field.png');
-  AppendHash;
-
+  (*
+   * Der Hash geht nur noch über info.txt (Name und Mechanik der Karte). Grafiken und Sound zählen nicht, damit jeder
+   * Client seinen eigenen Grafiksatz nutzen kann und der Server die Grafiken gar nicht braucht.
+   *)
   If Not FileExists(dir + 'info.txt') Then exit;
   ini := TIniFile.Create(dir + 'info.txt');
   name := ini.ReadString('General', 'Name', '');
@@ -571,23 +582,28 @@ Begin
   AppendHash;
   If name = '' Then exit; // Name ='' und Hash = 0 ist reserviert für das Random Field
 
-  If Not FileExists(dir + 'solid.png') Then exit;
-{$IFDEF Client}
-  fSolidTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(dir + 'solid.png', ColorToRGB(clfuchsia), smStretchHard);
-  fHoleTex := aHohle;
-{$ENDIF}
-  tmphash := MD5File(dir + 'solid.png');
-  AppendHash;
-
   fSoundFile := Dir + 'sound.wav';
-  If Not FileExists(fSoundFile) Then exit;
-  tmphash := MD5File(fSoundFile);
-  AppendHash;
-
-  If Not FileExists(dir + 'xbrick.ani') Then exit;
 {$IFDEF Client}
+  // Die Musik der Karte aus dem gewählten Soundsatz, wenn er sie hat (assets/<Satz>/maps/FieldXX/sound.wav)
+  If SoundSet <> '' Then Begin
+    MapSound := SoundFile('maps' + PathDelim + ExtractFileName(ExcludeTrailingPathDelimiter(Dir)) + PathDelim + 'sound.wav');
+    If FileExists(MapSound) Then fSoundFile := MapSound;
+  End;
+  // Der Client braucht alle Grafiken, der Server nur info.txt. Der Sound ist optional (ohne CD-Daten gibt es keinen, dann bleibt die Karte stumm)
+
+  If Not FileExists(Gfx('brick.png')) Then exit;
+  fBrickTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(Gfx('brick.png'), ColorToRGB(clfuchsia), smStretchHard);
+
+  If Not FileExists(Gfx('field.png')) Then exit;
+  fFieldTex := OpenGL_GraphikEngine.LoadGraphik(Gfx('field.png'), smStretchHard);
+
+  If Not FileExists(Gfx('solid.png')) Then exit;
+  fSolidTex := OpenGL_GraphikEngine.LoadAlphaColorGraphik(Gfx('solid.png'), ColorToRGB(clfuchsia), smStretchHard);
+  fHoleTex := aHohle;
+
+  If Not FileExists(Gfx('xbrick.ani')) Then exit;
   xBrick := TOpenGL_Animation.Create;
-  xBrick.LoadFromFile(dir + 'xbrick.ani');
+  xBrick.LoadFromFile(Gfx('xbrick.ani'));
   For i := 0 To FieldWidth - 1 Do
     For j := 0 To FieldHeight - 1 Do Begin
       fxBricks[i, j].ani := TOpenGL_Animation.Create;
@@ -600,8 +616,6 @@ Begin
   fxBrickAniTime := xBrick.Sprite[0].FrameCount * xBrick.Sprite[0].TimePerFrame;
   xBrick.Free;
 {$ENDIF}
-  tmphash := MD5File(dir + 'xbrick.ani');
-  AppendHash;
 
   result := true;
 End;

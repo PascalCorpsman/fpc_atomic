@@ -46,6 +46,20 @@ sudo apt install fpc libgtk-3-dev git make
 
 The client additionally needs the libraries from the [README](README.md#what-needs-to-be-done-to-compile-the-code-), in particular `libbass.so` in `/usr/lib/`, otherwise linking fails with `cannot find -lbass`.
 
+Without root rights `libbass.so` can also stay next to the binaries: build the client with `--opt=-Fl<folder of libbass.so> '--opt=-k-rpath=$ORIGIN'`, then it finds `./libbass.so` without `LD_LIBRARY_PATH`. The launcher loads BASS only for **Test sounds**, at runtime, first next to its own binary, then from the system.
+
+**WSL:** BASS plays through ALSA, WSLg only offers PulseAudio. Without an ALSA default device `BASS_Init` fails with error 3 (no driver) and the game stays silent. Fix:
+
+```bash
+sudo apt install libasound2-plugins alsa-utils
+printf 'pcm.!default { type pulse }
+ctl.!default { type pulse }
+' > ~/.asoundrc
+aplay /usr/share/sounds/alsa/Front_Center.wav   # test
+```
+
+The graphics generator for the command line is called `asset_generator_cli` (on Linux `asset_generator` would clash with the source folder of the same name).
+
 ### 2. Lazarus trunk
 
 Only `lazbuild` is needed, not the IDE. The folder is your own, a system Lazarus stays untouched.

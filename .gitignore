@@ -36,3 +36,10 @@ release/
 server/stats.txt
 stats.txt
 
+
+# Asset generator
+assets/
+/asset_generator_cli.exe
+/asset_generator_cli
+asset_generator/lib/
+/asset_generator_gui.exe

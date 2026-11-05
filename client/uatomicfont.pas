@@ -62,7 +62,7 @@ Type
     Constructor Create(); virtual;
     Destructor Destroy(); override;
 
-    Procedure CreateFont(Dir: String); // Muss im Make Current Aufgerufen werden !
+    Procedure CreateFont(Const InfinityFile, BigFontFile: String); // Muss im Make Current Aufgerufen werden !
     Procedure Textout(x, y: integer; Z: Single; Time: integer);
   End;
 
@@ -86,15 +86,15 @@ Begin
 
 End;
 
-Procedure TAtomicBigFont.CreateFont(Dir: String);
+Procedure TAtomicBigFont.CreateFont(Const InfinityFile, BigFontFile: String);
 Var
   p: TPortableNetworkGraphic;
   b1, b2: TBitmap;
   i: Integer;
 Begin
-  fInfinity := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(dir + 'infinity.png', Fuchsia, smClamp);
+  fInfinity := OpenGL_GraphikEngine.LoadAlphaColorGraphikItem(InfinityFile, Fuchsia, smClamp);
   p := TPortableNetworkGraphic.Create;
-  p.LoadFromFile(dir + 'bigfont.png');
+  p.LoadFromFile(BigFontFile);
   b1 := TBitmap.Create;
   b1.Assign(p);
   b1.Transparent := false;
