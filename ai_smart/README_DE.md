@@ -55,6 +55,8 @@ Die Datei wird zu Beginn jeder Runde neu gelesen. Änderungen wirken also ab der
 
 Überleben (Gefahrenkarte mit Zeit, Laufbänder, Hurry) und keine Treffer auf Mitspieler bleiben bei jeder Schwierigkeit an: Eine leichtere KI ist langsamer und macht Fehler, sprengt sich aber nicht absichtlich selbst in die Luft.
 
+In der Spieler-Einstellung bekommen die Smart-KIs einen Namen nach der Schwierigkeit, mit der Nummer ihres Platzes (z. B. `Nitro 3`): 0 % Pipo, 11 % Bombo, 22 % Kiko, 33 % Zappy, 44 % Fuego, 56 % Nitro, 67 % Blazer, 78 % Blaze, 89 % Inferno, 100 % Armageddon (es zählt die nächste Stufe, 50 = Nitro).
+
 In der Datei sind die Werte, die die Schwierigkeit setzt, auskommentiert (`;Chance=65`). Entfernt man das `;`, gilt der eigene Wert und überschreibt die Schwierigkeit. Eine Datei der Version 0.01 (ohne `Difficulty`) wird als `ai_smart.ini.bak` gesichert und neu geschrieben.
 
 ## Wie Chance funktioniert

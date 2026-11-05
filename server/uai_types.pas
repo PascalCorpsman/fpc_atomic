@@ -41,6 +41,7 @@ Const
    *                 ADD: TAiModeInfo.ModFlags, BrickWalkMs, PunchStunCooldownMs (appended, check Size, still version 5)
    *                 ADD: TAiModeInfo.InvulnMs, FlameBeamLen, FlameBeamDir, FlameFuelMs, FlameRange, WhiteBombs, StartGlove (appended)
    *                 CHG: a white bomb (mod, explodes without flames) has FlameLength 0
+   *                 ADD: optional exports AiPlayerName (name of the ai player in a slot) and AiDisplayName (short name of the ai)
    *                 Libs with interface version 4 can still be loaded, they only support AiMode_Classic and AiMode_Teamplay.
    *)
   AiLibInterfaceVersion: cint32 = 5;

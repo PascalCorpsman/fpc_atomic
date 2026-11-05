@@ -95,11 +95,13 @@ Type
 Var
   Form5: TForm5;
 
+Function AiLibDisplayName(Const LibName: String): String; // Der Name einer KI für die Anzeige, LibName ohne Endung ('ai_smart')
+
 Implementation
 
 {$R *.lfm}
 
-Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage, ulayout, uassetpath, usmartsettings;
+Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, dynlibs, uatomic_common, ulanguage, ulayout, uassetpath, usmartsettings;
 
 Const
   OriginalAiLib = 'ai'; // ai.dll / libai.so
@@ -111,6 +113,32 @@ Const
 
 Type
   TSchemeRows = Array[0..FieldHeight - 1] Of String;
+
+Function AiLibDisplayName(Const LibName: String): String;
+Type
+  TAiDisplayName = Function(): pchar; cdecl;
+Var
+  Lib: TLibHandle;
+  f: TAiDisplayName;
+Begin
+  // Die bekannten KIs übersetzt, sonst der Name aus der KI (optionaler Export AiDisplayName), sonst der Dateiname
+  If LibName = OriginalAiLib Then exit(R_AiOriginal);
+  If LibName = SmartAiLib Then exit(R_AiSmart);
+  result := LibName;
+{$IFDEF Windows}
+  Lib := dynlibs.LoadLibrary(AppDir() + LibName + '.dll');
+{$ELSE}
+  Lib := dynlibs.LoadLibrary(AppDir() + 'lib' + LibName + '.so');
+{$ENDIF}
+  If Lib = NilHandle Then exit;
+  Try
+    f := TAiDisplayName(dynlibs.GetProcAddress(Lib, 'AiDisplayName'));
+    If assigned(f) And (trim(String(f())) <> '') Then result := trim(String(f()));
+  Except
+    result := LibName;
+  End;
+  dynlibs.UnloadLibrary(Lib);
+End;
 
 Function MapHash(Const Dir: String): UInt64;
 Var
@@ -252,10 +280,7 @@ Begin
       n := copy(sr.Name, length(Prefix) + 1, length(sr.Name) - length(Prefix) - length(Ext));
       If fAiLibs.IndexOf(n) <> -1 Then Continue;
       fAiLibs.Add(n);
-      If n = SmartAiLib Then
-        ComboBox7.Items.Add(R_AiSmart)
-      Else
-        ComboBox7.Items.Add(n);
+      ComboBox7.Items.Add(AiLibDisplayName(n));
     Until FindNext(sr) <> 0;
   End;
   FindClose(sr);

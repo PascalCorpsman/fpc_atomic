@@ -2017,7 +2017,7 @@ Begin
     End;
   End
   Else Begin
-    AiName := AiLib;
+    AiName := AiLibDisplayName(AiLib);
   End;
   AiName := format(RF_LaunchAi, [AiName]);
   If Mode = gmClassic Then Begin

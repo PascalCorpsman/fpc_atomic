@@ -76,6 +76,7 @@ Procedure LoadSettings(); // reads ai_smart.ini, writes the defaults if there is
 Function SmartIniFile(): String; // the ini LoadSettings uses: next to the program if it is there, else in the config folder
 Procedure WriteDefaults(Const Filename: String; Difficulty: integer = DefaultDifficulty); // the ini with every key and comment (the launcher uses it too)
 Procedure SmartLog(Const Msg: String); // only if LogDecisions, into ai_smart.log next to the ini
+Function SmartPlayerName(Index: integer): String; // the name of the ai player in slot Index, by difficulty ("Nitro 3")
 
 Implementation
 
@@ -356,6 +357,14 @@ Begin
   Finally
     ini.Free;
   End;
+End;
+
+Function SmartPlayerName(Index: integer): String;
+Const
+  Names: Array[0..9] Of String = ('Pipo', 'Bombo', 'Kiko', 'Zappy', 'Fuego', 'Nitro', 'Blazer', 'Blaze', 'Inferno', 'Armageddon'); // 0, 11, 22 .. 100 %
+Begin
+  // The name of the nearest difficulty step, with the slot number: all smart ais share one difficulty, but names must be unique
+  result := Names[(Clamp(Settings.Difficulty, 0, 100) * 9 + 50) Div 100] + ' ' + IntToStr(Index + 1);
 End;
 
 Procedure SmartLog(Const Msg: String);

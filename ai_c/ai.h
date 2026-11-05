@@ -48,4 +48,16 @@ uint32_t AiGameModes();
  */
 TAiCommand_t AiHandlePlayerEx(uint32_t PlayerIndex, TAiInfo_t* AiInfo, TAiModeInfo_t* ModeInfo);
 
+/*
+ * The name of the ai player in slot PlayerIndex (0..9), shown instead of "AI". NULL or "" = no name.
+ * The names must be unique and valid player names (letters, digits, space, _, at most 19 chars).
+ * The string must stay valid until the next call.
+ */
+char *AiPlayerName(uint32_t PlayerIndex);
+
+/*
+ * The short name of the ai (e.g. "Smart"), shown in the launcher.
+ */
+char *AiDisplayName();
+
 #endif

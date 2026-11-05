@@ -68,6 +68,16 @@ Type
    *)
   TAiHandlePlayerEx = Function(PlayerIndex: cuint32; Var AiInfo: TAiInfo; Var ModeInfo: TAiModeInfo): TAiCommand; Cdecl;
 
+  (*
+   * Optional: the name of the ai player in slot PlayerIndex, shown instead of "AI" (nil or '' = no name)
+   *)
+  TAiPlayerName = Function(PlayerIndex: cuint32): pchar; cdecl;
+
+  (*
+   * Optional: the short name of the ai (e.g. 'Smart'), shown in the launcher
+   *)
+  TAiDisplayName = Function(): pchar; cdecl;
+
 Const
   DefaultAiLibName = 'ai'; // Die Original KI (ai.dll / libai.so)
 
@@ -79,6 +89,7 @@ Var
   AiInterfaceVersion: TAiInterfaceVersion = Nil;
   AiVersion: TAiVersion = Nil;
   AiHandlePlayerEx: TAiHandlePlayerEx = Nil; // Nil, wenn die Lib es nicht exportiert
+  AiPlayerName: TAiPlayerName = Nil; // Nil, wenn die Lib es nicht exportiert (dann zeigen die Clients "AI")
   AiGameModesMask: cuint32 = 0; // Die unterstützten Spielmodi der geladenen Lib (AiMode_*), 0 = keine Lib geladen
 
   (*
@@ -177,6 +188,7 @@ Begin
     If assigned(GameModes) Then AiGameModesMask := GameModes();
     AiHandlePlayerEx := TAiHandlePlayerEx(GetProcAddress(lib, 'AiHandlePlayerEx'));
   End;
+  AiPlayerName := TAiPlayerName(GetProcAddress(lib, 'AiPlayerName'));
 
   result := true;
   AiLibLoaded := Name;
@@ -199,6 +211,7 @@ Begin
   AiInterfaceVersion := Nil;
   AiVersion := Nil;
   AiHandlePlayerEx := Nil;
+  AiPlayerName := Nil;
   AiGameModesMask := 0;
 End;
 

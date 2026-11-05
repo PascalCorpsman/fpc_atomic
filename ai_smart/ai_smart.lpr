@@ -24,6 +24,7 @@ Uses
 
 Var
   ais: Array[0..9] Of TSmartAi;
+  Names: Array[0..9] Of String; // AiPlayerName returns a pointer into it
 
   (*
    * Initialize the Lib
@@ -124,6 +125,24 @@ Begin
   result := ais[PlayerIndex].CalcAiCommand(AiInfo, mi.GameMode, mi.HuntedIndex, mi.RoundTimeLeftMs);
 End;
 
+(*
+ * Optional: the name of the ai player in slot PlayerIndex (by difficulty, e.g. "Nitro 3")
+ *)
+Function AiPlayerName(PlayerIndex: cuint32): pchar; cdecl;
+Begin
+  If PlayerIndex > high(Names) Then exit(Nil);
+  Names[PlayerIndex] := SmartPlayerName(PlayerIndex);
+  result := pchar(Names[PlayerIndex]);
+End;
+
+(*
+ * Optional: the short name of the ai, shown in the launcher
+ *)
+Function AiDisplayName(): pchar; cdecl;
+Begin
+  result := 'Smart';
+End;
+
 Exports
   AiInit
   , AiDeInit
@@ -133,6 +152,8 @@ Exports
   , AiHandlePlayer
   , AiGameModes
   , AiHandlePlayerEx
+  , AiPlayerName
+  , AiDisplayName
   ;
 
 Begin

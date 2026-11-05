@@ -22,6 +22,7 @@
  * History: 4 = ADD: missing info for Diseases
  *          5 = ADD: optional game modes: AiGameModes and AiHandlePlayerEx (TAiModeInfo_t), both exports are optional.
  *              Libs with interface version 4 can still be loaded, they only support AiMode_Classic and AiMode_Teamplay.
+ *              ADD: TAiModeInfo_t mod fields (appended, check Size), optional exports AiPlayerName and AiDisplayName.
  */
 #define AI_LIB_INTERFACE_VERSION 5u
 #define AI_LIB_MIN_INTERFACE_VERSION 4u // The oldest interface version the server can still load

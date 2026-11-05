@@ -155,6 +155,7 @@ Type
     Procedure LoadAi();
     Procedure HurryHandling;
     Function AiSupportsCurrentMode(): Boolean; // True, wenn eine KI geladen ist und sie den aktiven Spielmodus kann
+    Function AiSlotName(Index: integer): String; // Der Name des KI Spielers in diesem Platz, '' = keiner (die Clients zeigen "AI")
     Function AiNotSupportedText(): String; // Die Meldung, wenn AiSupportsCurrentMode false ist
     Procedure HandleUpdateModSettings(Const Stream: TStream; UID: integer);
     Procedure ApplyModSettingsToFields();
@@ -633,7 +634,7 @@ Begin
   For j := low(fPLayer) To high(fPLayer) Do Begin
     If (fPLayer[j].UID <> NoPlayer) Then Begin
       inc(cnt);
-      If (fPLayer[j].UserName = Username) Then Begin
+      If (fPLayer[j].UID <> AIPlayer) And (fPLayer[j].UserName = Username) Then Begin // Eine KI mit dem Namen wird umbenannt (AiSlotName)
         i := EC_User_already_exists;
         m.Write(i, sizeof(i));
         SendChunk(miRequestLoginResult, m, UID);
@@ -2489,6 +2490,8 @@ Begin
   j := length(fPLayer);
   m.write(j, sizeof(j));
   For i := 0 To high(fPLayer) Do Begin
+    // Vor dem Senden, so bekommt jeder Platz, der zur KI wird, ihren Namen (egal auf welchem Weg)
+    If fPLayer[i].UID = AIPlayer Then fPLayer[i].UserName := AiSlotName(i);
     j := fPLayer[i].UID;
     m.write(j, sizeof(j));
     k := fPLayer[i].Keyboard;
@@ -3428,6 +3431,33 @@ Begin
   LogLeave(EnterID);
 End;
 
+Function TServer.AiSlotName(Index: integer): String;
+Var
+  i: integer;
+Begin
+  (*
+   * Der Name kommt von der KI (optionaler Export AiPlayerName). Heißt ein echter Spieler genauso, wird " AI" angehängt,
+   * die Namen müssen eindeutig sein (z.B. für das Handicap der Trefferpunkte)
+   *)
+  result := '';
+  If Not assigned(AiPlayerName) Then exit;
+  Try
+    result := trim(String(AiPlayerName(Index)));
+  Except
+    result := '';
+  End;
+  If Not ValidNodeName(result) Then Begin
+    result := '';
+    exit;
+  End;
+  For i := 0 To high(fPLayer) Do Begin
+    If (fPLayer[i].UID > 0) And (lowercase(fPLayer[i].UserName) = lowercase(result)) Then Begin
+      result := copy(result, 1, 16) + ' AI';
+      break;
+    End;
+  End;
+End;
+
 Function TServer.AiSupportsCurrentMode: Boolean;
 Var
   Bit: UInt32;
@@ -3551,12 +3581,18 @@ Begin
           End;
         'a', 'A': Begin
             LoadAi;
-            If GetActivePlayerCount() <> 0 Then SendModInfo(0); // Die Clients zeigen an, welche Spielmodi die KI kann
+            If GetActivePlayerCount() <> 0 Then Begin
+              SendModInfo(0); // Die Clients zeigen an, welche Spielmodi die KI kann
+              RefreshAllPlayerStats(0); // und die Namen der KI Spieler
+            End;
           End;
         'u', 'U': Begin
             UnLoadAiLib;
             LogShow('Disabled ai', llInfo);
-            If GetActivePlayerCount() <> 0 Then SendModInfo(0);
+            If GetActivePlayerCount() <> 0 Then Begin
+              SendModInfo(0);
+              RefreshAllPlayerStats(0);
+            End;
           End;
       End;
     End;

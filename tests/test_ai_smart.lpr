@@ -84,6 +84,16 @@ begin
   if ok then writeln('ok   ', Name) else begin writeln('FAIL ', Name, ' (move ', MoveName[c.MoveState], ', action ', ActName[c.Action], ')'); inc(failed); end;
 end;
 
+procedure CheckName(Difficulty, Index: integer; const Expected: string);
+var Old: integer;
+begin
+  Old := Settings.Difficulty;
+  Settings.Difficulty := Difficulty;
+  if SmartPlayerName(Index) = Expected then writeln('ok   name ', Expected)
+  else begin writeln('FAIL name ', Expected, ' (got ', SmartPlayerName(Index), ')'); inc(failed); end;
+  Settings.Difficulty := Old;
+end;
+
 var c: TAiCommand; x: integer;
 begin
   LoadSettings();
@@ -225,6 +235,11 @@ begin
   c := Run(0, 0);
   Check('cover allowed: stays', not (c.MoveState in [amUp, amDown]), c);
   Settings.Chance[sfAnticipate] := 100; Settings.Chance[sfApproach] := 100;
+
+  // Names by difficulty (nearest step), with the slot number
+  CheckName(0, 0, 'Pipo 1');
+  CheckName(50, 2, 'Nitro 3');
+  CheckName(100, 9, 'Armageddon 10');
 
   writeln(failed, ' failed');
   if failed > 0 then halt(1);

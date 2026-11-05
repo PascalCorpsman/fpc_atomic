@@ -55,6 +55,8 @@ The file is read again at the start of every round, so changes take effect with 
 
 Surviving (timed danger map, conveyors, hurry) and not hitting team mates stay on at every difficulty: an easier ai is slower and makes mistakes, but it does not blow itself up on purpose.
 
+In the player setup the smart ai players get a name by the difficulty, with the number of their slot (e.g. `Nitro 3`): 0 % Pipo, 11 % Bombo, 22 % Kiko, 33 % Zappy, 44 % Fuego, 56 % Nitro, 67 % Blazer, 78 % Blaze, 89 % Inferno, 100 % Armageddon (the nearest step counts, 50 = Nitro).
+
 In the file the values that the difficulty sets are commented out (`;Chance=65`). Remove the `;` to fix a value yourself, it then overrides the difficulty. A file of version 0.01 (without `Difficulty`) is kept as `ai_smart.ini.bak` and written again.
 
 ## How Chance works
