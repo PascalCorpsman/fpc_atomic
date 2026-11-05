@@ -109,6 +109,7 @@ Var
   mi: TAiModeInfo;
 Begin
   // Defaults for all fields the server did not send (only read the fields that fit into ModeInfo.Size)
+  FillChar(mi, sizeof(mi), 0);
   mi.Size := sizeof(mi);
   mi.GameMode := 0;
   mi.HuntedIndex := -1;
@@ -119,6 +120,7 @@ Begin
   Else Begin
     move(ModeInfo, mi, sizeof(mi));
   End;
+  ais[PlayerIndex].ModeInfo := mi; // the mods (open borders, brick walk, boxing glove), zero = none
   result := ais[PlayerIndex].CalcAiCommand(AiInfo, mi.GameMode, mi.HuntedIndex, mi.RoundTimeLeftMs);
 End;
 

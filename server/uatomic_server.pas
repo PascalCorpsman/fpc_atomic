@@ -2830,6 +2830,17 @@ Begin
     Else Begin
       ModeInfo.RoundTimeLeftMs := max(0, fPlayingTimedesc);
     End;
+    // Die gerade aktiven Mods, die eine KI kennen muss (offene Grenzen, Teleporter, Boxhandschuh, durch Blöcke laufen)
+    ModeInfo.ModFlags := 0;
+    If fActualField.OpenLeftRight Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_WrapLeftRight;
+    If fActualField.OpenTopBottom Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_WrapTopBottom;
+    If fActualField.PortalsLeftRight Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PortalLeftRight;
+    If fActualField.PortalsTopBottom Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PortalTopBottom;
+    If fModSettings.PunchStun Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PunchStun;
+    For i := 0 To high(fPLayer) Do Begin
+      ModeInfo.BrickWalkMs[i] := fPLayer[i].BrickWalkTimer;
+      ModeInfo.PunchStunCooldownMs[i] := fPLayer[i].PunchStunCooldown;
+    End;
   End;
   // Die Spieler Bewegen
   For i := 0 To high(fPLayer) Do Begin

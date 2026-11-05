@@ -37,7 +37,8 @@ Type
     sfAttack, sfPowerups, sfApproach, sfTimedDanger, sfTrigger,
     sfKick, sfPunch, sfGrab, sfSpooger, sfTraps,
     sfTeamSafety, sfOpenSpace, sfInfect, sfHuntedFlees,
-    sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd, sfKickSnipe);
+    sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd, sfKickSnipe,
+    sfStun, sfBrickWalk, sfBorders);
 
   TSmartSettings = Record
     Difficulty: integer; // 0 = easy .. 100 = strong
@@ -59,7 +60,8 @@ Const
     'Attack', 'Powerups', 'Approach', 'TimedDanger', 'Trigger',
     'Kick', 'Punch', 'Grab', 'Spooger', 'Traps',
     'TeamSafety', 'OpenSpace', 'Infect', 'HuntedFlees',
-    'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd', 'KickSnipe');
+    'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd', 'KickSnipe',
+    'Stun', 'BrickWalk', 'Borders');
 
   SettingsFileName = 'ai_smart.ini';
   DefaultDifficulty = 50;
@@ -92,12 +94,14 @@ Const
     30, 40, 30, 100, 100,
     0, 0, 0, 0, 0,
     100, 50, 0, 30,
-    0, 0, 100, 100, 0);
+    0, 0, 100, 100, 0,
+    0, 30, 50);
   FeatureStrong: Array[TSmartFeature] Of integer = (
     100, 100, 100, 100, 100,
     90, 70, 70, 70, 100,
     100, 100, 70, 100,
-    100, 100, 100, 100, 80);
+    100, 100, 100, 100, 80,
+    100, 100, 100);
 
   FeatureComments: Array[TSmartFeature] Of String = (
     'Attack enemies with bombs in every game mode (the old ai only attacks in hunter mode).',
@@ -118,7 +122,10 @@ Const
     'Also count enemies that are hit through a chain reaction (the new bomb ignites another one).',
     'Do not step onto a conveyor that pushes into a dangerous field.',
     'Hurry: the fields that are walled up within HurryLookAheadMs count as dangerous.',
-    'Sniping (needs kick and remote bombs): place a remote bomb, kick it into a free line towards an enemy and trigger it when the enemy is in its flames, also several bombs.');
+    'Sniping (needs kick and remote bombs): place a remote bomb, kick it into a free line towards an enemy and trigger it when the enemy is in its flames, also several bombs.',
+    'Boxing glove mod (needs the punch item): stun an enemy right in front of the ai.',
+    'Walk through bricks mod: walk over bricks while the time lasts (also to escape), never stay in one when it ends.',
+    'Open borders and teleporters mod: walk out over an open border (comes in on the other side), throw bombs over it; teleporters are avoided like holes.');
 
 Function Clamp(Value, aMin, aMax: integer): integer;
 Begin

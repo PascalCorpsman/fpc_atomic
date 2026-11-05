@@ -164,5 +164,14 @@ typedef struct {
     uint32_t GameMode;       // Exactly one of AiMode_*
     int32_t HuntedIndex;     // AiMode_Hunter: player index of the hunted, -1 = nobody (or not AiMode_Hunter)
     int32_t RoundTimeLeftMs; // Time left in this round in ms, -1 = infinite
+    uint32_t ModFlags;       // AiModFlag_* of the mods that are active right now
+    int32_t BrickWalkMs[10]; // Per player: time in ms the player can still walk through bricks (0 = not)
+    int32_t PunchStunCooldownMs[10]; // Per player: time in ms until the boxing glove can stun again (0 = ready)
 } TAiModeInfo_t;
+
+#define AiModFlag_WrapLeftRight 1   // Open borders: left / right
+#define AiModFlag_WrapTopBottom 2   // Open borders: top / bottom
+#define AiModFlag_PortalLeftRight 4 // Teleporters in the middle of the left and right border, they act like holes
+#define AiModFlag_PortalTopBottom 8 // Teleporters in the middle of the top and bottom border
+#define AiModFlag_PunchStun 16      // Boxing glove: with the punch ability the second action stuns an enemy in front
 #endif

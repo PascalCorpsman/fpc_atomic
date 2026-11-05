@@ -100,6 +100,9 @@ Invalid values are limited to their range, missing keys get the default.
 | `[Conveyors]` | 100 | Does not step onto a conveyor that pushes it into a dangerous field. |
 | `[RoundEnd]` | 100 | Hurry (the last 80 s of a timed round): the fields that are walled up soon count as dangerous. |
 | `[KickSnipe]` | 0 / 40 / 80 | Needs kick and remote bombs. Places a remote bomb, kicks it into a free line towards an enemy and triggers it when the enemy is in its flames. A kicked bomb stops in front of a player, so an enemy in the line is the best target. Several bombs line up one behind the other (they go off together). With jelly the bomb bounces between the next obstacle and the ai, which then steps out of the line. |
+| `[Stun]` | 0 / 50 / 100 | Boxing glove mod, needs the punch item: stuns an enemy right in front of the ai (only without own remote bombs, the same key triggers them). |
+| `[BrickWalk]` | 30 / 65 / 100 | Walk through bricks mod: walks over bricks while the time lasts, also to escape, and never stays in one when it ends. |
+| `[Borders]` | 50 / 75 / 100 | Open borders mod: walks out over an open border (comes in on the other side), also to escape, and throws bombs over it (grab). Teleporters are avoided like holes. |
 
 ### Further keys of the abilities
 

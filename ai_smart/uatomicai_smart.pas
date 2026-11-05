@@ -47,8 +47,9 @@ Const
    *             0.04 - ADD: KickSnipe: remote bomb, step back, kick it into a line towards an enemy, trigger it with a hit chance
    *             0.05 - KickSnipe: the bomb stops in front of players (aim at enemies in the line), series in the same direction with chain reaction, jelly: the whole bouncing way counts, step out of the line; trigger also while escaping; [TeamSafety] for sniping
    *             0.06 - KickSnipe in the endgame: with at most [KickSnipe] EndgameBricks bricks left always
+   *             0.07 - ADD: mods from TAiModeInfo: open borders ([Borders], also grab over the border, teleporters like holes), walk through bricks ([BrickWalk]), boxing glove ([Stun])
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.06';
+  Ai_Version = 'Atomic smart ai ver. 0.07';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -164,6 +165,9 @@ Type
     Function PlayerField(i: integer): TPoint;
     Function Usable(i: integer): Boolean; // alive, on the field, not flying
     Function PlayerAt(x, y: integer): integer; // the first usable player on this field, -1 = none
+    Function Wrap(Var x, y: integer): Boolean; // open borders: a field outside comes in on the other side, false = really outside
+    Function IsPortal(x, y: integer): Boolean; // an active teleporter (mod), it acts like a hole
+    Function BrickWalkMs(): integer; // how long the ai can still walk through bricks (mod)
 
     Procedure FlameCells(x, y, Len: integer; Var Grid: TBoolGrid);
     Procedure BuildBombs;
@@ -186,6 +190,7 @@ Type
     Function Decide(): TAiCommand;
     Procedure LogGoal(Const Name: String; x, y: integer);
   public
+    ModeInfo: TAiModeInfo; // set by the lib before CalcAiCommand (mods), all zero = no mods known
     Constructor Create(aIndex: integer);
     Procedure Reset(aStrength: integer);
     Function CalcAiCommand(Const AiInfo: TAiInfo; GameMode: Cardinal = 0; HuntedIndex: integer = -1;
@@ -311,6 +316,7 @@ Begin
   End;
   fGoalMarginMs := 0;
   fAvoidDangerUntil := 0;
+  FillChar(ModeInfo, SizeOf(ModeInfo), 0);
   fSnipeStage := 0;
   fSnipeLastDir := amNone;
   fSnipePauseUntil := 0;
@@ -432,6 +438,35 @@ Begin
   If fInfo^.PlayerInfos[i].Flying Then exit;
   p := PlayerField(i);
   result := Inside(p.x, p.y);
+End;
+
+Function TSmartAi.Wrap(Var x, y: integer): Boolean;
+Begin
+  // Like TAtomicField.HandleMovePlayer: open borders lead to the opposite field (only with [Borders])
+  If Inside(x, y) Then exit(true);
+  result := false;
+  If Not Roll(sfBorders) Then exit;
+  If ((x < 0) Or (x >= FieldWidth)) And (y >= 0) And (y < FieldHeight) And ((ModeInfo.ModFlags And AiModFlag_WrapLeftRight) <> 0) Then Begin
+    x := (x + FieldWidth) Mod FieldWidth;
+    exit(true);
+  End;
+  If ((y < 0) Or (y >= FieldHeight)) And (x >= 0) And (x < FieldWidth) And ((ModeInfo.ModFlags And AiModFlag_WrapTopBottom) <> 0) Then Begin
+    y := (y + FieldHeight) Mod FieldHeight;
+    exit(true);
+  End;
+End;
+
+Function TSmartAi.IsPortal(x, y: integer): Boolean;
+Begin
+  // The teleporters lie in the middle of the borders (TAtomicField.IsPortal)
+  result := (((ModeInfo.ModFlags And AiModFlag_PortalTopBottom) <> 0) And (x = FieldWidth Div 2) And ((y = 0) Or (y = FieldHeight - 1))) Or
+    (((ModeInfo.ModFlags And AiModFlag_PortalLeftRight) <> 0) And (y = FieldHeight Div 2) And ((x = 0) Or (x = FieldWidth - 1)));
+End;
+
+Function TSmartAi.BrickWalkMs: integer;
+Begin
+  result := 0;
+  If (ModeInfo.Size >= SizeOf(TAiModeInfo)) And Roll(sfBrickWalk) Then result := ModeInfo.BrickWalkMs[fIndex];
 End;
 
 Function TSmartAi.PlayerAt(x, y: integer): integer;
@@ -633,12 +668,14 @@ Begin
     For d := 0 To 3 Do Begin
       nx := p.x + DirX[Moves[d]];
       ny := p.y + DirY[Moves[d]];
-      If Not Inside(nx, ny) Then Continue;
+      If Not Wrap(nx, ny) Then Continue;
       If Dist[nx, ny] <> NotReachable Then Continue;
       f := fInfo^.Field[nx, ny];
-      If Not (f In Allowed) Then Continue;
-      If BombsBlock And (fBombAt[nx, ny] <> -1) Then Continue;
       nd := Dist[p.x, p.y] + 1;
+      // Walk through bricks (mod): only while the time lasts, with one field of reserve to get out again
+      If Not ((f In Allowed) Or ((f = fBrick) And (StartMs + (nd + 2) * fMsPerField < BrickWalkMs()))) Then Continue;
+      If BombsBlock And (fBombAt[nx, ny] <> -1) Then Continue;
+      If IsPortal(nx, ny) And (Not AllowBad) Then Continue; // a teleporter beams the ai away, only as a way out in panic
       If Not Enterable(Danger, nx, ny, StartMs + nd * fMsPerField, Timed) Then Continue;
       // A conveyor that pushes into a dangerous field is avoided
       If Conveyors And (f In [fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight]) Then Begin
@@ -836,7 +873,8 @@ Begin
     For i := 0 To FieldWidth - 1 Do
       For j := 0 To FieldHeight - 1 Do Begin
         If Dist[i, j] = NotReachable Then Continue;
-        If (fDanger[i, j] <> Safe) And Not ((Pass = 2) And (fInfo^.Field[i, j] = fHole)) Then Continue;
+        If (fDanger[i, j] <> Safe) And Not ((Pass = 2) And ((fInfo^.Field[i, j] = fHole) Or IsPortal(i, j))) Then Continue;
+        If fInfo^.Field[i, j] = fBrick Then Continue; // the brick walk may end there
         // OpenSpace: of equally near fields the one with more ways out
         d := Dist[i, j] * 8;
         If Roll(sfOpenSpace) Then d := d - FreeNeighbours(i, j);
@@ -988,7 +1026,7 @@ Begin
         inc(n);
       End;
       // Bomb fields
-      If CanBomb And (f In BombPlaceableFields) And (fBombAt[i, j] = -1) And
+      If CanBomb And (f In BombPlaceableFields) And (fBombAt[i, j] = -1) And (Not IsPortal(i, j)) And
         Not ((fTime < fNoBombUntil) And (fNoBombCell.x = i) And (fNoBombCell.y = j)) Then Begin
         Hits := CountBrickHits(i, j, Bricks, Burnt);
         Enemies := 0;
@@ -1373,7 +1411,7 @@ Begin
       (fBombAt[fX, fY] = -1) And (fInfo^.Field[fX, fY] In BombPlaceableFields) Then Begin
       bx := fX + DirX[m] * 3;
       by := fY + DirY[m] * 3;
-      If Inside(bx, by) And (fInfo^.Field[bx, by] In WalkableFields) Then Begin
+      If Wrap(bx, by) And (fInfo^.Field[bx, by] In WalkableFields) Then Begin // over an open border it lands on the other side
         For i := 0 To high(fInfo^.PlayerInfos) Do Begin
           If (Not IsEnemy(i)) Or (Not Usable(i)) Then Continue;
           e := PlayerField(i);
@@ -1384,7 +1422,7 @@ Begin
             Ok := true;
             For k := 1 To 6 Do Begin
               Cells[0] := Point(fX + DirX[m] * k, fY + DirY[m] * k);
-              If Not Inside(Cells[0].x, Cells[0].y) Then break;
+              If Not Wrap(Cells[0].x, Cells[0].y) Then break;
               If Not (CanSurviveBombs(Cells, fX, fY, ThrowMs, HitFriend) And Not (HitFriend And Roll(sfTeamSafety))) Then Ok := false;
             End;
             // Turn only if the throw will really follow (see spooger)
@@ -1400,6 +1438,23 @@ Begin
               exit(true);
             End;
           End;
+        End;
+      End;
+    End;
+    // Boxing glove (mod): an enemy right in front is stunned. The second action also triggers remote bombs, so only without them.
+    If Roll(sfStun) And ((Me.Abilities And Ability_CanPunch) <> 0) And ((ModeInfo.ModFlags And AiModFlag_PunchStun) <> 0) And
+      (ModeInfo.PunchStunCooldownMs[fIndex] <= 0) Then Begin
+      bx := fX + DirX[m];
+      by := fY + DirY[m];
+      If Wrap(bx, by) And (PlayerAt(bx, by) <> -1) And IsEnemy(PlayerAt(bx, by)) Then Begin
+        k := 0;
+        For i := 0 To fInfo^.BombsCount - 1 Do
+          If (fInfo^.Bombs[i].Owner = fIndex) And fInfo^.Bombs[i].ManualTrigger Then inc(k);
+        If k = 0 Then Begin
+          Cmd.MoveState := m;
+          If fFacing = m Then Cmd.Action := apSecond Else Cmd.Action := apNone; // turn first
+          LogGoal('stun', bx, by);
+          exit(true);
         End;
       End;
     End;

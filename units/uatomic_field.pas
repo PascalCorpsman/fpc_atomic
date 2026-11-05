@@ -172,6 +172,8 @@ Type
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über info.txt der Karte (Grafiken zählen nicht, die kann jeder Client aus seinem eigenen Grafiksatz laden)
     Property OpenTopBottom: Boolean read fWrapTopBottom; // Mod offene Grenzen, für die Pfeile im Client
     Property OpenLeftRight: Boolean read fWrapLeftRight;
+    Property PortalsTopBottom: Boolean read fPortalTopBottom; // Mod Teleporter am Rand: gerade aktiv (für die KI)
+    Property PortalsLeftRight: Boolean read fPortalLeftRight;
     Property OpenWarnTopBottom: Boolean read fWrapWarnTopBottom;
     Property OpenWarnLeftRight: Boolean read fWrapWarnLeftRight;
     Property Sound: String read fSoundFile;

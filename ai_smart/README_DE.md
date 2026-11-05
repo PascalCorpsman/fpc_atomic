@@ -100,6 +100,9 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[Conveyors]` | 100 | Betritt kein Laufband, das sie in ein gefährliches Feld schiebt. |
 | `[RoundEnd]` | 100 | Hurry (die letzten 80 s einer Runde mit Zeitlimit): Felder, die bald zugemauert werden, gelten als gefährlich. |
 | `[KickSnipe]` | 0 / 40 / 80 | Braucht Kick und Fernzünder. Legt eine Fernzünder-Bombe, kickt sie in eine freie Linie zu einem Gegner und zündet, wenn der Gegner in den Flammen steht. Eine gekickte Bombe hält vor Spielern an, ein Gegner in der Linie ist daher das beste Ziel. Mehrere Bomben reihen sich hintereinander auf (sie gehen zusammen hoch). Mit Jelly pendelt die Bombe zwischen dem nächsten Hindernis und der KI, die danach seitlich aus der Linie tritt. |
+| `[Stun]` | 0 / 50 / 100 | Boxhandschuh-Mod, braucht das Punch-Item: betäubt einen Gegner direkt vor der KI (nur ohne eigene Fernzünder-Bomben, dieselbe Taste zündet sie). |
+| `[BrickWalk]` | 30 / 65 / 100 | Mod „durch Blöcke laufen“: läuft über Steine, solange die Zeit reicht, auch zur Flucht, und bleibt nie in einem stehen, wenn sie endet. |
+| `[Borders]` | 50 / 75 / 100 | Mod „offene Grenzen“: läuft über einen offenen Rand hinaus (kommt auf der anderen Seite herein), auch zur Flucht, und wirft Bomben darüber (Grab). Teleporter meidet sie wie Löcher. |
 
 ### Weitere Schlüssel der Fähigkeiten
 

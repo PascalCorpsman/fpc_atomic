@@ -38,6 +38,7 @@ Const
    *          0.03 = ADD: fHole, fTramp, fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight , fArrowUp, fArrowDown, fArrowLeft, fArrowRight to TAiField
    *          0.04 = ADD: missing info for Diseases
    *          0.05 = ADD: optional game modes: AiGameModes and AiHandlePlayerEx (TAiModeInfo), both exports are optional.
+   *                 ADD: TAiModeInfo.ModFlags, BrickWalkMs, PunchStunCooldownMs (appended, check Size, still version 5)
    *                 Libs with interface version 4 can still be loaded, they only support AiMode_Classic and AiMode_Teamplay.
    *)
   AiLibInterfaceVersion: cint32 = 5;
@@ -51,6 +52,15 @@ Const
   AiMode_Classic = 1; // Free for all
   AiMode_Teamplay = 2; // Two teams, TAiPlayerInfo.Team is relevant
   AiMode_Hunter = 4; // One player is the hunted (TAiModeInfo.HuntedIndex) with (almost) all items, who kills him becomes the new hunted
+
+  (*
+   * The bit masks for TAiModeInfo.ModFlags: the mods that are active right now
+   *)
+  AiModFlag_WrapLeftRight = 1; // Open borders: a player walking out on the left comes in on the right (and the other way round)
+  AiModFlag_WrapTopBottom = 2; // Open borders: top / bottom
+  AiModFlag_PortalLeftRight = 4; // Teleporters in the middle of the left and right border (FieldHeight div 2), they act like holes
+  AiModFlag_PortalTopBottom = 8; // Teleporters in the middle of the top and bottom border (FieldWidth div 2)
+  AiModFlag_PunchStun = 16; // Boxing glove: with the punch ability the second action stuns an enemy on the field in front
 
   (*
    * The bit masks for the TAiPlayerInfo.Abilities value
@@ -177,6 +187,9 @@ Type
     GameMode: cuint32; // Exactly one of AiMode_*
     HuntedIndex: cint32; // AiMode_Hunter: player index of the hunted, -1 = nobody (or not AiMode_Hunter)
     RoundTimeLeftMs: cint32; // Time left in this round in ms, -1 = infinite
+    ModFlags: cuint32; // AiModFlag_* of the mods that are active right now
+    BrickWalkMs: Array[0..9] Of cint32; // Per player: time in ms the player can still walk through bricks (0 = not)
+    PunchStunCooldownMs: Array[0..9] Of cint32; // Per player: time in ms until the boxing glove can stun again (0 = ready)
   End;
 
 Implementation

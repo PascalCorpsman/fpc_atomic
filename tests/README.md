@@ -49,3 +49,14 @@ fpc -Mobjfpc -Sh -FUlib test_assetset.lpr
 ```
 
 Without a data dir it uses `../data` next to the program. Without the CD data the sizes are not compared, the other checks still run.
+
+## test_ai_smart
+
+The smart ai (`ai_smart/`) with the mods the server reports to it: escaping over an open border, through bricks while walking through bricks is possible, and the boxing glove. Each test builds a small field by hand and calls the ai directly, without a server.
+
+```sh
+fpc -Mobjfpc -Sh -Fu../ai_smart -Fu../server -FUlib test_ai_smart.lpr
+./test_ai_smart
+```
+
+It reads `ai_smart.ini` like the ai (next to the program first). The tests need the mod abilities at full strength, e.g. an `ai_smart.ini` next to the program with `[General]` `Difficulty=100`.
