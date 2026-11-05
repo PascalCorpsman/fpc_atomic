@@ -128,6 +128,27 @@ begin
   c := Run(0, 0, 2);
   Check('no boxing glove mod: no punch at a player', c.Action <> apSecond, c);
 
+  // Remote bomb: an enemy in its flames, the ai too -> step out (left or up, both are outside) to trigger
+  Base;
+  for x := 2 to 8 do a.Field[x, 5] := fBlank;
+  a.Field[4, 4] := fBlank;
+  a.PlayerInfos[0].Position.x := 4.5; a.PlayerInfos[0].Position.y := 5.5; a.PlayerInfos[0].Abilities := Ability_CanTrigger;
+  a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 7.5; a.PlayerInfos[1].Position.y := 5.5;
+  a.BombsCount := 1; a.Bombs[0].Position.x := 6.5; a.Bombs[0].Position.y := 5.5; a.Bombs[0].FlameLength := 2;
+  a.Bombs[0].Owner := 0; a.Bombs[0].ManualTrigger := true; a.Bombs[0].LifeTime := 1000;
+  c := Run(0, 0);
+  Check('remote bomb: step out of the own flames to trigger', c.MoveState in [amLeft, amUp], c);
+  // Kick: a bomb next to the ai explodes in 100 ms -> do not walk against it
+  Base;
+  for x := 2 to 12 do a.Field[x, 5] := fBlank;
+  a.Field[3, 4] := fBlank; a.Field[3, 3] := fBlank;
+  a.PlayerInfos[0].Position.x := 3.5; a.PlayerInfos[0].Position.y := 5.5; a.PlayerInfos[0].Abilities := Ability_CanKick;
+  a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 10.5; a.PlayerInfos[1].Position.y := 5.5;
+  a.BombsCount := 1; a.Bombs[0].Position.x := 4.5; a.Bombs[0].Position.y := 5.5; a.Bombs[0].FlameLength := 1;
+  a.Bombs[0].Owner := 1; a.Bombs[0].LifeTime := 1900;
+  c := Run(0, 0);
+  Check('kick: not against a bomb that explodes at once', c.MoveState <> amRight, c);
+
   writeln(failed, ' failed');
   if failed > 0 then halt(1);
 end.

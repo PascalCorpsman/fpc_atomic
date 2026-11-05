@@ -137,6 +137,9 @@ Type
     fGoalMarginMs: integer; // extra reserve for endangered fields while searching the way to a goal
     fAvoidDangerUntil: Int64; // after an escape: goals avoid endangered fields until then
     fSpecialCmd: TAiCommand; // a kick / punch that is carried out until fSpecialUntil
+    fSpecialBomb: TPoint; // kick: the field of the kicked bomb, -1 = none
+    fLeaveOwnFlames: Boolean; // an enemy is in the flames of the own remote bombs, but the ai too: step out, then trigger
+    fOwnFlames: TBoolGrid;
     fStunPending: Boolean; // boxing glove: turned in the last frame, punch now
     fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
@@ -150,6 +153,7 @@ Type
     fTriggerDecided: Boolean; // KickSnipe: the hit chance for the current enemy was rolled
     fTriggerAt: Int64; // KickSnipe: a missed moment, the bombs go off now (too late)
     Function SnipeAction(Var Cmd: TAiCommand): Boolean;
+    Function LeaveOwnFlames(Var Cmd: TAiCommand): Boolean; // step out of the own remote flames to trigger them at an enemy
     Function RemoteWaitMs(): integer; // how long own remote bombs wait at most (longer while sniping)
     Function SnipeOn(): Boolean; // KickSnipe: rolled, or always in the endgame (few bricks left)
     Procedure StartSpecial(Const Cmd: TAiCommand);
@@ -257,6 +261,7 @@ End;
 
 Procedure TSmartAi.StartSpecial(Const Cmd: TAiCommand);
 Begin
+  fSpecialBomb := Point(-1, -1);
   fSpecialCmd := Cmd;
   fSpecialUntil := fTime + 300;
   fSpecialPauseUntil := fTime + 1300;
@@ -328,6 +333,8 @@ Begin
   fSpecialPauseUntil := 0;
   fStunPending := false;
   fStunPauseUntil := 0;
+  fSpecialBomb := Point(-1, -1);
+  fLeaveOwnFlames := false;
   fSeenTime := 0;
   If fIndex = 9 Then LatestAiTime := 0; // AiNewRound resets the ais 0..9 in this order
   fStuckLogged := false;
@@ -1136,6 +1143,8 @@ Begin
     If IsEnemy(i) Then EnemyHit := true;
   End;
   // Never ourselves, never a team mate. The log says why an enemy in the flames is spared.
+  fLeaveOwnFlames := g[fX, fY] And EnemyHit And (Not FriendHit) And (Oldest >= Settings.MinReactionMs);
+  If fLeaveOwnFlames Then fOwnFlames := g;
   If g[fX, fY] Or FriendHit Then Begin
     If EnemyHit Then Begin
       If g[fX, fY] Then LogGoal('enemy in the flames, no trigger: own field in the flames', fX, fY)
@@ -1178,6 +1187,34 @@ Begin
     For j := 0 To FieldHeight - 1 Do
       If fInfo^.Field[i, j] = fBrick Then inc(n);
   result := n <= Settings.SnipeEndgameBricks;
+End;
+
+Function TSmartAi.LeaveOwnFlames(Var Cmd: TAiCommand): Boolean;
+Var
+  Dist: TIntGrid;
+  First: TMoveGrid;
+  i, j, best: integer;
+  t: TPoint;
+Begin
+  // An enemy stands in the flames of the own remote bombs, the ai too: to the nearest field outside, TriggerNow fires then
+  result := false;
+  If Not fLeaveOwnFlames Then exit;
+  fLeaveOwnFlames := false;
+  Search(fX, fY, 0, fDanger, true, Roll(sfTimedDanger), false, Dist, First);
+  best := NotReachable;
+  t := Point(-1, -1);
+  For i := 0 To FieldWidth - 1 Do
+    For j := 0 To FieldHeight - 1 Do
+      If (Dist[i, j] < best) And (Not fOwnFlames[i, j]) And (fInfo^.Field[i, j] <> fBrick) And
+        ((fDanger[i, j] = Safe) Or (fDanger[i, j] > (Dist[i, j] + EscapeReserve) * fMsPerField + Settings.SafetyMs)) Then Begin
+        best := Dist[i, j];
+        t := Point(i, j);
+      End;
+  If (t.x < 0) Or (best > 4) Then exit; // too far, the enemy will be gone
+  LogGoal('step out of the own flames to trigger', t.x, t.y);
+  Cmd.Action := apNone;
+  Cmd.MoveState := First[t.x, t.y];
+  result := Cmd.MoveState <> amNone;
 End;
 
 Function TSmartAi.RemoteWaitMs: integer;
@@ -1486,14 +1523,17 @@ Begin
     If (Not Inside(bx, by)) Or (fBombAt[bx, by] < 0) Then Continue;
     If fTime < fSpecialPauseUntil Then Continue; // a kick / punch was just tried
     // Kick: walk against the bomb, it slides towards the enemy
-    If Roll(sfKick) And ((Me.Abilities And Ability_CanKick) <> 0) And EnemyInLine(bx, by, m, FieldWidth, Range) Then Begin
+    // Only a bomb that does not explode while the ai walks against it, and the field behind must be free (also of players)
+    If Roll(sfKick) And ((Me.Abilities And Ability_CanKick) <> 0) And EnemyInLine(bx, by, m, FieldWidth, Range) And
+      (fBombs[fBombAt[bx, by]].Time > 3 * fMsPerField + Settings.SafetyMs) Then Begin
       ex := bx + DirX[m];
       ey := by + DirY[m];
-      If Inside(ex, ey) And (fInfo^.Field[ex, ey] In WalkableFields) And (fBombAt[ex, ey] = -1) Then Begin
+      If Inside(ex, ey) And (fInfo^.Field[ex, ey] In WalkableFields) And (fBombAt[ex, ey] = -1) And (PlayerAt(ex, ey) = -1) Then Begin
         Cmd.MoveState := m;
         Cmd.Action := apNone;
         LogGoal('kick', bx, by);
         StartSpecial(Cmd);
+        fSpecialBomb := Point(bx, by); // pushing ends as soon as the bomb has left this field
         exit(true);
       End;
     End;
@@ -1562,11 +1602,14 @@ Begin
     exit;
   End;
   // 3. Special actions with items (a kick / punch is carried out for a moment, not dropped after one frame)
+  // A kicked bomb rolls: do not walk after it into its line
+  If (fTime < fSpecialUntil) And (fSpecialBomb.x >= 0) And (fBombAt[fSpecialBomb.x, fSpecialBomb.y] < 0) Then fSpecialUntil := 0;
   If (fTime < fSpecialUntil) And ((fDanger[fX, fY] = Safe) Or (fDanger[fX, fY] > 3 * fMsPerField + Settings.SafetyMs)) Then Begin
     result := fSpecialCmd;
     result.Action := apNone; // the action only once
     exit;
   End;
+  If LeaveOwnFlames(result) Then exit;
   If SnipeAction(result) Then exit;
   If SpecialAction(result) Then exit;
   // 4. Goals
