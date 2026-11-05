@@ -209,6 +209,23 @@ begin
   c := Run(0, 0);
   Check('glove at start: throw at the bricks', c.Action = apFirstDouble, c);
 
+  // NoCover: idle behind a bomb (it does not reach the ai) that shields it from an enemy with a flamethrower
+  Base;
+  for x := 2 to 8 do a.Field[x, 5] := fBlank;
+  a.Field[3, 4] := fBlank;
+  a.PlayerInfos[0].Position.x := 3.5; a.PlayerInfos[0].Position.y := 5.5; a.PlayerInfos[0].AvailableBombs := 0;
+  a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 7.5; a.PlayerInfos[1].Position.y := 5.5;
+  a.BombsCount := 1; a.Bombs[0].Position.x := 5.5; a.Bombs[0].Position.y := 5.5; a.Bombs[0].FlameLength := 1; a.Bombs[0].Owner := 1; a.Bombs[0].LifeTime := 0;
+  Extra.FlameFuelMs[1] := 5000; Extra.FlameBeamDir[1] := 2; Extra.FlameRange := 5;
+  Settings.Chance[sfNoCover] := 100;
+  c := Run(0, 0);
+  Check('no cover: steps out from behind the bomb', c.MoveState in [amUp, amDown], c);
+  // Counter check: without NoCover (and without Anticipate / Approach, they move away from the line on their own) it stays
+  Settings.Chance[sfNoCover] := 0; Settings.Chance[sfAnticipate] := 0; Settings.Chance[sfApproach] := 0;
+  c := Run(0, 0);
+  Check('cover allowed: stays', not (c.MoveState in [amUp, amDown]), c);
+  Settings.Chance[sfAnticipate] := 100; Settings.Chance[sfApproach] := 100;
+
   writeln(failed, ' failed');
   if failed > 0 then halt(1);
 end.

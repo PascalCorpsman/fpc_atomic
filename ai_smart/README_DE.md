@@ -107,6 +107,7 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[Invuln]` | 30 / 65 / 100 | Unverwundbarkeit (Mods): greift keine Gegner an, die gerade nicht getroffen werden können, und läuft durch Flammen, solange sie selbst unverwundbar ist. |
 | `[WhiteBomb]` | 100 | Weiße-Bombe-Mod: flieht nicht vor einer weißen Bombe (keine Flammen) und legt eine eigene weiße Bombe sofort (sie macht nur die Bildschirme der Gegner weiß). |
 | `[StartGlove]` | 0 / 50 / 100 | Mod „Handschuh beim Start“: wirft vor dem ersten Schritt eine Bombe in Steine oder auf einen Gegner. |
+| `[NoCover]` | 100 / 50 / 0 | Flammenwerfer-Mod: Der Strahl endet an Bomben. Steht die KI untätig hinter einer Bombe in der Linie eines Gegners mit Flammenwerfer, tritt sie aus der Deckung, damit man sie treffen kann (eine starke KI bleibt in Deckung). |
 
 ### Weitere Schlüssel der Fähigkeiten
 

@@ -53,8 +53,9 @@ Const
    *             0.09 - ADD: [FlameBeam] ReactionMs, a flamethrower beam counts only after the reaction time (it dodged at once)
    *             0.10 - ADD: [FlameBeam] SlowPercent, in a beam the ai walks slower; reaction times for the new kill time 1500 ms
    *             0.11 - ADD: [FlameBeam] FreezeMs, hit by a beam the ai is startled and stands still first (it walked through beams in 0.1-0.3 s)
+   *             0.12 - FIX: flamethrower reaction counts from the own hit; ADD: [NoCover] an idle ai steps out of the cover of a bomb in the line of a flamethrower
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.11';
+  Ai_Version = 'Atomic smart ai ver. 0.12';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -152,6 +153,7 @@ Type
     fSlowAcc: integer; // flamethrower: skipped steps while burning (SlowPercent)
     fBeamStaySince: Int64; // log: since when the ai stands in a beam, -1 = not
     fBeamHitSince: Int64; // flamethrower: since when the ai stands in a beam (FreezeMs), -1 = not
+    fCoverPauseUntil: Int64; // NoCover: after stepping out of cover, do not check again until then
     fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
     // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
@@ -165,6 +167,7 @@ Type
     fTriggerAt: Int64; // KickSnipe: a missed moment, the bombs go off now (too late)
     Function SnipeAction(Var Cmd: TAiCommand): Boolean;
     Function LeaveOwnFlames(Var Cmd: TAiCommand): Boolean; // step out of the own remote flames to trigger them at an enemy
+    Procedure LeaveCover(Var Cmd: TAiCommand); // flamethrower: do not hide idle behind a bomb (NoCover)
     Function RemoteWaitMs(): integer; // how long own remote bombs wait at most (longer while sniping)
     Function SnipeOn(): Boolean; // KickSnipe: rolled, or always in the endgame (few bricks left)
     Procedure StartSpecial(Const Cmd: TAiCommand);
@@ -364,6 +367,7 @@ Begin
   FillChar(fBeamSince, SizeOf(fBeamSince), $FF); // all -1
   fBeamStaySince := -1;
   fBeamHitSince := -1;
+  fCoverPauseUntil := 0;
   fSpecialBomb := Point(-1, -1);
   fLeaveOwnFlames := false;
   fSeenTime := 0;
@@ -1341,6 +1345,57 @@ Begin
   result := true;
 End;
 
+Function Sgn(v: integer): integer;
+Begin
+  If v > 0 Then result := 1 Else If v < 0 Then result := -1 Else result := 0;
+End;
+
+Procedure TSmartAi.LeaveCover(Var Cmd: TAiCommand);
+Var
+  i, d, k, n: integer;
+  p: TPoint;
+  m: TAiMoveState;
+  Covered: Boolean;
+Begin
+  (*
+   * Flamethrower (mod): the beam stops at bombs. An idle ai behind a bomb in the line of an enemy with fuel can not
+   * be hit, that is no fun. With [NoCover] it steps out sideways to a safe field (then a pause of 2 s).
+   *)
+  If (Not ModeOk) Or (fTime < fCoverPauseUntil) Or (Not Roll(sfNoCover)) Then exit;
+  Covered := false;
+  m := amNone;
+  For i := 0 To high(fInfo^.PlayerInfos) Do Begin
+    If (Not IsEnemy(i)) Or (Not Usable(i)) Or (ModeInfo.FlameFuelMs[i] <= 0) Then Continue;
+    p := PlayerField(i);
+    If (p.x <> fX) And (p.y <> fY) Then Continue;
+    n := abs(p.x - fX) + abs(p.y - fY);
+    If (n < 2) Or (n > ModeInfo.FlameRange + 1) Then Continue;
+    // A bomb between the enemy and the ai, the rest free
+    For d := 0 To 3 Do
+      If (DirX[Moves[d]] = Sgn(p.x - fX)) And (DirY[Moves[d]] = Sgn(p.y - fY)) Then m := Moves[d];
+    For k := 1 To n - 1 Do Begin
+      If fBombAt[fX + DirX[m] * k, fY + DirY[m] * k] >= 0 Then Covered := true;
+      If Not (fInfo^.Field[fX + DirX[m] * k, fY + DirY[m] * k] In WalkableFields + [fFlame]) Then Begin
+        Covered := false;
+        break;
+      End;
+    End;
+    If Covered Then break;
+  End;
+  If Not Covered Then exit;
+  // Sideways (across the line) to a safe free field
+  For d := 0 To 3 Do Begin
+    If (DirX[Moves[d]] <> 0) = (DirX[m] <> 0) Then Continue;
+    p := Point(fX + DirX[Moves[d]], fY + DirY[Moves[d]]);
+    If Inside(p.x, p.y) And (fInfo^.Field[p.x, p.y] In WalkableFields) And (fBombAt[p.x, p.y] = -1) And (fDanger[p.x, p.y] = Safe) Then Begin
+      Cmd.MoveState := Moves[d];
+      fCoverPauseUntil := fTime + 2000;
+      LogGoal('leaves the cover of a bomb (flamethrower)', p.x, p.y);
+      exit;
+    End;
+  End;
+End;
+
 Function TSmartAi.LeaveOwnFlames(Var Cmd: TAiCommand): Boolean;
 Var
   Dist: TIntGrid;
@@ -1872,6 +1927,7 @@ Begin
   BuildEnemyLines;
   result := Decide();
   If result.Action <> apFirst Then fBombTries := 0; // only presses in a row count
+  If (result.MoveState = amNone) And (result.Action = apNone) Then LeaveCover(result);
   // Flamethrower: hit by a beam the ai is startled and stands still for FreezeMs (not if a bomb is about to explode)
   If fInBeam[fX, fY] Then Begin
     If fBeamHitSince < 0 Then fBeamHitSince := fTime;

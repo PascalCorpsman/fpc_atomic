@@ -107,6 +107,7 @@ Invalid values are limited to their range, missing keys get the default.
 | `[Invuln]` | 30 / 65 / 100 | Invulnerability (mods): no attack on enemies that can not be hit, and walks through flames while the ai itself can not be hit. |
 | `[WhiteBomb]` | 100 | White bomb mod: does not flee from a white bomb (no flames), and places an own white bomb at once (it only turns the screens of the enemies white). |
 | `[StartGlove]` | 0 / 50 / 100 | Glove at start mod: throws a bomb at the start into bricks or at an enemy, before the first step. |
+| `[NoCover]` | 100 / 50 / 0 | Flamethrower mod: the beam stops at bombs. An idle ai behind a bomb in the line of an enemy with a flamethrower steps out of the cover, so it can be hit (a strong ai keeps its cover). |
 
 ### Further keys of the abilities
 

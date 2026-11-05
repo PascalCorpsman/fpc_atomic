@@ -38,7 +38,7 @@ Type
     sfKick, sfPunch, sfGrab, sfSpooger, sfTraps,
     sfTeamSafety, sfOpenSpace, sfInfect, sfHuntedFlees,
     sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd, sfKickSnipe,
-    sfStun, sfBrickWalk, sfBorders, sfFlameBeam, sfInvuln, sfWhiteBomb, sfStartGlove);
+    sfStun, sfBrickWalk, sfBorders, sfFlameBeam, sfInvuln, sfWhiteBomb, sfStartGlove, sfNoCover);
 
   TSmartSettings = Record
     Difficulty: integer; // 0 = easy .. 100 = strong
@@ -62,7 +62,7 @@ Const
     'Kick', 'Punch', 'Grab', 'Spooger', 'Traps',
     'TeamSafety', 'OpenSpace', 'Infect', 'HuntedFlees',
     'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd', 'KickSnipe',
-    'Stun', 'BrickWalk', 'Borders', 'FlameBeam', 'Invuln', 'WhiteBomb', 'StartGlove');
+    'Stun', 'BrickWalk', 'Borders', 'FlameBeam', 'Invuln', 'WhiteBomb', 'StartGlove', 'NoCover');
 
   SettingsFileName = 'ai_smart.ini';
   DefaultDifficulty = 50;
@@ -97,14 +97,14 @@ Const
     100, 50, 0, 30,
     0, 0, 100, 100, 0,
     0, 30, 50,
-    100, 30, 100, 0);
+    100, 30, 100, 0, 100);
   FeatureStrong: Array[TSmartFeature] Of integer = (
     100, 100, 100, 100, 100,
     90, 70, 70, 70, 100,
     100, 100, 70, 100,
     100, 100, 100, 100, 80,
     100, 100, 100,
-    100, 100, 100, 100);
+    100, 100, 100, 100, 0);
 
   FeatureComments: Array[TSmartFeature] Of String = (
     'Attack enemies with bombs in every game mode (the old ai only attacks in hunter mode).',
@@ -132,7 +132,8 @@ Const
     'Flamethrower mod: avoid the beam of a firing player like flames, and the line in front of a player with fuel (Anticipate).',
     'Invulnerability (mods): do not attack enemies that can not be hit, and walk through flames while the ai itself can not be hit.',
     'White bomb mod: do not flee from a white bomb (no flames), and place an own white bomb at once (it only turns the screens of the enemies white).',
-    'Glove at start mod: throw a bomb at the start into bricks or at an enemy, before the first step.');
+    'Glove at start mod: throw a bomb at the start into bricks or at an enemy, before the first step.',
+    'Flamethrower mod: an idle ai behind a bomb that shields it from an enemy with a flamethrower steps out of the cover (the easier, the more often).');
 
 Function Clamp(Value, aMin, aMax: integer): integer;
 Begin
