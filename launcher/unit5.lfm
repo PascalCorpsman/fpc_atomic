@@ -123,6 +123,50 @@ object Form5: TForm5
     ItemHeight = 15
     Style = csDropDownList
   end
+  object Label12: TLabel
+    AnchorSideTop.Control = ComboBox7
+    AnchorSideTop.Side = asrCenter
+    Left = 436
+    Height = 15
+    Top = 332
+    Caption = 'AI'
+    FocusControl = ComboBox7
+  end
+  object ComboBox7: TComboBox
+    AnchorSideTop.Control = ComboBox6
+    AnchorSideTop.Side = asrBottom
+    Hint = 'The ai of the computer players when you host a game.'#13#10'Original: the ai of FPC Atomic.'#13#10'Smart: plays smarter, its strength is set with the difficulty.'
+    Left = 540
+    Height = 23
+    Top = 328
+    Width = 216
+    BorderSpacing.Top = 9
+    ItemHeight = 15
+    Style = csDropDownList
+    OnChange = ComboBox7Change
+  end
+  object Label13: TLabel
+    AnchorSideTop.Control = SpinEdit4
+    AnchorSideTop.Side = asrCenter
+    Left = 436
+    Height = 15
+    Top = 364
+    Caption = 'Difficulty'
+    FocusControl = SpinEdit4
+  end
+  object SpinEdit4: TSpinEdit
+    AnchorSideTop.Control = ComboBox7
+    AnchorSideTop.Side = asrBottom
+    Hint = 'Strength of the smart ai: 0 = easy, 50 = normal, 100 = strong.'#13#10'More settings are in ai_smart.ini, see the manual of the smart ai.'
+    Left = 540
+    Height = 23
+    Top = 360
+    Width = 100
+    BorderSpacing.Top = 9
+    Increment = 5
+    MaxValue = 100
+    Value = 50
+  end
   object Label2: TLabel
     Left = 12
     Height = 15

@@ -18,21 +18,16 @@ Englisch: [README.md](README.md)
 | Nutzt nie Kick, Punch, Grab oder Spooger | Nutzt sie (`Kick`, `Punch`, `Grab`, `Spooger`) |
 | Steht ohne Ziel herum | Geht auf den nächsten Gegner zu (`Approach`) |
 
-## Ausprobieren
+## Die KI wählen
 
-Der Server lädt immer `ai.dll` (Linux: `libai.so`) aus seinem Ordner. Die Skripte bauen die Smart-KI und kopieren sie an die Stelle des Originals. Das Original wird einmal als `ai_original.dll` (`libai_original.so`) gesichert.
+Die Smart-KI liegt neben der originalen KI (`ai_smart.dll`, Linux: `libai_smart.so`, der Launcher lädt sie mit den Updates herunter).
 
-```sh
-# Windows (PowerShell), der Spielordner ist der mit atomic_server.exe
-ai_smart\try_ai.ps1 -GameDir <Spielordner>
-ai_smart\try_ai.ps1 -GameDir <Spielordner> -Restore     # Original zurück
+- **Launcher:** Spieloptionen, **KI** = Original oder Smart, **Schwierigkeit** 0..100 für die Smart-KI. Das Spiel gibt die Wahl an den Server weiter, den es hostet.
+- **Eigener Server:** `atomic_server -p 5521 -ai ai_smart`. Ohne `-ai`, oder wenn die Datei fehlt, lädt der Server die originale KI.
 
-# Linux
-ai_smart/try_ai.sh --gamedir <Spielordner>
-ai_smart/try_ai.sh --gamedir <Spielordner> --restore
-```
+Das Server-Log zeigt `Atomic smart ai ver. ...`, wenn die Smart-KI geladen ist.
 
-Ohne `-GameDir` / `--gamedir` wird der Ordner des Repositorys genommen. Vorher den Server beenden, oder in der Server-Konsole die KI mit `u` entladen und danach mit `a` neu laden. Das Server-Log zeigt `Atomic smart ai ver. ...`, wenn die Smart-KI geladen ist.
+**Für Entwickler:** `ai_smart\try_ai.ps1 -GameDir <Spielordner>` (Linux: `ai_smart/try_ai.sh --gamedir <Spielordner>`) baut die Smart-KI und kopiert sie in den Spielordner, neben das Original. Ohne den Parameter wird der Ordner des Repositorys genommen.
 
 ## Wo die Einstellungen liegen
 
@@ -146,4 +141,4 @@ Wie sehr sie jedes gute Powerup will, 0 (ignorieren) bis 10. Standard: `ExtraBom
 | `ai_smart.lpr` | Die Bibliothek mit denselben Exporten wie die originale KI |
 | `uatomicai_smart.pas` | Die KI |
 | `usmartsettings.pas` | Lesen und Schreiben von `ai_smart.ini`, das Log |
-| `try_ai.ps1`, `try_ai.sh` | Bauen und Einsetzen zum Ausprobieren |
+| `try_ai.ps1`, `try_ai.sh` | Bauen und in einen Spielordner kopieren (für Entwickler) |

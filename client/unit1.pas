@@ -403,6 +403,7 @@ Var
   EnterID, i: integer;
   HaveAssets, HaveSounds, GraphicsOk: Boolean;
   AssetsParam, SoundsParam, GraphicsFolder, SoundsFolder: String;
+  ini: TIniFile;
 Begin
   InitLogger();
   GameInitialized := false;
@@ -521,6 +522,13 @@ Begin
   Timer1.Interval := 17;
   OpenGLControl1.Align := alClient;
   Game := TGame.Create(OpenGLControl1);
+  // Die KI eines gehosteten Servers, wie im Launcher gewählt ([Launcher] AiLib)
+  ini := TIniFile.Create(IniPropStorage1.IniFileName);
+  Try
+    Game.AiLibName := ini.ReadString('Launcher', 'AiLib', '');
+  Finally
+    ini.Free;
+  End;
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
   RestoreWindowBounds; // Nicht in Load_Atomic_Settings, das wird auch aus den Optionen heraus aufgerufen

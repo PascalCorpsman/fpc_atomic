@@ -69,6 +69,8 @@ Var
 
 Procedure DefaultSettings(Out s: TSmartSettings; Difficulty: integer = DefaultDifficulty);
 Procedure LoadSettings(); // reads ai_smart.ini, writes the defaults if there is none
+Function SmartIniFile(): String; // the ini LoadSettings uses: next to the program if it is there, else in the config folder
+Procedure WriteDefaults(Const Filename: String; Difficulty: integer = DefaultDifficulty); // the ini with every key and comment (the launcher uses it too)
 Procedure SmartLog(Const Msg: String); // only if LogDecisions, into ai_smart.log next to the ini
 
 Implementation
@@ -163,7 +165,14 @@ Begin
   result := IncludeTrailingPathDelimiter(ExtractFileDir(ExcludeTrailingPathDelimiter(GetAppConfigDir(false)))) + 'fpc_atomic' + PathDelim;
 End;
 
-Procedure WriteDefaults(Const Filename: String);
+Function SmartIniFile(): String;
+Begin
+  // A file next to the server (and the lib, the launcher) wins, for tests with other settings
+  result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + SettingsFileName;
+  If Not FileExists(result) Then result := ConfigDir() + SettingsFileName;
+End;
+
+Procedure WriteDefaults(Const Filename: String; Difficulty: integer);
 Const
   ByDifficulty = ' (set by Difficulty, remove the ; to fix it)';
 Var
@@ -172,7 +181,7 @@ Var
   f: TSmartFeature;
   i: integer;
 Begin
-  DefaultSettings(d);
+  DefaultSettings(d, Difficulty);
   sl := TStringList.Create;
   Try
     sl.Add('; Settings of the smart ai (ai_smart.dll / libai_smart.so), see ai_smart/README.md');
@@ -254,10 +263,8 @@ Var
 Begin
   DefaultSettings(Settings);
   SettingsFile := '';
-  // A file next to the server (and the lib) wins, for tests with other settings
-  Candidate := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + SettingsFileName;
-  If Not FileExists(Candidate) Then Begin
-    Candidate := ConfigDir() + SettingsFileName;
+  Candidate := SmartIniFile();
+  If Candidate = ConfigDir() + SettingsFileName Then Begin
     // A file of version 0.01 has every value set, Difficulty would have no effect: keep it as .bak, write a new one
     Old := false;
     If FileExists(Candidate) Then Begin

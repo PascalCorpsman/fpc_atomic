@@ -18,21 +18,16 @@ German: [README_DE.md](README_DE.md)
 | Never uses kick, punch, grab or spooger | Uses them (`Kick`, `Punch`, `Grab`, `Spooger`) |
 | Stands still without a goal | Approaches the nearest enemy (`Approach`) |
 
-## Trying it
+## Choosing the ai
 
-The server always loads `ai.dll` (Linux: `libai.so`) from its folder. The scripts build the smart ai and copy it in place of the original. The original is saved once as `ai_original.dll` (`libai_original.so`).
+The smart ai is installed next to the original ai (`ai_smart.dll`, Linux: `libai_smart.so`, the launcher downloads it with the updates).
 
-```sh
-# Windows (PowerShell), the game folder is where atomic_server.exe is
-ai_smart\try_ai.ps1 -GameDir <game folder>
-ai_smart\try_ai.ps1 -GameDir <game folder> -Restore     # original back
+- **Launcher:** Game options, **AI** = Original or Smart, **Difficulty** 0..100 for the smart ai. The game passes the choice to the server it hosts.
+- **Own server:** `atomic_server -p 5521 -ai ai_smart`. Without `-ai`, or if the file is missing, the server loads the original ai.
 
-# Linux
-ai_smart/try_ai.sh --gamedir <game folder>
-ai_smart/try_ai.sh --gamedir <game folder> --restore
-```
+The server log shows `Atomic smart ai ver. ...` when the smart ai is loaded.
 
-Without `-GameDir` / `--gamedir` the repository root is used. Close the server first, or unload the ai in the server console with `u` and load it again with `a`. The server log shows `Atomic smart ai ver. ...` when the smart ai is loaded.
+**For developers:** `ai_smart\try_ai.ps1 -GameDir <game folder>` (Linux: `ai_smart/try_ai.sh --gamedir <game folder>`) builds the smart ai and copies it into the game folder, next to the original. Without the parameter the repository root is used.
 
 ## Where the settings are
 
@@ -146,4 +141,4 @@ How much it wants each good powerup, 0 (ignore) to 10. Defaults: `ExtraBomb=5`, 
 | `ai_smart.lpr` | The lib with the same exports as the original ai |
 | `uatomicai_smart.pas` | The ai |
 | `usmartsettings.pas` | Reading and writing `ai_smart.ini`, the log |
-| `try_ai.ps1`, `try_ai.sh` | Build and install for trying it |
+| `try_ai.ps1`, `try_ai.sh` | Build and copy into a game folder (for developers) |

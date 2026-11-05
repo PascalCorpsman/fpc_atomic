@@ -250,6 +250,7 @@ Type
     fPlayer: TPlayers;
 {$ENDIF}
     Settings: TAtomicSettings; // für uscreens
+    AiLibName: String; // Die KI, mit der ein gehosteter Server startet ([Launcher] AiLib, '' = Original), Parameter -ai des Servers
 
     OnNeedHideCursor: TNotifyEvent;
     OnNeedShowCursor: TNotifyEvent;
@@ -1117,6 +1118,11 @@ Begin
       p.Parameters.Add('-bind');
       p.Parameters.Add('127.0.0.1');
       log('Server only listens on 127.0.0.1 (-localhost)', llInfo);
+    End;
+    If trim(AiLibName) <> '' Then Begin
+      p.Parameters.Add('-ai');
+      p.Parameters.Add(trim(AiLibName));
+      log('Server ai: ' + trim(AiLibName), llInfo);
     End;
     p.Execute;
     p.free;

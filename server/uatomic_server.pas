@@ -3395,6 +3395,9 @@ Begin
   End;
   If AiInit() Then Begin
     logshow(format('Ai "%s" loaded successfully!', [AiVersion()]), llInfo);
+    If AiLibLoaded <> AiLibName Then Begin
+      logshow(format('The ai "%s" was not found (%s), the original ai is used.', [AiLibName, AiLibFile(AiLibName)]), llWarning);
+    End;
   End
   Else Begin
     logshow('Failure on Ai load (AiInit returned false).', llError);

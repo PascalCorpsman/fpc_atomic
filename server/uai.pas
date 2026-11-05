@@ -68,6 +68,9 @@ Type
    *)
   TAiHandlePlayerEx = Function(PlayerIndex: cuint32; Var AiInfo: TAiInfo; Var ModeInfo: TAiModeInfo): TAiCommand; Cdecl;
 
+Const
+  DefaultAiLibName = 'ai'; // Die Original KI (ai.dll / libai.so)
+
 Var
   AiInit: TAiInit = Nil;
   AiDeInit: TAiDeInit = Nil;
@@ -78,6 +81,14 @@ Var
   AiHandlePlayerEx: TAiHandlePlayerEx = Nil; // Nil, wenn die Lib es nicht exportiert
   AiGameModesMask: cuint32 = 0; // Die unterstützten Spielmodi der geladenen Lib (AiMode_*), 0 = keine Lib geladen
 
+  (*
+   * Die gewünschte KI (Parameter -ai), ohne Endung: 'ai' = ai.dll / libai.so, 'ai_smart' = ai_smart.dll / libai_smart.so.
+   * Gibt es sie nicht, lädt LoadAiLib die Original KI 'ai', AiLibLoaded sagt welche geladen ist.
+   *)
+  AiLibName: String = DefaultAiLibName;
+  AiLibLoaded: String = '';
+
+Function AiLibFile(Const Name: String): String; // Der Dateiname der KI Name im Ordner des Servers
 Function LoadAiLib(): Boolean;
 Procedure UnLoadAiLib;
 
@@ -88,17 +99,29 @@ Uses dynlibs, uatomic_global;
 Var
   Lib: TLibHandle = 0;
 
-Function LoadAiLib(): Boolean;
-Var
-  Filename: String;
-  GameModes: TAiGameModes;
+Function AiLibFile(Const Name: String): String;
 Begin
 {$IFDEF Windows}
-  Filename := 'ai.dll';
+  result := Name + '.dll';
 {$ELSE}
-  Filename := 'libai.so';
+  result := 'lib' + Name + '.so';
 {$ENDIF}
-  Filename := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Filename;
+  result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + result;
+End;
+
+Function LoadAiLib(): Boolean;
+Var
+  Filename, Name: String;
+  GameModes: TAiGameModes;
+  i: integer;
+Begin
+  // Nur ein einfacher Name (Buchstaben, Ziffern, _ und -), sonst und wenn es die Datei nicht gibt: die Original KI
+  Name := trim(AiLibName);
+  For i := 1 To length(Name) Do
+    If Not (Name[i] In ['a'..'z', 'A'..'Z', '0'..'9', '_', '-']) Then Name := '';
+  If (Name = '') Or (Not FileExists(AiLibFile(Name))) Then Name := DefaultAiLibName;
+  Filename := AiLibFile(Name);
+  AiLibLoaded := '';
   result := false;
   // Eine evtl. geladene Lib komplett entladen (mit AiDeInit), sonst zeigen die optionalen Funktionen ggf. noch in die alte Lib
   UnLoadAiLib;
@@ -156,6 +179,7 @@ Begin
   End;
 
   result := true;
+  AiLibLoaded := Name;
 End;
 
 Procedure UnLoadAiLib;
