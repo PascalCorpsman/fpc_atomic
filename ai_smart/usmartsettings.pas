@@ -51,7 +51,7 @@ Type
     AnticipateCost: integer; // Anticipate
     HurryLookAheadMs: integer; // RoundEnd
     SnipeHitChance, SnipeWaitMs, SnipeEndgameBricks: integer; // KickSnipe
-    BeamReactionMs, BeamSlowPercent: integer; // FlameBeam
+    BeamReactionMs, BeamSlowPercent, BeamFreezeMs: integer; // FlameBeam
     DelayMs, MistakeChance: integer; // Reaction
     PowerupWeight: Array[TAiField] Of integer; // Powerups, only the good ones are used
   End;
@@ -170,6 +170,7 @@ Begin
   s.SnipeEndgameBricks := 10;
   s.BeamReactionMs := Lerp(2000, 700, Difficulty); // the beam kills after FlameThrowerKillMs (default 1500) in it
   s.BeamSlowPercent := Lerp(50, 0, Difficulty);
+  s.BeamFreezeMs := Lerp(1500, 0, Difficulty);
   s.DelayMs := Lerp(250, 0, Difficulty);
   s.MistakeChance := Lerp(10, 0, Difficulty);
   For a := low(TAiField) To high(TAiField) Do Begin
@@ -251,6 +252,8 @@ Begin
             sl.Add(';ReactionMs=' + IntToStr(d.BeamReactionMs));
             sl.Add('; In a beam the ai walks slower by this many percent, like a player who is burning' + ByDifficulty);
             sl.Add(';SlowPercent=' + IntToStr(d.BeamSlowPercent));
+            sl.Add('; Hit by a beam the ai stands still this long (ms) first, it is startled (not when a bomb is about to explode)' + ByDifficulty);
+            sl.Add(';FreezeMs=' + IntToStr(d.BeamFreezeMs));
           End;
         sfKickSnipe: Begin
             sl.Add('; Chance in % to trigger at the right moment, otherwise 300..800 ms too late (the enemy may be gone)' + ByDifficulty);
@@ -343,6 +346,7 @@ Begin
     Read('KickSnipe', 'EndgameBricks', Settings.SnipeEndgameBricks, 0, 165);
     Read('FlameBeam', 'ReactionMs', Settings.BeamReactionMs, 0, 5000);
     Read('FlameBeam', 'SlowPercent', Settings.BeamSlowPercent, 0, 90);
+    Read('FlameBeam', 'FreezeMs', Settings.BeamFreezeMs, 0, 5000);
     Read('Reaction', 'DelayMs', Settings.DelayMs, 0, 2000);
     Read('Reaction', 'MistakeChance', Settings.MistakeChance, 0, 100);
     For i := 0 To high(PowerupKeys) Do Begin

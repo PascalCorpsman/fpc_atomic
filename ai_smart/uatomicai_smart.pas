@@ -52,8 +52,9 @@ Const
    *                    ADD: mods: flamethrower beams ([FlameBeam]), invulnerability ([Invuln]), white bomb ([WhiteBomb]), glove at start ([StartGlove])
    *             0.09 - ADD: [FlameBeam] ReactionMs, a flamethrower beam counts only after the reaction time (it dodged at once)
    *             0.10 - ADD: [FlameBeam] SlowPercent, in a beam the ai walks slower; reaction times for the new kill time 1500 ms
+   *             0.11 - ADD: [FlameBeam] FreezeMs, hit by a beam the ai is startled and stands still first (it walked through beams in 0.1-0.3 s)
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.10';
+  Ai_Version = 'Atomic smart ai ver. 0.11';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -150,6 +151,7 @@ Type
     fInBeam: TBoolGrid; // flamethrower: fields in a beam right now
     fSlowAcc: integer; // flamethrower: skipped steps while burning (SlowPercent)
     fBeamStaySince: Int64; // log: since when the ai stands in a beam, -1 = not
+    fBeamHitSince: Int64; // flamethrower: since when the ai stands in a beam (FreezeMs), -1 = not
     fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
     // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
@@ -361,6 +363,7 @@ Begin
   fStartGlovePending := amNone;
   FillChar(fBeamSince, SizeOf(fBeamSince), $FF); // all -1
   fBeamStaySince := -1;
+  fBeamHitSince := -1;
   fSpecialBomb := Point(-1, -1);
   fLeaveOwnFlames := false;
   fSeenTime := 0;
@@ -1867,6 +1870,18 @@ Begin
   BuildEnemyLines;
   result := Decide();
   If result.Action <> apFirst Then fBombTries := 0; // only presses in a row count
+  // Flamethrower: hit by a beam the ai is startled and stands still for FreezeMs (not if a bomb is about to explode)
+  If fInBeam[fX, fY] Then Begin
+    If fBeamHitSince < 0 Then fBeamHitSince := fTime;
+    If (fTime - fBeamHitSince < Settings.BeamFreezeMs) And
+      ((fDanger[fX, fY] = Safe) Or (fDanger[fX, fY] > 3 * fMsPerField + Settings.SafetyMs)) Then Begin
+      result.MoveState := amNone;
+      result.Action := apNone;
+      LogGoal('startled by a flamethrower beam', fX, fY);
+    End;
+  End
+  Else
+    fBeamHitSince := -1;
   // Flamethrower: a burning ai walks slower, it skips SlowPercent of its steps
   If fInBeam[fX, fY] And (result.MoveState <> amNone) And (Settings.BeamSlowPercent > 0) Then Begin
     fSlowAcc := fSlowAcc + Settings.BeamSlowPercent;

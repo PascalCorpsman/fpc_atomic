@@ -119,6 +119,7 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[RoundEnd] HurryLookAheadMs` | 3000 | Wie weit sie im Voraus auf Felder achtet, die der Hurry zumauert. |
 | `[FlameBeam] ReactionMs` | 2000 / 1200 / 700 | Die KI bemerkt einen Flammenstrahl erst, wenn er so lange feuert, wie ein Mensch, der erst reagieren muss. Der Strahl tötet nach `FlameThrowerKillMs` (Mods, Standard 1500) im Strahl: Liegt der Wert in der Nähe, ist die KI zu treffen, kleiner = schwerer zu treffen. |
 | `[FlameBeam] SlowPercent` | 50 / 25 / 0 | Im Strahl läuft die KI um so viel Prozent langsamer (sie setzt Schritte aus), wie ein Spieler, der gerade brennt. |
+| `[FlameBeam] FreezeMs` | 1500 / 750 / 0 | Vom Strahl getroffen erschrickt die KI und bleibt erst so lange stehen (nicht, wenn gleich eine Bombe explodiert). |
 | `[KickSnipe] HitChance` | 30 / 60 / 90 | Wahrscheinlichkeit in %, eine gekickte Bombe im richtigen Moment zu zünden, sonst 300..800 ms zu spät (der Gegner ist dann vielleicht weg). |
 | `[KickSnipe] WaitMs` | 8000 | So lange wartet die KI mit ihren Fernzünder-Bomben auf einen Gegner (das Spiel macht nach 15 s normale Bomben daraus). |
 | `[KickSnipe] EndgameBricks` | 10 | Endspiel: Liegen höchstens so viele Steine auf dem Feld, snipt die KI immer, wenn sie kann (außer bei `Chance=0`). |

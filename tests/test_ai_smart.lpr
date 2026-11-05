@@ -163,6 +163,11 @@ begin
   Check('flamethrower: no reaction in the first moment (ReactionMs)', c.MoveState <> amUp, c);
   c := Run(0, 0, 90); // 900 ms, more than the 700 ms of difficulty 100
   Check('flamethrower: out of the beam after the reaction time', c.MoveState = amUp, c);
+  // Startled: with FreezeMs the ai stands still in the beam first (the enemy is the approach goal, it would walk)
+  Settings.BeamFreezeMs := 750;
+  c := Run(0, 0, 50);
+  Check('flamethrower: startled, stands still in the beam (FreezeMs)', c.MoveState = amNone, c);
+  Settings.BeamFreezeMs := 0;
 
   // Invulnerable enemy: the only goal would be a bomb at him -> no bomb
   Base;
