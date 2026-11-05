@@ -161,7 +161,7 @@ begin
   Extra.FlameBeamLen[1] := 3; Extra.FlameBeamDir[1] := 2; Extra.FlameFuelMs[1] := 2000; Extra.FlameRange := 3;
   c := Run(0, 0, 1);
   Check('flamethrower: no reaction in the first moment (ReactionMs)', c.MoveState <> amUp, c);
-  c := Run(0, 0, 90); // 900 ms, more than the 700 ms of difficulty 100
+  c := Run(0, 0, 90); // 900 ms, more than the 600 ms of difficulty 100
   Check('flamethrower: out of the beam after the reaction time', c.MoveState = amUp, c);
   // Startled: with FreezeMs the ai stands still in the beam first (the enemy is the approach goal, it would walk)
   Settings.BeamFreezeMs := 750;

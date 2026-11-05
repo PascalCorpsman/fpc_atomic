@@ -667,6 +667,8 @@ Begin
         If Settings.LogDecisions Then
           SmartLog(format('P%d t=%d sees a flamethrower beam of P%d (length %d, direction %d)', [fIndex, fTime, i, ModeInfo.FlameBeamLen[i], ModeInfo.FlameBeamDir[i]]));
       End;
+      // While the ai stands in a beam it counts from its own hit (the beam may have fired before it walked in)
+      If (fBeamHitSince >= 0) And (fTime - fBeamHitSince < Settings.BeamReactionMs) Then Continue;
       If fTime - fBeamSince[i] < Settings.BeamReactionMs Then Continue;
       p := PlayerField(i);
       For k := 1 To ModeInfo.FlameBeamLen[i] Do Begin

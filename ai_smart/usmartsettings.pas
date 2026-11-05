@@ -168,7 +168,7 @@ Begin
   s.SnipeHitChance := Lerp(30, 90, Difficulty);
   s.SnipeWaitMs := 8000;
   s.SnipeEndgameBricks := 10;
-  s.BeamReactionMs := Lerp(2000, 700, Difficulty); // the beam kills after FlameThrowerKillMs (default 1500) in it
+  s.BeamReactionMs := Lerp(2200, 600, Difficulty); // the beam kills after FlameThrowerKillMs (default 1500) in it, counted from the hit
   s.BeamSlowPercent := Lerp(50, 0, Difficulty);
   s.BeamFreezeMs := Lerp(1500, 0, Difficulty);
   s.DelayMs := Lerp(250, 0, Difficulty);

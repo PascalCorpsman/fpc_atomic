@@ -117,7 +117,7 @@ Invalid values are limited to their range, missing keys get the default.
 | `[Trigger] MaxWaitMs` | 2000 | A remote bomb is triggered after this time at the latest, also without an enemy (like a normal bomb). |
 | `[Anticipate] Cost` | 3 | How much less attractive such a field is (0..10). |
 | `[RoundEnd] HurryLookAheadMs` | 3000 | How far ahead it looks for fields that the hurry walls up. |
-| `[FlameBeam] ReactionMs` | 2000 / 1200 / 700 | The ai notices a flamethrower beam only after it fired this long, like a human who needs to react. The beam kills after `FlameThrowerKillMs` (mods, default 1500) in it: near that value the ai can be hit, smaller = harder to hit. |
+| `[FlameBeam] ReactionMs` | 2200 / 1400 / 600 | The ai notices a flamethrower beam only after it fired this long (in the beam: after it was hit this long), like a human who needs to react. The beam kills after `FlameThrowerKillMs` (mods, default 1500) in it: near that value the ai can be hit, smaller = harder to hit. |
 | `[FlameBeam] SlowPercent` | 50 / 25 / 0 | In a beam the ai walks slower by this many percent (it skips steps), like a player who is burning. |
 | `[FlameBeam] FreezeMs` | 1500 / 750 / 0 | Hit by a beam the ai is startled and stands still this long first (not when a bomb is about to explode). |
 | `[KickSnipe] HitChance` | 30 / 60 / 90 | Chance in % to trigger a kicked bomb at the right moment, otherwise 300..800 ms too late (the enemy may be gone). |
