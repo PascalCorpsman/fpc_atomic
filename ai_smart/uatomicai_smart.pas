@@ -1049,7 +1049,7 @@ Function TSmartAi.TriggerNow: Boolean;
 Var
   g: TBoolGrid;
   k, i, Oldest: integer;
-  HasManual, EnemyHit: Boolean;
+  HasManual, EnemyHit, FriendHit: Boolean;
   p: TPoint;
 Begin
   result := false;
@@ -1068,15 +1068,24 @@ Begin
       FlameCells(trunc(fInfo^.Bombs[k].Position.x), trunc(fInfo^.Bombs[k].Position.y), fInfo^.Bombs[k].FlameLength, g);
   For k := 0 To high(fBombs) Do
     If g[fBombs[k].x, fBombs[k].y] Then FlameCells(fBombs[k].x, fBombs[k].y, fBombs[k].Len, g);
-  If g[fX, fY] Then exit; // never ourselves
   EnemyHit := false;
+  FriendHit := false;
   For i := 0 To high(fInfo^.PlayerInfos) Do Begin
     If Not Usable(i) Then Continue;
     p := PlayerField(i);
     If Not g[p.x, p.y] Then Continue;
-    If IsFriend(i) And Roll(sfTeamSafety) Then exit; // no friendly fire ([TeamSafety], like all bombs of the ai)
+    If IsFriend(i) And Roll(sfTeamSafety) Then FriendHit := true; // no friendly fire ([TeamSafety], like all bombs of the ai)
     If IsEnemy(i) Then EnemyHit := true;
   End;
+  // Never ourselves, never a team mate. The log says why an enemy in the flames is spared.
+  If g[fX, fY] Or FriendHit Then Begin
+    If EnemyHit Then Begin
+      If g[fX, fY] Then LogGoal('enemy in the flames, no trigger: own field in the flames', fX, fY)
+      Else LogGoal('enemy in the flames, no trigger: team mate in the flames', fX, fY);
+    End;
+    exit;
+  End;
+  If EnemyHit And (Oldest < Settings.MinReactionMs) Then LogGoal('enemy in the flames, waiting for MinReactionMs', fX, fY);
   // KickSnipe: the kicked remote bombs wait longer for an enemy, and the moment is not always hit
   If Roll(sfKickSnipe) And ((Me.Abilities And Ability_CanKick) <> 0) Then Begin
     If fTriggerDecided And (fTime >= fTriggerAt) Then Begin
