@@ -41,8 +41,11 @@ Const
    *             0.01 - Initial version, based on "Atomic ai ver. 0.08 by Corpsman"
    *             0.02 - ADD: [General] Difficulty 0..100 (default 50) sets the chances, reaction, mistakes and remote trigger time
    *                    FIX: shaking (centring, goal switching, turning for spooger / grab, escape at the border of a field)
+   *             0.03 - FIX: from the log of an ai-only game: shaking at the border of a danger zone (goals keep the reserve of the escape, no danger zone right after an escape), the escape starts one step earlier, flying bombs count as dangerous, kick / punch are carried out for 300 ms with a pause after it, punch turns first
+   *                    FIX: reaction delay only within a field (ran up and down around the goal), mistakes only change steps
+   *                    ADD: log of deaths (suicide?) and of an ai stuck on a field
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.02';
+  Ai_Version = 'Atomic smart ai ver. 0.03';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -51,6 +54,7 @@ Const
   HurryStartMs = 80000; // the hurry starts with this round time left
   HurryStepMs = 500; // one solid brick every 500 ms
   ThrowMs = 500; // AtomicBombBigFlyTime, a thrown bomb lands after this time
+  EscapeReserve = 3; // fields of reserve: the escape starts when the explosion is nearer than the way out plus this
   GameFrameRate = 10; // FrameRate of the game, the ai is called every frame
 
   Safe = High(integer); // no danger known on this field
@@ -126,6 +130,11 @@ Type
     fLastMove: TAiMoveState; // for the log of steps back (LogDecisions)
     fLastMoveTime: Int64;
 
+    fGoalMarginMs: integer; // extra reserve for endangered fields while searching the way to a goal
+    fAvoidDangerUntil: Int64; // after an escape: goals avoid endangered fields until then
+    fSpecialCmd: TAiCommand; // a kick / punch that is carried out until fSpecialUntil
+    fSpecialUntil, fSpecialPauseUntil: Int64;
+    Procedure StartSpecial(Const Cmd: TAiCommand);
     Procedure LogState(Const Cmd: TAiCommand);
 
     Function IsLastGoal(x, y: integer; Kind: TGoalKind): Boolean;
@@ -223,6 +232,13 @@ End;
 
 { TSmartAi }
 
+Procedure TSmartAi.StartSpecial(Const Cmd: TAiCommand);
+Begin
+  fSpecialCmd := Cmd;
+  fSpecialUntil := fTime + 300;
+  fSpecialPauseUntil := fTime + 1300;
+End;
+
 Procedure TSmartAi.LogState(Const Cmd: TAiCommand);
 Var
   k: integer;
@@ -277,6 +293,10 @@ Begin
     Else
       SmartLog(format('P%d survived the round (t=%d)', [fIndex, fSeenTime]));
   End;
+  fGoalMarginMs := 0;
+  fAvoidDangerUntil := 0;
+  fSpecialUntil := 0;
+  fSpecialPauseUntil := 0;
   fSeenTime := 0;
   If fIndex = 9 Then LatestAiTime := 0; // AiNewRound resets the ais 0..9 in this order
   fStuckLogged := false;
@@ -494,6 +514,20 @@ Begin
       For j := 0 To FieldHeight - 1 Do
         If g[i, j] And (fBombs[k].Time < fDanger[i, j]) Then fDanger[i, j] := fBombs[k].Time;
   End;
+  // Flying bombs (thrown, punched, carried) are not in fBombs, they land somewhere near and may explode at once:
+  // their flames count from where they are now (recomputed every frame while they fly)
+  For k := 0 To fInfo^.BombsCount - 1 Do Begin
+    If Not fInfo^.Bombs[k].Flying Then Continue;
+    p := Point(trunc(fInfo^.Bombs[k].Position.x), trunc(fInfo^.Bombs[k].Position.y));
+    If Not Inside(p.x, p.y) Then Continue;
+    t := BombDetonateTime - fInfo^.Bombs[k].LifeTime;
+    If (t < 0) Or (Not Roll(sfTimedDanger)) Then t := 0;
+    FillChar(g, SizeOf(g), 0);
+    FlameCells(p.x, p.y, fInfo^.Bombs[k].FlameLength, g);
+    For i := 0 To FieldWidth - 1 Do
+      For j := 0 To FieldHeight - 1 Do
+        If g[i, j] And (t < fDanger[i, j]) Then fDanger[i, j] := t;
+  End;
   // Ill enemies are avoided (a disease is never good), unless the ai is ill itself
   If Not Me.IsIll Then Begin
     For i := 0 To high(fInfo^.PlayerInfos) Do Begin
@@ -536,7 +570,7 @@ Function TSmartAi.Enterable(Const Danger: TIntGrid; x, y, ArriveMs: integer; Tim
 Begin
   // The field must not explode while the ai walks over it
   If Not Timed Then exit(true);
-  result := (Danger[x, y] = Safe) Or (Danger[x, y] > ArriveMs + fMsPerField + Settings.SafetyMs);
+  result := (Danger[x, y] = Safe) Or (Danger[x, y] > ArriveMs + fMsPerField + Settings.SafetyMs + fGoalMarginMs);
 End;
 
 Procedure TSmartAi.Search(sx, sy, StartMs: integer; Const Danger: TIntGrid; BombsBlock, Timed,
@@ -739,6 +773,7 @@ Begin
   Move := amNone;
   result := false;
   If fDanger[fX, fY] = Safe Then Begin
+    If fEscaping Then fAvoidDangerUntil := fTime + 1000; // the escape ended: do not walk straight back in
     fEscaping := false;
     exit;
   End;
@@ -754,7 +789,7 @@ Begin
     For i := 0 To FieldWidth - 1 Do
       For j := 0 To FieldHeight - 1 Do
         If (Dist[i, j] < best) And (fDanger[i, j] = Safe) Then best := Dist[i, j];
-    If (best <> NotReachable) And (fDanger[fX, fY] > (best + 2) * fMsPerField + Settings.SafetyMs) Then exit;
+    If (best <> NotReachable) And (fDanger[fX, fY] > (best + EscapeReserve) * fMsPerField + Settings.SafetyMs) Then exit;
   End;
   fEscaping := true;
   result := true;
@@ -829,7 +864,16 @@ Begin
   result.y := -1;
   result.Score := 0;
   result.Name := '';
+  (*
+   * Goals: an endangered field only with the reserve the escape wants (EscapeGoal), otherwise the ai walks in and
+   * flees back at once (shaking at the border of a danger zone). Right after an escape none at all for a while.
+   *)
+  If fTime < fAvoidDangerUntil Then
+    fGoalMarginMs := High(integer) Div 4
+  Else
+    fGoalMarginMs := (EscapeReserve + 1) * fMsPerField;
   Search(fX, fY, 0, fDanger, true, Roll(sfTimedDanger), false, fDist, fFirst);
+  fGoalMarginMs := 0;
 
   // Infect: an ill ai walks into the nearest enemy
   Ill := Me.IsIll;
@@ -1129,6 +1173,7 @@ Begin
     bx := fX + DirX[m];
     by := fY + DirY[m];
     If (Not Inside(bx, by)) Or (fBombAt[bx, by] < 0) Then Continue;
+    If fTime < fSpecialPauseUntil Then Continue; // a kick / punch was just tried
     // Kick: walk against the bomb, it slides towards the enemy
     If Roll(sfKick) And ((Me.Abilities And Ability_CanKick) <> 0) And EnemyInLine(bx, by, m, FieldWidth, Range) Then Begin
       ex := bx + DirX[m];
@@ -1137,6 +1182,7 @@ Begin
         Cmd.MoveState := m;
         Cmd.Action := apNone;
         LogGoal('kick', bx, by);
+        StartSpecial(Cmd);
         exit(true);
       End;
     End;
@@ -1147,8 +1193,10 @@ Begin
         If (fInfo^.Bombs[i].Owner = fIndex) And fInfo^.Bombs[i].ManualTrigger Then inc(k);
       If k = 0 Then Begin
         Cmd.MoveState := m;
-        Cmd.Action := apSecond;
+        // The punch goes where the figure looks: turn first (one frame, walking against the bomb)
+        If fFacing = m Then Cmd.Action := apSecond Else Cmd.Action := apNone;
         LogGoal('punch', bx, by);
+        If Cmd.Action = apSecond Then StartSpecial(Cmd);
         exit(true);
       End;
     End;
@@ -1197,7 +1245,12 @@ Begin
     LogGoal('trigger', fX, fY);
     exit;
   End;
-  // 3. Special actions with items
+  // 3. Special actions with items (a kick / punch is carried out for a moment, not dropped after one frame)
+  If (fTime < fSpecialUntil) And ((fDanger[fX, fY] = Safe) Or (fDanger[fX, fY] > 3 * fMsPerField + Settings.SafetyMs)) Then Begin
+    result := fSpecialCmd;
+    result.Action := apNone; // the action only once
+    exit;
+  End;
   If SpecialAction(result) Then exit;
   // 4. Goals
   Goal := ChooseGoal();
