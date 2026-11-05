@@ -149,6 +149,7 @@ Type
     fBeamSince: Array[0..9] Of Int64; // flamethrower: since when a player fires, -1 = not
     fInBeam: TBoolGrid; // flamethrower: fields in a beam right now
     fSlowAcc: integer; // flamethrower: skipped steps while burning (SlowPercent)
+    fBeamStaySince: Int64; // log: since when the ai stands in a beam, -1 = not
     fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
     // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
@@ -299,6 +300,17 @@ Begin
       FlameCells(fBombs[k].x, fBombs[k].y, fBombs[k].Len, g);
       If g[fX, fY] Then fSeenOwnBomb := true;
     End;
+  // Flamethrower: how long the ai stands in a beam (the beam kills after FlameThrowerKillMs in it)
+  If fInBeam[fX, fY] Then Begin
+    If fBeamStaySince < 0 Then Begin
+      fBeamStaySince := fTime;
+      SmartLog(format('P%d t=%d in a flamethrower beam on (%d,%d)', [fIndex, fTime, fX, fY]));
+    End;
+  End
+  Else If fBeamStaySince >= 0 Then Begin
+    SmartLog(format('P%d t=%d out of the beam after %d ms, last goal: %s', [fIndex, fTime, fTime - fBeamStaySince, fLastGoal]));
+    fBeamStaySince := -1;
+  End;
   // Stuck: the ai wants to walk, but stays on the same field for more than 3 s
   If (Cmd.MoveState <> amNone) And (fStuckCell.x = fX) And (fStuckCell.y = fY) Then Begin
     If (Not fStuckLogged) And (fTime - fStuckSince > 3000) Then Begin
@@ -348,6 +360,7 @@ Begin
   fStunPauseUntil := 0;
   fStartGlovePending := amNone;
   FillChar(fBeamSince, SizeOf(fBeamSince), $FF); // all -1
+  fBeamStaySince := -1;
   fSpecialBomb := Point(-1, -1);
   fLeaveOwnFlames := false;
   fSeenTime := 0;
@@ -646,7 +659,11 @@ Begin
         If Inside(j, t) Then fInBeam[j, t] := true;
       End;
       // A human needs time to react: the beam counts only after it fired for ReactionMs
-      If fBeamSince[i] < 0 Then fBeamSince[i] := fTime;
+      If fBeamSince[i] < 0 Then Begin
+        fBeamSince[i] := fTime;
+        If Settings.LogDecisions Then
+          SmartLog(format('P%d t=%d sees a flamethrower beam of P%d (length %d, direction %d)', [fIndex, fTime, i, ModeInfo.FlameBeamLen[i], ModeInfo.FlameBeamDir[i]]));
+      End;
       If fTime - fBeamSince[i] < Settings.BeamReactionMs Then Continue;
       p := PlayerField(i);
       For k := 1 To ModeInfo.FlameBeamLen[i] Do Begin
