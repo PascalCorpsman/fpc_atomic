@@ -38,6 +38,7 @@ object Form7: TForm7
     Caption = '&Generate own (recommended)'
     Font.Style = [fsBold]
     ModalResult = 6
+    OnClick = ButtonGenerateClick
     ParentFont = False
     TabOrder = 0
   end
@@ -57,6 +58,7 @@ object Form7: TForm7
     Width = 496
     Caption = 'Take them from the &CD'
     ModalResult = 7
+    OnClick = ButtonCDClick
     TabOrder = 1
   end
   object LabelCD: TLabel
