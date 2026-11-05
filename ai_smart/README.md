@@ -112,6 +112,7 @@ Invalid values are limited to their range, missing keys get the default.
 | `[RoundEnd] HurryLookAheadMs` | 3000 | How far ahead it looks for fields that the hurry walls up. |
 | `[KickSnipe] HitChance` | 30 / 60 / 90 | Chance in % to trigger a kicked bomb at the right moment, otherwise 300..800 ms too late (the enemy may be gone). |
 | `[KickSnipe] WaitMs` | 8000 | How long the ai waits with its remote bombs for an enemy (the game turns them into normal bombs after 15 s). |
+| `[KickSnipe] EndgameBricks` | 10 | Endgame: with at most this many bricks left the ai always snipes when it can (unless `Chance=0`). |
 
 ### [Reaction]
 

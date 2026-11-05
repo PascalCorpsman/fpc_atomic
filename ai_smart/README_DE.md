@@ -112,6 +112,7 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[RoundEnd] HurryLookAheadMs` | 3000 | Wie weit sie im Voraus auf Felder achtet, die der Hurry zumauert. |
 | `[KickSnipe] HitChance` | 30 / 60 / 90 | Wahrscheinlichkeit in %, eine gekickte Bombe im richtigen Moment zu zünden, sonst 300..800 ms zu spät (der Gegner ist dann vielleicht weg). |
 | `[KickSnipe] WaitMs` | 8000 | So lange wartet die KI mit ihren Fernzünder-Bomben auf einen Gegner (das Spiel macht nach 15 s normale Bomben daraus). |
+| `[KickSnipe] EndgameBricks` | 10 | Endspiel: Liegen höchstens so viele Steine auf dem Feld, snipt die KI immer, wenn sie kann (außer bei `Chance=0`). |
 
 ### [Reaction]
 

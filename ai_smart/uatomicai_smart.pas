@@ -46,8 +46,9 @@ Const
    *                    ADD: log of deaths (suicide?) and of an ai stuck on a field
    *             0.04 - ADD: KickSnipe: remote bomb, step back, kick it into a line towards an enemy, trigger it with a hit chance
    *             0.05 - KickSnipe: the bomb stops in front of players (aim at enemies in the line), series in the same direction with chain reaction, jelly: the whole bouncing way counts, step out of the line; trigger also while escaping; [TeamSafety] for sniping
+   *             0.06 - KickSnipe in the endgame: with at most [KickSnipe] EndgameBricks bricks left always
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.05';
+  Ai_Version = 'Atomic smart ai ver. 0.06';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -147,6 +148,7 @@ Type
     fTriggerAt: Int64; // KickSnipe: a missed moment, the bombs go off now (too late)
     Function SnipeAction(Var Cmd: TAiCommand): Boolean;
     Function RemoteWaitMs(): integer; // how long own remote bombs wait at most (longer while sniping)
+    Function SnipeOn(): Boolean; // KickSnipe: rolled, or always in the endgame (few bricks left)
     Procedure StartSpecial(Const Cmd: TAiCommand);
     Procedure LogState(Const Cmd: TAiCommand);
 
@@ -1101,7 +1103,7 @@ Begin
   End;
   If EnemyHit And (Oldest < Settings.MinReactionMs) Then LogGoal('enemy in the flames, waiting for MinReactionMs', fX, fY);
   // KickSnipe: the kicked remote bombs wait longer for an enemy, and the moment is not always hit
-  If Roll(sfKickSnipe) And ((Me.Abilities And Ability_CanKick) <> 0) Then Begin
+  If SnipeOn() And ((Me.Abilities And Ability_CanKick) <> 0) Then Begin
     If fTriggerDecided And (fTime >= fTriggerAt) Then Begin
       fTriggerDecided := false;
       exit(true); // the missed moment: too late
@@ -1122,10 +1124,24 @@ Begin
   result := Oldest >= Settings.MaxWaitMs;
 End;
 
+Function TSmartAi.SnipeOn: Boolean;
+Var
+  i, j, n: integer;
+Begin
+  If Settings.Chance[sfKickSnipe] <= 0 Then exit(false);
+  If Roll(sfKickSnipe) Then exit(true);
+  // Endgame: with (almost) no bricks left there is nothing else to do with the bombs
+  n := 0;
+  For i := 0 To FieldWidth - 1 Do
+    For j := 0 To FieldHeight - 1 Do
+      If fInfo^.Field[i, j] = fBrick Then inc(n);
+  result := n <= Settings.SnipeEndgameBricks;
+End;
+
 Function TSmartAi.RemoteWaitMs: integer;
 Begin
   result := Settings.MaxWaitMs;
-  If Roll(sfKickSnipe) And ((Me.Abilities And Ability_CanKick) <> 0) And (Settings.SnipeWaitMs > result) Then
+  If SnipeOn() And ((Me.Abilities And Ability_CanKick) <> 0) And (Settings.SnipeWaitMs > result) Then
     result := Settings.SnipeWaitMs;
 End;
 
@@ -1213,7 +1229,7 @@ Begin
   End;
   // Start: kick and remote bombs, a free bomb, a safe field and a line where the bomb slides near an enemy
   If fTime < fSnipePauseUntil Then exit;
-  If Not Roll(sfKickSnipe) Then exit;
+  If Not SnipeOn() Then exit;
   If ((Me.Abilities And Ability_CanKick) = 0) Or ((Me.Abilities And Ability_CanTrigger) = 0) Then exit;
   If (Me.AvailableBombs <= 0) Or (fDanger[fX, fY] <> Safe) Or (fBombAt[fX, fY] <> -1) Or
     Not (fInfo^.Field[fX, fY] In BombPlaceableFields) Then exit;

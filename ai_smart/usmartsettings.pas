@@ -49,7 +49,7 @@ Type
     MinReactionMs, MaxWaitMs: integer; // Trigger
     AnticipateCost: integer; // Anticipate
     HurryLookAheadMs: integer; // RoundEnd
-    SnipeHitChance, SnipeWaitMs: integer; // KickSnipe
+    SnipeHitChance, SnipeWaitMs, SnipeEndgameBricks: integer; // KickSnipe
     DelayMs, MistakeChance: integer; // Reaction
     PowerupWeight: Array[TAiField] Of integer; // Powerups, only the good ones are used
   End;
@@ -153,6 +153,7 @@ Begin
   s.HurryLookAheadMs := 3000;
   s.SnipeHitChance := Lerp(30, 90, Difficulty);
   s.SnipeWaitMs := 8000;
+  s.SnipeEndgameBricks := 10;
   s.DelayMs := Lerp(250, 0, Difficulty);
   s.MistakeChance := Lerp(10, 0, Difficulty);
   For a := low(TAiField) To high(TAiField) Do Begin
@@ -234,6 +235,8 @@ Begin
             sl.Add(';HitChance=' + IntToStr(d.SnipeHitChance));
             sl.Add('; How long (ms) the ai waits with its remote bombs for an enemy (the game turns them into normal bombs after 15 s)');
             sl.Add('WaitMs=' + IntToStr(d.SnipeWaitMs));
+            sl.Add('; Endgame: with at most this many bricks left the ai always snipes when it can (unless Chance=0)');
+            sl.Add('EndgameBricks=' + IntToStr(d.SnipeEndgameBricks));
           End;
       End;
     End;
@@ -315,6 +318,7 @@ Begin
     Read('RoundEnd', 'HurryLookAheadMs', Settings.HurryLookAheadMs, 0, 20000);
     Read('KickSnipe', 'HitChance', Settings.SnipeHitChance, 0, 100);
     Read('KickSnipe', 'WaitMs', Settings.SnipeWaitMs, 0, 14000);
+    Read('KickSnipe', 'EndgameBricks', Settings.SnipeEndgameBricks, 0, 165);
     Read('Reaction', 'DelayMs', Settings.DelayMs, 0, 2000);
     Read('Reaction', 'MistakeChance', Settings.MistakeChance, 0, 100);
     For i := 0 To high(PowerupKeys) Do Begin
