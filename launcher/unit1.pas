@@ -2006,11 +2006,11 @@ Begin
     AiName := R_AiOriginal; // Fehlt die gewählte KI, nimmt der Server auch die Original KI
   End
   Else If AiLib = 'ai_smart' Then Begin
-    AiName := R_AiSmart + ' ' + IntToStr(DefaultDifficulty);
+    AiName := R_AiSmart + ' ' + IntToStr(DefaultDifficulty) + '%';
     If FileExists(SmartIniFile()) Then Begin
       Smart := TIniFile.Create(SmartIniFile());
       Try
-        AiName := R_AiSmart + ' ' + IntToStr(Smart.ReadInteger('General', 'Difficulty', DefaultDifficulty));
+        AiName := R_AiSmart + ' ' + IntToStr(Smart.ReadInteger('General', 'Difficulty', DefaultDifficulty)) + '%';
       Finally
         Smart.free;
       End;
