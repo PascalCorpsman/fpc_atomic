@@ -381,7 +381,9 @@ Begin
       s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
     End;
 {$ENDIF}
-    OpenGL_ASCII_Font.Textout(5, 5, atomic_dialog_Layer + atomic_EPSILON, s);
+    // Über der Punkteanzeige der Spieler (atomic_dialog_Layer + atomic_EPSILON), sonst ist sie verdeckt.
+    // Höher als 1.0 geht nicht, Go2d stellt nur -1..1 dar
+    OpenGL_ASCII_Font.Textout(5, 5, atomic_dialog_Layer + 2 * atomic_EPSILON, s);
     Exit2d();
   End;
   OpenGLControl1.SwapBuffers;
