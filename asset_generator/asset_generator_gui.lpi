@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="12"/>
+    <Version Value="13"/>
     <General>
       <SessionStorage Value="InProjectDir"/>
       <Title Value="asset_generator_gui"/>
@@ -85,7 +85,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);$(ProjPath)"/>
-      <OtherUnitFiles Value="../units"/>
+      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)-gui"/>
     </SearchPaths>
     <CodeGeneration>
@@ -96,6 +96,7 @@
     <Linking>
       <Debugging>
         <GenerateDebugInfo Value="False"/>
+        <DebugInfoType Value="dsDwarf3"/>
       </Debugging>
       <Options>
         <Win32>
