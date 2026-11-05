@@ -38,7 +38,7 @@ Type
     sfKick, sfPunch, sfGrab, sfSpooger, sfTraps,
     sfTeamSafety, sfOpenSpace, sfInfect, sfHuntedFlees,
     sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd, sfKickSnipe,
-    sfStun, sfBrickWalk, sfBorders);
+    sfStun, sfBrickWalk, sfBorders, sfFlameBeam, sfInvuln, sfWhiteBomb, sfStartGlove);
 
   TSmartSettings = Record
     Difficulty: integer; // 0 = easy .. 100 = strong
@@ -61,7 +61,7 @@ Const
     'Kick', 'Punch', 'Grab', 'Spooger', 'Traps',
     'TeamSafety', 'OpenSpace', 'Infect', 'HuntedFlees',
     'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd', 'KickSnipe',
-    'Stun', 'BrickWalk', 'Borders');
+    'Stun', 'BrickWalk', 'Borders', 'FlameBeam', 'Invuln', 'WhiteBomb', 'StartGlove');
 
   SettingsFileName = 'ai_smart.ini';
   DefaultDifficulty = 50;
@@ -95,13 +95,15 @@ Const
     0, 0, 0, 0, 0,
     100, 50, 0, 30,
     0, 0, 100, 100, 0,
-    0, 30, 50);
+    0, 30, 50,
+    100, 30, 100, 0);
   FeatureStrong: Array[TSmartFeature] Of integer = (
     100, 100, 100, 100, 100,
     90, 70, 70, 70, 100,
     100, 100, 70, 100,
     100, 100, 100, 100, 80,
-    100, 100, 100);
+    100, 100, 100,
+    100, 100, 100, 100);
 
   FeatureComments: Array[TSmartFeature] Of String = (
     'Attack enemies with bombs in every game mode (the old ai only attacks in hunter mode).',
@@ -125,7 +127,11 @@ Const
     'Sniping (needs kick and remote bombs): place a remote bomb, kick it into a free line towards an enemy and trigger it when the enemy is in its flames, also several bombs.',
     'Boxing glove mod (needs the punch item): stun an enemy right in front of the ai.',
     'Walk through bricks mod: walk over bricks while the time lasts (also to escape), never stay in one when it ends.',
-    'Open borders and teleporters mod: walk out over an open border (comes in on the other side), throw bombs over it; teleporters are avoided like holes.');
+    'Open borders and teleporters mod: walk out over an open border (comes in on the other side), throw bombs over it; teleporters are avoided like holes.',
+    'Flamethrower mod: avoid the beam of a firing player like flames, and the line in front of a player with fuel (Anticipate).',
+    'Invulnerability (mods): do not attack enemies that can not be hit, and walk through flames while the ai itself can not be hit.',
+    'White bomb mod: do not flee from a white bomb (no flames), and place an own white bomb at once (it only turns the screens of the enemies white).',
+    'Glove at start mod: throw a bomb at the start into bricks or at an enemy, before the first step.');
 
 Function Clamp(Value, aMin, aMax: integer): integer;
 Begin

@@ -167,6 +167,13 @@ typedef struct {
     uint32_t ModFlags;       // AiModFlag_* of the mods that are active right now
     int32_t BrickWalkMs[10]; // Per player: time in ms the player can still walk through bricks (0 = not)
     int32_t PunchStunCooldownMs[10]; // Per player: time in ms until the boxing glove can stun again (0 = ready)
+    int32_t InvulnMs[10];    // Per player: time in ms the player can not be hit (0 = can be hit)
+    int32_t FlameBeamLen[10]; // Per player: length of the flamethrower beam in fields right now (0 = not firing)
+    int32_t FlameBeamDir[10]; // Per player: direction the player looks (and fires): 0 = right, 1 = up, 2 = left, 3 = down
+    int32_t FlameFuelMs[10]; // Per player: flamethrower fuel in ms (0 = no flamethrower)
+    int32_t FlameRange;      // Maximum length of a flamethrower beam in fields
+    int32_t WhiteBombs[10];  // Per player: how many white bombs (mod) the player places next
+    int32_t StartGlove[10];  // Per player: 1 = glove at start, the player can throw a bomb until the first step
 } TAiModeInfo_t;
 
 #define AiModFlag_WrapLeftRight 1   // Open borders: left / right

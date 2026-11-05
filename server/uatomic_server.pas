@@ -2837,9 +2837,16 @@ Begin
     If fActualField.PortalsLeftRight Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PortalLeftRight;
     If fActualField.PortalsTopBottom Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PortalTopBottom;
     If fModSettings.PunchStun Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PunchStun;
+    ModeInfo.FlameRange := fModSettings.FlameThrowerRange;
     For i := 0 To high(fPLayer) Do Begin
       ModeInfo.BrickWalkMs[i] := fPLayer[i].BrickWalkTimer;
       ModeInfo.PunchStunCooldownMs[i] := fPLayer[i].PunchStunCooldown;
+      ModeInfo.InvulnMs[i] := fPLayer[i].InvulnTimer;
+      ModeInfo.FlameBeamLen[i] := fPLayer[i].Info.FlameThrowerLen;
+      ModeInfo.FlameBeamDir[i] := (trunc(fPLayer[i].Info.Direction) Div 90) Mod 4;
+      ModeInfo.FlameFuelMs[i] := fPLayer[i].FlameThrowerFuel;
+      ModeInfo.WhiteBombs[i] := fPLayer[i].WhiteBombs;
+      ModeInfo.StartGlove[i] := ord(fPLayer[i].StartGlove);
     End;
   End;
   // Die Spieler Bewegen

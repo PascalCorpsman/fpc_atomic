@@ -103,6 +103,10 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[Stun]` | 0 / 50 / 100 | Boxhandschuh-Mod, braucht das Punch-Item: betäubt einen Gegner direkt vor der KI (nur ohne eigene Fernzünder-Bomben, dieselbe Taste zündet sie). |
 | `[BrickWalk]` | 30 / 65 / 100 | Mod „durch Blöcke laufen“: läuft über Steine, solange die Zeit reicht, auch zur Flucht, und bleibt nie in einem stehen, wenn sie endet. |
 | `[Borders]` | 50 / 75 / 100 | Mod „offene Grenzen“: läuft über einen offenen Rand hinaus (kommt auf der anderen Seite herein), auch zur Flucht, und wirft Bomben darüber (Grab). Teleporter meidet sie wie Löcher. |
+| `[FlameBeam]` | 100 | Flammenwerfer-Mod: meidet den Strahl eines feuernden Spielers wie Flammen, und die Linie vor einem Gegner mit Tankfüllung. |
+| `[Invuln]` | 30 / 65 / 100 | Unverwundbarkeit (Mods): greift keine Gegner an, die gerade nicht getroffen werden können, und läuft durch Flammen, solange sie selbst unverwundbar ist. |
+| `[WhiteBomb]` | 100 | Weiße-Bombe-Mod: flieht nicht vor einer weißen Bombe (keine Flammen) und legt eine eigene weiße Bombe sofort (sie macht nur die Bildschirme der Gegner weiß). |
+| `[StartGlove]` | 0 / 50 / 100 | Mod „Handschuh beim Start“: wirft vor dem ersten Schritt eine Bombe in Steine oder auf einen Gegner. |
 
 ### Weitere Schlüssel der Fähigkeiten
 

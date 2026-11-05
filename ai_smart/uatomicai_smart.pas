@@ -48,8 +48,10 @@ Const
    *             0.05 - KickSnipe: the bomb stops in front of players (aim at enemies in the line), series in the same direction with chain reaction, jelly: the whole bouncing way counts, step out of the line; trigger also while escaping; [TeamSafety] for sniping
    *             0.06 - KickSnipe in the endgame: with at most [KickSnipe] EndgameBricks bricks left always
    *             0.07 - ADD: mods from TAiModeInfo: open borders ([Borders], also grab over the border, teleporters like holes), walk through bricks ([BrickWalk]), boxing glove ([Stun])
+   *             0.08 - FIX: boxing glove turn / punch, kick only with time left, step out of the own remote flames to trigger
+   *                    ADD: mods: flamethrower beams ([FlameBeam]), invulnerability ([Invuln]), white bomb ([WhiteBomb]), glove at start ([StartGlove])
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.07';
+  Ai_Version = 'Atomic smart ai ver. 0.08';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -141,6 +143,7 @@ Type
     fLeaveOwnFlames: Boolean; // an enemy is in the flames of the own remote bombs, but the ai too: step out, then trigger
     fOwnFlames: TBoolGrid;
     fStunPending: Boolean; // boxing glove: turned in the last frame, punch now
+    fStartGlovePending: TAiMoveState; // glove at start: turned in the last frame, throw now
     fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
     // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
@@ -174,6 +177,9 @@ Type
     Function Wrap(Var x, y: integer): Boolean; // open borders: a field outside comes in on the other side, false = really outside
     Function IsPortal(x, y: integer): Boolean; // an active teleporter (mod), it acts like a hole
     Function BrickWalkMs(): integer; // how long the ai can still walk through bricks (mod)
+    Function ModeOk(): Boolean; // the server sent all fields of TAiModeInfo
+    Function Invulnerable(i: integer; Ms: integer): Boolean; // player i can not be hit for at least Ms more (mod)
+    Function StartGloveThrow(Var Cmd: TAiCommand): Boolean; // glove at start (mod)
 
     Procedure FlameCells(x, y, Len: integer; Var Grid: TBoolGrid);
     Procedure BuildBombs;
@@ -209,6 +215,8 @@ Const
   DirX: Array[TAiMoveState] Of integer = (0, -1, 1, 0, 0);
   DirY: Array[TAiMoveState] Of integer = (0, 0, 0, -1, 1);
   Moves: Array[0..3] Of TAiMoveState = (amLeft, amRight, amUp, amDown);
+  BeamDX: Array[0..3] Of integer = (1, 0, -1, 0); // FlameBeamDir: 0 = right, 1 = up, 2 = left, 3 = down
+  BeamDY: Array[0..3] Of integer = (0, -1, 0, 1);
   NoPoint: TPoint = (x: - 1; y: - 1);
 
   BrickValue = 10;
@@ -333,6 +341,7 @@ Begin
   fSpecialPauseUntil := 0;
   fStunPending := false;
   fStunPauseUntil := 0;
+  fStartGlovePending := amNone;
   fSpecialBomb := Point(-1, -1);
   fLeaveOwnFlames := false;
   fSeenTime := 0;
@@ -474,6 +483,17 @@ Begin
     (((ModeInfo.ModFlags And AiModFlag_PortalLeftRight) <> 0) And (y = FieldHeight Div 2) And ((x = 0) Or (x = FieldWidth - 1)));
 End;
 
+Function TSmartAi.ModeOk: Boolean;
+Begin
+  result := ModeInfo.Size >= SizeOf(TAiModeInfo); // an older server sends fewer fields (the rest stays 0)
+End;
+
+Function TSmartAi.Invulnerable(i: integer; Ms: integer): Boolean;
+Begin
+  // Player i can not be hit for at least Ms more
+  result := ModeOk And Roll(sfInvuln) And (ModeInfo.InvulnMs[i] > Ms);
+End;
+
 Function TSmartAi.BrickWalkMs: integer;
 Begin
   result := 0;
@@ -604,6 +624,22 @@ Begin
       For j := 0 To FieldHeight - 1 Do
         If g[i, j] And (t < fDanger[i, j]) Then fDanger[i, j] := t;
   End;
+  // Flamethrower (mod): the beam of a firing player is like flames
+  If ModeOk And Roll(sfFlameBeam) Then
+    For i := 0 To high(fInfo^.PlayerInfos) Do Begin
+      If (i = fIndex) Or (Not Usable(i)) Or (ModeInfo.FlameBeamLen[i] <= 0) Then Continue;
+      p := PlayerField(i);
+      For k := 1 To ModeInfo.FlameBeamLen[i] Do Begin
+        j := p.x + k * BeamDX[ModeInfo.FlameBeamDir[i] And 3];
+        t := p.y + k * BeamDY[ModeInfo.FlameBeamDir[i] And 3];
+        If Inside(j, t) Then fDanger[j, t] := 0;
+      End;
+    End;
+  // Invulnerable (mods): flames that come and go while the ai can not be hit do no harm (not the hurry, it ends that)
+  If Invulnerable(fIndex, 0) Then
+    For i := 0 To FieldWidth - 1 Do
+      For j := 0 To FieldHeight - 1 Do
+        If (fDanger[i, j] <> Safe) And (fDanger[i, j] + 1000 < ModeInfo.InvulnMs[fIndex]) Then fDanger[i, j] := Safe;
   // Ill enemies are avoided (a disease is never good), unless the ai is ill itself
   If Not Me.IsIll Then Begin
     For i := 0 To high(fInfo^.PlayerInfos) Do Begin
@@ -629,13 +665,24 @@ End;
 
 Procedure TSmartAi.BuildEnemyLines;
 Var
-  i: integer;
+  i, k, bx, by: integer;
   p: TPoint;
 Begin
   FillChar(fEnemyLine, SizeOf(fEnemyLine), 0);
   If Not Roll(sfAnticipate) Then exit;
   For i := 0 To high(fInfo^.PlayerInfos) Do Begin
     If (Not IsEnemy(i)) Or (Not Usable(i)) Then Continue;
+    // Flamethrower (mod): the line in front of an enemy with fuel, he can fire any moment
+    If ModeOk And Roll(sfFlameBeam) And (ModeInfo.FlameFuelMs[i] > 0) Then Begin
+      p := PlayerField(i);
+      For k := 1 To ModeInfo.FlameRange Do Begin
+        bx := p.x + k * BeamDX[ModeInfo.FlameBeamDir[i] And 3];
+        by := p.y + k * BeamDY[ModeInfo.FlameBeamDir[i] And 3];
+        If Not Inside(bx, by) Then break;
+        If Not (fInfo^.Field[bx, by] In WalkableFields + [fFlame]) Then break;
+        fEnemyLine[bx, by] := true;
+      End;
+    End;
     If fInfo^.PlayerInfos[i].AvailableBombs <= 0 Then Continue;
     p := PlayerField(i);
     FlameCells(p.x, p.y, fInfo^.PlayerInfos[i].FlameLength, fEnemyLine);
@@ -832,6 +879,7 @@ Begin
       If g[fBombs[k].x, fBombs[k].y] Then FlameCells(fBombs[k].x, fBombs[k].y, fBombs[k].Len, g);
   For i := 0 To high(fInfo^.PlayerInfos) Do Begin
     If (Not IsEnemy(i)) Or (Not Usable(i)) Then Continue;
+    If Invulnerable(i, BombDetonateTime) Then Continue; // can not be hit when the bomb explodes
     p := PlayerField(i);
     If g[p.x, p.y] Then Begin
       inc(result);
@@ -1140,7 +1188,7 @@ Begin
     p := PlayerField(i);
     If Not g[p.x, p.y] Then Continue;
     If IsFriend(i) And Roll(sfTeamSafety) Then FriendHit := true; // no friendly fire ([TeamSafety], like all bombs of the ai)
-    If IsEnemy(i) Then EnemyHit := true;
+    If IsEnemy(i) And (Not Invulnerable(i, 0)) Then EnemyHit := true;
   End;
   // Never ourselves, never a team mate. The log says why an enemy in the flames is spared.
   fLeaveOwnFlames := g[fX, fY] And EnemyHit And (Not FriendHit) And (Oldest >= Settings.MinReactionMs);
@@ -1187,6 +1235,68 @@ Begin
     For j := 0 To FieldHeight - 1 Do
       If fInfo^.Field[i, j] = fBrick Then inc(n);
   result := n <= Settings.SnipeEndgameBricks;
+End;
+
+Function TSmartAi.StartGloveThrow(Var Cmd: TAiCommand): Boolean;
+Var
+  d, k, Hits, Burnt, best, bestValue, Enemies, FreeAround: integer;
+  m: TAiMoveState;
+  l, b: TPoint;
+  Bricks: TBoolGrid;
+  Cells: TPointList;
+  HitFriend: Boolean;
+Begin
+  (*
+   * Glove at start (mod): until the first step a bomb can be thrown 3 fields (place + throw = apFirstDouble). A step
+   * ends it, so the ai only turns towards a side that is blocked (pressing against a wall turns without a step).
+   *)
+  result := false;
+  If fStartGlovePending <> amNone Then Begin
+    Cmd.Action := apFirstDouble;
+    Cmd.MoveState := amNone;
+    fStartGlovePending := amNone;
+    exit(true);
+  End;
+  If (Not ModeOk) Or (Not Roll(sfStartGlove)) Or (ModeInfo.StartGlove[fIndex] = 0) Then exit;
+  If ((Me.Abilities And Ability_CanSpoog) <> 0) Or (Me.AvailableBombs <= 0) Or (fBombAt[fX, fY] <> -1) Or
+    Not (fInfo^.Field[fX, fY] In BombPlaceableFields) Then exit;
+  For k := 0 To FieldWidth - 1 Do
+    For d := 0 To FieldHeight - 1 Do
+      Bricks[k, d] := fInfo^.Field[k, d] = fBrick;
+  best := -1;
+  bestValue := 0;
+  For d := 0 To 3 Do Begin
+    m := Moves[d];
+    b := Point(fX + DirX[m], fY + DirY[m]);
+    // Turning without a step only towards a blocked side (or the side the ai already looks to)
+    If (fFacing <> m) And Inside(b.x, b.y) And (fInfo^.Field[b.x, b.y] In WalkableFields + GoodPowerUps + BadPowerUps) And
+      (fBombAt[b.x, b.y] = -1) Then Continue;
+    l := Point(fX + DirX[m] * 3, fY + DirY[m] * 3);
+    If (Not Wrap(l.x, l.y)) Or Not (fInfo^.Field[l.x, l.y] In BombPlaceableFields) Or (fBombAt[l.x, l.y] <> -1) Then Continue;
+    Hits := CountBrickHits(l.x, l.y, Bricks, Burnt);
+    Enemies := EnemiesHit(l.x, l.y, FreeAround);
+    If Hits + 4 * Enemies <= bestValue Then Continue;
+    Cells := Nil;
+    setlength(Cells, 1);
+    Cells[0] := l;
+    If Not CanSurviveBombs(Cells, fX, fY, ThrowMs, HitFriend) Then Continue;
+    If HitFriend And Roll(sfTeamSafety) Then Continue;
+    best := d;
+    bestValue := Hits + 4 * Enemies;
+  End;
+  If best < 0 Then exit;
+  m := Moves[best];
+  LogGoal('glove at start', fX + DirX[m] * 3, fY + DirY[m] * 3);
+  If fFacing = m Then Begin
+    Cmd.Action := apFirstDouble;
+    Cmd.MoveState := amNone;
+  End
+  Else Begin
+    Cmd.Action := apNone;
+    Cmd.MoveState := m; // against the blocked side: only turns
+    fStartGlovePending := m;
+  End;
+  result := true;
 End;
 
 Function TSmartAi.LeaveOwnFlames(Var Cmd: TAiCommand): Boolean;
@@ -1610,6 +1720,15 @@ Begin
     exit;
   End;
   If LeaveOwnFlames(result) Then exit;
+  // White bomb (mod): no flames, it only turns the screens of the enemies white, place it at once
+  If ModeOk And Roll(sfWhiteBomb) And (ModeInfo.WhiteBombs[fIndex] > 0) And (fBombAt[fX, fY] = -1) And
+    (fInfo^.Field[fX, fY] In BombPlaceableFields) And (Not IsPortal(fX, fY)) Then Begin
+    result.Action := apFirst;
+    result.MoveState := amNone;
+    LogGoal('white bomb', fX, fY);
+    exit;
+  End;
+  If StartGloveThrow(result) Then exit;
   If SnipeAction(result) Then exit;
   If SpecialAction(result) Then exit;
   // 4. Goals

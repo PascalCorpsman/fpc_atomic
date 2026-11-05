@@ -39,6 +39,8 @@ Const
    *          0.04 = ADD: missing info for Diseases
    *          0.05 = ADD: optional game modes: AiGameModes and AiHandlePlayerEx (TAiModeInfo), both exports are optional.
    *                 ADD: TAiModeInfo.ModFlags, BrickWalkMs, PunchStunCooldownMs (appended, check Size, still version 5)
+   *                 ADD: TAiModeInfo.InvulnMs, FlameBeamLen, FlameBeamDir, FlameFuelMs, FlameRange, WhiteBombs, StartGlove (appended)
+   *                 CHG: a white bomb (mod, explodes without flames) has FlameLength 0
    *                 Libs with interface version 4 can still be loaded, they only support AiMode_Classic and AiMode_Teamplay.
    *)
   AiLibInterfaceVersion: cint32 = 5;
@@ -190,6 +192,13 @@ Type
     ModFlags: cuint32; // AiModFlag_* of the mods that are active right now
     BrickWalkMs: Array[0..9] Of cint32; // Per player: time in ms the player can still walk through bricks (0 = not)
     PunchStunCooldownMs: Array[0..9] Of cint32; // Per player: time in ms until the boxing glove can stun again (0 = ready)
+    InvulnMs: Array[0..9] Of cint32; // Per player: time in ms the player can not be hit (0 = can be hit)
+    FlameBeamLen: Array[0..9] Of cint32; // Per player: length of the flamethrower beam in fields right now (0 = not firing)
+    FlameBeamDir: Array[0..9] Of cint32; // Per player: direction the player looks (and fires): 0 = right, 1 = up, 2 = left, 3 = down
+    FlameFuelMs: Array[0..9] Of cint32; // Per player: flamethrower fuel in ms (0 = no flamethrower)
+    FlameRange: cint32; // Maximum length of a flamethrower beam in fields
+    WhiteBombs: Array[0..9] Of cint32; // Per player: how many white bombs (mod) the player places next
+    StartGlove: Array[0..9] Of cint32; // Per player: 1 = glove at start, the player can throw a bomb until the first step
   End;
 
 Implementation

@@ -103,6 +103,10 @@ Invalid values are limited to their range, missing keys get the default.
 | `[Stun]` | 0 / 50 / 100 | Boxing glove mod, needs the punch item: stuns an enemy right in front of the ai (only without own remote bombs, the same key triggers them). |
 | `[BrickWalk]` | 30 / 65 / 100 | Walk through bricks mod: walks over bricks while the time lasts, also to escape, and never stays in one when it ends. |
 | `[Borders]` | 50 / 75 / 100 | Open borders mod: walks out over an open border (comes in on the other side), also to escape, and throws bombs over it (grab). Teleporters are avoided like holes. |
+| `[FlameBeam]` | 100 | Flamethrower mod: avoids the beam of a firing player like flames, and the line in front of an enemy with fuel. |
+| `[Invuln]` | 30 / 65 / 100 | Invulnerability (mods): no attack on enemies that can not be hit, and walks through flames while the ai itself can not be hit. |
+| `[WhiteBomb]` | 100 | White bomb mod: does not flee from a white bomb (no flames), and places an own white bomb at once (it only turns the screens of the enemies white). |
+| `[StartGlove]` | 0 / 50 / 100 | Glove at start mod: throws a bomb at the start into bricks or at an enemy, before the first step. |
 
 ### Further keys of the abilities
 

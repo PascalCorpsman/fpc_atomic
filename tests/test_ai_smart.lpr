@@ -12,7 +12,8 @@
 (******************************************************************************)
 (*
  * Tests for the smart ai (ai_smart/) with the mods the server reports in
- * TAiModeInfo: open borders, walking through bricks, boxing glove. Each test
+ * TAiModeInfo: open borders, walking through bricks, boxing glove, flamethrower,
+ * invulnerability, white bomb, glove at start; remote bombs and kicks. Each test
  * builds a small field by hand and calls TSmartAi.CalcAiCommand directly.
  *
  *   mkdir lib
@@ -33,6 +34,7 @@ const
 
 var
   a: TAiInfo;
+  Extra: TAiModeInfo; // further mode info fields of a test (cleared by Base)
   failed: integer = 0;
 
 procedure Base;
@@ -45,6 +47,7 @@ begin
   end;
   a.PlayerInfos[0].Alive := true;
   a.BombsCount := 0; setlength(a.Bombs, 2);
+  FillChar(Extra, SizeOf(Extra), 0);
 end;
 
 function Run(ModFlags: cuint32; BrickWalk: integer; Frames: integer = 1): TAiCommand;
@@ -52,7 +55,7 @@ var ai: TSmartAi; t: integer;
 begin
   ai := TSmartAi.Create(0);
   for t := 1 to Frames do begin
-    FillChar(ai.ModeInfo, SizeOf(ai.ModeInfo), 0);
+    ai.ModeInfo := Extra;
     ai.ModeInfo.Size := SizeOf(ai.ModeInfo);
     ai.ModeInfo.ModFlags := ModFlags;
     ai.ModeInfo.BrickWalkMs[0] := BrickWalk;
@@ -148,6 +151,56 @@ begin
   a.Bombs[0].Owner := 1; a.Bombs[0].LifeTime := 1900;
   c := Run(0, 0);
   Check('kick: not against a bomb that explodes at once', c.MoveState <> amRight, c);
+
+  // Flamethrower: the enemy on (8,5) fires to the left (3 fields), the ai on (6,5) is in the beam -> out of it (up)
+  Base;
+  for x := 3 to 9 do a.Field[x, 5] := fBlank;
+  a.Field[6, 4] := fBlank;
+  a.PlayerInfos[0].Position.x := 6.5; a.PlayerInfos[0].Position.y := 5.5;
+  a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 8.5; a.PlayerInfos[1].Position.y := 5.5;
+  Extra.FlameBeamLen[1] := 3; Extra.FlameBeamDir[1] := 2; Extra.FlameFuelMs[1] := 2000; Extra.FlameRange := 3;
+  c := Run(0, 0);
+  Check('flamethrower: out of the beam', c.MoveState = amUp, c);
+
+  // Invulnerable enemy: the only goal would be a bomb at him -> no bomb
+  Base;
+  for x := 3 to 9 do a.Field[x, 5] := fBlank;
+  a.Field[5, 4] := fBlank; a.Field[5, 3] := fBlank;
+  a.PlayerInfos[0].Position.x := 5.5; a.PlayerInfos[0].Position.y := 5.5;
+  a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 7.5; a.PlayerInfos[1].Position.y := 5.5;
+  c := Run(0, 0);
+  Check('enemy can be hit: bomb at him', c.Action = apFirst, c);
+  Extra.InvulnMs[1] := 5000;
+  c := Run(0, 0);
+  Check('invulnerable enemy: no bomb at him', c.Action <> apFirst, c);
+
+  // Invulnerable ai: a bomb next to it, no escape needed
+  Base;
+  for x := 3 to 7 do a.Field[x, 5] := fBlank;
+  a.Field[5, 4] := fBlank; a.Field[5, 3] := fBlank;
+  a.PlayerInfos[0].Position.x := 5.5; a.PlayerInfos[0].Position.y := 5.5; a.PlayerInfos[0].AvailableBombs := 0;
+  a.BombsCount := 1; a.Bombs[0].Position.x := 6.5; a.Bombs[0].Position.y := 5.5; a.Bombs[0].FlameLength := 2; a.Bombs[0].Owner := 1; a.Bombs[0].LifeTime := 1300;
+  c := Run(0, 0);
+  Check('bomb next to the ai: escape', c.MoveState = amUp, c);
+  Extra.InvulnMs[0] := 5000;
+  c := Run(0, 0);
+  Check('invulnerable ai: no escape needed', c.MoveState <> amUp, c);
+
+  // White bomb: placed at once
+  Base;
+  for x := 3 to 7 do a.Field[x, 5] := fBlank;
+  a.PlayerInfos[0].Position.x := 5.5; a.PlayerInfos[0].Position.y := 5.5;
+  Extra.WhiteBombs[0] := 1;
+  c := Run(0, 0);
+  Check('white bomb: placed at once', c.Action = apFirst, c);
+
+  // Glove at start: looking down (the default), 3 fields below a free field next to a brick -> throw
+  Base;
+  a.Field[5, 5] := fBlank; a.Field[5, 8] := fBlank; a.Field[5, 9] := fBrick; a.Field[4, 5] := fBlank; a.Field[3, 5] := fBlank;
+  a.PlayerInfos[0].Position.x := 5.5; a.PlayerInfos[0].Position.y := 5.5;
+  Extra.StartGlove[0] := 1;
+  c := Run(0, 0);
+  Check('glove at start: throw at the bricks', c.Action = apFirstDouble, c);
 
   writeln(failed, ' failed');
   if failed > 0 then halt(1);
