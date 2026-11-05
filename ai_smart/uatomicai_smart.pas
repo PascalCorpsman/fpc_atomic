@@ -137,6 +137,8 @@ Type
     fGoalMarginMs: integer; // extra reserve for endangered fields while searching the way to a goal
     fAvoidDangerUntil: Int64; // after an escape: goals avoid endangered fields until then
     fSpecialCmd: TAiCommand; // a kick / punch that is carried out until fSpecialUntil
+    fStunPending: Boolean; // boxing glove: turned in the last frame, punch now
+    fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
     // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
     fSnipeStage: integer;
@@ -324,6 +326,8 @@ Begin
   fTriggerAt := 0;
   fSpecialUntil := 0;
   fSpecialPauseUntil := 0;
+  fStunPending := false;
+  fStunPauseUntil := 0;
   fSeenTime := 0;
   If fIndex = 9 Then LatestAiTime := 0; // AiNewRound resets the ais 0..9 in this order
   fStuckLogged := false;
@@ -1373,6 +1377,14 @@ Begin
   result := false;
   // Escaping is more important, unless the danger is still far away (a bomb next to the ai always threatens its field)
   If (fDanger[fX, fY] <> Safe) And (fDanger[fX, fY] <= 3 * fMsPerField + Settings.SafetyMs) Then exit;
+  // Boxing glove: the ai turned in the last frame, now the punch, then a pause
+  If fStunPending Then Begin
+    fStunPending := false;
+    fStunPauseUntil := fTime + 1500;
+    Cmd.MoveState := amNone;
+    Cmd.Action := apSecond;
+    exit(true);
+  End;
   Cells := Nil;
   For d := 0 To 3 Do Begin
     m := Moves[d];
@@ -1442,18 +1454,28 @@ Begin
       End;
     End;
     // Boxing glove (mod): an enemy right in front is stunned. The second action also triggers remote bombs, so only without them.
+    // The server only hits the real neighbour field (no open border). Turning is a step, so the punch follows in the
+    // next frame whether the enemy is still there or not, then a pause: otherwise two ais turned back and forth.
     If Roll(sfStun) And ((Me.Abilities And Ability_CanPunch) <> 0) And ((ModeInfo.ModFlags And AiModFlag_PunchStun) <> 0) And
-      (ModeInfo.PunchStunCooldownMs[fIndex] <= 0) Then Begin
+      (ModeInfo.PunchStunCooldownMs[fIndex] <= 0) And (fTime >= fStunPauseUntil) Then Begin
       bx := fX + DirX[m];
       by := fY + DirY[m];
-      If Wrap(bx, by) And (PlayerAt(bx, by) <> -1) And IsEnemy(PlayerAt(bx, by)) Then Begin
+      If Inside(bx, by) And (PlayerAt(bx, by) <> -1) And IsEnemy(PlayerAt(bx, by)) Then Begin
         k := 0;
         For i := 0 To fInfo^.BombsCount - 1 Do
           If (fInfo^.Bombs[i].Owner = fIndex) And fInfo^.Bombs[i].ManualTrigger Then inc(k);
         If k = 0 Then Begin
-          Cmd.MoveState := m;
-          If fFacing = m Then Cmd.Action := apSecond Else Cmd.Action := apNone; // turn first
           LogGoal('stun', bx, by);
+          If fFacing = m Then Begin
+            Cmd.MoveState := amNone;
+            Cmd.Action := apSecond;
+            fStunPauseUntil := fTime + 1500;
+          End
+          Else Begin
+            Cmd.MoveState := m; // turn, the punch comes in the next frame
+            Cmd.Action := apNone;
+            fStunPending := true;
+          End;
           exit(true);
         End;
       End;

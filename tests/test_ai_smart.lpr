@@ -61,6 +61,21 @@ begin
   ai.Free;
 end;
 
+function CountPunches(Frames: integer): integer;
+var ai: TSmartAi; t: integer; c: TAiCommand;
+begin
+  result := 0;
+  ai := TSmartAi.Create(0);
+  for t := 1 to Frames do begin
+    FillChar(ai.ModeInfo, SizeOf(ai.ModeInfo), 0);
+    ai.ModeInfo.Size := SizeOf(ai.ModeInfo);
+    ai.ModeInfo.ModFlags := AiModFlag_PunchStun;
+    c := ai.CalcAiCommand(a, AiMode_Classic, -1, -1);
+    if c.Action = apSecond then inc(result);
+  end;
+  ai.Free;
+end;
+
 procedure Check(const Name: string; ok: boolean; c: TAiCommand);
 begin
   if ok then writeln('ok   ', Name) else begin writeln('FAIL ', Name, ' (move ', MoveName[c.MoveState], ', action ', ActName[c.Action], ')'); inc(failed); end;
@@ -96,7 +111,20 @@ begin
   a.PlayerInfos[0].Position.x := 4.5; a.PlayerInfos[0].Position.y := 5.5; a.PlayerInfos[0].Abilities := Ability_CanPunch;
   a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 5.5; a.PlayerInfos[1].Position.y := 5.5;
   c := Run(AiModFlag_PunchStun, 0, 2); // frame 1 turns to the right, frame 2 punches
-  Check('boxing glove: stun the enemy in front', (c.Action = apSecond) and (c.MoveState = amRight), c);
+  Check('boxing glove: stun the enemy in front', c.Action = apSecond, c);
+  // Not across an open border: the server only hits the real neighbour field
+  Base;
+  a.Field[0, 5] := fBlank; a.Field[1, 5] := fBlank; a.Field[13, 5] := fBlank; a.Field[14, 5] := fBlank;
+  a.PlayerInfos[0].Position.x := 0.5; a.PlayerInfos[0].Position.y := 5.5; a.PlayerInfos[0].Abilities := Ability_CanPunch;
+  a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 14.5; a.PlayerInfos[1].Position.y := 5.5;
+  c := Run(AiModFlag_PunchStun or AiModFlag_WrapLeftRight, 0, 2);
+  Check('boxing glove: no punch over an open border', c.Action <> apSecond, c);
+  // At most one punch in 30 frames (turning and punching, then a pause; two ais used to turn back and forth)
+  Base;
+  for x := 2 to 8 do a.Field[x, 5] := fBlank;
+  a.PlayerInfos[0].Position.x := 4.5; a.PlayerInfos[0].Position.y := 5.5; a.PlayerInfos[0].Abilities := Ability_CanPunch;
+  a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 5.5; a.PlayerInfos[1].Position.y := 5.5;
+  Check('boxing glove: one punch, then a pause', CountPunches(30) = 1, c);
   c := Run(0, 0, 2);
   Check('no boxing glove mod: no punch at a player', c.Action <> apSecond, c);
 
