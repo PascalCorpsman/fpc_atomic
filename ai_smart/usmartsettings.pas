@@ -37,7 +37,7 @@ Type
     sfAttack, sfPowerups, sfApproach, sfTimedDanger, sfTrigger,
     sfKick, sfPunch, sfGrab, sfSpooger, sfTraps,
     sfTeamSafety, sfOpenSpace, sfInfect, sfHuntedFlees,
-    sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd);
+    sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd, sfKickSnipe);
 
   TSmartSettings = Record
     Difficulty: integer; // 0 = easy .. 100 = strong
@@ -49,6 +49,7 @@ Type
     MinReactionMs, MaxWaitMs: integer; // Trigger
     AnticipateCost: integer; // Anticipate
     HurryLookAheadMs: integer; // RoundEnd
+    SnipeHitChance, SnipeWaitMs: integer; // KickSnipe
     DelayMs, MistakeChance: integer; // Reaction
     PowerupWeight: Array[TAiField] Of integer; // Powerups, only the good ones are used
   End;
@@ -58,7 +59,7 @@ Const
     'Attack', 'Powerups', 'Approach', 'TimedDanger', 'Trigger',
     'Kick', 'Punch', 'Grab', 'Spooger', 'Traps',
     'TeamSafety', 'OpenSpace', 'Infect', 'HuntedFlees',
-    'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd');
+    'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd', 'KickSnipe');
 
   SettingsFileName = 'ai_smart.ini';
   DefaultDifficulty = 50;
@@ -91,12 +92,12 @@ Const
     30, 40, 30, 100, 100,
     0, 0, 0, 0, 0,
     100, 50, 0, 30,
-    0, 0, 100, 100);
+    0, 0, 100, 100, 0);
   FeatureStrong: Array[TSmartFeature] Of integer = (
     100, 100, 100, 100, 100,
     90, 70, 70, 70, 100,
     100, 100, 70, 100,
-    100, 100, 100, 100);
+    100, 100, 100, 100, 80);
 
   FeatureComments: Array[TSmartFeature] Of String = (
     'Attack enemies with bombs in every game mode (the old ai only attacks in hunter mode).',
@@ -116,7 +117,8 @@ Const
     'Fields in the flame line of an enemy who still has bombs are less attractive as a goal (Cost).',
     'Also count enemies that are hit through a chain reaction (the new bomb ignites another one).',
     'Do not step onto a conveyor that pushes into a dangerous field.',
-    'Hurry: the fields that are walled up within HurryLookAheadMs count as dangerous.');
+    'Hurry: the fields that are walled up within HurryLookAheadMs count as dangerous.',
+    'Sniping (needs kick and remote bombs): place a remote bomb, kick it into a free line towards an enemy and trigger it when the enemy is in its flames, also several bombs.');
 
 Function Clamp(Value, aMin, aMax: integer): integer;
 Begin
@@ -149,6 +151,8 @@ Begin
   s.MaxWaitMs := 2000;
   s.AnticipateCost := 3;
   s.HurryLookAheadMs := 3000;
+  s.SnipeHitChance := Lerp(30, 90, Difficulty);
+  s.SnipeWaitMs := 8000;
   s.DelayMs := Lerp(250, 0, Difficulty);
   s.MistakeChance := Lerp(10, 0, Difficulty);
   For a := low(TAiField) To high(TAiField) Do Begin
@@ -224,6 +228,12 @@ Begin
         sfRoundEnd: Begin
             sl.Add('; How far the ai looks ahead (ms) for fields that the hurry walls up');
             sl.Add('HurryLookAheadMs=' + IntToStr(d.HurryLookAheadMs));
+          End;
+        sfKickSnipe: Begin
+            sl.Add('; Chance in % to trigger at the right moment, otherwise 300..800 ms too late (the enemy may be gone)' + ByDifficulty);
+            sl.Add(';HitChance=' + IntToStr(d.SnipeHitChance));
+            sl.Add('; How long (ms) the ai waits with its remote bombs for an enemy (the game turns them into normal bombs after 15 s)');
+            sl.Add('WaitMs=' + IntToStr(d.SnipeWaitMs));
           End;
       End;
     End;
@@ -303,6 +313,8 @@ Begin
     Read('Trigger', 'MaxWaitMs', Settings.MaxWaitMs, Settings.MinReactionMs, 60000);
     Read('Anticipate', 'Cost', Settings.AnticipateCost, 0, 10);
     Read('RoundEnd', 'HurryLookAheadMs', Settings.HurryLookAheadMs, 0, 20000);
+    Read('KickSnipe', 'HitChance', Settings.SnipeHitChance, 0, 100);
+    Read('KickSnipe', 'WaitMs', Settings.SnipeWaitMs, 0, 14000);
     Read('Reaction', 'DelayMs', Settings.DelayMs, 0, 2000);
     Read('Reaction', 'MistakeChance', Settings.MistakeChance, 0, 100);
     For i := 0 To high(PowerupKeys) Do Begin

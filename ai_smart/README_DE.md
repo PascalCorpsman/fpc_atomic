@@ -99,6 +99,7 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[ChainAttack]` | 0 / 50 / 100 | Zählt auch Gegner, die über eine Kettenreaktion getroffen werden (die neue Bombe zündet eine andere). |
 | `[Conveyors]` | 100 | Betritt kein Laufband, das sie in ein gefährliches Feld schiebt. |
 | `[RoundEnd]` | 100 | Hurry (die letzten 80 s einer Runde mit Zeitlimit): Felder, die bald zugemauert werden, gelten als gefährlich. |
+| `[KickSnipe]` | 0 / 40 / 80 | Braucht Kick und Fernzünder. Legt eine Fernzünder-Bombe, kickt sie in eine freie Linie zu einem Gegner und zündet, wenn der Gegner in den Flammen steht, auch mehrere Bomben nacheinander. |
 
 ### Weitere Schlüssel der Fähigkeiten
 
@@ -109,6 +110,8 @@ Ungültige Werte werden auf ihren Bereich begrenzt, fehlende Schlüssel bekommen
 | `[Trigger] MaxWaitMs` | 2000 | Spätestens nach dieser Zeit wird eine Fernzünder-Bombe gezündet, auch ohne Gegner (wie eine normale Bombe). |
 | `[Anticipate] Cost` | 3 | Wie viel weniger attraktiv so ein Feld ist (0..10). |
 | `[RoundEnd] HurryLookAheadMs` | 3000 | Wie weit sie im Voraus auf Felder achtet, die der Hurry zumauert. |
+| `[KickSnipe] HitChance` | 30 / 60 / 90 | Wahrscheinlichkeit in %, eine gekickte Bombe im richtigen Moment zu zünden, sonst 300..800 ms zu spät (der Gegner ist dann vielleicht weg). |
+| `[KickSnipe] WaitMs` | 8000 | So lange wartet die KI mit ihren Fernzünder-Bomben auf einen Gegner (das Spiel macht nach 15 s normale Bomben daraus). |
 
 ### [Reaction]
 

@@ -99,6 +99,7 @@ Invalid values are limited to their range, missing keys get the default.
 | `[ChainAttack]` | 0 / 50 / 100 | Also counts enemies that are hit through a chain reaction (the new bomb ignites another one). |
 | `[Conveyors]` | 100 | Does not step onto a conveyor that pushes it into a dangerous field. |
 | `[RoundEnd]` | 100 | Hurry (the last 80 s of a timed round): the fields that are walled up soon count as dangerous. |
+| `[KickSnipe]` | 0 / 40 / 80 | Needs kick and remote bombs. Places a remote bomb, kicks it into a free line towards an enemy and triggers it when the enemy is in its flames, also several bombs one after the other. |
 
 ### Further keys of the abilities
 
@@ -109,6 +110,8 @@ Invalid values are limited to their range, missing keys get the default.
 | `[Trigger] MaxWaitMs` | 2000 | A remote bomb is triggered after this time at the latest, also without an enemy (like a normal bomb). |
 | `[Anticipate] Cost` | 3 | How much less attractive such a field is (0..10). |
 | `[RoundEnd] HurryLookAheadMs` | 3000 | How far ahead it looks for fields that the hurry walls up. |
+| `[KickSnipe] HitChance` | 30 / 60 / 90 | Chance in % to trigger a kicked bomb at the right moment, otherwise 300..800 ms too late (the enemy may be gone). |
+| `[KickSnipe] WaitMs` | 8000 | How long the ai waits with its remote bombs for an enemy (the game turns them into normal bombs after 15 s). |
 
 ### [Reaction]
 

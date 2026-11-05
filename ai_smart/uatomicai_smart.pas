@@ -44,8 +44,9 @@ Const
    *             0.03 - FIX: from the log of an ai-only game: shaking at the border of a danger zone (goals keep the reserve of the escape, no danger zone right after an escape), the escape starts one step earlier, flying bombs count as dangerous, kick / punch are carried out for 300 ms with a pause after it, punch turns first
    *                    FIX: reaction delay only within a field (ran up and down around the goal), mistakes only change steps
    *                    ADD: log of deaths (suicide?) and of an ai stuck on a field
+   *             0.04 - ADD: KickSnipe: remote bomb, step back, kick it into a line towards an enemy, trigger it with a hit chance
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.03';
+  Ai_Version = 'Atomic smart ai ver. 0.04';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -134,6 +135,14 @@ Type
     fAvoidDangerUntil: Int64; // after an escape: goals avoid endangered fields until then
     fSpecialCmd: TAiCommand; // a kick / punch that is carried out until fSpecialUntil
     fSpecialUntil, fSpecialPauseUntil: Int64;
+    // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
+    fSnipeStage: integer;
+    fSnipeCell, fSnipeBack: TPoint;
+    fSnipeDir: TAiMoveState;
+    fSnipeUntil, fSnipePauseUntil: Int64;
+    fTriggerDecided: Boolean; // KickSnipe: the hit chance for the current enemy was rolled
+    fTriggerAt: Int64; // KickSnipe: a missed moment, the bombs go off now (too late)
+    Function SnipeAction(Var Cmd: TAiCommand): Boolean;
     Procedure StartSpecial(Const Cmd: TAiCommand);
     Procedure LogState(Const Cmd: TAiCommand);
 
@@ -295,6 +304,10 @@ Begin
   End;
   fGoalMarginMs := 0;
   fAvoidDangerUntil := 0;
+  fSnipeStage := 0;
+  fSnipePauseUntil := 0;
+  fTriggerDecided := false;
+  fTriggerAt := 0;
   fSpecialUntil := 0;
   fSpecialPauseUntil := 0;
   fSeenTime := 0;
@@ -1063,9 +1076,138 @@ Begin
     If IsFriend(i) Then exit; // no friendly fire
     If IsEnemy(i) Then EnemyHit := true;
   End;
+  // KickSnipe: the kicked remote bombs wait longer for an enemy, and the moment is not always hit
+  If Roll(sfKickSnipe) And ((Me.Abilities And Ability_CanKick) <> 0) Then Begin
+    If fTriggerDecided And (fTime >= fTriggerAt) Then Begin
+      fTriggerDecided := false;
+      exit(true); // the missed moment: too late
+    End;
+    If EnemyHit And Roll(sfTrigger) And (Oldest >= Settings.MinReactionMs) And (Not fTriggerDecided) Then Begin
+      If Rnd(100) < Settings.SnipeHitChance Then exit(true);
+      fTriggerDecided := true;
+      fTriggerAt := fTime + 300 + Rnd(500);
+      LogGoal('snipe missed the moment', fX, fY);
+      exit(false);
+    End;
+    If fTriggerDecided Then exit(false);
+    If Settings.SnipeWaitMs > Settings.MaxWaitMs Then result := Oldest >= Settings.SnipeWaitMs Else result := Oldest >= Settings.MaxWaitMs;
+    exit;
+  End;
   // A human needs time to react: an enemy only after MinReactionMs, without an enemy after MaxWaitMs
   If EnemyHit And Roll(sfTrigger) And (Oldest >= Settings.MinReactionMs) Then exit(true);
   result := Oldest >= Settings.MaxWaitMs;
+End;
+
+Function TSmartAi.SnipeAction(Var Cmd: TAiCommand): Boolean;
+Var
+  d, k, bestScore, score, i, sx, sy: integer;
+  m, bestDir: TAiMoveState;
+  b, e, bestEnd: TPoint;
+  g: TBoolGrid;
+Begin
+  (*
+   * KickSnipe: place a remote bomb (1), step back (2) and walk against it (3), it slides into the line towards an
+   * enemy. TriggerNow fires it when the enemy is in its flames. A stage that takes too long is given up.
+   *)
+  result := false;
+  If fSnipeStage <> 0 Then Begin
+    If (fTime > fSnipeUntil) Or ((fDanger[fX, fY] <> Safe) And (fDanger[fX, fY] <= 3 * fMsPerField + Settings.SafetyMs)) Then Begin
+      fSnipeStage := 0;
+      fSnipePauseUntil := fTime + 1500;
+      exit;
+    End;
+    Case fSnipeStage Of
+      1: Begin // wait until the bomb lies
+          If (fBombAt[fSnipeCell.x, fSnipeCell.y] >= 0) And (fBombs[fBombAt[fSnipeCell.x, fSnipeCell.y]].Owner = fIndex) Then
+            fSnipeStage := 2
+          Else Begin
+            Cmd.Action := apNone;
+            Cmd.MoveState := amNone;
+            exit(true);
+          End;
+        End;
+    End;
+    If fSnipeStage = 2 Then Begin
+      If (fX = fSnipeBack.x) And (fY = fSnipeBack.y) Then
+        fSnipeStage := 3
+      Else Begin
+        Cmd.Action := apNone;
+        Cmd.MoveState := Moves[0];
+        For d := 0 To 3 Do
+          If (DirX[Moves[d]] = -DirX[fSnipeDir]) And (DirY[Moves[d]] = -DirY[fSnipeDir]) Then Cmd.MoveState := Moves[d];
+        exit(true);
+      End;
+    End;
+    If fSnipeStage = 3 Then Begin
+      // Kicked as soon as the bomb has left its field
+      If (fBombAt[fSnipeCell.x, fSnipeCell.y] < 0) Then Begin
+        fSnipeStage := 0;
+        fSnipePauseUntil := fTime + 800; // then maybe the next one
+        LogGoal('snipe bomb kicked', fSnipeCell.x, fSnipeCell.y);
+        exit;
+      End;
+      Cmd.Action := apNone;
+      Cmd.MoveState := fSnipeDir;
+      exit(true);
+    End;
+    exit;
+  End;
+  // Start: kick and remote bombs, a free bomb, a safe field and a line where the bomb slides near an enemy
+  If fTime < fSnipePauseUntil Then exit;
+  If Not Roll(sfKickSnipe) Then exit;
+  If ((Me.Abilities And Ability_CanKick) = 0) Or ((Me.Abilities And Ability_CanTrigger) = 0) Then exit;
+  If (Me.AvailableBombs <= 0) Or (fDanger[fX, fY] <> Safe) Or (fBombAt[fX, fY] <> -1) Or
+    Not (fInfo^.Field[fX, fY] In BombPlaceableFields) Then exit;
+  bestScore := 0;
+  bestDir := amNone;
+  bestEnd := Point(-1, -1);
+  For d := 0 To 3 Do Begin
+    m := Moves[d];
+    b := Point(fX - DirX[m], fY - DirY[m]); // the field to step back to
+    If (Not Inside(b.x, b.y)) Or Not (fInfo^.Field[b.x, b.y] In WalkableFields) Or (fBombAt[b.x, b.y] <> -1) Or
+      (fDanger[b.x, b.y] <> Safe) Then Continue;
+    // Where the bomb stops: before the first field that is not free
+    k := 0;
+    sx := fX;
+    sy := fY;
+    While Inside(sx + DirX[m], sy + DirY[m]) And (fInfo^.Field[sx + DirX[m], sy + DirY[m]] In WalkableFields) And
+      (fBombAt[sx + DirX[m], sy + DirY[m]] = -1) Do Begin
+      sx := sx + DirX[m];
+      sy := sy + DirY[m];
+      inc(k);
+    End;
+    If k < 2 Then Continue; // it has to slide a bit
+    FillChar(g, SizeOf(g), 0);
+    FlameCells(sx, sy, Me.FlameLength, g);
+    score := 0;
+    For i := 0 To high(fInfo^.PlayerInfos) Do Begin
+      If Not Usable(i) Then Continue;
+      e := PlayerField(i);
+      If IsFriend(i) And g[e.x, e.y] Then Begin
+        score := -1000; // would hit a team mate
+        break;
+      End;
+      If IsEnemy(i) Then Begin
+        If g[e.x, e.y] Then score := score + 10
+        Else If abs(e.x - sx) + abs(e.y - sy) <= Me.FlameLength + 1 Then score := score + 4;
+      End;
+    End;
+    If score > bestScore Then Begin
+      bestScore := score;
+      bestDir := m;
+      bestEnd := Point(sx, sy);
+    End;
+  End;
+  If bestDir = amNone Then exit;
+  fSnipeStage := 1;
+  fSnipeCell := Point(fX, fY);
+  fSnipeBack := Point(fX - DirX[bestDir], fY - DirY[bestDir]);
+  fSnipeDir := bestDir;
+  fSnipeUntil := fTime + 2500;
+  LogGoal('snipe towards', bestEnd.x, bestEnd.y);
+  Cmd.Action := apFirst;
+  Cmd.MoveState := amNone;
+  result := true;
 End;
 
 Function TSmartAi.SpecialAction(Var Cmd: TAiCommand): Boolean;
@@ -1251,6 +1393,7 @@ Begin
     result.Action := apNone; // the action only once
     exit;
   End;
+  If SnipeAction(result) Then exit;
   If SpecialAction(result) Then exit;
   // 4. Goals
   Goal := ChooseGoal();
