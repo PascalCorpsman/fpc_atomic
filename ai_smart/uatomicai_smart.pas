@@ -143,6 +143,7 @@ Type
     fTriggerDecided: Boolean; // KickSnipe: the hit chance for the current enemy was rolled
     fTriggerAt: Int64; // KickSnipe: a missed moment, the bombs go off now (too late)
     Function SnipeAction(Var Cmd: TAiCommand): Boolean;
+    Function RemoteWaitMs(): integer; // how long own remote bombs wait at most (longer while sniping)
     Procedure StartSpecial(Const Cmd: TAiCommand);
     Procedure LogState(Const Cmd: TAiCommand);
 
@@ -478,7 +479,7 @@ Begin
     End
     Else If b.ManualTrigger Then Begin
       If b.Owner = fIndex Then
-        t := Settings.MaxWaitMs - b.LifeTime // we decide ourselves (TriggerNow only triggers if we are safe)
+        t := RemoteWaitMs() - b.LifeTime // we decide ourselves (TriggerNow only triggers if we are safe)
       Else
         t := 0; // the owner can trigger it any time
     End
@@ -1090,12 +1091,19 @@ Begin
       exit(false);
     End;
     If fTriggerDecided Then exit(false);
-    If Settings.SnipeWaitMs > Settings.MaxWaitMs Then result := Oldest >= Settings.SnipeWaitMs Else result := Oldest >= Settings.MaxWaitMs;
+    result := Oldest >= RemoteWaitMs();
     exit;
   End;
   // A human needs time to react: an enemy only after MinReactionMs, without an enemy after MaxWaitMs
   If EnemyHit And Roll(sfTrigger) And (Oldest >= Settings.MinReactionMs) Then exit(true);
   result := Oldest >= Settings.MaxWaitMs;
+End;
+
+Function TSmartAi.RemoteWaitMs: integer;
+Begin
+  result := Settings.MaxWaitMs;
+  If Roll(sfKickSnipe) And ((Me.Abilities And Ability_CanKick) <> 0) And (Settings.SnipeWaitMs > result) Then
+    result := Settings.SnipeWaitMs;
 End;
 
 Function TSmartAi.SnipeAction(Var Cmd: TAiCommand): Boolean;
@@ -1128,7 +1136,10 @@ Begin
         End;
     End;
     If fSnipeStage = 2 Then Begin
-      If (fX = fSnipeBack.x) And (fY = fSnipeBack.y) Then
+      // Back to the middle of the field behind the bomb: as long as the figure still overlaps the bomb it would walk
+      // over it again instead of kicking (a bomb the player stands on is walkable)
+      If (fX = fSnipeBack.x) And (fY = fSnipeBack.y) And
+        ((Me.Position.x - (fSnipeBack.x + 0.5)) * DirX[fSnipeDir] + (Me.Position.y - (fSnipeBack.y + 0.5)) * DirY[fSnipeDir] <= 0) Then
         fSnipeStage := 3
       Else Begin
         Cmd.Action := apNone;
