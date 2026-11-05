@@ -2775,8 +2775,8 @@ Const
 Var
   Safe, Walkable: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
   Candidates: Array[0..FieldWidth * FieldHeight - 1] Of TPoint;
-  i, j, k, d, bx, by, cnt, best, bestSafe, bestFree: integer;
-  pSafe, pFree: TPoint;
+  i, j, k, d, bx, by, cnt, best, bestSafe, bestFree, bestSafeAny, bestFreeAny: integer;
+  pSafe, pFree, pSafeAny, pFreeAny: TPoint;
 
   // True, wenn die Flamme der Bombe von bx, by aus das Feld x, y erreicht (keine Steine dazwischen)
   Function InBombRange(x, y, FireLen: integer): Boolean;
@@ -2794,12 +2794,55 @@ Var
     result := true;
   End;
 
+  (*
+   * True, wenn man von x, y aus einer eigenen Bombe ausweichen kann: Über begehbare Felder ist ein
+   * Feld erreichbar, das weder in der Zeile noch in der Spalte von x, y liegt (um die Ecke, wie bei
+   * den Startplätzen). Ein einzelnes freies Feld zwischen Steinen oder ein gerader Gang reicht nicht,
+   * dort könnte man sich nur mit einer Bombe befreien, die einen dann selbst trifft.
+   *)
+  Function CanEscape(x, y: integer): Boolean;
+  Var
+    Visited: Array[0..FieldWidth - 1, 0..FieldHeight - 1] Of Boolean;
+    Queue: Array[0..FieldWidth * FieldHeight - 1] Of TPoint;
+    head, tail, n: integer;
+    p, q: TPoint;
+  Begin
+    result := false;
+    FillChar(Visited, SizeOf(Visited), 0);
+    head := 0;
+    tail := 0;
+    Queue[tail] := point(x, y);
+    inc(tail);
+    Visited[x, y] := true;
+    While head < tail Do Begin
+      p := Queue[head];
+      inc(head);
+      If (p.x <> x) And (p.y <> y) Then exit(true);
+      For n := 0 To 3 Do Begin
+        q := p;
+        Case n Of
+          0: dec(q.x);
+          1: inc(q.x);
+          2: dec(q.y);
+          3: inc(q.y);
+        End;
+        If (q.x < 0) Or (q.x >= FieldWidth) Or (q.y < 0) Or (q.y >= FieldHeight) Then Continue;
+        If Visited[q.x, q.y] Or (Not Walkable[q.x, q.y]) Then Continue;
+        Visited[q.x, q.y] := true;
+        Queue[tail] := q;
+        inc(tail);
+      End;
+    End;
+  End;
+
 Begin
   (*
    * Spielmodus Hunter: Ein Feld zum Wiedereinsteigen
    * - begehbar: kein Stein, keine Flamme, keine Bombe, kein Loch / Teleporter, kein Trampolin
    * - sicher: nicht im Explosionsbereich einer liegenden Bombe
    * - mit mindestens MinDist Abstand zum Gejagten, sonst das am weitesten entfernte Feld
+   * - mit einem Ausweg (CanEscape), nicht eingesperrt zwischen Steinen; nur wenn es gar kein solches
+   *   Feld gibt, zählen auch eingesperrte Felder
    *)
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
@@ -2826,12 +2869,26 @@ Begin
   cnt := 0;
   bestSafe := -1;
   bestFree := -1;
+  bestSafeAny := -1;
+  bestFreeAny := -1;
   pSafe := point(-1, -1);
   pFree := point(-1, -1);
+  pSafeAny := point(-1, -1);
+  pFreeAny := point(-1, -1);
   For i := 0 To FieldWidth - 1 Do Begin
     For j := 0 To FieldHeight - 1 Do Begin
       If Not Walkable[i, j] Then Continue;
       d := abs(i - AvoidPos.x) + abs(j - AvoidPos.y);
+      // Rückfall, falls kein Feld einen Ausweg hat
+      If d > bestFreeAny Then Begin
+        bestFreeAny := d;
+        pFreeAny := point(i, j);
+      End;
+      If Safe[i, j] And (d > bestSafeAny) Then Begin
+        bestSafeAny := d;
+        pSafeAny := point(i, j);
+      End;
+      If Not CanEscape(i, j) Then Continue;
       If d > bestFree Then Begin
         bestFree := d;
         pFree := point(i, j);
@@ -2856,6 +2913,12 @@ Begin
   End
   Else If bestFree >= 0 Then Begin
     result := pFree;
+  End
+  Else If bestSafeAny >= 0 Then Begin
+    result := pSafeAny;
+  End
+  Else If bestFreeAny >= 0 Then Begin
+    result := pFreeAny;
   End
   Else Begin
     result := FindFreeField(FieldWidth Div 2, FieldHeight Div 2);
