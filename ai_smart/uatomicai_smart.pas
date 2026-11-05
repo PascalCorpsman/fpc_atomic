@@ -51,8 +51,9 @@ Const
    *             0.08 - FIX: boxing glove turn / punch, kick only with time left, step out of the own remote flames to trigger
    *                    ADD: mods: flamethrower beams ([FlameBeam]), invulnerability ([Invuln]), white bomb ([WhiteBomb]), glove at start ([StartGlove])
    *             0.09 - ADD: [FlameBeam] ReactionMs, a flamethrower beam counts only after the reaction time (it dodged at once)
+   *             0.10 - ADD: [FlameBeam] SlowPercent, in a beam the ai walks slower; reaction times for the new kill time 1500 ms
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.09';
+  Ai_Version = 'Atomic smart ai ver. 0.10';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -146,6 +147,8 @@ Type
     fStunPending: Boolean; // boxing glove: turned in the last frame, punch now
     fStartGlovePending: TAiMoveState; // glove at start: turned in the last frame, throw now
     fBeamSince: Array[0..9] Of Int64; // flamethrower: since when a player fires, -1 = not
+    fInBeam: TBoolGrid; // flamethrower: fields in a beam right now
+    fSlowAcc: integer; // flamethrower: skipped steps while burning (SlowPercent)
     fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
     // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
@@ -628,11 +631,19 @@ Begin
         If g[i, j] And (t < fDanger[i, j]) Then fDanger[i, j] := t;
   End;
   // Flamethrower (mod): the beam of a firing player is like flames
+  FillChar(fInBeam, SizeOf(fInBeam), 0);
   If ModeOk And Roll(sfFlameBeam) Then
     For i := 0 To high(fInfo^.PlayerInfos) Do Begin
       If (i = fIndex) Or (Not Usable(i)) Or (ModeInfo.FlameBeamLen[i] <= 0) Then Begin
         fBeamSince[i] := -1;
         Continue;
+      End;
+      // Where the beam burns right now (slows the ai down, also before it reacts)
+      p := PlayerField(i);
+      For k := 1 To ModeInfo.FlameBeamLen[i] Do Begin
+        j := p.x + k * BeamDX[ModeInfo.FlameBeamDir[i] And 3];
+        t := p.y + k * BeamDY[ModeInfo.FlameBeamDir[i] And 3];
+        If Inside(j, t) Then fInBeam[j, t] := true;
       End;
       // A human needs time to react: the beam counts only after it fired for ReactionMs
       If fBeamSince[i] < 0 Then fBeamSince[i] := fTime;
@@ -1839,6 +1850,14 @@ Begin
   BuildEnemyLines;
   result := Decide();
   If result.Action <> apFirst Then fBombTries := 0; // only presses in a row count
+  // Flamethrower: a burning ai walks slower, it skips SlowPercent of its steps
+  If fInBeam[fX, fY] And (result.MoveState <> amNone) And (Settings.BeamSlowPercent > 0) Then Begin
+    fSlowAcc := fSlowAcc + Settings.BeamSlowPercent;
+    If fSlowAcc >= 100 Then Begin
+      fSlowAcc := fSlowAcc - 100;
+      result.MoveState := amNone;
+    End;
+  End;
   If Settings.LogDecisions Then LogState(result);
   // Log: a step back within 100 ms (the cause of shaking), with the reason of the last goal
   If Settings.LogDecisions And (result.MoveState <> amNone) Then Begin

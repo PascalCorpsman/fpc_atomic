@@ -157,7 +157,7 @@ A part of the items below the bricks are **flamethrowers**. They look like a red
 | Share of the items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
 | Fuel per item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
 | Range (tiles) | `FlameThrowerRange` | 3 | 1 .. 14 |
-| Time to kill (ms) | `FlameThrowerKillMs` | 2000 | 0 .. 10000 |
+| Time to kill (ms) | `FlameThrowerKillMs` | 1500 | 0 .. 10000 |
 | Hurt team mates (friendly fire) | `FlameThrowerFriendlyFire` | 0 (off) | 0 / 1 |
 | Burn items in the beam | `FlameThrowerBurnItems` | 1 (on) | 0 / 1 |
 | Ignite bombs in the beam | `FlameThrowerIgniteBombs` | 1 (on) | 0 / 1 |

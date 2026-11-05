@@ -159,7 +159,7 @@ Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie e
 | Anteil der Items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
 | Treibstoff pro Item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
 | Reichweite (Felder) | `FlameThrowerRange` | 3 | 1 .. 14 |
-| Zeit bis zum Treffer (ms) | `FlameThrowerKillMs` | 2000 | 0 .. 10000 |
+| Zeit bis zum Treffer (ms) | `FlameThrowerKillMs` | 1500 | 0 .. 10000 |
 | Teamkollegen verletzen (Friendly Fire) | `FlameThrowerFriendlyFire` | 0 (aus) | 0 / 1 |
 | Items im Strahl verbrennen | `FlameThrowerBurnItems` | 1 (an) | 0 / 1 |
 | Bomben im Strahl zünden | `FlameThrowerIgniteBombs` | 1 (an) | 0 / 1 |

@@ -1380,7 +1380,7 @@ Begin
   Settings.FlameThrowerChance := 5;
   Settings.FlameThrowerFuelMs := 5000;
   Settings.FlameThrowerRange := 3;
-  Settings.FlameThrowerKillMs := 2000;
+  Settings.FlameThrowerKillMs := 1500;
   Settings.FlameThrowerBurnItems := true;
   Settings.CarryBomb := false;
   Settings.CarryBombControl := CarryBombControlHold;
