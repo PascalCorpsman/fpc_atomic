@@ -1,0 +1,284 @@
+(******************************************************************************)
+(*                                                                            *)
+(* This file is part of FPC_Atomic                                            *)
+(*                                                                            *)
+(*  See the file license.md, located under:                                   *)
+(*  https://github.com/PascalCorpsman/Software_Licenses/blob/main/license.md  *)
+(*  for details about the license.                                            *)
+(*                                                                            *)
+(*               It is not allowed to change or remove this text from any     *)
+(*               source file of the project.                                  *)
+(*                                                                            *)
+(******************************************************************************)
+(*
+ * Settings of the smart ai (ai_smart.ini). Every ability has a Chance 0..100:
+ * 0 = never, 100 = always, otherwise rolled per opportunity (see TSmartAi.Roll).
+ *
+ * The file is searched next to the server (= next to the lib, for tests) and
+ * then in the config folder of the game (%LOCALAPPDATA%\fpc_atomic,
+ * ~/.config/fpc_atomic). If there is none, the defaults are written to the
+ * config folder, with a comment for every key.
+ *)
+Unit usmartsettings;
+
+{$MODE ObjFPC}{$H+}
+
+Interface
+
+Uses
+  Classes, SysUtils, uai_types;
+
+Type
+  TSmartFeature = (
+    sfAttack, sfPowerups, sfApproach, sfTimedDanger, sfTrigger,
+    sfKick, sfPunch, sfGrab, sfSpooger, sfTraps,
+    sfTeamSafety, sfOpenSpace, sfInfect, sfHuntedFlees,
+    sfAnticipate, sfChainAttack, sfConveyors, sfRoundEnd);
+
+  TSmartSettings = Record
+    Seed: QWord; // 0 = random
+    LogDecisions: Boolean;
+    RerollMs: integer; // a Chance is rolled again after this time
+    Chance: Array[TSmartFeature] Of integer;
+    SafetyMs: integer; // TimedDanger
+    MinReactionMs, MaxWaitMs: integer; // Trigger
+    AnticipateCost: integer; // Anticipate
+    HurryLookAheadMs: integer; // RoundEnd
+    DelayMs, MistakeChance: integer; // Reaction
+    PowerupWeight: Array[TAiField] Of integer; // Powerups, only the good ones are used
+  End;
+
+Const
+  FeatureSection: Array[TSmartFeature] Of String = (
+    'Attack', 'Powerups', 'Approach', 'TimedDanger', 'Trigger',
+    'Kick', 'Punch', 'Grab', 'Spooger', 'Traps',
+    'TeamSafety', 'OpenSpace', 'Infect', 'HuntedFlees',
+    'Anticipate', 'ChainAttack', 'Conveyors', 'RoundEnd');
+
+  SettingsFileName = 'ai_smart.ini';
+
+Var
+  Settings: TSmartSettings;
+  SettingsFile: String = ''; // the file that was read ('' = defaults only)
+
+Procedure DefaultSettings(Out s: TSmartSettings);
+Procedure LoadSettings(); // reads ai_smart.ini, writes the defaults if there is none
+Procedure SmartLog(Const Msg: String); // only if LogDecisions, into ai_smart.log next to the ini
+
+Implementation
+
+Uses
+  IniFiles;
+
+Const
+  PowerupKeys: Array[0..9] Of String = ('ExtraBomb', 'LongerFlame', 'GoldFlame', 'Speed', 'Kick', 'Spooger', 'Punch', 'Grab', 'Trigger', 'Jelly');
+  PowerupFields: Array[0..9] Of TAiField = (fExtraBomb, fLongerFlame, fGoldflame, fExtraSpeed, fKick, fSpooger, fPunch, fGrab, fTrigger, fJelly);
+  PowerupDefaults: Array[0..9] Of integer = (5, 5, 6, 3, 4, 2, 2, 2, 3, 1);
+
+  FeatureDefaults: Array[TSmartFeature] Of integer = (
+    100, 100, 100, 100, 100,
+    70, 50, 50, 50, 50,
+    100, 100, 50, 70,
+    100, 50, 100, 100);
+
+  FeatureComments: Array[TSmartFeature] Of String = (
+    'Attack enemies with bombs in every game mode (the old ai only attacks in hunter mode).',
+    'Walk to good powerups on purpose and avoid burning them with own bombs (weights in [PowerupWeights]).',
+    'Without any other goal walk towards the nearest enemy and keep a distance of about 3 fields.',
+    'Danger map with the explosion time of every bomb: walk through fields that explode later, check that the escape is fast enough. 0 = every bomb is dangerous at once (old behaviour).',
+    'Remote bombs: trigger only if an enemy is hit and the bomb lies for at least MinReactionMs (a human has a chance to react), at the latest after MaxWaitMs. 0 = only after MaxWaitMs.',
+    'Kick bombs (needs the kick item): kick a bomb away to escape, or towards an enemy in the same line.',
+    'Punch bombs (needs the punch item): punch an adjacent bomb towards an enemy (it flies 3 fields).',
+    'Grab and throw (needs the grab item): place a bomb and throw it 3 fields onto an enemy.',
+    'Spooger (needs the spooger item): place a row of bombs towards an enemy in the same line.',
+    'Prefer attack fields after which the enemy has fewer free neighbour fields.',
+    'Never place a bomb that hits a team mate (teamplay, hunters among each other).',
+    'If two goals are about equal, prefer the field with more free neighbour fields (fewer dead ends).',
+    'When the ai is ill, walk to the nearest enemy to pass the disease on.',
+    'Hunter mode: the hunted keeps away from the hunters while it has at most one bomb.',
+    'Fields in the flame line of an enemy who still has bombs are less attractive as a goal (Cost).',
+    'Also count enemies that are hit through a chain reaction (the new bomb ignites another one).',
+    'Do not step onto a conveyor that pushes into a dangerous field.',
+    'Hurry: the fields that are walled up within HurryLookAheadMs count as dangerous.');
+
+Procedure DefaultSettings(Out s: TSmartSettings);
+Var
+  f: TSmartFeature;
+  i: integer;
+  a: TAiField;
+Begin
+  s.Seed := 0;
+  s.LogDecisions := false;
+  s.RerollMs := 3000;
+  For f := low(TSmartFeature) To high(TSmartFeature) Do Begin
+    s.Chance[f] := FeatureDefaults[f];
+  End;
+  s.SafetyMs := 250;
+  s.MinReactionMs := 600;
+  s.MaxWaitMs := 2000;
+  s.AnticipateCost := 3;
+  s.HurryLookAheadMs := 3000;
+  s.DelayMs := 0;
+  s.MistakeChance := 0;
+  For a := low(TAiField) To high(TAiField) Do Begin
+    s.PowerupWeight[a] := 0;
+  End;
+  For i := 0 To high(PowerupKeys) Do Begin
+    s.PowerupWeight[PowerupFields[i]] := PowerupDefaults[i];
+  End;
+End;
+
+Function ConfigDir(): String;
+Var
+  Old: TGetAppNameEvent;
+Begin
+  // Same folder as the game and the server use (uatomic_global, application name fpc_atomic)
+  Old := OnGetApplicationName;
+  OnGetApplicationName := Nil;
+  Try
+    result := IncludeTrailingPathDelimiter(ExtractFileDir(ExcludeTrailingPathDelimiter(GetAppConfigDir(false)))) + 'fpc_atomic' + PathDelim;
+  Finally
+    OnGetApplicationName := Old;
+  End;
+End;
+
+Function Clamp(Value, aMin, aMax: integer): integer;
+Begin
+  result := Value;
+  If result < aMin Then result := aMin;
+  If result > aMax Then result := aMax;
+End;
+
+Procedure WriteDefaults(Const Filename: String);
+Var
+  sl: TStringList;
+  d: TSmartSettings;
+  f: TSmartFeature;
+  i: integer;
+Begin
+  DefaultSettings(d);
+  sl := TStringList.Create;
+  Try
+    sl.Add('; Settings of the smart ai (ai_smart.dll / libai_smart.so), see ai_smart/README.md');
+    sl.Add('; Every ability has a Chance from 0 to 100: 0 = never, 100 = always, otherwise rolled');
+    sl.Add('; per opportunity and kept for RerollMs. Changes take effect with the next round.');
+    sl.Add('');
+    sl.Add('[General]');
+    sl.Add('; 0 = random, any other number = the same decisions in the same situations (for tests)');
+    sl.Add('Seed=' + IntToStr(d.Seed));
+    sl.Add('; 1 = write every new goal into ai_smart.log next to this file');
+    sl.Add('LogDecisions=0');
+    sl.Add('; Time in ms after which a Chance is rolled again');
+    sl.Add('RerollMs=' + IntToStr(d.RerollMs));
+    For f := low(TSmartFeature) To high(TSmartFeature) Do Begin
+      sl.Add('');
+      sl.Add('[' + FeatureSection[f] + ']');
+      sl.Add('; ' + FeatureComments[f]);
+      sl.Add('Chance=' + IntToStr(d.Chance[f]));
+      Case f Of
+        sfTimedDanger: Begin
+            sl.Add('; Extra time in ms the ai keeps between itself and an explosion');
+            sl.Add('SafetyMs=' + IntToStr(d.SafetyMs));
+          End;
+        sfTrigger: Begin
+            sl.Add('; A remote bomb lies at least this long (ms) before it is triggered at an enemy. Smaller = faster and less fair');
+            sl.Add('MinReactionMs=' + IntToStr(d.MinReactionMs));
+            sl.Add('; A remote bomb is triggered after this time (ms) at the latest, also without an enemy');
+            sl.Add('MaxWaitMs=' + IntToStr(d.MaxWaitMs));
+          End;
+        sfAnticipate: Begin
+            sl.Add('; How much less attractive such a field is (0..10)');
+            sl.Add('Cost=' + IntToStr(d.AnticipateCost));
+          End;
+        sfRoundEnd: Begin
+            sl.Add('; How far the ai looks ahead (ms) for fields that the hurry walls up');
+            sl.Add('HurryLookAheadMs=' + IntToStr(d.HurryLookAheadMs));
+          End;
+      End;
+    End;
+    sl.Add('');
+    sl.Add('[Reaction]');
+    sl.Add('; The ai decides only every DelayMs (0 = every frame, 10 ms). Larger = slower, more human');
+    sl.Add('DelayMs=' + IntToStr(d.DelayMs));
+    sl.Add('; Chance in % that a decision is replaced by a random step (never into flames)');
+    sl.Add('MistakeChance=' + IntToStr(d.MistakeChance));
+    sl.Add('');
+    sl.Add('[PowerupWeights]');
+    sl.Add('; How much the ai wants each good powerup (0 = ignore, 10 = very much), used with [Powerups]');
+    For i := 0 To high(PowerupKeys) Do Begin
+      sl.Add(PowerupKeys[i] + '=' + IntToStr(PowerupDefaults[i]));
+    End;
+    ForceDirectories(ExtractFilePath(Filename));
+    sl.SaveToFile(Filename);
+  Finally
+    sl.Free;
+  End;
+End;
+
+Procedure LoadSettings();
+Var
+  ini: TIniFile;
+  Candidate: String;
+  f: TSmartFeature;
+  i: integer;
+Begin
+  DefaultSettings(Settings);
+  SettingsFile := '';
+  // A file next to the server (and the lib) wins, for tests with other settings
+  Candidate := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + SettingsFileName;
+  If Not FileExists(Candidate) Then Begin
+    Candidate := ConfigDir() + SettingsFileName;
+    If Not FileExists(Candidate) Then Begin
+      Try
+        WriteDefaults(Candidate);
+      Except
+        exit; // no config folder, the defaults are used
+      End;
+    End;
+  End;
+  If Not FileExists(Candidate) Then exit;
+  SettingsFile := Candidate;
+  ini := TIniFile.Create(Candidate);
+  Try
+    Settings.Seed := StrToQWordDef(ini.ReadString('General', 'Seed', '0'), 0);
+    Settings.LogDecisions := ini.ReadInteger('General', 'LogDecisions', 0) <> 0;
+    Settings.RerollMs := Clamp(ini.ReadInteger('General', 'RerollMs', Settings.RerollMs), 100, 60000);
+    For f := low(TSmartFeature) To high(TSmartFeature) Do Begin
+      Settings.Chance[f] := Clamp(ini.ReadInteger(FeatureSection[f], 'Chance', Settings.Chance[f]), 0, 100);
+    End;
+    Settings.SafetyMs := Clamp(ini.ReadInteger('TimedDanger', 'SafetyMs', Settings.SafetyMs), 0, 2000);
+    Settings.MinReactionMs := Clamp(ini.ReadInteger('Trigger', 'MinReactionMs', Settings.MinReactionMs), 0, 10000);
+    Settings.MaxWaitMs := Clamp(ini.ReadInteger('Trigger', 'MaxWaitMs', Settings.MaxWaitMs), Settings.MinReactionMs, 60000);
+    Settings.AnticipateCost := Clamp(ini.ReadInteger('Anticipate', 'Cost', Settings.AnticipateCost), 0, 10);
+    Settings.HurryLookAheadMs := Clamp(ini.ReadInteger('RoundEnd', 'HurryLookAheadMs', Settings.HurryLookAheadMs), 0, 20000);
+    Settings.DelayMs := Clamp(ini.ReadInteger('Reaction', 'DelayMs', Settings.DelayMs), 0, 2000);
+    Settings.MistakeChance := Clamp(ini.ReadInteger('Reaction', 'MistakeChance', Settings.MistakeChance), 0, 100);
+    For i := 0 To high(PowerupKeys) Do Begin
+      Settings.PowerupWeight[PowerupFields[i]] := Clamp(ini.ReadInteger('PowerupWeights', PowerupKeys[i], PowerupDefaults[i]), 0, 10);
+    End;
+  Finally
+    ini.Free;
+  End;
+End;
+
+Procedure SmartLog(Const Msg: String);
+Var
+  f: TextFile;
+  fn: String;
+Begin
+  If (Not Settings.LogDecisions) Or (SettingsFile = '') Then exit;
+  fn := ExtractFilePath(SettingsFile) + 'ai_smart.log';
+  Try
+    AssignFile(f, fn);
+    If FileExists(fn) Then Append(f) Else Rewrite(f);
+    Try
+      WriteLn(f, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + Msg);
+    Finally
+      CloseFile(f);
+    End;
+  Except
+    // logging must never disturb the game
+  End;
+End;
+
+End.
