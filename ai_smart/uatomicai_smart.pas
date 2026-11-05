@@ -1396,9 +1396,14 @@ Var
 Begin
   result.Action := apNone;
   result.MoveState := amNone;
-  // 1. Escape
+  // 1. Escape, the remote bombs can be triggered at the same time (often the ai flees from bombs of others while
+  //    an enemy walks into its own)
   If EscapeGoal(m) Then Begin
     result.MoveState := m;
+    If TriggerNow() Then Begin
+      result.Action := apSecond;
+      LogGoal('trigger while escaping', fX, fY);
+    End;
     exit;
   End;
   // 2. Remote bombs
