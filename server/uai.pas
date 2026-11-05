@@ -90,6 +90,7 @@ Var
   AiVersion: TAiVersion = Nil;
   AiHandlePlayerEx: TAiHandlePlayerEx = Nil; // Nil, wenn die Lib es nicht exportiert
   AiPlayerName: TAiPlayerName = Nil; // Nil, wenn die Lib es nicht exportiert (dann zeigen die Clients "AI")
+  AiDisplayName: TAiDisplayName = Nil; // Nil, wenn die Lib es nicht exportiert
   AiGameModesMask: cuint32 = 0; // Die unterstützten Spielmodi der geladenen Lib (AiMode_*), 0 = keine Lib geladen
 
   (*
@@ -189,6 +190,7 @@ Begin
     AiHandlePlayerEx := TAiHandlePlayerEx(GetProcAddress(lib, 'AiHandlePlayerEx'));
   End;
   AiPlayerName := TAiPlayerName(GetProcAddress(lib, 'AiPlayerName'));
+  AiDisplayName := TAiDisplayName(GetProcAddress(lib, 'AiDisplayName'));
 
   result := true;
   AiLibLoaded := Name;
@@ -212,6 +214,7 @@ Begin
   AiVersion := Nil;
   AiHandlePlayerEx := Nil;
   AiPlayerName := Nil;
+  AiDisplayName := Nil;
   AiGameModesMask := 0;
 End;
 

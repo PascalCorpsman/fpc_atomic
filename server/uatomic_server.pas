@@ -156,6 +156,7 @@ Type
     Procedure HurryHandling;
     Function AiSupportsCurrentMode(): Boolean; // True, wenn eine KI geladen ist und sie den aktiven Spielmodus kann
     Function AiSlotName(Index: integer): String; // Der Name des KI Spielers in diesem Platz, '' = keiner (die Clients zeigen "AI")
+    Function AiStatisticName(Index: integer): String; // Der Name, unter dem der KI Spieler in der Statistik zählt
     Function AiNotSupportedText(): String; // Die Meldung, wenn AiSupportsCurrentMode false ist
     Procedure HandleUpdateModSettings(Const Stream: TStream; UID: integer);
     Procedure ApplyModSettingsToFields();
@@ -1034,8 +1035,8 @@ Begin
     fPLayer[i].Kills := 0;
     If fPLayer[i].UID <> NoPlayer Then Begin
       If fPLayer[i].UID = AIPlayer Then Begin
-        // Alle KI Spieler werden auf einen abstrakten KI Spieler zusammengeführt.
-        fPlayerStatistics.InitPlayerID(i, AiVersion(), ks0);
+        // Alle KI Spieler einer KI (und Stufe) werden auf einen abstrakten KI Spieler zusammengeführt.
+        fPlayerStatistics.InitPlayerID(i, AiStatisticName(i), ks0);
       End
       Else Begin
         fPlayerStatistics.InitPlayerID(i,
@@ -3455,6 +3456,30 @@ Begin
       result := copy(result, 1, 16) + ' AI';
       break;
     End;
+  End;
+End;
+
+Function TServer.AiStatisticName(Index: integer): String;
+Var
+  s: String;
+Begin
+  (*
+   * Alle Plätze einer KI zählen in der Statistik (Playerstats.csv) zusammen: der Name ohne die Platznummer,
+   * davor der Kurzname der KI ("Nitro 3" -> "Smart Nitro"). Ohne Namen wie bisher die Version der KI.
+   *)
+  result := AiVersion();
+  If Not assigned(AiPlayerName) Then exit;
+  Try
+    s := trim(String(AiPlayerName(Index)));
+    While (s <> '') And (s[length(s)] In ['0'..'9']) Do
+      delete(s, length(s), 1);
+    s := trim(s);
+    If s = '' Then exit;
+    If assigned(AiDisplayName) And (trim(String(AiDisplayName())) <> '') Then
+      s := trim(String(AiDisplayName())) + ' ' + s;
+    result := s;
+  Except
+    result := AiVersion();
   End;
 End;
 

@@ -52,6 +52,8 @@ TAiCommand_t AiHandlePlayerEx(uint32_t PlayerIndex, TAiInfo_t* AiInfo, TAiModeIn
  * The name of the ai player in slot PlayerIndex (0..9), shown instead of "AI". NULL or "" = no name.
  * The names must be unique and valid player names (letters, digits, space, _, at most 19 chars).
  * The string must stay valid until the next call.
+ * The statistics (Playerstats.csv) count all slots together: the name without a trailing number,
+ * with AiDisplayName in front ("Nitro 3" -> "Smart Nitro").
  */
 char *AiPlayerName(uint32_t PlayerIndex);
 
