@@ -159,8 +159,10 @@ begin
   a.PlayerInfos[0].Position.x := 6.5; a.PlayerInfos[0].Position.y := 5.5;
   a.PlayerInfos[1].Alive := true; a.PlayerInfos[1].Position.x := 8.5; a.PlayerInfos[1].Position.y := 5.5;
   Extra.FlameBeamLen[1] := 3; Extra.FlameBeamDir[1] := 2; Extra.FlameFuelMs[1] := 2000; Extra.FlameRange := 3;
-  c := Run(0, 0);
-  Check('flamethrower: out of the beam', c.MoveState = amUp, c);
+  c := Run(0, 0, 1);
+  Check('flamethrower: no reaction in the first moment (ReactionMs)', c.MoveState <> amUp, c);
+  c := Run(0, 0, 60); // 600 ms, more than the 400 ms of difficulty 100
+  Check('flamethrower: out of the beam after the reaction time', c.MoveState = amUp, c);
 
   // Invulnerable enemy: the only goal would be a bomb at him -> no bomb
   Base;

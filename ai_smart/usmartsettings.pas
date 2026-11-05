@@ -51,6 +51,7 @@ Type
     AnticipateCost: integer; // Anticipate
     HurryLookAheadMs: integer; // RoundEnd
     SnipeHitChance, SnipeWaitMs, SnipeEndgameBricks: integer; // KickSnipe
+    BeamReactionMs: integer; // FlameBeam
     DelayMs, MistakeChance: integer; // Reaction
     PowerupWeight: Array[TAiField] Of integer; // Powerups, only the good ones are used
   End;
@@ -167,6 +168,7 @@ Begin
   s.SnipeHitChance := Lerp(30, 90, Difficulty);
   s.SnipeWaitMs := 8000;
   s.SnipeEndgameBricks := 10;
+  s.BeamReactionMs := Lerp(1200, 400, Difficulty);
   s.DelayMs := Lerp(250, 0, Difficulty);
   s.MistakeChance := Lerp(10, 0, Difficulty);
   For a := low(TAiField) To high(TAiField) Do Begin
@@ -242,6 +244,10 @@ Begin
         sfRoundEnd: Begin
             sl.Add('; How far the ai looks ahead (ms) for fields that the hurry walls up');
             sl.Add('HurryLookAheadMs=' + IntToStr(d.HurryLookAheadMs));
+          End;
+        sfFlameBeam: Begin
+            sl.Add('; The ai notices a beam only after it fired this long (ms), like a human who needs to react' + ByDifficulty);
+            sl.Add(';ReactionMs=' + IntToStr(d.BeamReactionMs));
           End;
         sfKickSnipe: Begin
             sl.Add('; Chance in % to trigger at the right moment, otherwise 300..800 ms too late (the enemy may be gone)' + ByDifficulty);
@@ -332,6 +338,7 @@ Begin
     Read('KickSnipe', 'HitChance', Settings.SnipeHitChance, 0, 100);
     Read('KickSnipe', 'WaitMs', Settings.SnipeWaitMs, 0, 14000);
     Read('KickSnipe', 'EndgameBricks', Settings.SnipeEndgameBricks, 0, 165);
+    Read('FlameBeam', 'ReactionMs', Settings.BeamReactionMs, 0, 5000);
     Read('Reaction', 'DelayMs', Settings.DelayMs, 0, 2000);
     Read('Reaction', 'MistakeChance', Settings.MistakeChance, 0, 100);
     For i := 0 To high(PowerupKeys) Do Begin

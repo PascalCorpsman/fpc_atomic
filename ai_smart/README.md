@@ -117,6 +117,7 @@ Invalid values are limited to their range, missing keys get the default.
 | `[Trigger] MaxWaitMs` | 2000 | A remote bomb is triggered after this time at the latest, also without an enemy (like a normal bomb). |
 | `[Anticipate] Cost` | 3 | How much less attractive such a field is (0..10). |
 | `[RoundEnd] HurryLookAheadMs` | 3000 | How far ahead it looks for fields that the hurry walls up. |
+| `[FlameBeam] ReactionMs` | 1200 / 800 / 400 | The ai notices a flamethrower beam only after it fired this long, like a human who needs to react. Smaller = harder to hit. |
 | `[KickSnipe] HitChance` | 30 / 60 / 90 | Chance in % to trigger a kicked bomb at the right moment, otherwise 300..800 ms too late (the enemy may be gone). |
 | `[KickSnipe] WaitMs` | 8000 | How long the ai waits with its remote bombs for an enemy (the game turns them into normal bombs after 15 s). |
 | `[KickSnipe] EndgameBricks` | 10 | Endgame: with at most this many bricks left the ai always snipes when it can (unless `Chance=0`). |

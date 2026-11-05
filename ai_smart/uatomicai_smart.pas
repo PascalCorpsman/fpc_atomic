@@ -50,8 +50,9 @@ Const
    *             0.07 - ADD: mods from TAiModeInfo: open borders ([Borders], also grab over the border, teleporters like holes), walk through bricks ([BrickWalk]), boxing glove ([Stun])
    *             0.08 - FIX: boxing glove turn / punch, kick only with time left, step out of the own remote flames to trigger
    *                    ADD: mods: flamethrower beams ([FlameBeam]), invulnerability ([Invuln]), white bomb ([WhiteBomb]), glove at start ([StartGlove])
+   *             0.09 - ADD: [FlameBeam] ReactionMs, a flamethrower beam counts only after the reaction time (it dodged at once)
    *)
-  Ai_Version = 'Atomic smart ai ver. 0.08';
+  Ai_Version = 'Atomic smart ai ver. 0.09';
 
   FieldWidth = 15;
   FieldHeight = 11;
@@ -144,6 +145,7 @@ Type
     fOwnFlames: TBoolGrid;
     fStunPending: Boolean; // boxing glove: turned in the last frame, punch now
     fStartGlovePending: TAiMoveState; // glove at start: turned in the last frame, throw now
+    fBeamSince: Array[0..9] Of Int64; // flamethrower: since when a player fires, -1 = not
     fStunPauseUntil: Int64;
     fSpecialUntil, fSpecialPauseUntil: Int64;
     // KickSnipe: 0 = nothing, 1 = bomb placed on fSnipeCell, 2 = step back to fSnipeBack, 3 = kick in fSnipeDir
@@ -342,6 +344,7 @@ Begin
   fStunPending := false;
   fStunPauseUntil := 0;
   fStartGlovePending := amNone;
+  FillChar(fBeamSince, SizeOf(fBeamSince), $FF); // all -1
   fSpecialBomb := Point(-1, -1);
   fLeaveOwnFlames := false;
   fSeenTime := 0;
@@ -627,7 +630,13 @@ Begin
   // Flamethrower (mod): the beam of a firing player is like flames
   If ModeOk And Roll(sfFlameBeam) Then
     For i := 0 To high(fInfo^.PlayerInfos) Do Begin
-      If (i = fIndex) Or (Not Usable(i)) Or (ModeInfo.FlameBeamLen[i] <= 0) Then Continue;
+      If (i = fIndex) Or (Not Usable(i)) Or (ModeInfo.FlameBeamLen[i] <= 0) Then Begin
+        fBeamSince[i] := -1;
+        Continue;
+      End;
+      // A human needs time to react: the beam counts only after it fired for ReactionMs
+      If fBeamSince[i] < 0 Then fBeamSince[i] := fTime;
+      If fTime - fBeamSince[i] < Settings.BeamReactionMs Then Continue;
       p := PlayerField(i);
       For k := 1 To ModeInfo.FlameBeamLen[i] Do Begin
         j := p.x + k * BeamDX[ModeInfo.FlameBeamDir[i] And 3];
@@ -673,7 +682,7 @@ Begin
   For i := 0 To high(fInfo^.PlayerInfos) Do Begin
     If (Not IsEnemy(i)) Or (Not Usable(i)) Then Continue;
     // Flamethrower (mod): the line in front of an enemy with fuel, he can fire any moment
-    If ModeOk And Roll(sfFlameBeam) And (ModeInfo.FlameFuelMs[i] > 0) Then Begin
+    If ModeOk And Roll(sfFlameBeam) And (ModeInfo.FlameFuelMs[i] > 0) And (ModeInfo.FlameBeamLen[i] <= 0) Then Begin // a firing beam comes with the reaction time
       p := PlayerField(i);
       For k := 1 To ModeInfo.FlameRange Do Begin
         bx := p.x + k * BeamDX[ModeInfo.FlameBeamDir[i] And 3];
