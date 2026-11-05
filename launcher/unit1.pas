@@ -2010,7 +2010,7 @@ Begin
     If FileExists(SmartIniFile()) Then Begin
       Smart := TIniFile.Create(SmartIniFile());
       Try
-        AiName := R_AiSmart + ' ' + IntToStr(Smart.ReadInteger('General', 'Difficulty', DefaultDifficulty)) + '%';
+        AiName := R_AiSmart + ' ' + IntToStr(Max(0, Min(100, Smart.ReadInteger('General', 'Difficulty', DefaultDifficulty)))) + '%'; // Wie die KI: 0..100
       Finally
         Smart.free;
       End;
