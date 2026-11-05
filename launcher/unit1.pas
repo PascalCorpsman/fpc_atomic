@@ -129,6 +129,7 @@ Type
     fJobs: TList; // TStyleJob: die übrigen Stile der Einrichtung, die im Hintergrund erzeugt werden
     fJobTimer: TTimer; // Liest deren Ausgabe und merkt, wenn sie fertig sind
     fCloseAfterJobs: Boolean; // Der Launcher wurde geschlossen, während noch Stile erzeugt werden: danach beenden
+    fLaunchCaption, fLaunchShown: String; // Der übersetzte Text des Start Knopfs (Label7) und der zuletzt gesetzte (mit Spielmodus)
 
     Procedure LoadLanguages();
     Procedure LoadSettings();
@@ -467,6 +468,7 @@ Begin
     ini.UpdateFile;
     CheckBox8.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
     ReadAssetSets(); // Der Grafiksatz kann sich im Dialog geändert haben
+    UpdateGameModeCaption(); // Team play hebt einen anderen Spielmodus auf
   End;
 End;
 
@@ -1979,12 +1981,23 @@ End;
 Procedure TForm1.UpdateGameModeCaption;
 Var
   Settings: TModSettings;
+  Mode: TGameMode;
 Begin
   // Der aktive Spielmodus steht neben dem Knopf, der Name ist der übersetzte aus dem Dialog
   Settings.Handicap := Nil;
   LoadModSettingsFromFile(GetAtomicModsIniFile(), Settings);
   Settings.Handicap.free;
   Label10.Caption := form6.Caption + ': ' + form6.GameModeName(Settings.GameMode);
+  // Ein anderer Spielmodus als der normale steht auch auf dem Start Knopf, so wie er gespielt wird (Team play = normal)
+  If Label7.Caption <> fLaunchShown Then fLaunchCaption := Label7.Caption; // Neu übersetzt
+  Mode := EffectiveGameMode(Settings, ini.ReadBool(FPC_AtomicIniSection, 'TeamPlay', false));
+  If Mode = gmClassic Then Begin
+    Label7.Caption := fLaunchCaption;
+  End
+  Else Begin
+    Label7.Caption := fLaunchCaption + ' (' + form6.GameModeName(Mode) + ')';
+  End;
+  fLaunchShown := Label7.Caption;
 End;
 
 Procedure TForm1.FormShow(Sender: TObject);
