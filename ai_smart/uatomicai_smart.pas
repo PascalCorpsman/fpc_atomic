@@ -107,6 +107,7 @@ Type
     fRollActive: Array[TSmartFeature] Of Boolean;
     fRollUntil: Array[TSmartFeature] Of Int64;
     fNextDecision: Int64;
+    fDecisionCell: TPoint; // the field of the last decision, the reaction delay only holds within it
     fLastCommand: TAiCommand;
     fLastGoal: String;
     fEnemyLine: TBoolGrid; // Anticipate: fields in the flame lines of enemies with bombs
@@ -1179,7 +1180,8 @@ Begin
     If Inside(nx, ny) And (fDanger[nx, ny] <> Safe) Then result.MoveState := amNone;
   End;
   // Reaction: sometimes a mistake (a random step, never into flames or a dangerous field)
-  If (Settings.MistakeChance > 0) And (Rnd(100) < Settings.MistakeChance) Then Begin
+  // Only a step can be wrong: an ai that waits at its goal would otherwise wander off and come back
+  If (Settings.MistakeChance > 0) And (result.MoveState <> amNone) And (Rnd(100) < Settings.MistakeChance) Then Begin
     n := 0;
     For d := 0 To 3 Do Begin
       nx := fX + DirX[Moves[d]];
@@ -1221,13 +1223,16 @@ Begin
   BuildDanger;
   // Reaction delay: decide only every DelayMs and keep walking in between (an action only once).
   // Not after an action (e.g. the own bomb, the escape must start at once) and not while in danger.
+  // Only within the field of the last decision: walking on into the next field overshot the goal and the ai
+  // ran up and down around it (with a long delay one step is more than a field)
   If (Settings.DelayMs > 0) And (fTime < fNextDecision) And (fLastCommand.Action = apNone) And
-    (fDanger[fX, fY] = Safe) Then Begin
+    (fDanger[fX, fY] = Safe) And (fX = fDecisionCell.x) And (fY = fDecisionCell.y) Then Begin
     result.MoveState := fLastCommand.MoveState;
     If (result.MoveState = amNone) Or (Not Inside(fX + DirX[result.MoveState], fY + DirY[result.MoveState])) Or
       (fDanger[fX + DirX[result.MoveState], fY + DirY[result.MoveState]] = Safe) Then exit;
   End;
   fNextDecision := fTime + Settings.DelayMs;
+  fDecisionCell := Point(fX, fY);
   BuildEnemyLines;
   result := Decide();
   If result.Action <> apFirst Then fBombTries := 0; // only presses in a row count
