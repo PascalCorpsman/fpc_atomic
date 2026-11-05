@@ -116,8 +116,17 @@ Type
     fNoBombUntil: Int64;
     fGoal: TGoal; // the goal of the last decision, it gets a bonus so that the ai does not switch back and forth
     fEscaping: Boolean; // the escape started and goes on until the ai stands on a safe field
+    // Only for the log (LogDecisions): the last state, written as death report at the next round if the ai died
+    fSeenTime: Int64;
+    fSeenX, fSeenY, fSeenDanger: integer;
+    fSeenOwnBomb, fSeenEscaping: Boolean;
+    fStuckCell: TPoint;
+    fStuckSince: Int64;
+    fStuckLogged: Boolean;
     fLastMove: TAiMoveState; // for the log of steps back (LogDecisions)
     fLastMoveTime: Int64;
+
+    Procedure LogState(Const Cmd: TAiCommand);
 
     Function IsLastGoal(x, y: integer; Kind: TGoalKind): Boolean;
 
@@ -172,6 +181,7 @@ Const
 
 Var
   HurryCoords: Array[0..159] Of TPoint; // the spiral of the hurry, like in units/uatomic_field.pas
+  LatestAiTime: Int64 = 0; // Log: the latest round time of any ai, an ai that stopped earlier died
 
 Procedure InitHurryCoords;
 Var
@@ -213,6 +223,39 @@ End;
 
 { TSmartAi }
 
+Procedure TSmartAi.LogState(Const Cmd: TAiCommand);
+Var
+  k: integer;
+  g: TBoolGrid;
+Begin
+  // Remember the state for the death report (see Reset)
+  If fTime > LatestAiTime Then LatestAiTime := fTime;
+  fSeenTime := fTime;
+  fSeenX := fX;
+  fSeenY := fY;
+  fSeenDanger := fDanger[fX, fY];
+  fSeenEscaping := fEscaping;
+  fSeenOwnBomb := false;
+  For k := 0 To high(fBombs) Do
+    If fBombs[k].Owner = fIndex Then Begin
+      FillChar(g, SizeOf(g), 0);
+      FlameCells(fBombs[k].x, fBombs[k].y, fBombs[k].Len, g);
+      If g[fX, fY] Then fSeenOwnBomb := true;
+    End;
+  // Stuck: the ai wants to walk, but stays on the same field for more than 3 s
+  If (Cmd.MoveState <> amNone) And (fStuckCell.x = fX) And (fStuckCell.y = fY) Then Begin
+    If (Not fStuckLogged) And (fTime - fStuckSince > 3000) Then Begin
+      SmartLog(format('P%d stuck on (%d,%d) for 3 s, pos %.2f/%.2f, goal: %s', [fIndex, fX, fY, Me.Position.x, Me.Position.y, fLastGoal]));
+      fStuckLogged := true;
+    End;
+  End
+  Else Begin
+    fStuckCell := Point(fX, fY);
+    fStuckSince := fTime;
+    fStuckLogged := false;
+  End;
+End;
+
 Constructor TSmartAi.Create(aIndex: integer);
 Begin
   Inherited Create;
@@ -225,6 +268,20 @@ Var
   f: TSmartFeature;
 Begin
   // aStrength: the server always sends 100 at the moment, the settings come from ai_smart.ini
+  // Log: the server stops calling a dead ai, so a death shows up as an ai that went silent before the round ended
+  If Settings.LogDecisions And (fSeenTime > 0) Then Begin
+    If fSeenTime < LatestAiTime - 100 Then
+      SmartLog(format('P%d died at t=%d on (%d,%d), last goal: %s, escaping: %s, danger there: %s, own bomb hit that field: %s',
+        [fIndex, fSeenTime, fSeenX, fSeenY, fLastGoal, BoolToStr(fSeenEscaping, 'yes', 'no'),
+        BoolToStr(fSeenDanger = Safe, 'none', IntToStr(fSeenDanger) + ' ms'), BoolToStr(fSeenOwnBomb, 'YES (suicide?)', 'no')]))
+    Else
+      SmartLog(format('P%d survived the round (t=%d)', [fIndex, fSeenTime]));
+  End;
+  fSeenTime := 0;
+  If fIndex = 9 Then LatestAiTime := 0; // AiNewRound resets the ais 0..9 in this order
+  fStuckLogged := false;
+  fStuckSince := 0;
+  fStuckCell := Point(-1, -1);
   fTime := 0;
 {$PUSH}{$Q-}{$R-} // the seed is mixed by multiplication, the overflow is wanted
   If Settings.Seed <> 0 Then Begin
@@ -1205,6 +1262,11 @@ Begin
   result.MoveState := amNone;
   fTime := fTime + GameFrameRate; // called every frame
   If Not AiInfo.PlayerInfos[fIndex].Alive Then exit;
+  If Settings.LogDecisions Then Begin
+    // Alive in this frame (also while the reaction delay skips the decision), for the death report
+    fSeenTime := fTime;
+    If fTime > LatestAiTime Then LatestAiTime := fTime;
+  End;
   If AiInfo.PlayerInfos[fIndex].Flying Then exit;
   fInfo := @AiInfo;
   fGameMode := GameMode;
@@ -1236,6 +1298,7 @@ Begin
   BuildEnemyLines;
   result := Decide();
   If result.Action <> apFirst Then fBombTries := 0; // only presses in a row count
+  If Settings.LogDecisions Then LogState(result);
   // Log: a step back within 100 ms (the cause of shaking), with the reason of the last goal
   If Settings.LogDecisions And (result.MoveState <> amNone) Then Begin
     If (fLastMove <> amNone) And (fTime - fLastMoveTime <= 100) And
