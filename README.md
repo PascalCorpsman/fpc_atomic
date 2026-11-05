@@ -15,7 +15,7 @@ This repository hosts only the custom source code. To protect the intellectual p
 
 ![](https://www.myabandonware.com/media/screenshots/a/atomic-bomberman-ik0/atomic-bomberman_10.png)
 
-Since version 0.14002 FPC Atomic supports multiple "free" asset sets (thei will be random auto generated during installation), below you can see examples for the 4 given asset groups:
+Since version 0.14002, FPC Atomic has supported multiple "free" asset sets, which are randomly generated during installation and can also be regenerated later. Below are examples of the four available asset groups:
 
 Flat:<br>
 ![](documentation/preview_flat.png)
