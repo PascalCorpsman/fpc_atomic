@@ -112,6 +112,7 @@ Type
     fBombTryCell, fNoBombCell: TPoint;
     fNoBombUntil: Int64;
     fGoal: TGoal; // the goal of the last decision, it gets a bonus so that the ai does not switch back and forth
+    fEscaping: Boolean; // the escape started and goes on until the ai stands on a safe field
     fLastMove: TAiMoveState; // for the log of steps back (LogDecisions)
     fLastMoveTime: Int64;
 
@@ -248,6 +249,7 @@ Begin
   fGoal.y := -1;
   fLastMove := amNone;
   fLastMoveTime := 0;
+  fEscaping := false;
 End;
 
 Function TSmartAi.IsLastGoal(x, y: integer; Kind: TGoalKind): Boolean;
@@ -676,7 +678,25 @@ Var
 Begin
   Move := amNone;
   result := false;
-  If fDanger[fX, fY] = Safe Then exit;
+  If fDanger[fX, fY] = Safe Then Begin
+    fEscaping := false;
+    exit;
+  End;
+  (*
+   * With the timed danger map the paths may lead over fields that explode later. Such a field is left only when
+   * it gets tight (the explosion is nearer than the way to the next safe field plus a margin), otherwise the
+   * goal and the escape would send the ai back and forth at the border of the field. Once the escape started,
+   * it goes on until the ai stands on a safe field.
+   *)
+  If Roll(sfTimedDanger) And (Not fEscaping) Then Begin
+    Search(fX, fY, 0, fDanger, true, true, false, Dist, First);
+    best := NotReachable;
+    For i := 0 To FieldWidth - 1 Do
+      For j := 0 To FieldHeight - 1 Do
+        If (Dist[i, j] < best) And (fDanger[i, j] = Safe) Then best := Dist[i, j];
+    If (best <> NotReachable) And (fDanger[fX, fY] > (best + 2) * fMsPerField + Settings.SafetyMs) Then exit;
+  End;
+  fEscaping := true;
   result := true;
   (*
    * Pass 0: timed, bombs block (the best way)
