@@ -691,6 +691,7 @@ Begin
         // OpenSpace: of equally near fields the one with more ways out
         d := Dist[i, j] * 8;
         If Roll(sfOpenSpace) Then d := d - FreeNeighbours(i, j);
+        If IsLastGoal(i, j, gkEscape) Then d := d - 9; // keep the escape target, no switching between equal ones
         If d < best Then Begin
           best := d;
           Target := Point(i, j);
@@ -698,8 +699,11 @@ Begin
       End;
     If Target.x <> -1 Then Begin
       LogGoal('escape', Target.x, Target.y);
+      fGoal.Kind := gkEscape;
+      fGoal.x := Target.x;
+      fGoal.y := Target.y;
       If (Target.x = fX) And (Target.y = fY) Then
-        Move := MoveTo(fX, fY)
+        Move := amNone
       Else
         Move := First[Target.x, Target.y];
       exit;
@@ -1065,26 +1069,13 @@ Begin
 End;
 
 Function TSmartAi.MoveTo(tx, ty: integer): TAiMoveState;
-Const
-  MinEpsilon = 0.125; // like the old ai: centre on the target field (looks better, avoids overshooting)
-Var
-  cx, cy, Epsilon: Single;
 Begin
-  // With a high speed one step is longer than the tolerance, the ai would jump over the centre and back (shaking)
-  Epsilon := Me.Speed / GameFrameRate * 0.6;
-  If Epsilon < MinEpsilon Then Epsilon := MinEpsilon;
+  (*
+   * On the target field the ai stands still. The old ai centred itself there (only for the looks), that made the
+   * figure shake up and down when idle. The game centres a walking player itself (TAtomicField.HandleMovePlayer).
+   *)
   result := amNone;
-  If (tx = fX) And (ty = fY) Then Begin
-    cx := Me.Position.x - fX;
-    cy := Me.Position.y - fY;
-    If abs(cx - 0.5) > Epsilon Then Begin
-      If cx < 0.5 Then result := amRight Else result := amLeft;
-    End
-    Else If abs(cy - 0.5) > Epsilon Then Begin
-      If cy < 0.5 Then result := amDown Else result := amUp;
-    End;
-    exit;
-  End;
+  If (tx = fX) And (ty = fY) Then exit;
   If Inside(tx, ty) And (fDist[tx, ty] <> NotReachable) Then result := fFirst[tx, ty];
 End;
 
