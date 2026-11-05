@@ -49,6 +49,7 @@ Const
   HurryStartMs = 80000; // the hurry starts with this round time left
   HurryStepMs = 500; // one solid brick every 500 ms
   ThrowMs = 500; // AtomicBombBigFlyTime, a thrown bomb lands after this time
+  GameFrameRate = 10; // FrameRate of the game, the ai is called every frame
 
   Safe = High(integer); // no danger known on this field
   NotReachable = High(integer);
@@ -107,6 +108,9 @@ Type
     fLastCommand: TAiCommand;
     fLastGoal: String;
     fEnemyLine: TBoolGrid; // Anticipate: fields in the flame lines of enemies with bombs
+    fBombTries: integer; // apFirst on the same field without a bomb appearing
+    fBombTryCell, fNoBombCell: TPoint;
+    fNoBombUntil: Int64;
 
     Function Rnd(Range: integer): integer;
     Function Roll(f: TSmartFeature): Boolean;
@@ -124,7 +128,7 @@ Type
     Procedure BuildEnemyLines;
     Function Enterable(Const Danger: TIntGrid; x, y, ArriveMs: integer; Timed: Boolean): Boolean;
     Procedure Search(sx, sy, StartMs: integer; Const Danger: TIntGrid; BombsBlock, Timed, AllowBad: Boolean;
-      ExtraBlock: TPoint; Out Dist: TIntGrid; Out First: TMoveGrid);
+      Out Dist: TIntGrid; Out First: TMoveGrid);
     Function FreeNeighbours(x, y: integer): integer;
     Function CanSurviveBombs(Const Cells: TPointList; StartX, StartY, StartMs: integer; Out HitFriend: Boolean): Boolean;
     Function CanBombAt(x, y, Steps: integer): Boolean;
@@ -213,12 +217,14 @@ Var
 Begin
   // aStrength: the server always sends 100 at the moment, the settings come from ai_smart.ini
   fTime := 0;
+{$PUSH}{$Q-}{$R-} // the seed is mixed by multiplication, the overflow is wanted
   If Settings.Seed <> 0 Then Begin
     fRandom := Settings.Seed * 6364136223846793005 + QWord(fIndex + 1) * 1442695040888963407;
   End
   Else Begin
     fRandom := QWord(GetTickCount64) * 6364136223846793005 + QWord(fIndex + 1) * 1442695040888963407;
   End;
+{$POP}
   If fRandom = 0 Then fRandom := 88172645463325252;
   For f := low(TSmartFeature) To high(TSmartFeature) Do Begin
     fRollUntil[f] := -1;
@@ -229,6 +235,9 @@ Begin
   fLastCommand.Action := apNone;
   fLastCommand.MoveState := amNone;
   fLastGoal := '';
+  fBombTries := 0;
+  fNoBombCell := Point(-1, -1);
+  fNoBombUntil := 0;
 End;
 
 Function TSmartAi.Rnd(Range: integer): integer;
@@ -416,9 +425,11 @@ Begin
       fDanger[p.x, p.y] := 0;
     End;
   End;
-  // Hurry: the next fields of the spiral are walled up, whoever stands there dies
-  If Roll(sfRoundEnd) And (fRoundTimeLeft >= 0) Then Begin
-    Elapsed := HurryStartMs - fRoundTimeLeft;
+  // Hurry: the next fields of the spiral are walled up, whoever stands there dies.
+  // Some modes have no hurry (hunter with respawn): once the first brick is due but missing, nothing is predicted.
+  Elapsed := HurryStartMs - fRoundTimeLeft;
+  If Roll(sfRoundEnd) And (fRoundTimeLeft >= 0) And
+    ((Elapsed < HurryStepMs) Or (fInfo^.Field[HurryCoords[0].x, HurryCoords[0].y] = fSolid)) Then Begin
     For k := 0 To high(HurryCoords) Do Begin
       t := k * HurryStepMs - Elapsed;
       If t > Settings.HurryLookAheadMs Then break;
@@ -452,14 +463,16 @@ Begin
 End;
 
 Procedure TSmartAi.Search(sx, sy, StartMs: integer; Const Danger: TIntGrid; BombsBlock, Timed,
-  AllowBad: Boolean; ExtraBlock: TPoint; Out Dist: TIntGrid; Out First: TMoveGrid);
+  AllowBad: Boolean; Out Dist: TIntGrid; Out First: TMoveGrid);
 Var
   Head, Tail, d, nx, ny, nd: integer;
   p: TPoint;
   Allowed: Set Of TAiField;
   f: TAiField;
   Push: TPoint;
+  Conveyors: Boolean;
 Begin
+  Conveyors := Roll(sfConveyors);
   For nx := 0 To FieldWidth - 1 Do
     For ny := 0 To FieldHeight - 1 Do Begin
       Dist[nx, ny] := NotReachable;
@@ -484,11 +497,10 @@ Begin
       f := fInfo^.Field[nx, ny];
       If Not (f In Allowed) Then Continue;
       If BombsBlock And (fBombAt[nx, ny] <> -1) Then Continue;
-      If (nx = ExtraBlock.x) And (ny = ExtraBlock.y) Then Continue;
       nd := Dist[p.x, p.y] + 1;
       If Not Enterable(Danger, nx, ny, StartMs + nd * fMsPerField, Timed) Then Continue;
       // A conveyor that pushes into a dangerous field is avoided
-      If Roll(sfConveyors) And (f In [fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight]) Then Begin
+      If Conveyors And (f In [fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight]) Then Begin
         Case f Of
           fConveyorUp: Push := Point(nx, ny - 1);
           fConveyorDown: Push := Point(nx, ny + 1);
@@ -564,7 +576,7 @@ Begin
   // The new bombs block the way (the ai may leave the field it stands on), marked for the search only
   For k := 0 To high(Cells) Do
     If fBombAt[Cells[k].x, Cells[k].y] = -1 Then fBombAt[Cells[k].x, Cells[k].y] := -2;
-  Search(StartX, StartY, StartMs, Danger, true, Timed, false, NoPoint, Dist, First);
+  Search(StartX, StartY, StartMs, Danger, true, Timed, false, Dist, First);
   For k := 0 To high(Cells) Do
     If fBombAt[Cells[k].x, Cells[k].y] = -2 Then fBombAt[Cells[k].x, Cells[k].y] := -1;
   For i := 0 To FieldWidth - 1 Do
@@ -658,24 +670,7 @@ Begin
    *)
   For Pass := 0 To 2 Do Begin
     If (Pass = 0) And (Not Roll(sfTimedDanger)) Then Continue;
-    If Pass = 2 Then Begin
-      // Before the panic: kick a bomb away and follow it
-      If Roll(sfKick) And ((Me.Abilities And Ability_CanKick) <> 0) Then Begin
-        For d := 0 To 3 Do Begin
-          bx := fX + DirX[Moves[d]];
-          by := fY + DirY[Moves[d]];
-          If (Not Inside(bx, by)) Or (fBombAt[bx, by] < 0) Then Continue;
-          If Inside(bx + DirX[Moves[d]], by + DirY[Moves[d]]) And
-            (FieldAt(bx + DirX[Moves[d]], by + DirY[Moves[d]]) In WalkableFields) And
-            (fBombAt[bx + DirX[Moves[d]], by + DirY[Moves[d]]] = -1) Then Begin
-            Move := Moves[d];
-            LogGoal('escape by kick', bx, by);
-            exit;
-          End;
-        End;
-      End;
-    End;
-    Search(fX, fY, 0, fDanger, Pass < 2, Pass = 0, Pass = 2, NoPoint, Dist, First);
+    Search(fX, fY, 0, fDanger, Pass < 2, Pass = 0, Pass = 2, Dist, First);
     Target := NoPoint;
     best := NotReachable;
     For i := 0 To FieldWidth - 1 Do
@@ -699,6 +694,22 @@ Begin
       exit;
     End;
   End;
+  // Last chance: kick an adjacent bomb away (only if it does not explode while the ai walks against it)
+  If Roll(sfKick) And ((Me.Abilities And Ability_CanKick) <> 0) Then Begin
+    For d := 0 To 3 Do Begin
+      bx := fX + DirX[Moves[d]];
+      by := fY + DirY[Moves[d]];
+      If (Not Inside(bx, by)) Or (fBombAt[bx, by] < 0) Then Continue;
+      If fBombs[fBombAt[bx, by]].Time <= 2 * fMsPerField + Settings.SafetyMs Then Continue;
+      If Inside(bx + DirX[Moves[d]], by + DirY[Moves[d]]) And
+        (FieldAt(bx + DirX[Moves[d]], by + DirY[Moves[d]]) In WalkableFields) And
+        (fBombAt[bx + DirX[Moves[d]], by + DirY[Moves[d]]] = -1) Then Begin
+        Move := Moves[d];
+        LogGoal('escape by kick', bx, by);
+        exit;
+      End;
+    End;
+  End;
   // Nowhere safe: stay (and hope)
   LogGoal('escape impossible', fX, fY);
 End;
@@ -719,7 +730,7 @@ Begin
   result.y := -1;
   result.Score := 0;
   result.Name := '';
-  Search(fX, fY, 0, fDanger, true, Roll(sfTimedDanger), false, NoPoint, fDist, fFirst);
+  Search(fX, fY, 0, fDanger, true, Roll(sfTimedDanger), false, fDist, fFirst);
 
   // Infect: an ill ai walks into the nearest enemy
   Ill := Me.IsIll;
@@ -803,7 +814,8 @@ Begin
         inc(n);
       End;
       // Bomb fields
-      If CanBomb And (f In BombPlaceableFields) And (fBombAt[i, j] = -1) Then Begin
+      If CanBomb And (f In BombPlaceableFields) And (fBombAt[i, j] = -1) And
+        Not ((fTime < fNoBombUntil) And (fNoBombCell.x = i) And (fNoBombCell.y = j)) Then Begin
         Hits := CountBrickHits(i, j, Bricks, Burnt);
         Enemies := 0;
         FreeAround := 0;
@@ -914,7 +926,7 @@ Function TSmartAi.SpecialAction(Var Cmd: TAiCommand): Boolean;
 Var
   d, i, k, ex, ey, bx, by, Range: integer;
   Cells: TPointList;
-  HitFriend: Boolean;
+  HitFriend, Ok: Boolean;
   e: TPoint;
   m: TAiMoveState;
 
@@ -941,19 +953,16 @@ Var
 
 Begin
   result := false;
-  If fDanger[fX, fY] <> Safe Then exit; // escaping is more important
+  // Escaping is more important, unless the danger is still far away (a bomb next to the ai always threatens its field)
+  If (fDanger[fX, fY] <> Safe) And (fDanger[fX, fY] <= 3 * fMsPerField + Settings.SafetyMs) Then exit;
   Cells := Nil;
   For d := 0 To 3 Do Begin
     m := Moves[d];
     // Spooger: a row of bombs towards an enemy in the line (needs facing that way)
+    setlength(Cells, 0);
     If Roll(sfSpooger) And ((Me.Abilities And Ability_CanSpoog) <> 0) And (Me.AvailableBombs >= 2) And
-      (fBombAt[fX, fY] = -1) And (fInfo^.Field[fX, fY] In BombPlaceableFields) And
-      EnemyInLine(fX, fY, m, Me.AvailableBombs + Me.FlameLength, Range) Then Begin
-      If fFacing <> m Then Begin
-        Cmd.MoveState := m; // turn first (one frame)
-        Cmd.Action := apNone;
-        exit(true);
-      End;
+      (fBombAt[fX, fY] = -1) And (fInfo^.Field[fX, fY] In BombPlaceableFields) Then Begin
+      // The row like in the game: it stops at the first field where no bomb can be placed
       setlength(Cells, 1);
       Cells[0] := Point(fX, fY);
       For i := 1 To Me.AvailableBombs - 1 Do Begin
@@ -962,6 +971,13 @@ Begin
         If (Not Inside(bx, by)) Or Not (fInfo^.Field[bx, by] In BombPlaceableFields) Or (fBombAt[bx, by] <> -1) Then break;
         setlength(Cells, length(Cells) + 1);
         Cells[high(Cells)] := Point(bx, by);
+      End;
+    End;
+    If (length(Cells) >= 2) And EnemyInLine(fX, fY, m, high(Cells) + Me.FlameLength, Range) Then Begin
+      If fFacing <> m Then Begin
+        Cmd.MoveState := m; // turn first (one frame)
+        Cmd.Action := apNone;
+        exit(true);
       End;
       If CanSurviveBombs(Cells, fX, fY, 0, HitFriend) And Not (HitFriend And Roll(sfTeamSafety)) Then Begin
         Cmd.Action := apFirstDouble;
@@ -985,10 +1001,16 @@ Begin
               Cmd.Action := apNone;
               exit(true);
             End;
+            // The ai does not stand on the thrown bomb: check from its own field. With the carry bombs mod the
+            // range can be 1..6 (the ai does not know it), so every possible landing field must be survivable
             setlength(Cells, 1);
-            Cells[0] := Point(bx, by);
-            // The ai does not stand on the thrown bomb: check from its own field
-            If CanSurviveBombs(Cells, fX, fY, ThrowMs, HitFriend) And Not (HitFriend And Roll(sfTeamSafety)) Then Begin
+            Ok := true;
+            For k := 1 To 6 Do Begin
+              Cells[0] := Point(fX + DirX[m] * k, fY + DirY[m] * k);
+              If Not Inside(Cells[0].x, Cells[0].y) Then break;
+              If Not (CanSurviveBombs(Cells, fX, fY, ThrowMs, HitFriend) And Not (HitFriend And Roll(sfTeamSafety))) Then Ok := false;
+            End;
+            If Ok Then Begin
               Cmd.Action := apFirstDouble;
               Cmd.MoveState := amNone;
               LogGoal('grab and throw', bx, by);
@@ -1091,6 +1113,19 @@ Begin
   LogGoal(Goal.Name, Goal.x, Goal.y);
   If (Goal.x = fX) And (Goal.y = fY) Then Begin
     If Goal.Kind = gkBomb Then Begin
+      // The game can refuse a bomb on fields the ai sees as free (e.g. teleporters of a mod): after a few tries the
+      // field is blocked for a while, otherwise the ai would stand there forever
+      If (fBombTries > 0) And (fBombTryCell = Point(fX, fY)) Then
+        inc(fBombTries)
+      Else Begin
+        fBombTries := 1;
+        fBombTryCell := Point(fX, fY);
+      End;
+      If fBombTries > 5 Then Begin
+        fNoBombCell := fBombTryCell;
+        fNoBombUntil := fTime + 5000;
+        fBombTries := 0;
+      End;
       result.Action := apFirst;
       exit;
     End;
@@ -1128,7 +1163,7 @@ Function TSmartAi.CalcAiCommand(Const AiInfo: TAiInfo; GameMode: Cardinal; Hunte
 Begin
   result.Action := apNone;
   result.MoveState := amNone;
-  fTime := fTime + 10; // called every frame (FrameRate = 10 ms)
+  fTime := fTime + GameFrameRate; // called every frame
   If Not AiInfo.PlayerInfos[fIndex].Alive Then exit;
   If AiInfo.PlayerInfos[fIndex].Flying Then exit;
   fInfo := @AiInfo;
@@ -1139,20 +1174,25 @@ Begin
   fX := trunc(Me.Position.x);
   fY := trunc(Me.Position.y);
   If Not Inside(fX, fY) Then exit;
-  If Me.Speed > 0.1 Then
-    fMsPerField := round(1000 / Me.Speed)
+  // The game moves a player Speed / FrameRate fields per frame (TAtomicField.HandleMovePlayer), 0.5 = 5 fields per second
+  If Me.Speed > 0.01 Then
+    fMsPerField := round(GameFrameRate * GameFrameRate / Me.Speed)
   Else
     fMsPerField := 1000;
-  // Reaction delay: decide only every DelayMs, keep walking in between (an action only once)
-  If (Settings.DelayMs > 0) And (fTime < fNextDecision) Then Begin
-    result.MoveState := fLastCommand.MoveState;
-    exit;
-  End;
-  fNextDecision := fTime + Settings.DelayMs;
   BuildBombs;
   BuildDanger;
+  // Reaction delay: decide only every DelayMs and keep walking in between (an action only once).
+  // Not after an action (e.g. the own bomb, the escape must start at once) and not while in danger.
+  If (Settings.DelayMs > 0) And (fTime < fNextDecision) And (fLastCommand.Action = apNone) And
+    (fDanger[fX, fY] = Safe) Then Begin
+    result.MoveState := fLastCommand.MoveState;
+    If (result.MoveState = amNone) Or (Not Inside(fX + DirX[result.MoveState], fY + DirY[result.MoveState])) Or
+      (fDanger[fX + DirX[result.MoveState], fY + DirY[result.MoveState]] = Safe) Then exit;
+  End;
+  fNextDecision := fTime + Settings.DelayMs;
   BuildEnemyLines;
   result := Decide();
+  If result.Action <> apFirst Then fBombTries := 0; // only presses in a row count
   If result.MoveState <> amNone Then fFacing := result.MoveState;
   fLastCommand := result;
 End;
