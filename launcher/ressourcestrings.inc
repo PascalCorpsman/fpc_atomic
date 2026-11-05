@@ -79,6 +79,7 @@ Resourcestring
   R_AssetSetOriginal = 'Original';
   R_AiOriginal = 'Original';
   R_AiSmart = 'Smart';
+  RF_LaunchAi = 'AI: %s';
   RF_NewsGraphicsDone = '%d own graphics sets created (the others are finished in the background in a few seconds).' + LineEnding + '"Original" stays selected, switch with ◀ ▶ below the image.';
   R_SoundSetAuto = 'Automatic';
   R_SoundSetOriginal = 'Original (CD)';

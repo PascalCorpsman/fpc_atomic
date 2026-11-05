@@ -185,7 +185,7 @@ Implementation
 {$R *.lfm}
 
 Uses Math, process, Unit2, Unit3, Unit4, Unit5, Unit6, Unit7, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, uatomic_global, ulanguage, ulayout, uupdatecheck, uassetpath
+  , ukeyboarddialog, uatomic_common, uatomic_global, ulanguage, ulayout, uupdatecheck, uassetpath, usmartsettings
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -1982,20 +1982,49 @@ Procedure TForm1.UpdateGameModeCaption;
 Var
   Settings: TModSettings;
   Mode: TGameMode;
+  AiLib, AiName, Lib: String;
+  Smart: TIniFile;
 Begin
   // Der aktive Spielmodus steht neben dem Knopf, der Name ist der übersetzte aus dem Dialog
   Settings.Handicap := Nil;
   LoadModSettingsFromFile(GetAtomicModsIniFile(), Settings);
   Settings.Handicap.free;
   Label10.Caption := form6.Caption + ': ' + form6.GameModeName(Settings.GameMode);
-  // Ein anderer Spielmodus als der normale steht auch auf dem Start Knopf, so wie er gespielt wird (Team play = normal)
+  (*
+   * Auf dem Start Knopf stehen ein anderer Spielmodus als der normale (so wie er gespielt wird, Team play = normal)
+   * und immer die KI, die der gehostete Server lädt (die Smart KI mit ihrer Schwierigkeit)
+   *)
   If Label7.Caption <> fLaunchShown Then fLaunchCaption := Label7.Caption; // Neu übersetzt
   Mode := EffectiveGameMode(Settings, ini.ReadBool(FPC_AtomicIniSection, 'TeamPlay', false));
-  If Mode = gmClassic Then Begin
-    Label7.Caption := fLaunchCaption;
+  AiLib := trim(ini.ReadString('Launcher', 'AiLib', ''));
+{$IFDEF Windows}
+  Lib := AppDir() + AiLib + '.dll';
+{$ELSE}
+  Lib := AppDir() + 'lib' + AiLib + '.so';
+{$ENDIF}
+  If (AiLib = '') Or (AiLib = 'ai') Or (Not FileExists(Lib)) Then Begin
+    AiName := R_AiOriginal; // Fehlt die gewählte KI, nimmt der Server auch die Original KI
+  End
+  Else If AiLib = 'ai_smart' Then Begin
+    AiName := R_AiSmart + ' ' + IntToStr(DefaultDifficulty);
+    If FileExists(SmartIniFile()) Then Begin
+      Smart := TIniFile.Create(SmartIniFile());
+      Try
+        AiName := R_AiSmart + ' ' + IntToStr(Smart.ReadInteger('General', 'Difficulty', DefaultDifficulty));
+      Finally
+        Smart.free;
+      End;
+    End;
   End
   Else Begin
-    Label7.Caption := fLaunchCaption + ' (' + form6.GameModeName(Mode) + ')';
+    AiName := AiLib;
+  End;
+  AiName := format(RF_LaunchAi, [AiName]);
+  If Mode = gmClassic Then Begin
+    Label7.Caption := fLaunchCaption + ' (' + AiName + ')';
+  End
+  Else Begin
+    Label7.Caption := fLaunchCaption + ' (' + form6.GameModeName(Mode) + ', ' + AiName + ')';
   End;
   fLaunchShown := Label7.Caption;
 End;

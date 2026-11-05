@@ -50,6 +50,7 @@ r_nomapgraphics="Pas de graphismes de carte, extrayez d'abord les données du CD
 r_assetsetoriginal="Original"
 r_aioriginal="Original"
 r_aismart="Smart"
+rf_launchai="IA : %s"
 r_soundsetauto="Automatique"
 r_soundsetoriginal="Original (CD)"
 r_nosounds="(sans sons)"
