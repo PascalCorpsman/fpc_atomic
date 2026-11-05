@@ -168,7 +168,7 @@ Begin
   s.SnipeHitChance := Lerp(30, 90, Difficulty);
   s.SnipeWaitMs := 8000;
   s.SnipeEndgameBricks := 10;
-  s.BeamReactionMs := Lerp(1200, 400, Difficulty);
+  s.BeamReactionMs := Lerp(2500, 1000, Difficulty); // the beam kills after FlameThrowerKillMs (default 2000) in it
   s.DelayMs := Lerp(250, 0, Difficulty);
   s.MistakeChance := Lerp(10, 0, Difficulty);
   For a := low(TAiField) To high(TAiField) Do Begin
