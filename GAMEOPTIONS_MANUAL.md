@@ -29,6 +29,8 @@ Most options are a setting of the **host**: when you host a game, the server pla
 | Network port | 5521 | TCP port of the server when you host a game. Players who join over the internet need this port (see [MANUAL.md](MANUAL.md#connecting-a-client-over-the-internet-to-a-local-server)). |
 | Volume | 100 % | Sound volume. In the game it can also be changed with `+` and `-` in 5 % steps. |
 | Play sound effects | on | Explosions, items and so on. The music is switched separately with "Play music" in the launcher or with `m` in the game. |
+| AI | Original | The AI of the computer players when you host a game: Original (the AI of FPC Atomic) or Smart (plays smarter, can be set in detail, see [ai_smart/README.md](ai_smart/README.md)). Only installed AIs are offered. |
+| Difficulty | 50 | Only for the Smart AI: 0 = easy, 50 = normal, 100 = strong. It is stored in `ai_smart.ini`, where every ability can also be set on its own. |
 
 Map and wins can also be changed in the game by the host before a round starts.
 
