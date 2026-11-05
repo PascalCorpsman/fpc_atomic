@@ -13,6 +13,7 @@ This repository hosts only the custom source code. To protect the intellectual p
 
 ## Preview:
 
+Original assets extracted from the game CD:
 ![](https://www.myabandonware.com/media/screenshots/a/atomic-bomberman-ik0/atomic-bomberman_10.png)
 
 Since version 0.14002, FPC Atomic has supported multiple "free" asset sets, which are randomly generated during installation and can also be regenerated later. Below are examples of the four available asset groups:
