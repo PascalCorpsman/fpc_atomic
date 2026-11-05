@@ -111,6 +111,9 @@ Type
     fBombTries: integer; // apFirst on the same field without a bomb appearing
     fBombTryCell, fNoBombCell: TPoint;
     fNoBombUntil: Int64;
+    fGoal: TGoal; // the goal of the last decision, it gets a bonus so that the ai does not switch back and forth
+
+    Function IsLastGoal(x, y: integer; Kind: TGoalKind): Boolean;
 
     Function Rnd(Range: integer): integer;
     Function Roll(f: TSmartFeature): Boolean;
@@ -238,6 +241,14 @@ Begin
   fBombTries := 0;
   fNoBombCell := Point(-1, -1);
   fNoBombUntil := 0;
+  fGoal.Kind := gkNone;
+  fGoal.x := -1;
+  fGoal.y := -1;
+End;
+
+Function TSmartAi.IsLastGoal(x, y: integer; Kind: TGoalKind): Boolean;
+Begin
+  result := (fGoal.Kind = Kind) And (fGoal.x = x) And (fGoal.y = y);
 End;
 
 Function TSmartAi.Rnd(Range: integer): integer;
@@ -810,6 +821,7 @@ Begin
         c.Kind := gkCollect;
         c.Name := 'collect powerup';
         c.Score := Settings.PowerupWeight[f] * 12 * 100 Div (Steps + 2);
+        If IsLastGoal(i, j, gkCollect) Then c.Score := c.Score * 5 Div 4;
         Cand[n] := c;
         inc(n);
       End;
@@ -835,6 +847,7 @@ Begin
         Else
           c.Name := 'bricks';
         c.Score := Value * 100 Div (Steps + 2);
+        If IsLastGoal(i, j, gkBomb) Then c.Score := c.Score * 5 Div 4; // keep the goal unless another one is clearly better
         Cand[n] := c;
         inc(n);
       End;
@@ -871,6 +884,7 @@ Begin
         End;
         If md = High(integer) Then Continue;
         d := abs(md - 3) * 10 + fDist[i, j];
+        If IsLastGoal(i, j, gkGoto) Then d := d - 15; // the enemy moves: do not jump between fields of the same distance
         If fEnemyLine[i, j] Then d := d + Settings.AnticipateCost * 5;
         If d < best Then Begin
           best := d;
@@ -1052,10 +1066,13 @@ End;
 
 Function TSmartAi.MoveTo(tx, ty: integer): TAiMoveState;
 Const
-  Epsilon = 0.125; // like the old ai: centre on the target field (looks better, avoids overshooting)
+  MinEpsilon = 0.125; // like the old ai: centre on the target field (looks better, avoids overshooting)
 Var
-  cx, cy: Single;
+  cx, cy, Epsilon: Single;
 Begin
+  // With a high speed one step is longer than the tolerance, the ai would jump over the centre and back (shaking)
+  Epsilon := Me.Speed / GameFrameRate * 0.6;
+  If Epsilon < MinEpsilon Then Epsilon := MinEpsilon;
   result := amNone;
   If (tx = fX) And (ty = fY) Then Begin
     cx := Me.Position.x - fX;
@@ -1110,6 +1127,7 @@ Begin
     result.MoveState := MoveTo(fX, fY);
     exit;
   End;
+  fGoal := Goal;
   LogGoal(Goal.Name, Goal.x, Goal.y);
   If (Goal.x = fX) And (Goal.y = fY) Then Begin
     If Goal.Kind = gkBomb Then Begin
