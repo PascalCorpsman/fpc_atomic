@@ -1,96 +1,118 @@
 {
   "fpc_atomic":
   {
-    "Version":0.13003,
-    "LauncherVersion":10,
-    "VersionText":"* More relialible kill app on OpenGL error\n* made time edit menu rolling from 90s to 600s + infinity\n* Save statistics after each round\n* give extra trigger bomb if availibility already exists and a new bomb is taken\n* Spawn bricks on haunted hall only if there is no player close\n* GTK3 now default on Linux\n* Improved SDL2 errormessage",
+    "Version":0.14002,
+    "LauncherVersion":11,
+    "VersionText":"- Speedup starting\n- 4 new graphik sets\n-14 new mods",
     "Download_core":
     [
       {
         "file":
         {
-          "HASH":"3b62d4cf64d3e5400f7e46dfc2c78238",
+          "HASH":"f9ee30625777d4acab6f5234eebcafef",
           "SIZE":"3110400",
-          "HASH2":"f8fd16380a8f90468ae9a05bddefd1cb",
-          "SIZE2":"8184144",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/Animation_Editor.exe",
+          "HASH2":"9beea951d46c37a559426ecbadd56163",
+          "SIZE2":"8203728",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/Animation_Editor.exe",
           "Filename":"Animation_Editor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"766a998b6f3c6b8b63ff05fde62f2f2c",
-          "SIZE":"1382912",
-          "HASH2":"ee6ec81990bbe62cd20ab192870c2b2c",
-          "SIZE2":"2874576",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/atomic_server.exe",
+          "HASH":"50acfb7470a465859f60a09a79a7f165",
+          "SIZE":"1452544",
+          "HASH2":"6e45f3d5cafa27af168dfc85729df803",
+          "SIZE2":"2958496",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/atomic_server.exe",
           "Filename":"atomic_server.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"83b92e6a96f077c5b307eecde65947ce",
-          "SIZE":"5999616",
-          "HASH2":"aefb0efaf3671b6f49d57e8d786179d7",
-          "SIZE2":"8588448",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/atomic_launcher.exe",
+          "HASH":"809070a5fb673f49d44080c8c90077f2",
+          "SIZE":"6799360",
+          "HASH2":"e7f5efb9f5f884f69a7934c3927e8e63",
+          "SIZE2":"10185760",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/atomic_launcher.exe",
           "Filename":"atomic_launcher.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"6f7673c8c1219e64be4a231f6d76c756",
-          "SIZE":"2673664",
-          "HASH2":"227e7ba186e2a2587aae7aa105eff960",
-          "SIZE2":"7302832",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/updater.exe",
+          "HASH":"d7cf2c283032aa9c9f9ee60c3ef73729",
+          "SIZE":"3204608",
+          "HASH2":"7e774ff2c3897e4b4bd318bc64e81113",
+          "SIZE2":"8615168",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/updater.exe",
           "Filename":"updater.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"aba09e243739ec3a6811992667108bde",
-          "SIZE":"4456448",
-          "HASH2":"79c1733be0acb0074e61fa808f7737e5",
-          "SIZE2":"9996048",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/fpc_atomic.exe",
+          "HASH":"6e9a4abca683415f7754741b80d2d67a",
+          "SIZE":"4605440",
+          "HASH2":"0bafd7f3f5878d2460bf53186e14371f",
+          "SIZE2":"10121456",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/fpc_atomic.exe",
           "Filename":"fpc_atomic.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"40a0f70d7a91755d741260da537e06b3",
-          "SIZE":"2962944",
-          "HASH2":"18fe6c2f5402d5747a01a5c55b834751",
-          "SIZE2":"8118880",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/cd_data_extractor.exe",
+          "HASH":"67e9d523e2529f577de2b47841bfac0f",
+          "SIZE":"932864",
+          "HASH2":"db15d987f759feda1f9725ba265f584a",
+          "SIZE2":"1634800",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/asset_generator_cli.exe",
+          "Filename":"asset_generator_cli.exe"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"6d4d6d4d071fa69bb9704f35cb17d49e",
+          "SIZE":"4003840",
+          "HASH2":"525f908c38208c42bb48a49a5038460a",
+          "SIZE2":"9316160",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/asset_generator_gui.exe",
+          "Filename":"asset_generator_gui.exe"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"b2ee0adef9c642d111b8d995abd03691",
+          "SIZE":"29346841",
+          "HASH2":"f730a4ea7c24de6370d100fe60060ade",
+          "SIZE2":"9440864",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/cd_data_extractor.exe",
           "Filename":"cd_data_extractor.exe"
         }
       },
       {
         "file":
         {
-          "HASH":"a809ae3ae859e8dfedf7147f1f3ddd1a",
-          "SIZE":"299520",
-          "HASH2":"a68a36302fee06693558654aec47cb38",
-          "SIZE2":"2240904",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/ai.dll",
+          "HASH":"719ee6ae5986960046b2f03f62d2f732",
+          "SIZE":"301568",
+          "HASH2":"a19a02d37d87911dac4d7e679a5dde9c",
+          "SIZE2":"1196456",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/ai.dll",
           "Filename":"ai.dll"
         }
       },
       {
         "file":
         {
-          "HASH":"d3623a39e7937fead90981a25a4c64be",
-          "SIZE":"952503",
-          "HASH2":"0",
-          "SIZE2":"0",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/ai_smart.dll",
+          "HASH":"cb51db219f771085d62ef775129feae5",
+          "SIZE":"413696",
+          "HASH2":"f8f7e85526f33b68140ab44181f1f205",
+          "SIZE2":"1333784",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/ai_smart.dll",
           "Filename":"ai_smart.dll"
         }
       },
@@ -101,7 +123,7 @@
           "SIZE":"1576448",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",
           "SIZE2":"-1",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/SDL2.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/SDL2.dll",
           "Filename":"SDL2.dll"
         }
       },
@@ -112,7 +134,7 @@
           "SIZE":"166872",
           "HASH2":"255fb8ab523b179320f08f44db36a9fa",
           "SIZE2":"248952",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/bass.dll",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/bass.dll",
           "Filename":"bass.dll"
         }
       },
@@ -121,7 +143,7 @@
         {
           "HASH":"777d7d007fc6c89df46e72b7f7ddf73e",
           "SIZE":"380",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/Linux_sound_install_script.sh",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.14002\/Linux_sound_install_script.sh",
           "Filename":"Linux_sound_install_script.sh"
         }
       },
@@ -272,131 +294,10 @@
       {
         "file":
         {
-          "HASH":"51e165dd7c91897345745128d51ecc3a",
-          "SIZE":"6739",
+          "HASH":"8df0a8e9973090b834583f264fc00406",
+          "SIZE":"9894",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/MANUAL.md",
           "Filename":"MANUAL.md"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"b1a63af0bb0c191dee8b8cad95f58de4",
-          "SIZE":"33380",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.en",
-          "Filename":"launcher_lang.en"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"2ffb04189bc6fbb45f55b73706868e09",
-          "SIZE":"35546",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.de",
-          "Filename":"launcher_lang.de"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"d42757fb2f9447a8320afc93afc196fe",
-          "SIZE":"37613",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.fr",
-          "Filename":"launcher_lang.fr"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"6729a9e1a0e4c72baeaabe8ece4c8eb6",
-          "SIZE":"36576",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.es",
-          "Filename":"launcher_lang.es"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"0bc8b0a7cc714ef1ed7306642413b208",
-          "SIZE":"329",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.en",
-          "Filename":"updater_lang.en"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"c98ff9965d8c2de45f4ed53c4d75e704",
-          "SIZE":"367",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.de",
-          "Filename":"updater_lang.de"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"785feb3ef97a7d56867f4b897ece558e",
-          "SIZE":"382",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.fr",
-          "Filename":"updater_lang.fr"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"aab73d176f63b0bf14573896457ef52f",
-          "SIZE":"359",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.es",
-          "Filename":"updater_lang.es"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"a7bb3e32bb52f6d67dfebfdef26d16c9",
-          "SIZE":"3579",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/cd_data_extractor_lang.en",
-          "Filename":"cd_data_extractor_lang.en"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"c777f1cf4677a2613bdbe805526d43e0",
-          "SIZE":"3841",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/cd_data_extractor_lang.de",
-          "Filename":"cd_data_extractor_lang.de"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"70ca0a347ebf1b5996a557ac05dd719d",
-          "SIZE":"933376",
-          "HASH2":"0",
-          "SIZE2":"0",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/asset_generator_cli.exe",
-          "Filename":"asset_generator_cli.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"ab0c97416017ffad5c35cfb3e7318f3e",
-          "SIZE":"4006400",
-          "HASH2":"b32bb709bcae45da771388708460b415",
-          "SIZE2":"9266840",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/asset_generator_gui.exe",
-          "Filename":"asset_generator_gui.exe"
-        }
-      },
-      {
-        "file":
-        {
-          "HASH":"4943c6a67e1bdcd551ce4a94fe818349",
-          "SIZE":"5132",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.en",
-          "Filename":"asset_generator_lang.en"
         }
       },
       {
@@ -411,10 +312,10 @@
       {
         "file":
         {
-          "HASH":"33a8b29e0421be996460f1542fc488a3",
-          "SIZE":"5486",
-          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.fr",
-          "Filename":"asset_generator_lang.fr"
+          "HASH":"4943c6a67e1bdcd551ce4a94fe818349",
+          "SIZE":"5132",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.en",
+          "Filename":"asset_generator_lang.en"
         }
       },
       {
@@ -424,6 +325,105 @@
           "SIZE":"5559",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.es",
           "Filename":"asset_generator_lang.es"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"33a8b29e0421be996460f1542fc488a3",
+          "SIZE":"5486",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/asset_generator_lang.fr",
+          "Filename":"asset_generator_lang.fr"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"c777f1cf4677a2613bdbe805526d43e0",
+          "SIZE":"3841",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/cd_data_extractor_lang.de",
+          "Filename":"cd_data_extractor_lang.de"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"a7bb3e32bb52f6d67dfebfdef26d16c9",
+          "SIZE":"3579",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/cd_data_extractor_lang.en",
+          "Filename":"cd_data_extractor_lang.en"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"d7272ccd5b737907d018b4346b0ad8a4",
+          "SIZE":"41675",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.de",
+          "Filename":"launcher_lang.de"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"d99d37b4c515e7b313fd10e11192bf6c",
+          "SIZE":"39158",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.en",
+          "Filename":"launcher_lang.en"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"299450e56369b89a5520c38b632f6e40",
+          "SIZE":"42915",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.es",
+          "Filename":"launcher_lang.es"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"03142778da292b65a42bb2d443a9b644",
+          "SIZE":"43902",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.fr",
+          "Filename":"launcher_lang.fr"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"c98ff9965d8c2de45f4ed53c4d75e704",
+          "SIZE":"367",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.de",
+          "Filename":"updater_lang.de"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"0bc8b0a7cc714ef1ed7306642413b208",
+          "SIZE":"329",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.en",
+          "Filename":"updater_lang.en"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"aab73d176f63b0bf14573896457ef52f",
+          "SIZE":"359",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.es",
+          "Filename":"updater_lang.es"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"785feb3ef97a7d56867f4b897ece558e",
+          "SIZE":"382",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.fr",
+          "Filename":"updater_lang.fr"
         }
       }
     ]
