@@ -1850,7 +1850,7 @@ Begin
   fm.DecimalSeparator := '.';
   CheckBox1.Checked := ini.ReadBool(FPC_AtomicIniSection, 'ShowFPS', false);
   CheckBox2.Checked := ini.ReadBool(FPC_AtomicIniSection, 'Fullscreen', false);
-  CheckBox3.Checked := false;
+  CheckBox3.Checked := ini.ReadBool('Launcher', 'ConnectToIP', false);
   CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySounds', true); // Nur die Musik
   CheckBox8.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true); // Wie "Soundeffekte abspielen" in den Spieloptionen
   CheckBox5.Checked := Not ini.ReadBool(FPC_AtomicIniSection, 'Proportional', true);
@@ -2172,6 +2172,7 @@ Begin
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);
   ini.WriteString('Launcher', 'Router_Port', edit3.text);
+  ini.WriteBool('Launcher', 'ConnectToIP', CheckBox3.Checked);
   ini.WriteBool('Launcher', 'ShowAfterGame', CheckBox6.Checked);
 End;
 
