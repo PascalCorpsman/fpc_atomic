@@ -825,15 +825,16 @@ Begin
     // Strg + Launch: Das Spiel hostet sofort ein Netzwerkspiel, ohne Umweg über das Hauptmenü
     p.Parameters.Add('-host');
   End
-  Else If GetKeyState(VK_SHIFT) < 0 Then Begin
-    // Shift + Launch: Das Spiel tritt sofort einem Netzwerkspiel bei (sucht im lokalen Netz, sonst fragt es nach IP und Port)
-    p.Parameters.Add('-join');
-  End
   Else If CheckBox3.Checked Then Begin
+    // Mit IP und Port verbinden, auch bei Shift + Launch (sonst sucht das Spiel im lokalen Netz und fragt dann doch nach der IP)
     p.Parameters.Add('-ip');
     p.Parameters.Add(Edit2.Text);
     p.Parameters.Add('-port');
     p.Parameters.Add(Edit3.Text);
+  End
+  Else If GetKeyState(VK_SHIFT) < 0 Then Begin
+    // Shift + Launch: Das Spiel tritt sofort einem Netzwerkspiel bei (sucht im lokalen Netz, sonst fragt es nach IP und Port)
+    p.Parameters.Add('-join');
   End;
   // Der Grafiksatz, ohne den Parameter nimmt das Spiel die Originalgrafiken aus data
   If (fAssetIndex > 0) And (fAssetIndex < fAssetFolders.Count) Then Begin
@@ -1850,7 +1851,7 @@ Begin
   fm.DecimalSeparator := '.';
   CheckBox1.Checked := ini.ReadBool(FPC_AtomicIniSection, 'ShowFPS', false);
   CheckBox2.Checked := ini.ReadBool(FPC_AtomicIniSection, 'Fullscreen', false);
-  CheckBox3.Checked := false;
+  CheckBox3.Checked := ini.ReadBool('Launcher', 'ConnectToIP', false);
   CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySounds', true); // Nur die Musik
   CheckBox8.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true); // Wie "Soundeffekte abspielen" in den Spieloptionen
   CheckBox5.Checked := Not ini.ReadBool(FPC_AtomicIniSection, 'Proportional', true);
@@ -2172,6 +2173,7 @@ Begin
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);
   ini.WriteString('Launcher', 'Router_Port', edit3.text);
+  ini.WriteBool('Launcher', 'ConnectToIP', CheckBox3.Checked);
   ini.WriteBool('Launcher', 'ShowAfterGame', CheckBox6.Checked);
 End;
 
