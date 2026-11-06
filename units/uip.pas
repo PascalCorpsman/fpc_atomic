@@ -1,7 +1,7 @@
 (******************************************************************************)
 (* uip.pas                                                         ??.??.???? *)
 (*                                                                            *)
-(* Version     : 0.02                                                         *)
+(* Version     : 0.03                                                         *)
 (*                                                                            *)
 (* Author      : Uwe Schächterle (Corpsman)                                   *)
 (*                                                                            *)
@@ -27,6 +27,9 @@
 (*                                                                            *)
 (* History     : 0.01 - Initial version                                       *)
 (*               0.02 - Add Darwin support by Pavel Zverina                   *)
+(*               0.03 - Read the adapters from the OS (getifaddrs /           *)
+(*                      GetAdaptersAddresses) instead of parsing the output   *)
+(*                      of ifconfig / ipconfig, add GetLANIPs                 *)
 (*                                                                            *)
 (******************************************************************************)
 Unit uip;
@@ -45,14 +48,28 @@ Type
     IpAddress: String; // xxx.xxx.xxx.xxx -> IPV4
     SubnetMask: String; // xxx.xxx.xxx.xxx -> IPV4
     AdapterName: String;
+    Description: String; // Windows: name of the hardware / driver, e.g. "VirtualBox Host-Only Ethernet Adapter", Unix: ''
   End;
 
   TNetworkAdapterList = Array Of TNetworkAdapter;
 
   (*
    * Call this to get all local Adapternames and their IPV-4 addresses
+   * (only adapters that are up, without loopback)
    *)
 Function GetLocalIPs(): TNetworkAdapterList;
+
+(*
+ * Like GetLocalIPs, but without the adapters of containers and virtual machines
+ * (Docker, WSL, Hyper-V, libvirt, VirtualBox, VMware), they can not be reached from the local network.
+ * Use this to show the own address to other players.
+ *)
+Function GetLANIPs(IncludeVirtual: Boolean = false): TNetworkAdapterList;
+
+(*
+ * True if Adapter is the adapter of a container or a virtual machine
+ *)
+Function IsVirtualAdapter(Const Adapter: TNetworkAdapter): Boolean;
 
 (*
  * Calculates from a given Address and Subnet Mask the Broadcast address for the net
@@ -72,11 +89,91 @@ Function IsNetworkPresent(): Boolean;
 Implementation
 
 Uses
-  process, StrUtils
-{$IFDEF Windows}
-  , math
+  StrUtils
+{$IFDEF Unix}
+  , ctypes, Sockets
 {$ENDIF}
   ;
+
+{$IFDEF Unix}
+Const
+  IFF_UP = $1;
+  IFF_LOOPBACK = $8;
+  IFF_RUNNING = $40;
+
+Type
+  PIfAddrs = ^TIfAddrs;
+  TIfAddrs = Record // struct ifaddrs, same layout on Linux and Darwin
+    ifa_next: PIfAddrs;
+    ifa_name: PChar;
+    ifa_flags: cuint;
+    ifa_addr: psockaddr;
+    ifa_netmask: psockaddr;
+    ifa_dstaddr: psockaddr;
+    ifa_data: Pointer;
+  End;
+
+Function getifaddrs(Var ifap: PIfAddrs): cint; cdecl; external 'c';
+Procedure freeifaddrs(ifa: PIfAddrs); cdecl; external 'c';
+{$ENDIF}
+
+{$IFDEF Windows}
+{$PACKRECORDS C}
+Const
+  AF_INET = 2;
+  GAA_FLAG_SKIP_ANYCAST = $2;
+  GAA_FLAG_SKIP_MULTICAST = $4;
+  GAA_FLAG_SKIP_DNS_SERVER = $8;
+  ERROR_BUFFER_OVERFLOW = 111;
+  IF_TYPE_SOFTWARE_LOOPBACK = 24;
+  IfOperStatusUp = 1;
+
+Type
+  TSocketAddress = Record // SOCKET_ADDRESS, has to be a record of its own because of the padding behind it
+    lpSockaddr: Pointer;
+    iSockaddrLength: Integer;
+  End;
+
+  PIpAdapterUnicastAddress = ^TIpAdapterUnicastAddress;
+  TIpAdapterUnicastAddress = Record // IP_ADAPTER_UNICAST_ADDRESS, only the fields up to OnLinkPrefixLength (Vista+)
+    Length: Cardinal;
+    Flags: Cardinal;
+    Next: PIpAdapterUnicastAddress;
+    Address: TSocketAddress;
+    PrefixOrigin: Integer;
+    SuffixOrigin: Integer;
+    DadState: Integer;
+    ValidLifetime: Cardinal;
+    PreferredLifetime: Cardinal;
+    LeaseLifetime: Cardinal;
+    OnLinkPrefixLength: Byte;
+  End;
+
+  PIpAdapterAddresses = ^TIpAdapterAddresses;
+  TIpAdapterAddresses = Record // IP_ADAPTER_ADDRESSES, only the fields up to OperStatus
+    Length: Cardinal;
+    IfIndex: Cardinal;
+    Next: PIpAdapterAddresses;
+    AdapterName: PAnsiChar;
+    FirstUnicastAddress: PIpAdapterUnicastAddress;
+    FirstAnycastAddress: Pointer;
+    FirstMulticastAddress: Pointer;
+    FirstDnsServerAddress: Pointer;
+    DnsSuffix: PWideChar;
+    Description: PWideChar;
+    FriendlyName: PWideChar;
+    PhysicalAddress: Array[0..7] Of Byte;
+    PhysicalAddressLength: Cardinal;
+    Flags: Cardinal;
+    Mtu: Cardinal;
+    IfType: Cardinal;
+    OperStatus: Integer;
+  End;
+{$PACKRECORDS DEFAULT}
+
+Function GetAdaptersAddresses(Family, Flags: Cardinal; Reserved: Pointer;
+  AdapterAddresses: PIpAdapterAddresses; SizePointer: PCardinal): Cardinal; stdcall; external 'iphlpapi.dll';
+{$ENDIF}
 
 Function StrToIPAddress(Value: String): TIPAddress;
 Var
@@ -91,23 +188,14 @@ Begin
   End;
 End;
 
-{$IFDEF Darwin}
 (*
- * Converts a hex netmask like 0xffffff00 into 255.255.255.0, other values are returned unchanged
+ * sockaddr_in has the IPV-4 address at offset 4 on all platforms
+ * (Linux / Windows: 2 byte family + 2 byte port, Darwin: 1 byte len + 1 byte family + 2 byte port)
  *)
-Function HexMaskToIPString(Value: String): String;
-Var
-  m: Int64;
+Function SockAddrToStr(Addr: PByte): String;
 Begin
-  result := Value;
-  If pos('0x', lowercase(Value)) = 1 Then Begin
-    m := StrToInt64Def('$' + copy(Value, 3, length(Value)), -1);
-    If (m >= 0) And (m <= $FFFFFFFF) Then Begin
-      result := format('%d.%d.%d.%d', [(m Shr 24) And $FF, (m Shr 16) And $FF, (m Shr 8) And $FF, m And $FF]);
-    End;
-  End;
+  result := format('%d.%d.%d.%d', [Addr[4], Addr[5], Addr[6], Addr[7]]);
 End;
-{$ENDIF}
 
 Function IsNetworkPresent: Boolean;
 Var
@@ -115,158 +203,133 @@ Var
 Begin
   blub := GetLocalIPs();
   result := assigned(blub);
-  If length(blub) = 1 Then Begin
-    If blub[0].IpAddress = '127.0.0.1' Then result := false;
-  End;
   setlength(blub, 0);
+End;
+
+Function IsVirtualAdapter(Const Adapter: TNetworkAdapter): Boolean;
+Const
+  // Linux: Docker (docker0, br-<id>, veth<id>), libvirt (virbr0), VirtualBox (vboxnet0), VMware (vmnet1, vmnet8)
+  // Windows: Docker (vEthernet (DockerNAT)), WSL (vEthernet (WSL), vEthernet (WSL (Hyper-V firewall))), Hyper-V NAT (vEthernet (Default Switch)),
+  //          VMware (VMware Network Adapter VMnet1)
+  Prefixes: Array[0..5] Of String = ('br-', 'veth', 'virbr', 'vboxnet', 'vmnet', 'vethernet (wsl');
+  Parts: Array[0..2] Of String = ('docker', 'vethernet (default switch)', 'vmware network adapter');
+  // Windows: the name of a VirtualBox adapter is only "Ethernet 2", so check the description
+  DescriptionParts: Array[0..1] Of String = ('virtualbox host-only', 'vmware virtual ethernet');
+Var
+  s: String;
+  i: Integer;
+Begin
+  result := true;
+  s := lowercase(Adapter.AdapterName);
+  For i := 0 To high(Prefixes) Do
+    If pos(Prefixes[i], s) = 1 Then exit;
+  For i := 0 To high(Parts) Do
+    If pos(Parts[i], s) <> 0 Then exit;
+  s := lowercase(Adapter.Description);
+  For i := 0 To high(DescriptionParts) Do
+    If pos(DescriptionParts[i], s) <> 0 Then exit;
+  result := false;
+End;
+
+Function GetLANIPs(IncludeVirtual: Boolean): TNetworkAdapterList;
+Var
+  all: TNetworkAdapterList;
+  i: Integer;
+Begin
+  result := Nil;
+  all := GetLocalIPs();
+  For i := 0 To high(all) Do Begin
+    If (Not IncludeVirtual) And IsVirtualAdapter(all[i]) Then Continue;
+    setlength(result, high(result) + 2);
+    result[high(result)] := all[i];
+  End;
+End;
+
+{$IFDEF Unix}
+
+Function GetLocalIPs: TNetworkAdapterList;
+Var
+  list, p: PIfAddrs;
+Begin
+  result := Nil;
+  list := Nil;
+  If getifaddrs(list) <> 0 Then exit;
+  Try
+    p := list;
+    While assigned(p) Do Begin
+      If assigned(p^.ifa_addr) And assigned(p^.ifa_netmask)
+        And (p^.ifa_addr^.sa_family = AF_INET)
+        And ((p^.ifa_flags And IFF_UP) <> 0)
+        And ((p^.ifa_flags And IFF_RUNNING) <> 0)
+        And ((p^.ifa_flags And IFF_LOOPBACK) = 0) Then Begin
+        setlength(result, high(result) + 2);
+        result[high(result)].IpAddress := SockAddrToStr(PByte(p^.ifa_addr));
+        result[high(result)].SubnetMask := SockAddrToStr(PByte(p^.ifa_netmask));
+        result[high(result)].AdapterName := p^.ifa_name;
+        result[high(result)].Description := '';
+      End;
+      p := p^.ifa_next;
+    End;
+  Finally
+    freeifaddrs(list);
+  End;
+End;
+{$ENDIF}
+
+{$IFDEF Windows}
+
+Function PrefixLengthToMask(PrefixLength: Byte): String;
+Var
+  m: Cardinal;
+Begin
+  If PrefixLength = 0 Then
+    m := 0
+  Else If PrefixLength >= 32 Then
+    m := $FFFFFFFF
+  Else
+    m := Cardinal($FFFFFFFF) Shl (32 - PrefixLength);
+  result := format('%d.%d.%d.%d', [(m Shr 24) And $FF, (m Shr 16) And $FF, (m Shr 8) And $FF, m And $FF]);
 End;
 
 Function GetLocalIPs: TNetworkAdapterList;
 Var
-  sl: TStringList;
-  responce, tmp: String;
-{$IFDEF Windows}
-  j, k: Integer;
-{$ENDIF}
+  buffer: Array Of Byte;
+  size, res: Cardinal;
+  p: PIpAdapterAddresses;
+  u: PIpAdapterUnicastAddress;
   i: Integer;
 Begin
   result := Nil;
-  sl := TStringList.Create;
-{$IFDEF Linux}
-  RunCommand('ifconfig', [], responce, [poWaitOnExit]);
-{$ENDIF}
-{$IFDEF Darwin}
-  // macOS uses ifconfig similar to Linux
-  RunCommand('ifconfig', [], responce, [poWaitOnExit]);
-{$ENDIF}
-{$IFDEF Windows}
-  RunCommand('ipconfig', [], responce, [poNoConsole, poWaitOnExit]);
-{$ENDIF}
-  sl.Text := responce;
-  For i := 1 To sl.Count - 1 Do Begin
-{$IFDEF Linux}
-    If pos('inet ', sl[i]) <> 0 Then Begin
-      setlength(result, high(result) + 2);
-
-      tmp := copy(sl[i], pos('inet ', sl[i]) + length('inet '), length(sl[i]));
-      result[high(result)].IpAddress := copy(tmp, 1, pos(' ', tmp) - 1);
-
-      tmp := copy(sl[i], pos('netmask ', sl[i]) + length('netmask '), length(sl[i])) + ' ';
-      result[high(result)].SubnetMask := copy(tmp, 1, pos(' ', tmp) - 1);
-
-      // TODO: Maybe implement a more "Robust" method to get the adapter name ??
-      result[high(result)].AdapterName := copy(sl[i - 1], 1, pos(':', sl[i - 1]) - 1);
-    End;
-{$ENDIF}
-{$IFDEF Darwin}
-    // macOS ifconfig format: "inet 192.168.1.100 netmask 0xffffff00 broadcast 192.168.1.255"
-    // or: "	inet 192.168.0.72 netmask 0xffffff00 broadcast 192.168.0.255"
-    If (pos('inet ', sl[i]) <> 0) And (pos('inet6 ', sl[i]) = 0) Then Begin
-      // Extract IP address (skip "inet " and get the first word)
-      tmp := trim(sl[i]);
-      tmp := copy(tmp, pos('inet ', tmp) + length('inet '), length(tmp));
-      tmp := copy(tmp, 1, pos(' ', tmp) - 1);
-      // Skip loopback interface (127.0.0.1)
-      If (tmp <> '127.0.0.1') And (tmp <> '') Then Begin
-        setlength(result, high(result) + 2);
-        result[high(result)].IpAddress := tmp;
-
-        // Extract netmask (can be in hex format like 0xffffff00 or decimal)
-        tmp := sl[i];
-        If pos('netmask ', tmp) <> 0 Then Begin
-          tmp := copy(tmp, pos('netmask ', tmp) + length('netmask '), length(tmp)) + ' ';
-          tmp := copy(tmp, 1, pos(' ', tmp) - 1);
-          // macOS reports the netmask in hex format, e.g. 0xffffff00 = 255.255.255.0
-          result[high(result)].SubnetMask := HexMaskToIPString(tmp);
-        End
-        Else Begin
-          result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
-        End;
-
-        // Get adapter name from previous line (format: "en0: flags=..." or "en0:")
-        If i > 0 Then Begin
-          tmp := trim(sl[i - 1]);
-          If pos(':', tmp) <> 0 Then Begin
-            tmp := copy(tmp, 1, pos(':', tmp) - 1);
-            result[high(result)].AdapterName := trim(tmp);
-          End
-          Else Begin
-            result[high(result)].AdapterName := 'unknown';
-          End;
-        End
-        Else Begin
-          result[high(result)].AdapterName := 'unknown';
-        End;
-      End;
-    End;
-{$ENDIF}
-{$IFDEF Windows}
-    // Windows ipconfig format can be:
-    // "   IPv4 Address. . . . . . . . . . . : 192.168.1.100"
-    // or localized versions like "   IPv4-Adresse  . . . . . . . . . : 192.168.1.100"
-    // Look for "IPv4" followed by "Address" or "Adresse" (German) or similar
-    If (pos('IPv4', sl[i]) <> 0) And ((pos('Address', sl[i]) <> 0) Or (pos('Adresse', sl[i]) <> 0)) Then Begin
-      setlength(result, high(result) + 2);
-
-      // Extract IP address - it's after the last colon
-      tmp := sl[i];
-      j := length(tmp);
-      // Find last colon
-      While (j > 0) And (tmp[j] <> ':') Do
-        dec(j);
-      If j > 0 Then Begin
-        tmp := copy(tmp, j + 1, length(tmp));
-        result[high(result)].IpAddress := trim(tmp);
-        // Skip loopback interface
-        If result[high(result)].IpAddress = '127.0.0.1' Then Begin
-          setlength(result, high(result));
-          Continue;
-        End;
-      End
-      Else Begin
-        setlength(result, high(result));
-        Continue;
-      End;
-
-      // Try to find subnet mask in next few lines
-      result[high(result)].SubnetMask := '255.255.255.0'; // Default fallback
-      For j := i + 1 To min(i + 5, sl.Count - 1) Do Begin
-        // "Subnet Mask" (english), "Subnetzmaske" (german)
-        If (pos('Subnet', sl[j]) <> 0) And (pos('mask', lowercase(sl[j])) <> 0) Then Begin
-          tmp := sl[j];
-          k := length(tmp);
-          While (k > 0) And (tmp[k] <> ':') Do
-            dec(k);
-          If k > 0 Then Begin
-            tmp := copy(tmp, k + 1, length(tmp));
-            result[high(result)].SubnetMask := trim(tmp);
-          End;
-          break;
-        End;
-      End;
-
-      // Find adapter name - look backwards for adapter name (usually before "IPv4" line)
-      result[high(result)].AdapterName := 'unknown';
-      For j := i Downto max(1, i - 10) Do Begin
-        If trim(sl[j]) = '' Then Begin
-          If j > 0 Then Begin
-            tmp := trim(sl[j - 1]);
-            // Adapter name is usually on a line ending with ":"
-            If (pos(':', tmp) <> 0) And (pos('IPv4', tmp) = 0) Then Begin
-              tmp := copy(tmp, 1, pos(':', tmp) - 1);
-              If tmp <> '' Then Begin
-                result[high(result)].AdapterName := trim(tmp);
-              End;
-              break;
-            End;
-          End;
-        End;
-      End;
-    End;
-{$ENDIF}
+  buffer := Nil;
+  res := ERROR_BUFFER_OVERFLOW;
+  size := 16 * 1024;
+  // The adapter list can grow between two calls, so retry a few times
+  For i := 0 To 2 Do Begin
+    setlength(buffer, size);
+    res := GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST Or GAA_FLAG_SKIP_MULTICAST Or GAA_FLAG_SKIP_DNS_SERVER,
+      Nil, PIpAdapterAddresses(@buffer[0]), @size);
+    If res <> ERROR_BUFFER_OVERFLOW Then break;
   End;
-  sl.free;
+  If res <> 0 Then exit;
+  p := PIpAdapterAddresses(@buffer[0]);
+  While assigned(p) Do Begin
+    If (p^.OperStatus = IfOperStatusUp) And (p^.IfType <> IF_TYPE_SOFTWARE_LOOPBACK) Then Begin
+      u := p^.FirstUnicastAddress;
+      While assigned(u) Do Begin
+        If assigned(u^.Address.lpSockaddr) And (PWord(u^.Address.lpSockaddr)^ = AF_INET) Then Begin
+          setlength(result, high(result) + 2);
+          result[high(result)].IpAddress := SockAddrToStr(PByte(u^.Address.lpSockaddr));
+          result[high(result)].SubnetMask := PrefixLengthToMask(u^.OnLinkPrefixLength);
+          result[high(result)].AdapterName := UTF8Encode(WideString(p^.FriendlyName));
+          result[high(result)].Description := UTF8Encode(WideString(p^.Description));
+        End;
+        u := u^.Next;
+      End;
+    End;
+    p := p^.Next;
+  End;
 End;
+{$ENDIF}
 
 Function CalculateBroadCastAddressFromAddress(Address, SubnetMask: String): String;
 Var

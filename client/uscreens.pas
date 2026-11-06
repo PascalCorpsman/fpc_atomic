@@ -120,7 +120,7 @@ Type
   TJoinMenu = Class(TScreen)
   private
     fPlayerInfoString: String; // Die Spieler die Gerade auch eingewählt sind.
-    fServerIP: String; // Server IP address (for display when hosting)
+    fServerIPs: TStringArray; // Server IP addresses (for display when hosting)
 
   public
     Connected: Boolean;
@@ -128,7 +128,7 @@ Type
 
     Constructor Create(Owner: TObject); override;
     Procedure LoadPlayerdata(Const PlayerData: Array Of TPlayer);
-    Procedure SetServerIP(Const IP: String); // Set server IP address for display
+    Procedure SetServerIPs(Const IPs: TStringArray); // Set server IP addresses for display
     Procedure Render; override;
     Procedure Reset; override;
   End;
@@ -1026,7 +1026,7 @@ Begin
   fBackFile := 'join.png';
   fSoundFile := 'join_sound.wav';
   fCursorFile := '';
-  fServerIP := '';
+  fServerIPs := Nil;
 End;
 
 Procedure TJoinMenu.LoadPlayerdata(Const PlayerData: Array Of TPlayer);
@@ -1041,35 +1041,46 @@ Begin
   End;
 End;
 
-Procedure TJoinMenu.SetServerIP(Const IP: String);
+Procedure TJoinMenu.SetServerIPs(Const IPs: TStringArray);
 Begin
-  fServerIP := IP;
+  fServerIPs := Copy(IPs);
 End;
 
 Procedure TJoinMenu.Render;
+Const
+  LineHeight = 25;
 Var
   serverInfo: String;
+  i, y: Integer;
 Begin
   Inherited Render;
   glBindTexture(GL_TEXTURE_2D, 0);
   AtomicFont.color := $00EAE556;
   AtomicFont.BackColor := clBlack;
   AtomicFont.Textout(100, 50, 0, 'Our Nodename is: ''' + Tgame(fOwner).Settings.NodeName + '''');
-  // Display server IP address if available (when hosting)
-  If fServerIP <> '' Then Begin
-    serverInfo := 'Server IP: ' + fServerIP + ':' + Tgame(fOwner).Settings.Router_Port;
+  // Display server IP addresses if available (when hosting), one line each
+  y := 100;
+  If assigned(fServerIPs) Then Begin
     AtomicFont.color := clLime; // Green color for server IP
-    AtomicFont.Textout(100, 75, 0, serverInfo);
+    For i := 0 To high(fServerIPs) Do Begin
+      serverInfo := fServerIPs[i] + ':' + Tgame(fOwner).Settings.Router_Port;
+      If i = 0 Then
+        serverInfo := 'Server IP: ' + serverInfo
+      Else
+        serverInfo := '           ' + serverInfo;
+      AtomicFont.Textout(100, 75 + i * LineHeight, 0, serverInfo);
+    End;
+    y := 100 + high(fServerIPs) * LineHeight;
   End;
   If Connected Then Begin
     // Der Server hat unseren Login Versuch Grundsätzlich aktzeptiert
     // Wir zeigen nun die Infos der Spieler an, bis der 1. Spieler in den Nächsten Screen umschaltet
     AtomicFont.color := clWhite;
-    AtomicFont.Textout(120, 100, 0, fPlayerInfoString);
+    AtomicFont.Textout(120, y, 0, fPlayerInfoString);
   End
   Else Begin
     AtomicFont.color := clYellow;
-    AtomicFont.Textout(120, 100, 0, 'Waiting for server to host a game..');
+    AtomicFont.Textout(120, y, 0, 'Waiting for server to host a game..');
   End;
 End;
 

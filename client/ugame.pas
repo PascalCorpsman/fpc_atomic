@@ -221,7 +221,7 @@ Type
      * Routinen die der Master Spieler Aufruft um den Rest zu Aktualisieren
      *)
     Function StartHost: Boolean;
-    Function GetServerIPAddress(): String; // Get local network IP address for server display
+    Function GetServerIPAddresses(): TStringArray; // Get all local network IP addresses for server display
     Function LocalhostOnly(): Boolean; // -localhost: the hosted server only listens on 127.0.0.1
     Procedure SendSettings();
     Procedure UpdateFieldSetup(FieldName: String; FieldHash: Uint64; NeededWins: integer);
@@ -408,7 +408,7 @@ Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   EnterID := LogEnter('TGame.SwitchToScreen');
   If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
-    TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(''); // Reset IP in case of "join"
+    TJoinMenu(fScreens[sJoinNetwork]).SetServerIPs(Nil); // Reset IP in case of "join"
     fParamJoinIP := ''; // Reset last Join IP, this is needed, if player was server before, ..
     If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
   End;
@@ -448,7 +448,7 @@ Begin
 
         // Get and display server IP address for other players to connect
         If Assigned(fScreens[sJoinNetwork]) Then Begin
-          TJoinMenu(fScreens[sJoinNetwork]).SetServerIP(GetServerIPAddress());
+          TJoinMenu(fScreens[sJoinNetwork]).SetServerIPs(GetServerIPAddresses());
         End;
 
         TargetScreen := sJoinNetwork;
@@ -1049,30 +1049,24 @@ Begin
   If key = Settings.Keys[aKeyset].KeySecondary Then exit(akSecondAction);
 End;
 
-Function TGame.GetServerIPAddress: String;
+Function TGame.GetServerIPAddresses: TStringArray;
 Var
   adapters: TNetworkAdapterList;
   i: Integer;
 Begin
-  Result := '127.0.0.1'; // Default to localhost
-  If LocalhostOnly() Then exit; // Nobody else can reach the server, so do not show the network address
-  Try
-    adapters := GetLocalIPs();
-    // Find first non-localhost IP address (prefer network IP over localhost)
+  Result := Nil;
+  If Not LocalhostOnly() Then Begin // Otherwise nobody else can reach the server, so do not show the network addresses
+    // All addresses that can be reached from the local network (no loopback, no Docker / WSL / Hyper-V / libvirt)
+    adapters := GetLANIPs();
+    setlength(Result, length(adapters));
     For i := 0 To High(adapters) Do Begin
-      If (adapters[i].IpAddress <> '127.0.0.1') And (adapters[i].IpAddress <> '') Then Begin
-        Result := adapters[i].IpAddress;
-        log('Server IP address: ' + Result, llInfo);
-        exit;
-      End;
+      Result[i] := adapters[i].IpAddress;
+      log('Server IP address: ' + Result[i] + ' (' + adapters[i].AdapterName + ')', llInfo);
     End;
-    // If no network IP found, use localhost
-    log('No network IP found, using localhost: ' + Result, llInfo);
-  Except
-    On E: Exception Do Begin
-      log('Error getting server IP address: ' + E.Message + ', using localhost', llWarning);
-      Result := '127.0.0.1';
-    End;
+  End;
+  If Not assigned(Result) Then Begin
+    Result := ['127.0.0.1'];
+    log('No network IP found, using localhost', llInfo);
   End;
 End;
 
@@ -2609,14 +2603,17 @@ Begin
           LogLeave(EnterID);
         End;
       End;
-      Try
-        n := GetLocalIPs();
-        For i := 0 To high(n) Do Begin
+      // The broadcast address of every network (also VPN), 255.255.255.255 as fallback and the own machine
+      fUDPPingData.Connection.SendMessage('Ping', '255.255.255.255');
+      fUDPPingData.Connection.SendMessage('Ping', '127.0.0.1');
+      n := GetLocalIPs();
+      For i := 0 To high(n) Do Begin
+        Try
           s := CalculateBroadCastAddressFromAddress(n[i].IpAddress, n[i].SubnetMask);
           fUDPPingData.Connection.SendMessage('Ping', s);
+        Except
+          log('Could not ping via ' + n[i].AdapterName + ' (' + n[i].IpAddress + '/' + n[i].SubnetMask + ')', llWarning);
         End;
-      Except
-        log('Could not ping, maybe there is no valid network card present.', llCritical);
       End;
     End;
     LogLeave(EnterID);
