@@ -79,3 +79,20 @@ TAiCommand_t AiHandlePlayerEx(uint32_t PlayerIndex, TAiInfo_t* AiInfo, TAiModeIn
      */
     return AiHandlePlayer(PlayerIndex, AiInfo);
 }
+
+char *AiPlayerName(uint32_t PlayerIndex)
+{
+    /*
+     * Optional: the name of the ai player in slot PlayerIndex, shown instead of "AI" (0 = no name).
+     * Must be unique per slot and a valid player name, e.g. "Bob 3" (see ai.h)
+     */
+    return 0;
+}
+
+char *AiDisplayName()
+{
+    /*
+     * Optional: the short name of your ai, shown in the launcher (0 = the file name)
+     */
+    return 0;
+}

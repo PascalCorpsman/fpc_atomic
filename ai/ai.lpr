@@ -139,7 +139,7 @@ Begin
 End;
 
 (*
- * Optional: the name of the ai player in slot PlayerIndex (by difficulty, e.g. "Nitro 3")
+ * Optional: the name of the ai player in slot PlayerIndex, shown instead of "AI" (nil = no name)
  *)
 
 Function AiPlayerName(PlayerIndex: cuint32): pchar; cdecl;
