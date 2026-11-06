@@ -825,15 +825,16 @@ Begin
     // Strg + Launch: Das Spiel hostet sofort ein Netzwerkspiel, ohne Umweg über das Hauptmenü
     p.Parameters.Add('-host');
   End
-  Else If GetKeyState(VK_SHIFT) < 0 Then Begin
-    // Shift + Launch: Das Spiel tritt sofort einem Netzwerkspiel bei (sucht im lokalen Netz, sonst fragt es nach IP und Port)
-    p.Parameters.Add('-join');
-  End
   Else If CheckBox3.Checked Then Begin
+    // Mit IP und Port verbinden, auch bei Shift + Launch (sonst sucht das Spiel im lokalen Netz und fragt dann doch nach der IP)
     p.Parameters.Add('-ip');
     p.Parameters.Add(Edit2.Text);
     p.Parameters.Add('-port');
     p.Parameters.Add(Edit3.Text);
+  End
+  Else If GetKeyState(VK_SHIFT) < 0 Then Begin
+    // Shift + Launch: Das Spiel tritt sofort einem Netzwerkspiel bei (sucht im lokalen Netz, sonst fragt es nach IP und Port)
+    p.Parameters.Add('-join');
   End;
   // Der Grafiksatz, ohne den Parameter nimmt das Spiel die Originalgrafiken aus data
   If (fAssetIndex > 0) And (fAssetIndex < fAssetFolders.Count) Then Begin
