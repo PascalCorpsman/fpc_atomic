@@ -138,6 +138,24 @@ Begin
   result := ais[PlayerIndex].CalcAiCommand(AiInfo, mi.GameMode, mi.HuntedIndex);
 End;
 
+(*
+ * Optional: the name of the ai player in slot PlayerIndex (by difficulty, e.g. "Nitro 3")
+ *)
+
+Function AiPlayerName(PlayerIndex: cuint32): pchar; cdecl;
+Begin
+  result := Nil;
+End;
+
+(*
+ * Optional: the short name of the ai, shown in the launcher
+ *)
+
+Function AiDisplayName(): pchar; cdecl;
+Begin
+  result := 'default';
+End;
+
 Exports
 
   AiInit
@@ -148,6 +166,8 @@ Exports
   , AiHandlePlayer
   , AiGameModes
   , AiHandlePlayerEx
+  , AiPlayerName
+  , AiDisplayName
   ;
 
 Begin

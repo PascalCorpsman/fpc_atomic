@@ -123,6 +123,25 @@ Begin
   result := AiHandlePlayer(PlayerIndex, AiInfo);
 End;
 
+
+(*
+ * Optional: the name of the ai player in slot PlayerIndex (by difficulty, e.g. "Nitro 3")
+ *)
+
+Function AiPlayerName(PlayerIndex: cuint32): pchar; cdecl;
+Begin
+  result := Nil;
+End;
+
+(*
+ * Optional: the short name of the ai, shown in the launcher
+ *)
+
+Function AiDisplayName(): pchar; cdecl;
+Begin
+  result := Nil;
+End;
+
 Exports
 
   AiInit
@@ -131,8 +150,10 @@ Exports
   , AiVersion
   , AiNewRound
   , AiHandlePlayer
-  , AiGameModes // Optional, can be removed
-  , AiHandlePlayerEx // Optional, can be removed
+  , AiGameModes
+  , AiHandlePlayerEx
+  , AiPlayerName
+  , AiDisplayName
   ;
 
 Begin
