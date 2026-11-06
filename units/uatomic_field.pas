@@ -172,6 +172,8 @@ Type
     Property Hash: UInt64 read fHash; // Pseudo MD5Hash über info.txt der Karte (Grafiken zählen nicht, die kann jeder Client aus seinem eigenen Grafiksatz laden)
     Property OpenTopBottom: Boolean read fWrapTopBottom; // Mod offene Grenzen, für die Pfeile im Client
     Property OpenLeftRight: Boolean read fWrapLeftRight;
+    Property PortalsTopBottom: Boolean read fPortalTopBottom; // Mod Teleporter am Rand: gerade aktiv (für die KI)
+    Property PortalsLeftRight: Boolean read fPortalLeftRight;
     Property OpenWarnTopBottom: Boolean read fWrapWarnTopBottom;
     Property OpenWarnLeftRight: Boolean read fWrapWarnLeftRight;
     Property Sound: String read fSoundFile;
@@ -2636,8 +2638,9 @@ Begin
     If result.Bombs[i].Position.x < 0 Then result.Bombs[i].Position.x := result.Bombs[i].Position.x + FieldWidth - 1;
     If result.Bombs[i].Position.x >= FieldWidth Then result.Bombs[i].Position.x := result.Bombs[i].Position.x - FieldWidth;
     If result.Bombs[i].Position.y < 0 Then result.Bombs[i].Position.y := result.Bombs[i].Position.y + FieldHeight - 1;
-    If result.Bombs[i].Position.y >= FieldWidth Then result.Bombs[i].Position.y := result.Bombs[i].Position.y - FieldHeight;
+    If result.Bombs[i].Position.y >= FieldHeight Then result.Bombs[i].Position.y := result.Bombs[i].Position.y - FieldHeight;
     result.Bombs[i].FlameLength := fBombs[i].FireLen;
+    If fBombs[i].WhiteBomb Then result.Bombs[i].FlameLength := 0; // Mod weiße Bombe: explodiert ohne Flammen
     result.Bombs[i].Flying := OffGround(fBombs[i]); // Getragene Bomben (Mod) liegen auch nicht auf dem Feld
     result.Bombs[i].Owner := fBombs[i].PlayerIndex;
     result.Bombs[i].ManualTrigger := fBombs[i].Animation = baTimeTriggered;

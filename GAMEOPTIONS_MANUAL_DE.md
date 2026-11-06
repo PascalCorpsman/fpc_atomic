@@ -29,6 +29,8 @@ Die meisten Optionen sind eine Einstellung des **Hosts**: Wer ein Spiel hostet, 
 | Netzwerk-Port | 5521 | TCP-Port des Servers, wenn du ein Spiel hostest. Spieler, die über das Internet beitreten, brauchen diesen Port (siehe [MANUAL_DE.md](MANUAL_DE.md)). |
 | Lautstärke (%) | 100 % | Die Lautstärke. Im Spiel lässt sie sich auch mit `+` und `-` in 5-%-Schritten ändern. |
 | Soundeffekte abspielen | an | Explosionen, Items usw. Die Musik wird getrennt geschaltet, mit „Musik abspielen“ im Launcher oder mit `m` im Spiel. |
+| KI | Original | Die KI der Computerspieler, wenn du ein Spiel hostest: Original (die KI von FPC Atomic) oder Smart (spielt klüger, im Detail einstellbar, siehe [ai_smart/README_DE.md](ai_smart/README_DE.md)). Angeboten werden nur installierte KIs. |
+| Schwierigkeit | 50 | Nur für die Smart-KI: 0 = leicht, 50 = normal, 100 = stark. Sie steht in `ai_smart.ini`, dort lässt sich auch jede Fähigkeit einzeln einstellen. |
 
 Karte und Siege kann der Host auch im Spiel vor dem Start einer Runde ändern.
 

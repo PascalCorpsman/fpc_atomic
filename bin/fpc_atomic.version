@@ -86,6 +86,17 @@
       {
         "file":
         {
+          "HASH":"d3623a39e7937fead90981a25a4c64be",
+          "SIZE":"952503",
+          "HASH2":"0",
+          "SIZE2":"0",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/releases\/download\/0.13003\/ai_smart.dll",
+          "Filename":"ai_smart.dll"
+        }
+      },
+      {
+        "file":
+        {
           "HASH":"b0980ff189e193be7bbe99c314e68bdb",
           "SIZE":"1576448",
           "HASH2":"d41d8cd98f00b204e9800998ecf8427e",

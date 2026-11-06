@@ -171,7 +171,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);$(ProjPath)"/>
-      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src;../../Sample/SDL2/library;../../Sample/SDL2;../../Sample/TCP_IP"/>
+      <OtherUnitFiles Value="../units;../../Sample/DatenSteuerung;../../Sample/Graphik;../../Sample/synapse;../../Sample/Sound;../../Sample/OpenGL;../cd_data_extractor_src;../../Sample/SDL2/library;../../Sample/SDL2;../../Sample/TCP_IP;../ai_smart;../server"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

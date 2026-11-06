@@ -21,6 +21,7 @@ Welche Mods zu welcher Spielerrunde passen, beantwortet die [Mods-FAQ](MODS_FAQ_
 - [Offene Grenzen](#offene-grenzen)
 - [Teleporter](#teleporter)
 - [Items & Krankheiten](#items--krankheiten)
+- [Die KI und die Mods](#die-ki-und-die-mods)
 - [Mod-Test-Modus](#mod-test-modus)
 - [atomic_mods.ini von Hand bearbeiten](#atomic_modsini-von-hand-bearbeiten)
 
@@ -159,7 +160,7 @@ Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie e
 | Anteil der Items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
 | Treibstoff pro Item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
 | Reichweite (Felder) | `FlameThrowerRange` | 3 | 1 .. 14 |
-| Zeit bis zum Treffer (ms) | `FlameThrowerKillMs` | 2000 | 0 .. 10000 |
+| Zeit bis zum Treffer (ms) | `FlameThrowerKillMs` | 1500 | 0 .. 10000 |
 | Teamkollegen verletzen (Friendly Fire) | `FlameThrowerFriendlyFire` | 0 (aus) | 0 / 1 |
 | Items im Strahl verbrennen | `FlameThrowerBurnItems` | 1 (an) | 0 / 1 |
 | Bomben im Strahl zünden | `FlameThrowerIgniteBombs` | 1 (an) | 0 / 1 |
@@ -334,6 +335,24 @@ Bitte beachten:
 | Blindgänger | `DiseaseWeightDudBombs` | 10 | 0 .. 100 |
 | Super langsam | `DiseaseWeightSuperSlow` | 10 | 0 .. 100 |
 | Super schlecht: Plätze tauschen (%) | `SuperBadSwapChance` | 10 | 0 .. 100 |
+
+## Die KI und die Mods
+
+Die originale KI kennt die Mods nicht. Die [Smart-KI](ai_smart/README_DE.md) bekommt vom Server gemeldet, welche Mods aktiv sind, und spielt damit:
+
+| Mod | Smart-KI |
+|---|---|
+| Offene Grenzen, Teleporter | läuft und flieht über offene Ränder, wirft Bomben darüber; Teleporter meidet sie wie Löcher |
+| Boxhandschuh | betäubt einen Gegner direkt vor ihr |
+| Durch Steine laufen | läuft durch Steine, solange die Zeit reicht (sie bekommt es selten, Krankheits-Items meidet sie) |
+| Flammenwerfer | kann ihn nicht abfeuern (der Strahl braucht eine gehaltene Taste). Weicht dem Strahl aus, aber mit Reaktionszeit: getroffen erschrickt sie zuerst und läuft langsamer, so ist sie zu treffen; aus der Deckung einer Bombe tritt sie heraus |
+| Positive Krankheit (unverwundbar) | greift keine unverwundbaren Gegner an, läuft durch Flammen, solange sie selbst unverwundbar ist |
+| Weiße Bombe | flieht nicht vor weißen Bomben, legt eigene sofort |
+| Handschuh beim Start | wirft vor dem ersten Schritt eine Bombe |
+| Stun bei Bombenlandung, Bomben von Geistern | fliegende Bomben gelten als gefährlich |
+| Bomben tragen, Geister, Trefferpunkte | gelten nicht für KI-Spieler (siehe die Mods) |
+
+Wie stark sie das jeweils nutzt, steht in `ai_smart.ini` (Schwierigkeit und ein Wert pro Fähigkeit).
 
 ## Mod-Test-Modus
 

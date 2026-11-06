@@ -97,6 +97,7 @@ To start the server in dedicated mode, use the following command line parameters
 - -l \<level\>: the log level (default is 2)
 - -ats \<speed\>: sets atomic normal speed (default is 5)
 - -bind \<IP\>: only listen on this address, e.g. 127.0.0.1 for a game on this PC only (no firewall question, nobody else can join)
+- -ai \<name\>: the AI of the computer players, e.g. ai_smart for the [Smart AI](ai_smart/README.md) (ai_smart.dll / libai_smart.so). Without it, or if the file is missing, the original AI (when the game hosts, the launcher setting "AI" is passed)
 
 When the game hosts a game itself, the parameter **-localhost** of fpc_atomic makes the server listen only on 127.0.0.1. The parameter **-assets \<folder\>** of fpc_atomic selects a [graphics set](GRAPHICS_MANUAL.md) (the launcher passes it automatically).
 

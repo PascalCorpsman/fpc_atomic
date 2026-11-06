@@ -1,5 +1,7 @@
 Resourcestring
   R_InstallationIncomplete = 'Error, installation not complete, please run "Check for updates"';
+  R_SetupNoExtractor = 'The CD extractor (cd_data_extractor) is not installed.' + LineEnding + 'Install it with "Check for updates", then run the setup again.';
+  R_SetupNoGenerator = 'The graphics generator (asset_generator_gui) is not installed.' + LineEnding + 'Install it with "Check for updates", then run the setup again.';
   R_ValidName = '✓ valid name';
   R_InvalidNameHint = '✗ a-z 0-9 _ space, max. 19';
   R_InvalidNodeName = 'is not a valid nodename, (need to be less than 20 chars and no spezial chars!';
@@ -77,6 +79,9 @@ Resourcestring
   R_RandomMap = 'Random each game';
   R_NoMapGraphics = 'No map graphics, extract the CD data first.';
   R_AssetSetOriginal = 'Original';
+  R_AiOriginal = 'Original';
+  R_AiSmart = 'Smart';
+  RF_LaunchAi = 'AI: %s';
   RF_NewsGraphicsDone = '%d own graphics sets created (the others are finished in the background in a few seconds).' + LineEnding + '"Original" stays selected, switch with ◀ ▶ below the image.';
   R_SoundSetAuto = 'Automatic';
   R_SoundSetOriginal = 'Original (CD)';

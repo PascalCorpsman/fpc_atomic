@@ -97,6 +97,7 @@ Für den dedizierten Modus den Server mit diesen Kommandozeilenparametern starte
 - -l \<level\>: das Log-Level (Standard 2)
 - -ats \<speed\>: die normale Atomic-Geschwindigkeit (Standard 5)
 - -bind \<IP\>: nur auf dieser Adresse lauschen, z. B. 127.0.0.1 für ein Spiel nur auf diesem PC (keine Firewall-Abfrage, niemand sonst kann beitreten)
+- -ai \<Name\>: die KI der Computerspieler, z. B. ai_smart für die [Smart-KI](ai_smart/README_DE.md) (ai_smart.dll / libai_smart.so). Ohne den Parameter, oder wenn die Datei fehlt, die originale KI (hostet das Spiel, wird die Launcher-Einstellung „KI“ übergeben)
 
 Hostet das Spiel selbst, lässt der Parameter **-localhost** von fpc_atomic den Server nur auf 127.0.0.1 lauschen. Der Parameter **-assets \<Ordner\>** von fpc_atomic wählt einen [Grafiksatz](GRAPHICS_MANUAL_DE.md) (der Launcher übergibt ihn automatisch).
 

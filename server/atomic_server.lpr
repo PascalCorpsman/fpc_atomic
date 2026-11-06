@@ -34,6 +34,7 @@ Uses
   , uatomic_common
   , uatomic_global
   , uip
+  , uai
   ;
 
 Procedure PrintHelp;
@@ -48,6 +49,7 @@ Begin
   writeln('-ats <factor> = overwrite default atomic speed (default = 5)');
   writeln('-d = if set do not ignore docker ip when reporting own ip');
   writeln('-bind <IP> = only listen on this address, e.g. 127.0.0.1 (default = all)');
+  writeln('-ai <Name> = the ai to load, e.g. ai_smart (= ai_smart.dll / libai_smart.so, default = ai)');
   writeln('-h = This screen');
   writeln('');
   writeln('Commands during execution:');
@@ -114,6 +116,11 @@ Begin
       End;
       If lowercase(paramstr(i)) = '-bind' Then Begin
         BindAddress := paramstr(i + 1);
+        Params[i] := true;
+        Params[i + 1] := true;
+      End;
+      If lowercase(paramstr(i)) = '-ai' Then Begin
+        AiLibName := paramstr(i + 1);
         Params[i] := true;
         Params[i + 1] := true;
       End;

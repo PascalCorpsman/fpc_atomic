@@ -906,7 +906,13 @@ Begin
         End
         Else Begin
           If PlayerData[i].UID = AIPlayer Then Begin
-            fPlayerDetails[i].PlayerData := 'AI';
+            // Den Namen schickt der Server, wenn die KI einen hat (z.B. die Smart KI), das (AI) unterscheidet ihn von echten Spielern
+            If PlayerData[i].UserName <> '' Then Begin
+              fPlayerDetails[i].PlayerData := PlayerData[i].UserName + ' (AI)';
+            End
+            Else Begin
+              fPlayerDetails[i].PlayerData := 'AI';
+            End;
           End;
         End;
       End;

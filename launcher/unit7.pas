@@ -42,11 +42,15 @@ Type
     LabelGenerate: TLabel;
     LabelCD: TLabel;
     LabelLater: TLabel;
+    Procedure ButtonCDClick(Sender: TObject);
+    Procedure ButtonGenerateClick(Sender: TObject);
     Procedure FormShow(Sender: TObject);
   private
+    fCanGenerate, fCanExtract: Boolean;
   public
     (*
-     * Zeigt den Dialog, CanGenerate / CanExtract = Generator bzw. CD Extraktor sind vorhanden (sonst ist der Knopf aus)
+     * Zeigt den Dialog, CanGenerate / CanExtract = Generator bzw. CD Extraktor sind vorhanden. Die Knöpfe bleiben
+     * immer aktiv: fehlt das Programm, sagt ein Klick warum es nicht geht (ein grauer Knopf erklärt nichts).
      *)
     Function Execute(CanGenerate, CanExtract: Boolean): TModalResult;
   End;
@@ -58,7 +62,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses ulayout;
+Uses ulayout, ulanguage;
 
 { TForm7 }
 
@@ -67,12 +71,24 @@ Begin
   FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
 
+Procedure TForm7.ButtonGenerateClick(Sender: TObject);
+Begin
+  If fCanGenerate Then exit; // ModalResult des Knopfs schließt den Dialog
+  showmessage(R_SetupNoGenerator);
+  ModalResult := mrNone;
+End;
+
+Procedure TForm7.ButtonCDClick(Sender: TObject);
+Begin
+  If fCanExtract Then exit;
+  showmessage(R_SetupNoExtractor);
+  ModalResult := mrNone;
+End;
+
 Function TForm7.Execute(CanGenerate, CanExtract: Boolean): TModalResult;
 Begin
-  ButtonGenerate.Enabled := CanGenerate;
-  LabelGenerate.Enabled := CanGenerate;
-  ButtonCD.Enabled := CanExtract;
-  LabelCD.Enabled := CanExtract;
+  fCanGenerate := CanGenerate;
+  fCanExtract := CanExtract;
   If CanGenerate Then Begin
     ActiveControl := ButtonGenerate;
   End

@@ -44,6 +44,7 @@ Type
     ComboBox4: TComboBox;
     ComboBox5: TComboBox;
     ComboBox6: TComboBox;
+    ComboBox7: TComboBox;
     Image1: TImage;
     Label1: TLabel;
     Label2: TLabel;
@@ -56,11 +57,15 @@ Type
     Label9: TLabel;
     Label10: TLabel;
     Label11: TLabel;
+    Label12: TLabel;
+    Label13: TLabel;
     SpinEdit1: TSpinEdit;
     SpinEdit2: TSpinEdit;
     SpinEdit3: TSpinEdit;
+    SpinEdit4: TSpinEdit;
     Procedure Button1Click(Sender: TObject);
     Procedure ComboBox2Change(Sender: TObject);
+    Procedure ComboBox7Change(Sender: TObject);
     Procedure FormCreate(Sender: TObject);
     Procedure FormDestroy(Sender: TObject);
     Procedure FormShow(Sender: TObject);
@@ -69,6 +74,8 @@ Type
     fMapDirs: TStringList; // Zu jedem Eintrag in ComboBox4 das Verzeichnis der Karte, '' = Zufallskarte, '?' = gibt es hier nicht
     fAssetFolders: TStringList; // Zu jedem Eintrag in ComboBox5 der Ordner des Grafiksatzes unter assets/, '' = Original
     fSoundFolders: TStringList; // Zu jedem Eintrag in ComboBox6 der Wert von [Launcher] SoundSet: SoundSetAuto, '' = Original, sonst der Ordner
+    fAiLibs: TStringList; // Zu jedem Eintrag in ComboBox7 der Name der KI für den Server (Parameter -ai), 'ai' = Original
+    Procedure ReadAiLibs(Const Selected: String);
     Procedure SetPlayTime(Value: integer);
     Function GetPlayTime(): integer;
     Procedure SetScheme(Const Value: String);
@@ -88,11 +95,17 @@ Type
 Var
   Form5: TForm5;
 
+Function AiLibDisplayName(Const LibName: String): String; // Der Name einer KI für die Anzeige, LibName ohne Endung ('ai_smart')
+
 Implementation
 
 {$R *.lfm}
 
-Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, uatomic_common, ulanguage, ulayout, uassetpath;
+Uses ulauncher, math, md5, FileUtil, IntfGraphics, FPImage, dynlibs, uatomic_common, ulanguage, ulayout, uassetpath, usmartsettings;
+
+Const
+  OriginalAiLib = 'ai'; // ai.dll / libai.so
+  SmartAiLib = 'ai_smart'; // ai_smart.dll / libai_smart.so, die einzige KI mit Schwierigkeit (ai_smart.ini)
 
 Const
   MapGfxFiles: Array[0..3] Of String = ('brick.png', 'field.png', 'solid.png', 'xbrick.ani');
@@ -100,6 +113,32 @@ Const
 
 Type
   TSchemeRows = Array[0..FieldHeight - 1] Of String;
+
+Function AiLibDisplayName(Const LibName: String): String;
+Type
+  TAiDisplayName = Function(): pchar; cdecl;
+Var
+  Lib: TLibHandle;
+  f: TAiDisplayName;
+Begin
+  // Die bekannten KIs übersetzt, sonst der Name aus der KI (optionaler Export AiDisplayName), sonst der Dateiname
+  If LibName = OriginalAiLib Then exit(R_AiOriginal);
+  If LibName = SmartAiLib Then exit(R_AiSmart);
+  result := LibName;
+{$IFDEF Windows}
+  Lib := dynlibs.LoadLibrary(AppDir() + LibName + '.dll');
+{$ELSE}
+  Lib := dynlibs.LoadLibrary(AppDir() + 'lib' + LibName + '.so');
+{$ENDIF}
+  If Lib = NilHandle Then exit;
+  Try
+    f := TAiDisplayName(dynlibs.GetProcAddress(Lib, 'AiDisplayName'));
+    If assigned(f) And (trim(String(f())) <> '') Then result := trim(String(f()));
+  Except
+    result := LibName;
+  End;
+  dynlibs.UnloadLibrary(Lib);
+End;
 
 Function MapHash(Const Dir: String): UInt64;
 Var
@@ -183,6 +222,7 @@ Begin
   fMapDirs := TStringList.Create;
   fAssetFolders := TStringList.Create;
   fSoundFolders := TStringList.Create;
+  fAiLibs := TStringList.Create;
   // Die Spielzeit wie im Spiel: unendlich oder 90 .. 600 s in 30 s Schritten
   ComboBox3.Items.Clear;
   ComboBox3.Items.Add('Infinity');
@@ -214,6 +254,48 @@ Begin
   fMapDirs.free;
   fAssetFolders.free;
   fSoundFolders.free;
+  fAiLibs.free;
+End;
+
+Procedure TForm5.ReadAiLibs(Const Selected: String);
+Var
+  sr: TSearchRec;
+  n, Prefix, Ext: String;
+  i: integer;
+Begin
+  // Alle KIs im Programmordner: ai.dll (Original) und ai_*.dll, unter Linux libai.so und libai_*.so
+{$IFDEF Windows}
+  Prefix := '';
+  Ext := '.dll';
+{$ELSE}
+  Prefix := 'lib';
+  Ext := '.so';
+{$ENDIF}
+  fAiLibs.Clear;
+  ComboBox7.Items.Clear;
+  fAiLibs.Add(OriginalAiLib);
+  ComboBox7.Items.Add(R_AiOriginal);
+  If FindFirst(AppDir() + Prefix + OriginalAiLib + '_*' + Ext, faAnyFile, sr) = 0 Then Begin
+    Repeat
+      n := copy(sr.Name, length(Prefix) + 1, length(sr.Name) - length(Prefix) - length(Ext));
+      If fAiLibs.IndexOf(n) <> -1 Then Continue;
+      fAiLibs.Add(n);
+      ComboBox7.Items.Add(AiLibDisplayName(n));
+    Until FindNext(sr) <> 0;
+  End;
+  FindClose(sr);
+  ComboBox7.ItemIndex := 0; // Unbekannt oder nicht installiert: der Server nimmt auch die Original KI
+  For i := 1 To fAiLibs.Count - 1 Do
+    If fAiLibs[i] = trim(Selected) Then ComboBox7.ItemIndex := i;
+  ComboBox7Change(Nil);
+End;
+
+Procedure TForm5.ComboBox7Change(Sender: TObject);
+Begin
+  // Die Schwierigkeit gibt es nur für die Smart KI
+  SpinEdit4.Enabled := (ComboBox7.ItemIndex >= 0) And (ComboBox7.ItemIndex < fAiLibs.Count) And
+    (fAiLibs[ComboBox7.ItemIndex] = SmartAiLib);
+  Label13.Enabled := SpinEdit4.Enabled;
 End;
 
 Procedure TForm5.ReadAssetSets(Const Selected: String);
@@ -455,6 +537,9 @@ Begin
   CheckBox4.Checked := true;
   ComboBox5.ItemIndex := 0;
   ComboBox6.ItemIndex := 0; // Automatisch
+  ComboBox7.ItemIndex := 0; // Original KI
+  ComboBox7Change(Nil);
+  SpinEdit4.Value := DefaultDifficulty;
   UpdatePreview();
 End;
 
@@ -487,6 +572,8 @@ Begin
 End;
 
 Procedure TForm5.LoadFromIni(Const ini: TIniFile);
+Var
+  smart: TIniFile;
 Begin
   ReadSchemes();
   ReadMaps();
@@ -503,12 +590,24 @@ Begin
   CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
   ReadAssetSets(ini.ReadString('Launcher', 'AssetSet', ''));
   ReadSoundSets(ini.ReadString('Launcher', 'SoundSet', SoundSetAuto));
+  ReadAiLibs(ini.ReadString('Launcher', 'AiLib', ''));
+  // Die Schwierigkeit steht in ai_smart.ini (die liest die Smart KI selbst)
+  SpinEdit4.Value := DefaultDifficulty;
+  If FileExists(SmartIniFile()) Then Begin
+    smart := TIniFile.Create(SmartIniFile());
+    Try
+      SpinEdit4.Value := max(0, min(100, smart.ReadInteger('General', 'Difficulty', DefaultDifficulty)));
+    Finally
+      smart.free;
+    End;
+  End;
   UpdatePreview();
 End;
 
 Procedure TForm5.SaveToIni(Const ini: TIniFile);
 Var
   dir: String;
+  smart: TIniFile;
 Begin
   ini.WriteBool(FPC_AtomicIniSection, 'TeamPlay', CheckBox1.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'RandomStart', CheckBox2.Checked);
@@ -540,6 +639,30 @@ Begin
   // Die Sounds, unabhängig vom Grafiksatz (SoundSetAuto, '' = Original oder ein Ordner unter assets/)
   If (ComboBox6.ItemIndex >= 0) And (ComboBox6.ItemIndex < fSoundFolders.Count) Then Begin
     ini.WriteString('Launcher', 'SoundSet', fSoundFolders[ComboBox6.ItemIndex]);
+  End;
+  // Die KI eines gehosteten Servers ('' = Original), das Spiel gibt sie dem Server als -ai mit
+  If (ComboBox7.ItemIndex > 0) And (ComboBox7.ItemIndex < fAiLibs.Count) Then
+    ini.WriteString('Launcher', 'AiLib', fAiLibs[ComboBox7.ItemIndex])
+  Else
+    ini.WriteString('Launcher', 'AiLib', '');
+  // Die Schwierigkeit in ai_smart.ini, gibt es die noch nicht: mit allen Werten und Kommentaren anlegen (wie die KI selbst)
+  If SpinEdit4.Enabled Then Begin
+    Try
+      If FileExists(SmartIniFile()) Then Begin
+        smart := TIniFile.Create(SmartIniFile());
+        Try
+          smart.WriteInteger('General', 'Difficulty', SpinEdit4.Value);
+        Finally
+          smart.free;
+        End;
+      End
+      Else Begin
+        WriteDefaults(SmartIniFile(), SpinEdit4.Value);
+      End;
+    Except
+      On e: Exception Do
+        showmessage(e.Message);
+    End;
   End;
 End;
 

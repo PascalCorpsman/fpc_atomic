@@ -381,7 +381,9 @@ Begin
       s := s + format(' AI: %0.4f %0.4f', [game.fPlayer[1].Info.Position.x, game.fPlayer[1].Info.Position.y]);
     End;
 {$ENDIF}
-    OpenGL_ASCII_Font.Textout(5, 5, atomic_dialog_Layer + atomic_EPSILON, s);
+    // Über der Punkteanzeige der Spieler (atomic_dialog_Layer + atomic_EPSILON), sonst ist sie verdeckt.
+    // Höher als 1.0 geht nicht, Go2d stellt nur -1..1 dar
+    OpenGL_ASCII_Font.Textout(5, 5, atomic_dialog_Layer + 2 * atomic_EPSILON, s);
     Exit2d();
   End;
   OpenGLControl1.SwapBuffers;
@@ -401,6 +403,7 @@ Var
   EnterID, i: integer;
   HaveAssets, HaveSounds, GraphicsOk: Boolean;
   AssetsParam, SoundsParam, GraphicsFolder, SoundsFolder: String;
+  ini: TIniFile;
 Begin
   InitLogger();
   GameInitialized := false;
@@ -519,6 +522,13 @@ Begin
   Timer1.Interval := 17;
   OpenGLControl1.Align := alClient;
   Game := TGame.Create(OpenGLControl1);
+  // Die KI eines gehosteten Servers, wie im Launcher gewählt ([Launcher] AiLib)
+  ini := TIniFile.Create(IniPropStorage1.IniFileName);
+  Try
+    Game.AiLibName := ini.ReadString('Launcher', 'AiLib', '');
+  Finally
+    ini.Free;
+  End;
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
   RestoreWindowBounds; // Nicht in Load_Atomic_Settings, das wird auch aus den Optionen heraus aufgerufen

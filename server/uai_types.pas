@@ -38,6 +38,10 @@ Const
    *          0.03 = ADD: fHole, fTramp, fConveyorUp, fConveyorDown, fConveyorLeft, fConveyorRight , fArrowUp, fArrowDown, fArrowLeft, fArrowRight to TAiField
    *          0.04 = ADD: missing info for Diseases
    *          0.05 = ADD: optional game modes: AiGameModes and AiHandlePlayerEx (TAiModeInfo), both exports are optional.
+   *                 ADD: TAiModeInfo.ModFlags, BrickWalkMs, PunchStunCooldownMs (appended, check Size, still version 5)
+   *                 ADD: TAiModeInfo.InvulnMs, FlameBeamLen, FlameBeamDir, FlameFuelMs, FlameRange, WhiteBombs, StartGlove (appended)
+   *                 CHG: a white bomb (mod, explodes without flames) has FlameLength 0
+   *                 ADD: optional exports AiPlayerName (name of the ai player in a slot) and AiDisplayName (short name of the ai)
    *                 Libs with interface version 4 can still be loaded, they only support AiMode_Classic and AiMode_Teamplay.
    *)
   AiLibInterfaceVersion: cint32 = 5;
@@ -51,6 +55,15 @@ Const
   AiMode_Classic = 1; // Free for all
   AiMode_Teamplay = 2; // Two teams, TAiPlayerInfo.Team is relevant
   AiMode_Hunter = 4; // One player is the hunted (TAiModeInfo.HuntedIndex) with (almost) all items, who kills him becomes the new hunted
+
+  (*
+   * The bit masks for TAiModeInfo.ModFlags: the mods that are active right now
+   *)
+  AiModFlag_WrapLeftRight = 1; // Open borders: a player walking out on the left comes in on the right (and the other way round)
+  AiModFlag_WrapTopBottom = 2; // Open borders: top / bottom
+  AiModFlag_PortalLeftRight = 4; // Teleporters in the middle of the left and right border (FieldHeight div 2), they act like holes
+  AiModFlag_PortalTopBottom = 8; // Teleporters in the middle of the top and bottom border (FieldWidth div 2)
+  AiModFlag_PunchStun = 16; // Boxing glove: with the punch ability the second action stuns an enemy on the field in front
 
   (*
    * The bit masks for the TAiPlayerInfo.Abilities value
@@ -177,6 +190,16 @@ Type
     GameMode: cuint32; // Exactly one of AiMode_*
     HuntedIndex: cint32; // AiMode_Hunter: player index of the hunted, -1 = nobody (or not AiMode_Hunter)
     RoundTimeLeftMs: cint32; // Time left in this round in ms, -1 = infinite
+    ModFlags: cuint32; // AiModFlag_* of the mods that are active right now
+    BrickWalkMs: Array[0..9] Of cint32; // Per player: time in ms the player can still walk through bricks (0 = not)
+    PunchStunCooldownMs: Array[0..9] Of cint32; // Per player: time in ms until the boxing glove can stun again (0 = ready)
+    InvulnMs: Array[0..9] Of cint32; // Per player: time in ms the player can not be hit (0 = can be hit)
+    FlameBeamLen: Array[0..9] Of cint32; // Per player: length of the flamethrower beam in fields right now (0 = not firing)
+    FlameBeamDir: Array[0..9] Of cint32; // Per player: direction the player looks (and fires): 0 = right, 1 = up, 2 = left, 3 = down
+    FlameFuelMs: Array[0..9] Of cint32; // Per player: flamethrower fuel in ms (0 = no flamethrower)
+    FlameRange: cint32; // Maximum length of a flamethrower beam in fields
+    WhiteBombs: Array[0..9] Of cint32; // Per player: how many white bombs (mod) the player places next
+    StartGlove: Array[0..9] Of cint32; // Per player: 1 = glove at start, the player can throw a bomb until the first step
   End;
 
 Implementation

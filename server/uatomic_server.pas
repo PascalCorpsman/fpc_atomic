@@ -155,6 +155,8 @@ Type
     Procedure LoadAi();
     Procedure HurryHandling;
     Function AiSupportsCurrentMode(): Boolean; // True, wenn eine KI geladen ist und sie den aktiven Spielmodus kann
+    Function AiSlotName(Index: integer): String; // Der Name des KI Spielers in diesem Platz, '' = keiner (die Clients zeigen "AI")
+    Function AiStatisticName(Index: integer): String; // Der Name, unter dem der KI Spieler in der Statistik zählt
     Function AiNotSupportedText(): String; // Die Meldung, wenn AiSupportsCurrentMode false ist
     Procedure HandleUpdateModSettings(Const Stream: TStream; UID: integer);
     Procedure ApplyModSettingsToFields();
@@ -633,7 +635,7 @@ Begin
   For j := low(fPLayer) To high(fPLayer) Do Begin
     If (fPLayer[j].UID <> NoPlayer) Then Begin
       inc(cnt);
-      If (fPLayer[j].UserName = Username) Then Begin
+      If (fPLayer[j].UID <> AIPlayer) And (fPLayer[j].UserName = Username) Then Begin // Eine KI mit dem Namen wird umbenannt (AiSlotName)
         i := EC_User_already_exists;
         m.Write(i, sizeof(i));
         SendChunk(miRequestLoginResult, m, UID);
@@ -1033,8 +1035,8 @@ Begin
     fPLayer[i].Kills := 0;
     If fPLayer[i].UID <> NoPlayer Then Begin
       If fPLayer[i].UID = AIPlayer Then Begin
-        // Alle KI Spieler werden auf einen abstrakten KI Spieler zusammengeführt.
-        fPlayerStatistics.InitPlayerID(i, AiVersion(), ks0);
+        // Alle KI Spieler einer KI (und Stufe) werden auf einen abstrakten KI Spieler zusammengeführt.
+        fPlayerStatistics.InitPlayerID(i, AiStatisticName(i), ks0);
       End
       Else Begin
         fPlayerStatistics.InitPlayerID(i,
@@ -2489,6 +2491,8 @@ Begin
   j := length(fPLayer);
   m.write(j, sizeof(j));
   For i := 0 To high(fPLayer) Do Begin
+    // Vor dem Senden, so bekommt jeder Platz, der zur KI wird, ihren Namen (egal auf welchem Weg)
+    If fPLayer[i].UID = AIPlayer Then fPLayer[i].UserName := AiSlotName(i);
     j := fPLayer[i].UID;
     m.write(j, sizeof(j));
     k := fPLayer[i].Keyboard;
@@ -2829,6 +2833,24 @@ Begin
     End
     Else Begin
       ModeInfo.RoundTimeLeftMs := max(0, fPlayingTimedesc);
+    End;
+    // Die gerade aktiven Mods, die eine KI kennen muss (offene Grenzen, Teleporter, Boxhandschuh, durch Blöcke laufen)
+    ModeInfo.ModFlags := 0;
+    If fActualField.OpenLeftRight Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_WrapLeftRight;
+    If fActualField.OpenTopBottom Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_WrapTopBottom;
+    If fActualField.PortalsLeftRight Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PortalLeftRight;
+    If fActualField.PortalsTopBottom Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PortalTopBottom;
+    If fModSettings.PunchStun Then ModeInfo.ModFlags := ModeInfo.ModFlags Or AiModFlag_PunchStun;
+    ModeInfo.FlameRange := fModSettings.FlameThrowerRange;
+    For i := 0 To high(fPLayer) Do Begin
+      ModeInfo.BrickWalkMs[i] := fPLayer[i].BrickWalkTimer;
+      ModeInfo.PunchStunCooldownMs[i] := fPLayer[i].PunchStunCooldown;
+      ModeInfo.InvulnMs[i] := fPLayer[i].InvulnTimer;
+      ModeInfo.FlameBeamLen[i] := fPLayer[i].Info.FlameThrowerLen;
+      ModeInfo.FlameBeamDir[i] := (trunc(fPLayer[i].Info.Direction) Div 90) Mod 4;
+      ModeInfo.FlameFuelMs[i] := fPLayer[i].FlameThrowerFuel;
+      ModeInfo.WhiteBombs[i] := fPLayer[i].WhiteBombs;
+      ModeInfo.StartGlove[i] := ord(fPLayer[i].StartGlove);
     End;
   End;
   // Die Spieler Bewegen
@@ -3395,6 +3417,9 @@ Begin
   End;
   If AiInit() Then Begin
     logshow(format('Ai "%s" loaded successfully!', [AiVersion()]), llInfo);
+    If AiLibLoaded <> AiLibName Then Begin
+      logshow(format('The ai "%s" was not found (%s), the original ai is used.', [AiLibName, AiLibFile(AiLibName)]), llWarning);
+    End;
   End
   Else Begin
     logshow('Failure on Ai load (AiInit returned false).', llError);
@@ -3405,6 +3430,57 @@ Begin
     AiNewRound(100);
   End;
   LogLeave(EnterID);
+End;
+
+Function TServer.AiSlotName(Index: integer): String;
+Var
+  i: integer;
+Begin
+  (*
+   * Der Name kommt von der KI (optionaler Export AiPlayerName). Heißt ein echter Spieler genauso, wird " AI" angehängt,
+   * die Namen müssen eindeutig sein (z.B. für das Handicap der Trefferpunkte)
+   *)
+  result := '';
+  If Not assigned(AiPlayerName) Then exit;
+  Try
+    result := trim(String(AiPlayerName(Index)));
+  Except
+    result := '';
+  End;
+  If Not ValidNodeName(result) Then Begin
+    result := '';
+    exit;
+  End;
+  For i := 0 To high(fPLayer) Do Begin
+    If (fPLayer[i].UID > 0) And (lowercase(fPLayer[i].UserName) = lowercase(result)) Then Begin
+      result := copy(result, 1, 16) + ' AI';
+      break;
+    End;
+  End;
+End;
+
+Function TServer.AiStatisticName(Index: integer): String;
+Var
+  s: String;
+Begin
+  (*
+   * Alle Plätze einer KI zählen in der Statistik (Playerstats.csv) zusammen: der Name ohne die Platznummer,
+   * davor der Kurzname der KI ("Nitro 3" -> "Smart Nitro"). Ohne Namen wie bisher die Version der KI.
+   *)
+  result := AiVersion();
+  If Not assigned(AiPlayerName) Then exit;
+  Try
+    s := trim(String(AiPlayerName(Index)));
+    While (s <> '') And (s[length(s)] In ['0'..'9']) Do
+      delete(s, length(s), 1);
+    s := trim(s);
+    If s = '' Then exit;
+    If assigned(AiDisplayName) And (trim(String(AiDisplayName())) <> '') Then
+      s := trim(String(AiDisplayName())) + ' ' + s;
+    result := s;
+  Except
+    result := AiVersion();
+  End;
 End;
 
 Function TServer.AiSupportsCurrentMode: Boolean;
@@ -3530,12 +3606,18 @@ Begin
           End;
         'a', 'A': Begin
             LoadAi;
-            If GetActivePlayerCount() <> 0 Then SendModInfo(0); // Die Clients zeigen an, welche Spielmodi die KI kann
+            If GetActivePlayerCount() <> 0 Then Begin
+              SendModInfo(0); // Die Clients zeigen an, welche Spielmodi die KI kann
+              RefreshAllPlayerStats(0); // und die Namen der KI Spieler
+            End;
           End;
         'u', 'U': Begin
             UnLoadAiLib;
             LogShow('Disabled ai', llInfo);
-            If GetActivePlayerCount() <> 0 Then SendModInfo(0);
+            If GetActivePlayerCount() <> 0 Then Begin
+              SendModInfo(0);
+              RefreshAllPlayerStats(0);
+            End;
           End;
       End;
     End;

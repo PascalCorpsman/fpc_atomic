@@ -21,6 +21,7 @@ Which mods fit which group of players is answered in the [mods FAQ](MODS_FAQ.md)
 - [Open borders](#open-borders)
 - [Teleporters](#teleporters)
 - [Items & diseases](#items--diseases)
+- [The AI and the mods](#the-ai-and-the-mods)
 - [Mod test mode](#mod-test-mode)
 - [Editing atomic_mods.ini by hand](#editing-atomic_modsini-by-hand)
 
@@ -157,7 +158,7 @@ A part of the items below the bricks are **flamethrowers**. They look like a red
 | Share of the items (%) | `FlameThrowerChance` | 5 | 0 .. 100 |
 | Fuel per item (ms) | `FlameThrowerFuelMs` | 5000 | 0 .. 60000 |
 | Range (tiles) | `FlameThrowerRange` | 3 | 1 .. 14 |
-| Time to kill (ms) | `FlameThrowerKillMs` | 2000 | 0 .. 10000 |
+| Time to kill (ms) | `FlameThrowerKillMs` | 1500 | 0 .. 10000 |
 | Hurt team mates (friendly fire) | `FlameThrowerFriendlyFire` | 0 (off) | 0 / 1 |
 | Burn items in the beam | `FlameThrowerBurnItems` | 1 (on) | 0 / 1 |
 | Ignite bombs in the beam | `FlameThrowerIgniteBombs` | 1 (on) | 0 / 1 |
@@ -332,6 +333,24 @@ Please note:
 | Dud bombs | `DiseaseWeightDudBombs` | 10 | 0 .. 100 |
 | Super slow | `DiseaseWeightSuperSlow` | 10 | 0 .. 100 |
 | Super bad: swap places (%) | `SuperBadSwapChance` | 10 | 0 .. 100 |
+
+## The AI and the mods
+
+The original AI does not know the mods. The [Smart AI](ai_smart/README.md) gets from the server which mods are active and plays with them:
+
+| Mod | Smart AI |
+|---|---|
+| Open borders, teleporters | walks and escapes over open borders, throws bombs over them; teleporters are avoided like holes |
+| Boxing glove | stuns an enemy right in front of it |
+| Walk through bricks | walks through bricks while the time lasts (it rarely gets it, it avoids disease items) |
+| Flamethrower | can not fire it (the beam needs a held key). Avoids the beam, but with a reaction time: hit, it is startled first and walks slower, so it can be hit; it steps out of the cover of a bomb |
+| Positive disease (invulnerable) | no attacks on invulnerable enemies, walks through flames while invulnerable itself |
+| White bomb | does not flee from white bombs, places its own at once |
+| Glove at start | throws a bomb before the first step |
+| Stun on bomb landing, ghost bombs | flying bombs count as dangerous |
+| Carry bombs, ghosts, hit points | not used by AI players (see the mods) |
+
+How strongly it uses each of them is set in `ai_smart.ini` (difficulty and one value per ability).
 
 ## Mod test mode
 
