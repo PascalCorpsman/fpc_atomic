@@ -176,7 +176,7 @@ Type
 
 Implementation
 
-Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global;
+Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global, uip;
 
 { TServer }
 
@@ -245,6 +245,8 @@ Begin
     LogLeave(EnterID);
     exit;
   End;
+  // Windows: Eine Antwort an einen Client, der nicht mehr lauscht, würde sonst den UDP Socket schließen (Fehler 10054), danach fand keiner mehr den Server
+  IgnoreUdpConnReset(fUDP.Iterator.Handle);
   If Not fChunkManager.Listen(Port, bind) Then Begin
     log('Error could not listen on port: ' + inttostr(port), llFatal);
     LogLeave(EnterID);

@@ -2597,6 +2597,9 @@ Begin
           LogShow('Error, could not start UDP Server.', llError);
           SwitchToScreen(sMainScreen);
           LogLeave(EnterID);
+        End
+        Else Begin
+          IgnoreUdpConnReset(fUDPPingData.Connection.Iterator.Handle);
         End;
       End;
       // The broadcast address of every network (also VPN), 255.255.255.255 as fallback and the own machine
@@ -2804,6 +2807,10 @@ Begin
     fUDPPingData.Connection.OnError := @OnUDPConnection_Error;
     If Not fUDPPingData.Connection.Connect(LADDR_ANY, UDPPingPort) Then Begin
       LogShow('Error, could not start UDP Server.', llError);
+    End
+    Else Begin
+      // Der Ping an 127.0.0.1 ohne lokalen Server ließ unter Windows sonst den Socket mit Fehler 10054 abstürzen
+      IgnoreUdpConnReset(fUDPPingData.Connection.Iterator.Handle);
     End;
   End;
   LogLeave(EnterID);
