@@ -75,6 +75,7 @@ Ein Spieler ist der **Gejagte**. Er bekommt (fast) alle Items, alle anderen Spie
 | Respawn | `HunterRespawn` | 1 (an) | Tote Spieler kommen zurück, die Runde endet durch Zeitablauf, es gibt keinen Hurry |
 | Respawn nach (ms) | `HunterRespawnMs` | 3000 | 0 .. 60000, zählt ab dem Tod (mindestens 4 s) |
 | Unverwundbar nach Respawn (ms) | `HunterRespawnInvulnMs` | 2000 | 0 .. 60000 |
+| Tote behalten ihre Items | `HunterKeepItems` | 1 (an) | Nur mit Respawn. An: Ein toter Jäger kommt mit allen seinen Items zurück, sie werden nicht auf dem Feld verteilt (Flammenwerfer-Tank bleibt nicht). Aus: er kommt mit den Startwerten des Schemas zurück. Für den Gejagten und den früheren Gejagten gelten ihre eigenen Regeln („Der bisherige Gejagte hat“). |
 | Der Gejagte wird nicht krank | `HuntedNoDiseases` | 1 (an) | Krankheiten (auch die positiven der Mods), Slow und Tauschen wirken nicht auf den Gejagten, er wird nicht angesteckt und niemand tauscht mit ihm den Platz |
 | Goldene Farbe | `HuntedGold` | 1 (an) | Der Gejagte wird in Gold gezeichnet |
 | Aura | `HuntedAura` | 1 (an) | Eine pulsierende Aura um den Gejagten |

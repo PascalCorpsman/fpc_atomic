@@ -1,11 +1,11 @@
 object Form6: TForm6
   Left = 400
-  Height = 575
+  Height = 601
   Top = 120
   Width = 664
   BorderStyle = bsDialog
   Caption = 'Game mode'
-  ClientHeight = 575
+  ClientHeight = 601
   ClientWidth = 664
   Position = poMainFormCenter
   ShowHint = True
@@ -15,7 +15,7 @@ object Form6: TForm6
   OnShow = FormShow
   object ListBox1: TListBox
     Left = 8
-    Height = 460
+    Height = 486
     Hint = 'Click a game mode to play it. Exactly one mode is always active.'
     Top = 8
     Width = 160
@@ -25,7 +25,7 @@ object Form6: TForm6
   end
   object PageControl1: TPageControl
     Left = 176
-    Height = 460
+    Height = 486
     Top = 8
     Width = 480
     ActivePage = TabSheet2
@@ -34,7 +34,7 @@ object Form6: TForm6
     TabOrder = 1
     object TabSheet1: TTabSheet
       Caption = 'Classic'
-      ClientHeight = 458
+      ClientHeight = 484
       ClientWidth = 478
       object Label1: TLabel
         Left = 8
@@ -57,7 +57,7 @@ object Form6: TForm6
     end
     object TabSheet2: TTabSheet
       Caption = 'Hunter'
-      ClientHeight = 458
+      ClientHeight = 484
       ClientWidth = 478
       object Label3: TLabel
         Left = 8
@@ -106,7 +106,7 @@ object Form6: TForm6
         Anchors = [akTop, akLeft, akBottom]
         BorderSpacing.Left = 4
         Caption = '+'
-        TabOrder = 13
+        TabOrder = 14
       end
       object Label6: TLabel
         Left = 8
@@ -251,49 +251,58 @@ object Form6: TForm6
         Increment = 500
         TabOrder = 8
       end
+      object CheckBox6: TCheckBox
+        Left = 28
+        Height = 21
+        Hint = 'On: a dead player comes back with all his items, they are not spread on the field. Off: he comes back with the start values of the scheme.'
+        Top = 374
+        Width = 224
+        Caption = 'Dead players keep their items'
+        TabOrder = 9
+      end
       object CheckBox2: TCheckBox
         Left = 8
         Height = 21
         Hint = 'On: diseases, slow and swap have no effect on the hunted, he does not get infected.'
-        Top = 380
+        Top = 406
         Width = 192
         Caption = 'The hunted gets no diseases'
-        TabOrder = 9
+        TabOrder = 10
       end
       object CheckBox3: TCheckBox
         Left = 8
         Height = 21
         Hint = 'On: the hunted is drawn in gold.'
-        Top = 406
+        Top = 432
         Width = 98
         Caption = 'Gold color'
-        TabOrder = 10
+        TabOrder = 11
       end
       object CheckBox4: TCheckBox
         Left = 8
         Height = 21
         Hint = 'On: a pulsing aura is drawn around the hunted.'
-        Top = 432
+        Top = 458
         Width = 56
         Caption = 'Aura'
-        TabOrder = 11
+        TabOrder = 12
         OnChange = CheckBox1Change
       end
       object CheckBox5: TCheckBox
         Left = 250
         Height = 21
         Hint = 'On: the hunted also sees his own aura. Off: only the hunters see it (two players on one PC always see it).'
-        Top = 432
+        Top = 458
         Width = 176
         Caption = 'The hunted sees his aura'
-        TabOrder = 12
+        TabOrder = 13
       end
     end
   end
   object Label13: TLabel
     Left = 8
     Height = 16
-    Top = 476
+    Top = 502
     Width = 648
     AutoSize = False
     Caption = 'Team play is on, the hunter mode is ignored in team play.'
@@ -304,7 +313,7 @@ object Form6: TForm6
   object Label14: TLabel
     Left = 8
     Height = 16
-    Top = 496
+    Top = 522
     Width = 648
     AutoSize = False
     Caption = 'Ghosts only work without respawn.'
@@ -315,7 +324,7 @@ object Form6: TForm6
   object Label15: TLabel
     Left = 8
     Height = 16
-    Top = 516
+    Top = 542
     Width = 486
     Caption = 'Changes apply to the next game started on this PC.'
   end
@@ -324,7 +333,7 @@ object Form6: TForm6
     Left = 110
     Height = 16
     Hint = 'Open the manual of the game options and game modes (GAMEOPTIONS_MANUAL.md, with a link to the German version).'
-    Top = 547
+    Top = 573
     Width = 44
     Caption = 'Manual'
     Font.Color = clBlue
@@ -336,7 +345,7 @@ object Form6: TForm6
     Left = 8
     Height = 25
     Hint = 'Reset the game mode to its default values (Classic). The mods stay as they are. Saved only with OK.'
-    Top = 542
+    Top = 568
     Width = 90
     Caption = '&Defaults'
     TabOrder = 2
@@ -346,7 +355,7 @@ object Form6: TForm6
     Left = 488
     Height = 25
     Hint = 'Save the game mode to atomic_mods.ini. It applies to the next game this PC joins as first player, also on another server.'
-    Top = 542
+    Top = 568
     Width = 80
     Caption = 'OK'
     Default = True
@@ -357,7 +366,7 @@ object Form6: TForm6
     Left = 576
     Height = 25
     Hint = 'Close without saving.'
-    Top = 542
+    Top = 568
     Width = 80
     Cancel = True
     Caption = 'Cancel'

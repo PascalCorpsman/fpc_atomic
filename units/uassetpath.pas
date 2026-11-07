@@ -222,7 +222,7 @@ Function HasSchemeFiles(Const Dir: String): Boolean; // True if Dir contains at 
 Function CopySetSchemes(Const Folder: String): integer;
 
 (*
- * Wanted if it exists in data/schemes/, else BASIC.SCH, else the first *.SCH (sorted), else Wanted unchanged.
+ * Wanted if it exists in data/schemes/, else BASIC.SCH, else CLEAR.SCH, else the first *.SCH (sorted), else Wanted unchanged.
  * Generated schemes have no BASIC.SCH, so the default of the game would not be found without this.
  *)
 Function ResolveSchemeFile(Const Wanted: String): String;
@@ -753,6 +753,7 @@ Begin
       exit;
     End;
     i := sl.IndexOf('BASIC.SCH');
+    If i < 0 Then i := sl.IndexOf('CLEAR.SCH'); // Generated schemes have no BASIC.SCH, but a CLEAR.SCH
     If i < 0 Then i := 0;
     result := sl[i];
   Finally

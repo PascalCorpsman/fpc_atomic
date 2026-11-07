@@ -149,7 +149,7 @@ Ein Teil der Items unter den Steinen sind **Flammenwerfer**. Sie sehen aus wie e
 - Items im Strahl verbrennen sofort, wie bei einer Flamme. Das lässt sich abschalten, dann geht der Strahl über sie hinweg.
 - Ein Gegner, der eine einstellbare Zeit am Stück im Strahl steht, wird getroffen wie von einer Flamme. Wer den Strahl verlässt, fängt wieder bei 0 an. Teamkollegen werden nur mit eingeschaltetem Friendly Fire verletzt, den Schützen selbst trifft der Strahl nie.
 - Der Tank leert sich nur beim Feuern. Ist er leer, ist der Flammenwerfer weg. Weitere Flammenwerfer-Items füllen den Tank auf.
-- Solange der Spieler Tank hat, zündet und boxt die zweite Aktion keine Bomben.
+- Solange der Spieler Tank hat, ist ein **kurzer Druck** der zweiten Aktion (innerhalb von 0,2 Sekunden losgelassen) die normale zweite Aktion: Er zündet die eigenen Trigger-Bomben und boxt. Erst **längeres Halten** feuert den Strahl, er startet also 0,2 Sekunden nach dem Drücken.
 - Beim Feuern läuft man normal schnell, der Strahl dreht sich mit.
 - Lässt man die Taste los, während das Spielfenster nicht aktiv ist (z. B. Alt+Tab), bekommt das Spiel das nicht mit: Der Strahl feuert weiter, bis man die Taste im Spiel erneut drückt und loslässt.
 - Im Mod-Test-Modus gibt F4 (alle Items) auch Tank.
