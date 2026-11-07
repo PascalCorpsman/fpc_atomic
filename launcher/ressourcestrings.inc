@@ -85,6 +85,8 @@ Resourcestring
   RF_NewsGraphicsDone = '%d own graphics sets created (the others are finished in the background in a few seconds).' + LineEnding + '"Original" stays selected, switch with ◀ ▶ below the image.';
   R_SoundSetAuto = 'Automatic';
   R_SoundSetOriginal = 'Original (CD)';
+  R_LanSearching = 'No game found in the local network, searching …'; // ComboBox2, solange kein Spiel im lokalen Netz gefunden ist
+  R_LanGame = '%s (%s:%d)'; // Ein gefundenes Spiel: Name, IP, Port
   R_NoSounds = '(no sounds)';
   R_NoSoundsHint = 'The game has no sounds: the CD sounds are missing and the selected sound source has none. Choose "Automatic" with a graphics set with sounds or such a set below the image (or in the game options), or create a graphics set with sounds.';
   RF_SoundSet = 'Sounds: %s';

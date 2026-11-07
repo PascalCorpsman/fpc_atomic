@@ -1,11 +1,11 @@
 object Form1: TForm1
   Left = 347
-  Height = 659
+  Height = 719
   Top = 107
   Width = 547
   BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Form1'
-  ClientHeight = 659
+  ClientHeight = 719
   ClientWidth = 547
   KeyPreview = True
   Position = poScreenCenter
@@ -348,27 +348,49 @@ object Form1: TForm1
   end
   object GroupBox2: TGroupBox
     Left = 208
-    Height = 120
+    Height = 180
     Top = 318
     Width = 328
-    Caption = ' Internet game (optional) '
-    ClientHeight = 103
+    Caption = ' Network game (optional) '
+    ClientHeight = 163
     ClientWidth = 326
     TabOrder = 2
+    object CheckBox10: TCheckBox
+      Left = 8
+      Height = 22
+      Hint = 'Join a game that waits for players in the local network. The launcher searches the network all the time, the box is checked when a game is found.'
+      Top = 2
+      Width = 220
+      Caption = 'Join a game in the local networ&k'
+      Enabled = False
+      TabOrder = 0
+      OnChange = CheckBox10Change
+    end
+    object ComboBox2: TComboBox
+      Left = 8
+      Height = 26
+      Hint = 'The games found in the local network (name of the host, address and port).'
+      Top = 28
+      Width = 310
+      Enabled = False
+      ItemHeight = 0
+      Style = csDropDownList
+      TabOrder = 1
+    end
     object CheckBox3: TCheckBox
       Left = 8
       Height = 22
       Hint = 'Join a game over the internet: the game connects to the router IP and port below. Not needed in the local network.'
-      Top = 2
+      Top = 62
       Width = 154
       Caption = '&Join through a router'
-      TabOrder = 0
+      TabOrder = 2
       OnChange = CheckBox3Change
     end
     object Label2: TLabel
       Left = 8
       Height = 16
-      Top = 28
+      Top = 88
       Width = 55
       Caption = 'Router &IP'
       FocusControl = Edit2
@@ -377,15 +399,15 @@ object Form1: TForm1
       Left = 120
       Height = 26
       Hint = 'IP address of the router of the player who hosts the game.'
-      Top = 28
+      Top = 88
       Width = 198
-      TabOrder = 1
+      TabOrder = 3
       Text = 'Edit2'
     end
     object Label3: TLabel
       Left = 8
       Height = 16
-      Top = 64
+      Top = 124
       Width = 26
       Caption = 'Po&rt'
       FocusControl = Edit3
@@ -394,16 +416,16 @@ object Form1: TForm1
       Left = 120
       Height = 26
       Hint = 'Port the router forwards to the server of the host (default 5521).'
-      Top = 64
+      Top = 124
       Width = 198
-      TabOrder = 2
+      TabOrder = 4
       Text = 'Edit3'
     end
   end
   object GroupBox4: TGroupBox
     Left = 8
     Height = 80
-    Top = 446
+    Top = 506
     Width = 528
     Caption = ' Installation '
     ClientHeight = 63
@@ -474,7 +496,7 @@ object Form1: TForm1
     Left = 10
     Height = 22
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
-    Top = 534
+    Top = 594
     Width = 264
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
@@ -484,7 +506,7 @@ object Form1: TForm1
     Left = 8
     Height = 50
     Hint = 'Start the game.'#13#10#13#10'Ctrl + click (or Ctrl+Alt+L):'#13#10'host a network game directly.'#13#10#13#10'Shift + click (or Shift+Alt+L):'#13#10'join a network game directly.'
-    Top = 560
+    Top = 620
     Width = 528
     BevelOuter = bvNone
     ClientHeight = 50
@@ -523,7 +545,7 @@ object Form1: TForm1
     Left = 10
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
-    Top = 627
+    Top = 687
     Width = 45
     Caption = 'Manual'
     Font.Color = clBlue
@@ -539,7 +561,7 @@ object Form1: TForm1
     Left = 71
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
-    Top = 627
+    Top = 687
     Width = 79
     BorderSpacing.Left = 16
     Caption = 'Config folder'
@@ -551,7 +573,7 @@ object Form1: TForm1
   object Button3: TButton
     Left = 446
     Height = 30
-    Top = 620
+    Top = 680
     Width = 90
     Cancel = True
     Caption = 'Cl&ose'
@@ -563,7 +585,7 @@ object Form1: TForm1
     Left = 326
     Height = 26
     Hint = 'The language of the launcher.'
-    Top = 620
+    Top = 680
     Width = 110
     Anchors = [akTop, akRight]
     BorderSpacing.Right = 10
@@ -587,6 +609,13 @@ object Form1: TForm1
     Interval = 500
     OnTimer = Timer1Timer
     Left = 400
+    Top = 16
+  end
+  object Timer2: TTimer
+    Enabled = False
+    Interval = 250
+    OnTimer = Timer2Timer
+    Left = 440
     Top = 16
   end
 end
