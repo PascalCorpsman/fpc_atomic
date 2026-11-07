@@ -1584,7 +1584,7 @@ Begin
   If Not found Then Begin
     // Während des Spieler Setups ist es möglich dass der Spieler kurzzeitig nicht in den Players steht !
     If fActualScreen <> fScreens[sPlayerSetup] Then Begin
-      LogShow('Error user not known anymore to server, exiting actual session', llError);
+      LogShow('Error: the server no longer knows this player, leaving the current session.', llError);
       SwitchToScreen(sMainScreen);
       LogLeave(EnterID);
       exit;
@@ -2721,6 +2721,9 @@ Begin
     // For localhost, OnIdle will retry
   End
   Else Begin
+    // The attempt is running, the retry in OnIdle comes only after ConnectionRetryInterval. A retry right away would
+    // replace the connection to an already running server before it reports back, the server then loses the player.
+    fLastConnectionAttempt := GetTickCount64;
     // Close a maybe openened join dialog ..
     TMainMenu(fScreens[sMainScreen]).StopJoinQuestion;
   End;
