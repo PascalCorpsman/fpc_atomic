@@ -671,7 +671,7 @@ Begin
   End;
 {$ENDIF}
   // Erst wenn das Spiel fertig initialisiert ist, vorher würde SwitchToScreen nichts tun bzw. wieder ins Hauptmenü wechseln
-  If (Not ConnectParamsHandled) And GameInitialized Then Begin
+  If (Not ConnectParamsHandled) And GameInitialized And Game.ReadyForParams Then Begin
     ConnectParamsHandled := true;
     (*
      * Im Falle, dass ein Spieler übers internet beitreten will, geht das typische UDP Suchen nicht

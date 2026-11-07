@@ -285,6 +285,7 @@ Type
      * Meldungen und Ja / Nein Abfragen direkt im Spiel (statt als LCL-Fenster)
      *)
     Function MessageDialogReady: Boolean; // False, solange die Textur des Dialogs nicht geladen ist
+    Function ReadyForParams: Boolean; // True, wenn das Laden fertig ist und kein Disconnect mehr aussteht (-host, -join, -ip)
     Procedure ShowMessageDialog(Msg: String; Level: TLogLevel);
     Procedure AskYesNo(Question: String; OnYes: TNotifyEvent);
   End;
@@ -588,6 +589,15 @@ End;
 Function TGame.MessageDialogReady: Boolean;
 Begin
   result := fMessageDialog.Ready;
+End;
+
+Function TGame.ReadyForParams: Boolean;
+Begin
+  (*
+   * Am Ende des Ladens wechselt das Spiel ins Hauptmenü, das merkt einen Disconnect vor (DoDisconnect im OnIdle).
+   * Der hat die Suche von -join gleich wieder gestoppt, das Spiel wartete dann für immer auf einen Server.
+   *)
+  result := fInitialized And Not fNeedDisconnect;
 End;
 
 Procedure TGame.ShowMessageDialog(Msg: String; Level: TLogLevel);
