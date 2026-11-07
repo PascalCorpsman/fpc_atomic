@@ -411,13 +411,7 @@ Const
    * Function AtomicPlayerColorToColor(aColor: TRGB): TColor;
    *
    *)
-{$IFDEF Only3Player}
-  PlayerColors: Array[0..2] Of TRGB = (
-    (B: 100; G: 100; R: 100), // white
-    (B: 20; G: 20; R: 20), // black
-    (B: 0; G: 0; R: 100) // red
-    );
-{$ELSE}
+
   PlayerColors: Array[0..9] Of TRGB = (
     (B: 100; G: 100; R: 100), // white
     (B: 20; G: 20; R: 20), // black
@@ -430,7 +424,7 @@ Const
     (B: 0; G: 50; R: 100), // orange
     (B: 100; G: 0; R: 50) // purple
     );
-{$ENDIF}
+
   HuntedGoldColor: TRGB = (B: 10; G: 75; R: 100); // Spielmodus Hunter: Farbe des Gejagten (HuntedGold), wie PlayerColors im Range 0..100
 
   (*
@@ -1267,7 +1261,6 @@ Begin
   result.PlayerStartPositions[0] := sp(0, 0, 0);
   result.PlayerStartPositions[1] := sp(14, 10, 1);
   result.PlayerStartPositions[2] := sp(0, 10, 0);
-{$IFNDEF Only3Player}
   result.PlayerStartPositions[3] := sp(14, 0, 1);
   result.PlayerStartPositions[4] := sp(6, 4, 0);
   result.PlayerStartPositions[5] := sp(8, 0, 1);
@@ -1275,7 +1268,6 @@ Begin
   result.PlayerStartPositions[7] := sp(2, 6, 1);
   result.PlayerStartPositions[8] := sp(10, 8, 0);
   result.PlayerStartPositions[9] := sp(6, 10, 1);
-{$ENDIF}
   result.PowerUps[puExtraBomb] := empty;
   result.PowerUps[puLongerFlameLength] := empty;
   result.PowerUps[puDisease] := empty;

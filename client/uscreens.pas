@@ -1504,12 +1504,10 @@ End;
 
 Procedure TScreen.QuitToMainScreen(Ask: Boolean);
 Begin
-{$IFNDEF Only3Player}
   If Ask Then Begin
     Tgame(fOwner).AskYesNo('Do you really want to quit?', @OnQuitConfirmed);
     exit;
   End;
-{$ENDIF}
   OnQuitConfirmed(Nil);
 End;
 

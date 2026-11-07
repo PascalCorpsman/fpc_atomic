@@ -811,11 +811,7 @@ Begin
         End;
       gs_Gaming: Begin
           If key = VK_ESCAPE Then Begin
-{$IFNDEF Only3Player}
             AskYesNo('Do you really want to quit?', @OnQuitGameConfirmed);
-{$ELSE}
-            SwitchToScreen(sMainScreen);
-{$ENDIF}
           End;
           If key = VK_P Then Begin
             SendChunk(miTogglePause, Nil);
