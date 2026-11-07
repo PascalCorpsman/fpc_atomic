@@ -1721,8 +1721,7 @@ Begin
         End;
       End;
     aaSecond: Begin
-        // Mod Flammenwerfer: So lange er gefüllt ist, ist die zweite Aktion der Flammenwerfer (kein Zünden, kein Boxen)
-        If (Player.FlameThrowerFuel > 0) And (Player.UID <> AIPlayer) Then exit;
+        // Mod Flammenwerfer: Mit Tank kommt die zweite Aktion erst beim kurzen Drücken (der Server löst sie beim Loslassen aus)
         handled := false; // This flag allows to trigger bombs while walking = more responsive ;)
         (*
          * Mod Boxhandschuh: Steht ein Gegner auf dem Feld vor dem Spieler, wird er gestunnt (auch im Stehen).

@@ -325,6 +325,7 @@ Begin
   width := 654;
   height := 97;
   FormStyle := fsSystemStayOnTop;
+  PopupMode := pmAuto; // Über dem Spielfenster, siehe TSchemQuestionForm
   Constraints.MaxWidth := Width;
   Constraints.MinWidth := Width;
   Constraints.MaxHeight := Height;
@@ -375,6 +376,7 @@ Begin
   height := 163;
   Position := poScreenCenter;
   FormStyle := fsSystemStayOnTop;
+  PopupMode := pmAuto; // Über dem Spielfenster, siehe TSchemQuestionForm
   Constraints.MaxWidth := Width;
   Constraints.MinWidth := Width;
   Constraints.MaxHeight := Height;
@@ -623,6 +625,8 @@ Begin
   Width := 350;
   height := 350;
   FormStyle := fsSystemStayOnTop;
+  // Über dem Spielfenster, das (Launcher Option) selbst immer im Vordergrund sein kann, sonst wäre der modale Dialog unter Linux nicht erreichbar
+  PopupMode := pmAuto;
   Constraints.MinHeight := height;
   Constraints.MaxHeight := height;
   Constraints.MinWidth := Width;
@@ -679,9 +683,10 @@ End;
 Procedure TSchemQuestionForm.KeyDown(Var Key: Word;
   Shift: TShiftState);
 Begin
-  If (key = VK_RETURN) Or (key = VK_ESCAPE) Then Begin
+  If key = VK_RETURN Then Begin
     FormButton1Click(self);
   End;
+  If key = VK_ESCAPE Then ModalResult := mrCancel; // Wie in der Listbox: Abbrechen, das Scheme bleibt
   If Listbox1.Items.Count <> 0 Then Begin
     If (key = VK_UP) Then Listbox1.ItemIndex := max(0, Listbox1.ItemIndex - 1);
     If (key = VK_DOWN) Then Listbox1.ItemIndex := min(Listbox1.Items.Count - 1, Listbox1.ItemIndex + 1);
@@ -1171,7 +1176,6 @@ Begin
           SchemQuestionForm := TSchemQuestionForm.CreateNew(Nil);
           TSchemQuestionForm(SchemQuestionForm).LoadSchemes(Tgame(fOwner).Settings.SchemeFile);
           SchemQuestionForm.ShowModal;
-          SchemQuestionForm.KeyPreview := true;
           If SchemQuestionForm.ModalResult = mrOK Then Begin
             Tgame(fOwner).Settings.SchemeFile := TSchemQuestionForm(SchemQuestionForm).Listbox1.Items[TSchemQuestionForm(SchemQuestionForm).Listbox1.ItemIndex];
           End;

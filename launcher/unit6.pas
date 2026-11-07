@@ -44,6 +44,7 @@ Type
     CheckBox3: TCheckBox;
     CheckBox4: TCheckBox;
     CheckBox5: TCheckBox;
+    CheckBox6: TCheckBox;
     ComboBox1: TComboBox;
     ComboBox2: TComboBox;
     ComboBox3: TComboBox;
@@ -206,6 +207,7 @@ Begin
   CheckBox1.Checked := fSettings.HunterRespawn;
   SpinEdit2.Value := fSettings.HunterRespawnMs;
   SpinEdit3.Value := fSettings.HunterRespawnInvulnMs;
+  CheckBox6.Checked := fSettings.HunterKeepItems;
   CheckBox2.Checked := fSettings.HuntedNoDiseases;
   CheckBox3.Checked := fSettings.HuntedGold;
   CheckBox4.Checked := fSettings.HuntedAura;
@@ -228,6 +230,7 @@ Begin
   fSettings.HunterRespawn := CheckBox1.Checked;
   fSettings.HunterRespawnMs := SpinEdit2.Value;
   fSettings.HunterRespawnInvulnMs := SpinEdit3.Value;
+  fSettings.HunterKeepItems := CheckBox6.Checked;
   fSettings.HuntedNoDiseases := CheckBox2.Checked;
   fSettings.HuntedGold := CheckBox3.Checked;
   fSettings.HuntedAura := CheckBox4.Checked;
@@ -243,6 +246,7 @@ Begin
   SpinEdit2.Enabled := CheckBox1.Checked;
   Label12.Enabled := CheckBox1.Checked;
   SpinEdit3.Enabled := CheckBox1.Checked;
+  CheckBox6.Enabled := CheckBox1.Checked;
   CheckBox5.Enabled := CheckBox4.Checked;
   // Die Hinweise unten betreffen nur den Hunter Modus
   Hunter := ListBox1.ItemIndex = ord(gmHunter);

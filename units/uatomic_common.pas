@@ -309,6 +309,7 @@ Const
   ModMaxCarryBombThrowRange = 6; // untere Grenze 1
   CarryBombMaxTickingTime = 2000; // Zeit in ms, Mod Bomben tragen: So lange vor dem Ende der max. Tragzeit wird die Bombe animiert gezeichnet
   CarryBombTickingTime = 1000; // Zeit in ms, Mod Bomben tragen: Hat die getragene Bombe weniger Zeit bis zur Explosion, wird sie animiert gezeichnet
+  FlameThrowerHoldTime = 200; // Zeit in ms, Mod Flammenwerfer: Erst so lange gedrückt feuert die zweite Aktion, kürzer ist sie die normale zweite Aktion (Zünden, Boxen)
   CarryBombDoubleTime = 400; // Zeit in ms, Mod Bomben tragen: So spät darf der 2. Druck der ersten Aktion zum Aufheben kommen (sonst AtomicActionDoubleTime)
   ModMaxItemChance = 100; // in %, ItemChance
   ModMaxItemWeight = 100; // ItemWeight*, DiseaseWeight*
@@ -752,6 +753,7 @@ Type
     WhiteBombs: Integer; // Mod weiße Bombe: So viele der nächsten gelegten Bomben sind weiß
     FlameThrowerFuel: Integer; // Mod Flammenwerfer: Zeit in ms, so lange kann der Spieler noch feuern (0 = kein Flammenwerfer)
     FlameThrowerFiring: Boolean; // Mod Flammenwerfer: True, so lange die zweite Aktion gedrückt ist
+    FlameThrowerHeldMs: Integer; // Mod Flammenwerfer: Zeit in ms, so lange ist die zweite Aktion schon gedrückt (erst ab FlameThrowerHoldTime wird gefeuert)
     FirstActionHeld: Boolean; // True, so lange die erste Aktion gedrückt ist (Mod Bomben tragen, Steuerung Halten)
     CarryTimer: Integer; // Mod Bomben tragen: Zeit in ms, so lange trägt der Spieler seine Bombe schon
     LastFirstActionDown: QWord; // Mod Bomben tragen: Zeitpunkt des letzten Drucks der ersten Aktion (für CarryBombDoubleTime)
@@ -761,8 +763,8 @@ Type
     HuntedTimeMs: Integer; // Spielmodus Hunter: Zeit in ms, die der Spieler in dieser Runde schon der Gejagte war
     HuntedKills: Integer; // Spielmodus Hunter: Wie oft der Spieler in dieser Runde den Gejagten erwischt hat
     RespawnTimer: Integer; // Spielmodus Hunter: Zeit in ms bis der tote Spieler wieder ins Spiel kommt, 0 = kein Respawn ausstehend
-    PowersBeforeHunted: TAtomicPowers; // Spielmodus Hunter: Die Powers von bevor der Spieler der Gejagte wurde (HuntedLoseItemsRestore)
-    RespawnBeforeHunted: Boolean; // Spielmodus Hunter: True, der Spieler war der Gejagte und bekommt beim Respawn PowersBeforeHunted (HuntedLoseItemsRestore)
+    PowersBeforeHunted: TAtomicPowers; // Spielmodus Hunter: Die Powers von bevor der Spieler der Gejagte wurde (HuntedLoseItemsRestore), mit HunterKeepItems auch die eines toten Jägers
+    RespawnBeforeHunted: Boolean; // Spielmodus Hunter: True, der Spieler bekommt beim Respawn PowersBeforeHunted (früherer Gejagter oder HunterKeepItems)
 {$ENDIF}
   End;
 
@@ -856,6 +858,7 @@ Type
     HunterRespawn: Boolean; // Spielmodus Hunter: True, tote Spieler kommen nach HunterRespawnMs zurück (dann gibt es keinen Hurry)
     HunterRespawnMs: Integer; // Spielmodus Hunter: Zeit in ms bis zum Respawn
     HunterRespawnInvulnMs: Integer; // Spielmodus Hunter: Zeit in ms, so lange ist ein Spieler nach dem Respawn unverwundbar
+    HunterKeepItems: Boolean; // Spielmodus Hunter: True, ein toter Jäger kommt mit seinen Items zurück (sie werden nicht auf dem Feld verteilt)
     HuntedNoDiseases: Boolean; // Spielmodus Hunter: True, der Gejagte wird nicht krank (Krankheit, Slow und Tauschen verfallen, kein Anstecken)
     HuntedGold: Boolean; // Spielmodus Hunter: True, der Gejagte wird in Gold gezeichnet
     HuntedAura: Boolean; // Spielmodus Hunter: True, um den Gejagten wird eine pulsierende Aura gezeichnet
@@ -1425,6 +1428,7 @@ Begin
   Settings.HunterRespawn := true;
   Settings.HunterRespawnMs := 3000;
   Settings.HunterRespawnInvulnMs := 2000;
+  Settings.HunterKeepItems := true;
   Settings.HuntedNoDiseases := true;
   Settings.HuntedGold := true;
   Settings.HuntedAura := true;
@@ -1544,6 +1548,7 @@ Begin
   WriteB('Hunter', 'HunterRespawn', Settings.HunterRespawn);
   WriteI('Hunter', 'HunterRespawnMs', Settings.HunterRespawnMs);
   WriteI('Hunter', 'HunterRespawnInvulnMs', Settings.HunterRespawnInvulnMs);
+  WriteB('Hunter', 'HunterKeepItems', Settings.HunterKeepItems);
   WriteB('Hunter', 'HuntedNoDiseases', Settings.HuntedNoDiseases);
   WriteB('Hunter', 'HuntedGold', Settings.HuntedGold);
   WriteB('Hunter', 'HuntedAura', Settings.HuntedAura);
@@ -1679,6 +1684,7 @@ Begin
   Settings.HunterRespawn := ini.ReadBool('Hunter', 'HunterRespawn', Settings.HunterRespawn);
   Settings.HunterRespawnMs := ini.ReadInteger('Hunter', 'HunterRespawnMs', Settings.HunterRespawnMs);
   Settings.HunterRespawnInvulnMs := ini.ReadInteger('Hunter', 'HunterRespawnInvulnMs', Settings.HunterRespawnInvulnMs);
+  Settings.HunterKeepItems := ini.ReadBool('Hunter', 'HunterKeepItems', Settings.HunterKeepItems);
   Settings.HuntedNoDiseases := ini.ReadBool('Hunter', 'HuntedNoDiseases', Settings.HuntedNoDiseases);
   Settings.HuntedGold := ini.ReadBool('Hunter', 'HuntedGold', Settings.HuntedGold);
   Settings.HuntedAura := ini.ReadBool('Hunter', 'HuntedAura', Settings.HuntedAura);
@@ -1781,6 +1787,7 @@ Begin
   Dest.HunterRespawn := Source.HunterRespawn;
   Dest.HunterRespawnMs := Source.HunterRespawnMs;
   Dest.HunterRespawnInvulnMs := Source.HunterRespawnInvulnMs;
+  Dest.HunterKeepItems := Source.HunterKeepItems;
   Dest.HuntedNoDiseases := Source.HuntedNoDiseases;
   Dest.HuntedGold := Source.HuntedGold;
   Dest.HuntedAura := Source.HuntedAura;

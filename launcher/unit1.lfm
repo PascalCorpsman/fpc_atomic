@@ -288,6 +288,15 @@ object Form1: TForm1
       Caption = 'S&how FPS'
       TabOrder = 4
     end
+    object CheckBox9: TCheckBox
+      Left = 164
+      Height = 22
+      Hint = 'Keep the game window above all other windows. Off: other windows can cover the game window.'
+      Top = 52
+      Width = 112
+      Caption = 'Always o&n top'
+      TabOrder = 5
+    end
     object CheckBox7: TCheckBox
       Left = 8
       Height = 22
@@ -295,7 +304,7 @@ object Form1: TForm1
       Top = 76
       Width = 192
       Caption = 'Re&member window position'
-      TabOrder = 5
+      TabOrder = 6
     end
     object Button8: TButton
       Left = 8
@@ -304,7 +313,7 @@ object Form1: TForm1
       Top = 104
       Width = 178
       Caption = '&Game options...'
-      TabOrder = 6
+      TabOrder = 7
       OnClick = Button8Click
     end
     object Button7: TButton
@@ -314,7 +323,7 @@ object Form1: TForm1
       Top = 104
       Width = 126
       Caption = '&Mods...'
-      TabOrder = 7
+      TabOrder = 8
       OnClick = Button7Click
     end
     object Label10: TLabel
@@ -333,7 +342,7 @@ object Form1: TForm1
       Top = 134
       Width = 126
       Caption = 'Game mo&de...'
-      TabOrder = 8
+      TabOrder = 9
       OnClick = Button9Click
     end
   end

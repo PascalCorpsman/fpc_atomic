@@ -49,6 +49,7 @@ Type
     CheckBox6: TCheckBox;
     CheckBox7: TCheckBox;
     CheckBox8: TCheckBox;
+    CheckBox9: TCheckBox;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
@@ -326,7 +327,8 @@ Begin
   Finally
     p.free;
   End;
-  UpdateStatus();
+  // Mit den CD-Daten gibt es das Original und sein Seitenbild, auch wenn der Extraktor aus dem Update Dialog kam (SelectAssetSet -> LoadSideImage, UpdateStatus)
+  ReadAssetSets();
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
@@ -1436,8 +1438,7 @@ Begin
     Case r Of
       mrYes: If SetupGenerate(false, n) Then break;
       mrNo: Begin
-          Button4Click(Nil);
-          ReadAssetSets(); // Mit den CD-Daten gibt es das Original (und das Seitenbild)
+          Button4Click(Nil); // Liest auch die Grafiksätze und das Seitenbild neu
           break;
         End;
     Else
@@ -1856,6 +1857,7 @@ Begin
   CheckBox8.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true); // Wie "Soundeffekte abspielen" in den Spieloptionen
   CheckBox5.Checked := Not ini.ReadBool(FPC_AtomicIniSection, 'Proportional', true);
   CheckBox7.Checked := ini.ReadBool(FPC_AtomicIniSection, 'RememberWindow', true);
+  CheckBox9.Checked := ini.ReadBool(FPC_AtomicIniSection, 'StayOnTop', false);
   edit1.text := ini.ReadString(FPC_AtomicIniSection, 'NodeName', 'Player 1');
   ProtocollVersion := ini.ReadInteger(FPC_AtomicIniSection, 'ProtocollVersion', -1);
   Version := strtofloatdef(ini.ReadString(FPC_AtomicIniSection, 'Version', '-1'), -1, fm);
@@ -2169,6 +2171,7 @@ Begin
   ini.WriteBool(FPC_AtomicIniSection, 'PlaySoundEffects', CheckBox8.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'Proportional', Not CheckBox5.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'RememberWindow', CheckBox7.Checked);
+  ini.WriteBool(FPC_AtomicIniSection, 'StayOnTop', CheckBox9.Checked);
   ini.WriteString(FPC_AtomicIniSection, 'NodeName', trim(edit1.text));
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);

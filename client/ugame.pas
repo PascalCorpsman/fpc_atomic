@@ -2614,10 +2614,10 @@ Begin
     End;
     LogLeave(EnterID);
   End;
-  // If we do not find a Local game after 2 tries, bring up the "Ask for IP Dialog"
-  // First Try is in ms 0
-  // Second Try is in ms 500
-  If fUDPPingData.StartTickValue + 550 <= GetTickCount64 Then Begin
+  // If we do not find a Local game after 3 tries, bring up the "Ask for IP Dialog"
+  // Tries are in ms 0, 500 and 1000, the answer may need a while (WLAN, several adapters)
+  // An answer that comes while the dialog is open closes it again (Join -> StopJoinQuestion)
+  If fUDPPingData.StartTickValue + 1550 <= GetTickCount64 Then Begin
     fUDPPingData.StartTickValue := GetTickCount64 + 1000 * 60 * 60; // Only poll once, by forwarding the next poll 1h this should be the case ;)
     key := VK_J;
     fScreens[sMainScreen].OnKeyDown(Nil, key, []);
