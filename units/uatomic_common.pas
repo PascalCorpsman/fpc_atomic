@@ -1002,6 +1002,20 @@ Function SaveModSettingsToFile(Const Filename: String; Const Settings: TModSetti
 Function ModSettingsToString(Const Settings: TModSettings): String;
 // Gegenstück zu ModSettingsToString, fehlende Werte = Default, ungültige Werte werden wie beim Laden der Datei auf ihre Grenzen gezogen
 Procedure ModSettingsFromString(Const Data: String; Var Settings: TModSettings);
+
+(*
+ * Mod Presets: Eine Datei pro Preset, [Preset] Name und die Werte aus [Mods].
+ * Spielmodus ([GameMode], [Hunter]), [Debug] und [Handicap] gehören nicht dazu.
+ *)
+Function SaveModPreset(Const Filename, Name: String; Const Settings: TModSettings): Boolean;
+// Der Name aus [Preset], ohne ihn der Dateiname ohne Endung
+Function ModPresetName(Const Filename: String): String;
+Function SetModPresetName(Const Filename, Name: String): Boolean;
+// Ersetzt alle Werte aus [Mods] durch die des Presets (fehlende = Default), alles andere in Settings bleibt
+Procedure ApplyModPreset(Const Filename: String; Var Settings: TModSettings);
+// True, wenn die Datei ein Preset ist (hat [Preset] oder [Mods])
+Function IsModPresetFile(Const Filename: String): Boolean;
+
 // Summe aller Gewichte, negative zählen als 0
 Function WeightSum(Const Weights: Array Of Integer): Integer;
 // Wählt einen Index mit der Wahrscheinlichkeit Weights[i] / Summe, -1 wenn die Summe 0 ist
@@ -1897,6 +1911,127 @@ Begin
   Finally
     sl.free;
     ini.free;
+  End;
+End;
+
+Function SaveModPreset(Const Filename, Name: String; Const Settings: TModSettings): Boolean;
+Var
+  all, ini: TMemIniFile;
+  sl: TStringList;
+  i: Integer;
+Begin
+  result := false;
+  If Not ForceDirectories(ExtractFileDir(Filename)) Then Begin
+    log('Unable to create: ' + Filename, llCritical);
+    exit;
+  End;
+  all := TMemIniFile.Create('');
+  ini := TMemIniFile.Create('');
+  sl := TStringList.Create;
+  Try
+    // Alle Werte schreiben, davon nur [Mods] übernehmen
+    WriteModSettings(all, Settings, false);
+    all.ReadSectionValues('Mods', sl);
+    ini.WriteString('Preset', 'Name', Name);
+    For i := 0 To sl.Count - 1 Do Begin
+      ini.WriteString('Mods', sl.Names[i], sl.ValueFromIndex[i]);
+    End;
+    sl.Clear;
+    ini.GetStrings(sl);
+    Try
+      sl.SaveToFile(Filename);
+      result := true;
+    Except
+      On av: Exception Do Begin
+        log('Unable to write: ' + Filename + ' ' + av.Message, llCritical);
+      End;
+    End;
+  Finally
+    sl.free;
+    ini.free;
+    all.free;
+  End;
+End;
+
+Function ModPresetName(Const Filename: String): String;
+Var
+  ini: TIniFile;
+Begin
+  result := '';
+  Try
+    ini := TIniFile.Create(Filename);
+    Try
+      result := trim(ini.ReadString('Preset', 'Name', ''));
+    Finally
+      ini.free;
+    End;
+  Except
+    result := '';
+  End;
+  If result = '' Then result := ChangeFileExt(ExtractFileName(Filename), '');
+End;
+
+Function SetModPresetName(Const Filename, Name: String): Boolean;
+Var
+  ini: TIniFile;
+Begin
+  result := false;
+  Try
+    ini := TIniFile.Create(Filename);
+    Try
+      ini.WriteString('Preset', 'Name', Name);
+      result := true;
+    Finally
+      ini.free;
+    End;
+  Except
+    On av: Exception Do Begin
+      log('Unable to write: ' + Filename + ' ' + av.Message, llCritical);
+    End;
+  End;
+End;
+
+Procedure ApplyModPreset(Const Filename: String; Var Settings: TModSettings);
+Var
+  all, preset: TMemIniFile;
+  sl: TStringList;
+  i: Integer;
+Begin
+  all := TMemIniFile.Create('');
+  preset := TMemIniFile.Create(Filename);
+  sl := TStringList.Create;
+  Try
+    // Der aktuelle Stand ohne [Mods], dazu [Mods] aus dem Preset, dann wie eine Datei lesen (fehlende Werte = Default)
+    WriteModSettings(all, Settings, false);
+    WriteHandicap(all, Settings);
+    all.EraseSection('Mods');
+    preset.ReadSectionValues('Mods', sl);
+    For i := 0 To sl.Count - 1 Do Begin
+      all.WriteString('Mods', sl.Names[i], sl.ValueFromIndex[i]);
+    End;
+    ReadModSettings(all, ExtractFileName(Filename), Settings);
+  Finally
+    sl.free;
+    preset.free;
+    all.free;
+  End;
+End;
+
+Function IsModPresetFile(Const Filename: String): Boolean;
+Var
+  ini: TIniFile;
+Begin
+  result := false;
+  If Not FileExists(Filename) Then exit;
+  Try
+    ini := TIniFile.Create(Filename);
+    Try
+      result := ini.SectionExists('Preset') Or ini.SectionExists('Mods');
+    Finally
+      ini.free;
+    End;
+  Except
+    result := false;
   End;
 End;
 

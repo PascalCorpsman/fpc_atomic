@@ -425,6 +425,33 @@
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/updater_lang.fr",
           "Filename":"updater_lang.fr"
         }
+      },
+      {
+        "file":
+        {
+          "HASH":"2cccfc2b8bd4309c461de129a5545fe3",
+          "SIZE":"181",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/mod_presets\/Chaos.ini",
+          "Filename":"mod_presets\/Chaos.ini"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"5b9a2537a4e5408e31941363680bc795",
+          "SIZE":"23",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/mod_presets\/Original.ini",
+          "Filename":"mod_presets\/Original.ini"
+        }
+      },
+      {
+        "file":
+        {
+          "HASH":"c3adf37fdfd0996e918c6fb719d09cc9",
+          "SIZE":"96",
+          "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/mod_presets\/Party.ini",
+          "Filename":"mod_presets\/Party.ini"
+        }
       }
     ]
   }

@@ -7,6 +7,7 @@ FPC Atomic hat einige optionale Spiel-Mods, die die Regeln des Originalspiels ä
 Welche Mods zu welcher Spielerrunde passen, beantwortet die [Mods-FAQ](MODS_FAQ_DE.md).
 
 - [Mods einrichten](#mods-einrichten)
+- [Presets](#presets)
 - [Stun bei Bombenlandung](#stun-bei-bombenlandung)
 - [Boxhandschuh](#boxhandschuh)
 - [Positive Krankheit](#positive-krankheit)
@@ -36,6 +37,27 @@ Gespeichert werden die Einstellungen in `atomic_mods.ini` im Konfigurationsordne
 Haben alle Spieler den Server verlassen (oder ist das Match vorbei), schaltet der Server alle Mods wieder aus. Der nächste Host bringt seine eigenen Mods mit.
 
 Die Namen der Einstellungen stehen in den Tabellen so, wie sie im Launcher auf Deutsch heißen (umschalten mit dem Link unten rechts im Launcher).
+
+### Presets
+
+Ein Preset ist ein gespeicherter Satz Mods mit ihren Werten, z. B. für die übliche Abendrunde. Die Zeile oben im Dialog **Mods...** verwaltet sie:
+
+- **Preset:** Die Auswahl eines Presets übernimmt seine Mods und Werte in den Dialog. Wie jede andere Änderung im Dialog wird das erst mit **OK** gespeichert.
+- **Speichern als...** speichert die Mods aus dem Dialog als Preset. Ein neuer Name legt ein neues Preset an, der Name eines vorhandenen ersetzt es.
+- **Umbenennen...** gibt dem gewählten Preset einen neuen Namen, **Löschen** entfernt es.
+- **Exportieren...** speichert das gewählte Preset als Datei, z. B. um es anderen Spielern zu schicken. **Importieren...** übernimmt so eine Datei in die Liste und wählt sie aus. Ein Preset mit gleichem Namen wird nur nach Rückfrage ersetzt.
+
+Ein Preset enthält nur die Mods. Spielmodus, Mod-Test-Modus und die Handicaps der Trefferpunkte bleiben wie sie sind. Mods, die in einem Preset fehlen (z. B. neue Mods in einem älteren Preset), bekommen ihren Standardwert, ein Preset ergibt also immer dasselbe.
+
+Mitgelieferte Presets (markiert mit „mitgeliefert“) kommen mit dem Spiel und lassen sich nicht umbenennen oder löschen, aber unter neuem Namen speichern:
+
+| Preset | Mods |
+|---|---|
+| Original | alle Mods aus |
+| Party | Stun bei Bombenlandung, Boxhandschuh, Geister, Handschuh beim Start, Bomben tragen |
+| Chaos | Stun bei Bombenlandung, Boxhandschuh, Positive Krankheit, Durch Steine laufen, Weiße Bombe, Flammenwerfer, Geister, Handschuh beim Start, Offene Grenzen, Teleporter, Bomben tragen |
+
+Die eigenen Presets liegen im Ordner `mod_presets` im Konfigordner, eine `.ini` Datei pro Preset (`[Preset] Name` und die Werte aus `[Mods]`, siehe [atomic_mods.ini von Hand bearbeiten](#atomic_modsini-von-hand-bearbeiten)). Die mitgelieferten liegen in `mod_presets` neben dem Spiel.
 
 ### Allgemeine Regeln
 

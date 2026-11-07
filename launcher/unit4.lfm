@@ -1,11 +1,11 @@
 object Form4: TForm4
   Left = 400
-  Height = 411
+  Height = 445
   Top = 150
   Width = 754
   BorderStyle = bsDialog
   Caption = 'Form4'
-  ClientHeight = 411
+  ClientHeight = 445
   ClientWidth = 754
   Position = poMainFormCenter
   ShowHint = True
@@ -13,11 +13,80 @@ object Form4: TForm4
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
+  object Label108: TLabel
+    Left = 8
+    Height = 16
+    Top = 12
+    Width = 50
+    Caption = 'P&reset:'
+    FocusControl = ComboBox2
+  end
+  object ComboBox2: TComboBox
+    Left = 64
+    Height = 25
+    Hint = 'Saved mod settings. Selecting a preset fills in its mods and values, they are saved only with OK. Game mode, mod test mode and handicaps stay as they are.'
+    Top = 8
+    Width = 194
+    ItemHeight = 0
+    Style = csDropDownList
+    TabOrder = 0
+    OnSelect = ComboBox2Select
+  end
+  object Button7: TButton
+    Left = 266
+    Height = 25
+    Hint = 'Save the mods shown in the dialog as a preset under a new or an existing name.'
+    Top = 8
+    Width = 96
+    Caption = '&Save as...'
+    TabOrder = 1
+    OnClick = Button7Click
+  end
+  object Button8: TButton
+    Left = 366
+    Height = 25
+    Hint = 'Rename the selected preset (built-in presets can not be renamed).'
+    Top = 8
+    Width = 90
+    Caption = 'Re&name...'
+    TabOrder = 2
+    OnClick = Button8Click
+  end
+  object Button9: TButton
+    Left = 460
+    Height = 25
+    Hint = 'Delete the selected preset (built-in presets can not be deleted).'
+    Top = 8
+    Width = 80
+    Caption = 'De&lete'
+    TabOrder = 3
+    OnClick = Button9Click
+  end
+  object Button10: TButton
+    Left = 544
+    Height = 25
+    Hint = 'Save the selected preset as a file, e.g. to send it to other players.'
+    Top = 8
+    Width = 98
+    Caption = 'E&xport...'
+    TabOrder = 4
+    OnClick = Button10Click
+  end
+  object Button11: TButton
+    Left = 646
+    Height = 25
+    Hint = 'Add a preset from a file to the list and select it.'
+    Top = 8
+    Width = 100
+    Caption = '&Import...'
+    TabOrder = 5
+    OnClick = Button11Click
+  end
   object CheckListBox1: TCheckListBox
     Left = 8
     Height = 332
     Hint = 'Check a mod to switch it on, click its name to see its settings.'
-    Top = 8
+    Top = 42
     Width = 250
     Items.Strings = (
       'Stun on bomb landing'
@@ -37,7 +106,7 @@ object Form4: TForm4
       'Mod test mode'
     )
     ItemHeight = 22
-    TabOrder = 0
+    TabOrder = 6
     OnClickCheck = CheckListBox1ClickCheck
     OnSelectionChange = CheckListBox1SelectionChange
     Data = {
@@ -47,12 +116,12 @@ object Form4: TForm4
   object PageControl1: TPageControl
     Left = 266
     Height = 332
-    Top = 8
+    Top = 42
     Width = 480
     ActivePage = TabSheet5
     ShowTabs = False
     TabIndex = 12
-    TabOrder = 1
+    TabOrder = 7
     object TabSheet1: TTabSheet
       Caption = 'TabSheet1'
       ClientHeight = 330
@@ -1940,7 +2009,7 @@ object Form4: TForm4
   object Label25: TLabel
     Left = 8
     Height = 16
-    Top = 350
+    Top = 384
     Width = 486
     Caption = 'Changes apply to the next game started on this PC.'
   end
@@ -1949,7 +2018,7 @@ object Form4: TForm4
     Left = 110
     Height = 16
     Hint = 'Open the mods manual (MODS_MANUAL.md, with a link to the German version).'
-    Top = 381
+    Top = 415
     Width = 78
     Caption = 'Mods manual'
     Font.Color = clBlue
@@ -1961,32 +2030,32 @@ object Form4: TForm4
     Left = 8
     Height = 25
     Hint = 'Reset all mods to their default values (all off). Saved only with OK.'
-    Top = 376
+    Top = 410
     Width = 90
     Caption = '&Defaults'
-    TabOrder = 2
+    TabOrder = 8
     OnClick = Button1Click
   end
   object Button2: TButton
     Left = 578
     Height = 25
     Hint = 'Save the settings to atomic_mods.ini. They apply to the next game this PC joins as first player, also on another server.'
-    Top = 376
+    Top = 410
     Width = 80
     Caption = 'OK'
     Default = True
-    TabOrder = 3
+    TabOrder = 9
     OnClick = Button2Click
   end
   object Button3: TButton
     Left = 666
     Height = 25
     Hint = 'Close without saving.'
-    Top = 376
+    Top = 410
     Width = 80
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
-    TabOrder = 4
+    TabOrder = 10
   end
 end

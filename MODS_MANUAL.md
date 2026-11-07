@@ -7,6 +7,7 @@ FPC Atomic has some optional game mods that change the rules of the original gam
 Which mods fit which group of players is answered in the [mods FAQ](MODS_FAQ.md).
 
 - [Setting up the mods](#setting-up-the-mods)
+- [Presets](#presets)
 - [Stun on bomb landing](#stun-on-bomb-landing)
 - [Boxing glove](#boxing-glove)
 - [Positive disease](#positive-disease)
@@ -34,6 +35,27 @@ The easiest way is the launcher: click **Mods...**, check the mods you want on t
 The settings are stored in `atomic_mods.ini` in the config folder (launcher: **Config folder**), see [Editing atomic_mods.ini by hand](#editing-atomic_modsini-by-hand).
 
 When all players have left the server (or the match is over), the server switches all mods off again. The next host brings their own mods.
+
+### Presets
+
+A preset is a saved set of mods with their values, e.g. for the usual evening round. The row at the top of the **Mods...** dialog manages them:
+
+- **Preset:** selecting a preset fills in its mods and values. Like every other change in the dialog it is saved only with **OK**.
+- **Save as...** saves the mods shown in the dialog as a preset. Enter a new name or the name of an existing preset to replace it.
+- **Rename...** gives the selected preset a new name, **Delete** removes it.
+- **Export...** saves the selected preset as a file, e.g. to send it to other players. **Import...** adds such a file to the list and selects it. A preset with the same name is only replaced after a question.
+
+A preset only contains the mods. The game mode, the mod test mode and the handicaps of the hit points mod stay as they are. Mods that are missing in a preset (e.g. new mods in an older preset) get their default value, so a preset always gives the same result.
+
+Built-in presets (marked "built-in") come with the game and can not be renamed or deleted, but they can be saved under a new name:
+
+| Preset | Mods |
+|---|---|
+| Original | all mods off |
+| Party | stun on bomb landing, boxing glove, ghosts, glove at start, carry bombs |
+| Chaos | stun on bomb landing, boxing glove, positive disease, walk through bricks, white bomb, flamethrower, ghosts, glove at start, open borders, teleporters, carry bombs |
+
+The own presets are stored in the folder `mod_presets` in the config folder, one `.ini` file per preset (`[Preset] Name` and the values of `[Mods]`, see [Editing atomic_mods.ini by hand](#editing-atomic_modsini-by-hand)). The built-in presets are in `mod_presets` next to the game.
 
 ### Common rules
 
