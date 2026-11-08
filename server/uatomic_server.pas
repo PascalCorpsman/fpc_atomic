@@ -51,6 +51,7 @@ Type
   TServer = Class
   private
     fKickAllPlayer: boolean; // If True, the server kicks every player during the next "Idle"
+    fVictoryShown: Boolean; // Das Match ist zu Ende und gebucht, weitere miStartGame (z.B. Tastenwiederholung) werden ignoriert
     fFrameLog: tFrameLog;
     fStatistik: TGameStatistik;
     fPlayerStatistics: TPlayerStatisticEngine;
@@ -462,16 +463,28 @@ Begin
           HandleDebugCommand(Chunk.Data, Chunk.UID);
         End;
       miStartGame: Begin
-          If fGameState = gsShowHighscore Then Begin
-            If MatchFinished() Then Begin
-              HandleShowVictory();
-            End
-            Else Begin
-              HandleStartRound();
-            End;
+          (*
+           * Nur der Master startet (so sendet es auch der Client), und nur aus dem Karten Setup oder dem Highscore.
+           * Hält der Master Return gedrückt, kommen mehrere miStartGame an, die dürfen weder die Match Siege
+           * doppelt zählen noch nach dem Victory Screen ein neues Match ohne Karte starten.
+           *)
+          If (Chunk.UID <> fSettings.MasterUid) Then Begin
+            log('Ignored start game from ' + inttostr(Chunk.UID), llWarning);
           End
           Else Begin
-            HandleStartGame();
+            Case fGameState Of
+              gsShowHighscore: Begin
+                  If Not fVictoryShown Then Begin
+                    If MatchFinished() Then Begin
+                      HandleShowVictory();
+                    End
+                    Else Begin
+                      HandleStartRound();
+                    End;
+                  End;
+                End;
+              gsMapSetup: HandleStartGame();
+            End;
           End;
         End;
     Else Begin
@@ -1028,6 +1041,7 @@ Var
 Begin
   EnterID := LogEnter('TServer.HandleStartGame');
   HandleStatisticCallback(ssMatchesStarted);
+  fVictoryShown := false;
   fPlayerStatistics.ResetPlayerIDs;
   // 1. Alle Player "Initialisieren
   For i := 0 To high(fPLayer) Do Begin
@@ -1287,7 +1301,17 @@ Begin
 End;
 
 Procedure TServer.HandleShowVictory;
+Var
+  i: Integer;
 Begin
+  If fVictoryShown Then exit;
+  fVictoryShown := true;
+  // Statistik: genau einmal pro Match, deshalb hier und nicht in MatchFinished
+  For i := 0 To high(fPLayer) Do Begin
+    If (fPLayer[i].UID <> NoPlayer) And (fPLayer[i].Score >= fSettings.LastWinsToWinMatch) Then Begin
+      fPlayerStatistics.UpdatePlayerID(i, pssWonMatches);
+    End;
+  End;
   // Den Victory Screen auswählen
   // Der Gewinner wurde bereits in EndGameCheck bestimmt.
   SendChunk(miShowVictory, Nil, 0);
@@ -3398,9 +3422,8 @@ Begin
    *)
   For i := 0 To high(fPLayer) Do Begin
     If (fPLayer[i].UID <> NoPlayer) And (fPLayer[i].Score >= fSettings.LastWinsToWinMatch) Then Begin
-      result := true;
-      // Statistik ;)
-      fPlayerStatistics.UpdatePlayerID(i, pssWonMatches);
+      result := true; // Die Statistik bucht HandleShowVictory
+      break;
     End;
   End;
 End;
