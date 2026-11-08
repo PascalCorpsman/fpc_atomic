@@ -186,7 +186,7 @@ Const
    *                       ADD: the map hash only covers info.txt, so clients with different graphics sets can play the same map -> need change in ProtocollVersion
    *)
 
-  ProtocollVersion: uint32 = 18; // ACHTUNG die Versionsnummer mus hier und in der Zeile darunter angepasst werden
+  ProtocollVersion: uint32 = 19; // ACHTUNG muss bei jeder Änderung am Protokoll (uatomic_messages.pas) hochgezählt werden.
   Version = '0.14003';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
