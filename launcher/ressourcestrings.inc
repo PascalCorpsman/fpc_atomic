@@ -1,5 +1,5 @@
 Resourcestring
-  R_InstallationIncomplete = 'Error, installation not complete, please run "Check for updates"';
+  RF_InstallationIncomplete = 'Error, installation not complete. Missing applications: %s. Please run "Check for updates"';
   R_SetupNoExtractor = 'The CD extractor (cd_data_extractor) is not installed.' + LineEnding + 'Install it with "Check for updates", then run the setup again.';
   R_SetupNoGenerator = 'The graphics generator (asset_generator_gui) is not installed.' + LineEnding + 'Install it with "Check for updates", then run the setup again.';
   R_ValidName = '✓ valid name';
@@ -181,6 +181,9 @@ Resourcestring
   R_StatNoLocal = 'No statistics yet: no game was hosted on this computer. Games on other servers are listed above as soon as you played a match there.';
   R_StatRemoteInfo = 'Copy of the statistics of %s (%s) as of your last game there on %s. It is updated every time you play there.';
   R_StatRemoveAsk = 'Delete the copy of the statistics of "%s"?';
+  R_StatResetPlayersAsk = 'Delete all player statistics of "%s", regardless of the current filter? The server statistics are kept. This cannot be undone.';
+  R_StatResetServerAsk = 'Delete the server statistics of "%s" (total and last server run)? The player statistics are kept. This cannot be undone.';
+  R_StatResetError = 'Could not reset the statistics in "%s": %s';
   R_StatAiSuffix = ' (AI)';
   R_StatValue = 'Value';
   R_StatTotal = 'Total';

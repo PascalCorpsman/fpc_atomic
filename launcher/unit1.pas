@@ -80,8 +80,8 @@ Type
     ButtonNewsClose: TSpeedButton;
     Timer1: TTimer;
     Timer2: TTimer;
-    Procedure Button1Click(Sender: TObject);
     Procedure Panel1Click(Sender: TObject);
+    Procedure Button1Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
@@ -335,9 +335,8 @@ Begin
   StoreSettings();
   ini.UpdateFile;
   // Short Prechecks
-  If (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage(R_InstallationIncomplete);
+  If Not FileExists('cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF}) Then Begin
+    showmessage(format(RF_InstallationIncomplete, ['cd_data_extractor'{$IFDEF Windows} + '.exe'{$ENDIF}]));
     exit;
   End;
   // Run the App ;)
@@ -865,6 +864,7 @@ Procedure TForm1.Panel1Click(Sender: TObject);
 Var
   P: TProcessUTF8;
   sl: TStringList;
+  MissingApplications: String;
 Begin
   If Not ValidNodeName(trim(Edit1.text)) Then Begin
     showmessage(Edit1.text + LineEnding + R_InvalidNodeName);
@@ -902,9 +902,15 @@ Begin
   sl.free;
   PrepareSchemes(); // Falls der gewählte Satz Schemes mitbringt, data/schemes aber noch leer ist
   // Short Prechecks
-  If (Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF})) Or
-    (Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF})) Then Begin
-    showmessage(R_InstallationIncomplete);
+  MissingApplications := '';
+  If Not FileExists('fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF}) Then
+    MissingApplications := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
+  If Not FileExists('atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF}) Then Begin
+    If MissingApplications <> '' Then MissingApplications := MissingApplications + ', ';
+    MissingApplications := MissingApplications + 'atomic_server'{$IFDEF Windows} + '.exe'{$ENDIF};
+  End;
+  If MissingApplications <> '' Then Begin
+    showmessage(format(RF_InstallationIncomplete, [MissingApplications]));
     exit;
   End;
   // Run the App ;)
@@ -1830,7 +1836,10 @@ Procedure TForm1.StartAssetGenerator;
 Var
   P: TProcessUTF8;
 Begin
-  If Not FileExists(AssetGeneratorExe()) Then exit;
+  If Not FileExists(AssetGeneratorExe()) Then Begin
+    showmessage(format(RF_InstallationIncomplete, [ExtractFileName(AssetGeneratorExe())]));
+    exit;
+  End;
   StoreSettings();
   ini.UpdateFile;
   ReleaseSoundTest(); // Der Generator ersetzt evtl. die Sounds des Satzes (die dürfen dabei nicht offen sein) und spielt selbst welche

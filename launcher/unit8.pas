@@ -50,11 +50,14 @@ Type
    * Der Highscore: die Statistik eines Servers (Playerstats.csv und stats.txt).
    * Die Statistik führt immer der Server, also der Rechner, auf dem gehostet wurde. Die eigene liest der Launcher direkt,
    * von anderen Servern hat der Client beim Spielen eine Kopie gespeichert (TGame.HandleServerStatistics).
+   * Reset betrifft nach Bestätigung alle Werte des aktiven Tabs der gewählten Quelle, unabhängig vom Spielerfilter.
+   * Der andere Tab und die Serverkennung bleiben erhalten; bei fremden Servern wird nur die lokale Kopie geändert.
    *)
   TForm8 = Class(TForm)
     Button1: TButton;
     Button2: TButton;
     Button3: TButton;
+    Button4: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     ComboBox1: TComboBox;
@@ -71,10 +74,12 @@ Type
     TabSheet2: TTabSheet;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
+    Procedure Button4Click(Sender: TObject);
     Procedure CheckBox1Change(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
     Procedure FormCreate(Sender: TObject);
     Procedure FormShow(Sender: TObject);
+    Procedure PageControl1Change(Sender: TObject);
     Procedure StringGrid1GetCellHint(Sender: TObject; ACol, ARow: Integer; Var HintText: String);
     Procedure StringGrid1HeaderClick(Sender: TObject; IsColumn: Boolean; Index: Integer);
     Procedure StringGrid1PrepareCanvas(Sender: TObject; aCol, aRow: Integer; aState: TGridDrawState);
@@ -90,6 +95,7 @@ Type
     fLoading: Boolean; // True während Execute die Einstellungen setzt, dann nicht neu füllen
     Procedure ReadSources(Const SelectID: String);
     Procedure LoadSource();
+    Procedure UpdateResetButton();
     Procedure LoadServerValues(Const Source: TStatSource);
     Procedure FillPlayers();
     Function DisplayName(Index: integer): String; // Der Name in Zeile Index von fShown, bei gleichen Namen mit Nummer des Spielers am PC
@@ -111,7 +117,7 @@ Implementation
 
 {$R *.lfm}
 
-Uses Math, DateUtils, LCLIntf, LCLType, ulanguage, ulayout, uatomic_global;
+Uses Math, DateUtils, LCLIntf, LCLType, Buttons, ulanguage, ulayout, uatomic_global;
 
 Const
   MinMatchesForRate = 3; // Darunter zeigen Sieg-% und K/D "–", sonst stünde ein Spieler mit 1 von 1 Match ganz oben
@@ -521,7 +527,7 @@ Begin
   End;
   Button1.Enabled := src.ID <> '';
   If src.ID = '' Then Begin
-    If FileExists(Filename) Then Begin
+    If FileExists(Filename) Or FileExists(GetAtomicStatsFile()) Then Begin
       Label3.Caption := R_StatLocalInfo;
     End
     Else Begin
@@ -533,6 +539,46 @@ Begin
   End;
   LoadServerValues(src);
   FillPlayers();
+  UpdateResetButton();
+End;
+
+Procedure TForm8.UpdateResetButton;
+Var
+  src: TStatSource;
+  Filename: String;
+  ini: TIniFile;
+  Players: Boolean;
+Begin
+  Button4.Enabled := false;
+  If (ComboBox1.ItemIndex < 0) Or (ComboBox1.ItemIndex > high(fSources)) Then exit;
+  src := fSources[ComboBox1.ItemIndex];
+  Players := PageControl1.ActivePage = TabSheet1;
+  If Players Then Begin
+    If src.ID = '' Then Filename := GetAtomicPlayerStatsFile()
+    Else Filename := GetAtomicServerStatsDir() + src.ID + '.csv';
+  End
+  Else Begin
+    If src.ID = '' Then Filename := GetAtomicStatsFile()
+    Else Filename := GetAtomicServerStatsDir() + src.ID + '.ini';
+  End;
+  If Not FileExists(Filename) Then exit;
+  If Players Then Begin
+    Button4.Enabled := true;
+  End
+  Else Begin
+    ini := TIniFile.Create(Filename);
+    Try
+      Button4.Enabled := ini.SectionExists('Total') Or ini.SectionExists('LastRun');
+    Finally
+      ini.free;
+    End;
+  End;
+End;
+
+Procedure TForm8.PageControl1Change(Sender: TObject);
+Begin
+  If fLoading Then exit;
+  UpdateResetButton();
 End;
 
 Function TForm8.CompareRows(Const a, b: TPlayerStatistics): integer;
@@ -717,6 +763,78 @@ Begin
   End;
   ForceDirectories(Dir);
   OpenDocument(Dir);
+End;
+
+Procedure TForm8.Button4Click(Sender: TObject);
+Var
+  src: TStatSource;
+  Filename, s: String;
+  ini: TIniFile;
+  Players: Boolean;
+  Confirmation: TForm;
+  i: Integer;
+  b: TBitBtn;
+Begin
+  UpdateResetButton();
+  If Not Button4.Enabled Then Begin
+    LoadSource();
+    exit;
+  End;
+  If (ComboBox1.ItemIndex < 0) Or (ComboBox1.ItemIndex > high(fSources)) Then exit;
+  src := fSources[ComboBox1.ItemIndex];
+  Players := PageControl1.ActivePage = TabSheet1;
+  If Players Then Begin
+    s := format(R_StatResetPlayersAsk, [ComboBox1.Text]);
+    If src.ID = '' Then Filename := GetAtomicPlayerStatsFile()
+    Else Filename := GetAtomicServerStatsDir() + src.ID + '.csv';
+  End
+  Else Begin
+    s := format(R_StatResetServerAsk, [ComboBox1.Text]);
+    If src.ID = '' Then Filename := GetAtomicStatsFile()
+    Else Filename := GetAtomicServerStatsDir() + src.ID + '.ini';
+  End;
+  Confirmation := CreateMessageDialog(R_Warning, s, mtWarning, [mbYes, mbNo]);
+  Try
+    For i := 0 To Confirmation.ComponentCount - 1 Do Begin
+      If Confirmation.Components[i] Is TBitBtn Then Begin
+        b := TBitBtn(Confirmation.Components[i]);
+        b.Default := b.ModalResult = mrNo;
+        If b.Default Then Begin
+          b.Cancel := true;
+          Confirmation.ActiveControl := b;
+        End;
+      End;
+    End;
+    If Confirmation.ShowModal <> mrYes Then exit;
+  Finally
+    Confirmation.free;
+  End;
+  Try
+    If FileExists(Filename) Then Begin
+      If Players Then Begin
+        If Not DeleteFile(Filename) Then RaiseLastOSError;
+      End
+      Else Begin
+        // Die Kennung und die Metadaten der Quelle bleiben erhalten.
+        ini := TIniFile.Create(Filename);
+        Try
+          ini.EraseSection('Total');
+          ini.EraseSection('LastRun');
+          ini.UpdateFile;
+        Finally
+          ini.free;
+        End;
+      End;
+    End;
+  Except
+    On e: Exception Do Begin
+      s := format(R_StatResetError, [Filename, e.Message]);
+      log(s, llError);
+      Application.MessageBox(pchar(s), pchar(R_Warning), MB_OK Or MB_ICONERROR);
+      exit;
+    End;
+  End;
+  LoadSource();
 End;
 
 Procedure TForm8.StringGrid1HeaderClick(Sender: TObject; IsColumn: Boolean;

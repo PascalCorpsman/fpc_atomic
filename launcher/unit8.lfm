@@ -109,7 +109,7 @@ object Form8: TForm8
   end
   object PageControl1: TPageControl
     Left = 8
-    Height = 352
+    Height = 328
     Top = 72
     Width = 804
     ActivePage = TabSheet1
@@ -118,13 +118,14 @@ object Form8: TForm8
     BorderSpacing.Right = 8
     TabIndex = 0
     TabOrder = 1
+    OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Players'
-      ClientHeight = 324
+      ClientHeight = 300
       ClientWidth = 796
       object StringGrid1: TStringGrid
         Left = 0
-        Height = 324
+        Height = 300
         Hint = 'Click a column header to sort, click again to reverse.'
         Top = 0
         Width = 796
@@ -142,11 +143,11 @@ object Form8: TForm8
     end
     object TabSheet2: TTabSheet
       Caption = 'Server'
-      ClientHeight = 324
+      ClientHeight = 300
       ClientWidth = 796
       object StringGrid2: TStringGrid
         Left = 0
-        Height = 324
+        Height = 300
         Top = 0
         Width = 796
         Align = alClient
@@ -162,19 +163,19 @@ object Form8: TForm8
   end
   object Panel2: TPanel
     Left = 0
-    Height = 56
-    Top = 424
+    Height = 80
+    Top = 400
     Width = 820
     Align = alBottom
     BevelOuter = bvNone
-    ClientHeight = 56
+    ClientHeight = 80
     ClientWidth = 820
     TabOrder = 2
     object Label3: TLabel
       Left = 12
       Height = 30
       Top = 6
-      Width = 690
+      Width = 796
       Anchors = [akTop, akLeft, akRight]
       AutoSize = False
       Caption = 'Label3'
@@ -183,14 +184,25 @@ object Form8: TForm8
     object Button3: TButton
       Left = 718
       Height = 25
-      Top = 12
+      Top = 42
       Width = 90
       Anchors = [akTop, akRight]
       Cancel = True
       Caption = '&Close'
       Default = True
       ModalResult = 11
+      TabOrder = 1
+    end
+    object Button4: TButton
+      Left = 12
+      Height = 25
+      Top = 42
+      Width = 110
+      Caption = '&Reset'
+      Enabled = False
+      Hint = 'Permanently delete the statistics in the active tab for the selected server. The other tab is not affected.'
       TabOrder = 0
+      OnClick = Button4Click
     end
   end
 end
