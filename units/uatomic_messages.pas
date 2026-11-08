@@ -36,6 +36,7 @@ Const
   miUpdateSettings = 16; // Der Client Sendet seine Settings zum Server, der Server Verteilt das Scheme File an ale Clients
   miSwitchToFieldSetup = 17; // Der Client will in den Karten Editor Screen wechseln
   miStartGame = 18;
+  miSkipReplay = 19; // Der Master beendet das Action Replay am Rundenende, der Server verteilt es an alle
 
   (*
    * Nachrichten vom Client an den Server
@@ -86,6 +87,7 @@ Begin
     miUpdateSettings: result := 'UpdateSettings';
     miSwitchToFieldSetup: result := 'SwitchToFieldSetup';
     miStartGame: result := 'StartGame';
+    miSkipReplay: result := 'SkipReplay';
 
     miRequestLogin: result := 'RequestLogin';
     miRequestSettingsResult: result := 'RequestSettingsResult';

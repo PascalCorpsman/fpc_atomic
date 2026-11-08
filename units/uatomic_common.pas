@@ -184,10 +184,11 @@ Const
    *                       ADD: statistic "Carried bombs"
    * -releaseG - 0.14002 = ADD: own graphics, sounds and music without the CD (asset generator, sets in assets/, selectable in the launcher)
    *                       ADD: the map hash only covers info.txt, so clients with different graphics sets can play the same map -> need change in ProtocollVersion
+   *             0.14004 = ADD: optional action replay, at the end of every round all players see the last seconds again (without sound, only the master can stop it) -> need change in ProtocollVersion
    *)
 
-  ProtocollVersion: uint32 = 19; // ACHTUNG muss bei jeder Änderung am Protokoll (uatomic_messages.pas) hochgezählt werden.
-  Version = '0.14003';
+  ProtocollVersion: uint32 = 20; // ACHTUNG muss bei jeder Änderung am Protokoll (uatomic_messages.pas) hochgezählt werden.
+  Version = '0.14004';
   defCaption = 'FPC Atomic ver. ' + Version // ACHTUNG die Versionsnummer mus hier und in der Zeile darüber angepasst werden
 {$IFDEF DebuggMode}
   + ' build: ' + {$I %DATE%} + '  ' + {$I %TIME%}
@@ -295,6 +296,7 @@ Const
   ModMaxRoundTimeSec = 3600; // Zeit in s, RoundTimeSec
   ModMaxStartInvulnMs = 600000; // Zeit in ms, StartInvulnMs
   ModMaxTeleportersActiveSec = 600; // Zeit in s, TeleportersActiveSec
+  ModMaxActionReplaySec = 15; // Zeit in s, ActionReplaySec, untere Grenze 1
   ModMaxOpenBordersActiveSec = 600; // Zeit in s, OpenBordersActiveSec
   ModMaxPunchStunCooldownMs = 10000; // Zeit in ms, PunchStunCooldownMs
   ModMaxFlashChance = 100; // in %
@@ -840,6 +842,8 @@ Type
     TeleportersTopBottom: Boolean; // Teleporter oben <-> unten
     TeleportersLeftRight: Boolean; // Teleporter links <-> rechts
     TeleportersActiveSec: Integer; // Zeit in s nach Rundenbeginn, ab der die Teleporter erscheinen und wirken
+    ActionReplay: Boolean; // True, am Ende jeder Runde sehen alle die letzten ActionReplaySec Sekunden noch einmal (ohne Ton, nur der Master kann abbrechen)
+    ActionReplaySec: Integer; // Länge des Replays in s
     ItemConfig: Boolean; // True, die folgenden Werte bestimmen wie oft welche Items und Krankheiten auftauchen
     ItemChance: Integer; // in %, Anteil der zerstörbaren Steine, unter denen ein Item liegt
     ItemWeights: TItemWeights; // Gewicht pro Item, 0 = kommt nie
@@ -1421,6 +1425,8 @@ Begin
   Settings.TeleportersTopBottom := true;
   Settings.TeleportersLeftRight := true;
   Settings.TeleportersActiveSec := 60;
+  Settings.ActionReplay := false;
+  Settings.ActionReplaySec := 5;
   // Mit diesen Werten ist die Verteilung wie ohne den Mod
   Settings.ItemConfig := false;
   Settings.ItemChance := 93;
@@ -1543,6 +1549,8 @@ Begin
   WriteB('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
   WriteB('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
   WriteI('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
+  WriteB('Mods', 'ActionReplay', Settings.ActionReplay);
+  WriteI('Mods', 'ActionReplaySec', Settings.ActionReplaySec);
   WriteB('Mods', 'ItemConfig', Settings.ItemConfig);
   WriteI('Mods', 'ItemChance', Settings.ItemChance);
   For pu In TPowerUps Do Begin
@@ -1671,6 +1679,8 @@ Begin
   Settings.TeleportersTopBottom := ini.ReadBool('Mods', 'TeleportersTopBottom', Settings.TeleportersTopBottom);
   Settings.TeleportersLeftRight := ini.ReadBool('Mods', 'TeleportersLeftRight', Settings.TeleportersLeftRight);
   Settings.TeleportersActiveSec := ini.ReadInteger('Mods', 'TeleportersActiveSec', Settings.TeleportersActiveSec);
+  Settings.ActionReplay := ini.ReadBool('Mods', 'ActionReplay', Settings.ActionReplay);
+  Settings.ActionReplaySec := ini.ReadInteger('Mods', 'ActionReplaySec', Settings.ActionReplaySec);
   Settings.ItemConfig := ini.ReadBool('Mods', 'ItemConfig', Settings.ItemConfig);
   Settings.ItemChance := ini.ReadInteger('Mods', 'ItemChance', Settings.ItemChance);
   For pu In TPowerUps Do Begin
@@ -1765,6 +1775,7 @@ Begin
   Clamp('RoundTimeSec', Settings.RoundTimeSec, 0, ModMaxRoundTimeSec);
   Clamp('StartInvulnMs', Settings.StartInvulnMs, 0, ModMaxStartInvulnMs);
   Clamp('TeleportersActiveSec', Settings.TeleportersActiveSec, 0, ModMaxTeleportersActiveSec);
+  Clamp('ActionReplaySec', Settings.ActionReplaySec, 1, ModMaxActionReplaySec);
   Clamp('OpenBordersActiveSec', Settings.OpenBordersActiveSec, 0, ModMaxOpenBordersActiveSec);
   Clamp('ItemChance', Settings.ItemChance, 0, ModMaxItemChance);
   For pu In TPowerUps Do Begin

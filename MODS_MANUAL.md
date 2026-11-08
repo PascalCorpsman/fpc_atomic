@@ -22,6 +22,7 @@ Which mods fit which group of players is answered in the [mods FAQ](MODS_FAQ.md)
 - [Open borders](#open-borders)
 - [Teleporters](#teleporters)
 - [Items & diseases](#items--diseases)
+- [Action replay](#action-replay)
 - [The AI and the mods](#the-ai-and-the-mods)
 - [Mod test mode](#mod-test-mode)
 - [Editing atomic_mods.ini by hand](#editing-atomic_modsini-by-hand)
@@ -355,6 +356,20 @@ Please note:
 | Dud bombs | `DiseaseWeightDudBombs` | 10 | 0 .. 100 |
 | Super slow | `DiseaseWeightSuperSlow` | 10 | 0 .. 100 |
 | Super bad: swap places (%) | `SuperBadSwapChance` | 10 | 0 .. 100 |
+
+## Action replay
+
+At the end of every round all players see the decisive scene again, before the round result (or "Draw") appears: the set seconds before the last death of the round and 1.5 s after it (the explosion and the start of the death animation). The waiting time until the server ends the round is not shown. Without a death (draw because the time ran out) it shows the last seconds before the end of the round.
+
+- Each game records the last seconds by itself, the server does not send anything extra.
+- First the last picture of the round is darkened with a big "Replay", then the picture jumps back to the start of the replay and stands still for a second, then it plays. The replay has no sound and runs at normal speed, "Replay" is shown at the top.
+- Like the other screens after a round, only the master can stop it: Return stops it for all players at the same time. The other players can not stop it.
+- After the replay, Return is ignored for half a second, so a held Return of the master does not start the next round right away.
+
+| Setting | ini key | Default | Range |
+|---|---|---|---|
+| Mod on / off | `ActionReplay` | 0 (off) | 0 / 1 |
+| Seconds before the last death | `ActionReplaySec` | 5 | 1 .. 15 |
 
 ## The AI and the mods
 

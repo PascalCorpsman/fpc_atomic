@@ -86,6 +86,16 @@ Type
     hohletex: TGraphikItem;
   End;
 
+  (*
+   * Action Replay (Mod): ein mitgeschnittenes miUpdateGameData, wie es vom Server kam
+   *)
+  TReplayPhase = (rpIntro, rpHold, rpPlay); // Action Replay: Ansage, erster Frame steht, abspielen
+
+  TReplayFrame = Record
+    Time: QWord; // GetTickCount64 beim Empfang
+    Data: TMemoryStream;
+  End;
+
   { TGame }
 
   TGame = Class
@@ -132,6 +142,24 @@ Type
     fFlashMs: Integer; // Dauer in ms
     fFlashFadeMs: Integer; // Übergang zurück in ms
     fServerStatsID: String; // Die Kennung des Servers aus dem letzten miServerStatistics, '' = unbekannt (alter Server)
+    (*
+     * Action Replay (Mod): Die Schnappschüsse der letzten fReplayMs werden in einem Ringpuffer gehalten
+     * und am Rundenende noch einmal durch HandleUpdateGameData geschickt, danach erst kommt der Screen des Rundenendes.
+     *)
+    fReplayMs: Integer; // Länge in ms (miModInfo), 0 = aus
+    fReplayFrames: Array Of TReplayFrame; // Ringpuffer
+    fReplayHead: Integer; // Hier wird der nächste Frame abgelegt
+    fReplayCount: Integer; // So viele Frames sind im Puffer
+    fReplayActive: Boolean; // Das Replay läuft gerade
+    fReplayStart: QWord; // GetTickCount64 beim Start der aktuellen Phase
+    fReplayPhase: TReplayPhase;
+    fReplayBase: QWord; // Empfangszeit des ersten abgespielten Frames, die Abstände dazu bestimmen das Abspielen
+    fReplayPos: Integer; // Der nächste abzuspielende Frame (0 = der älteste)
+    fReplayEnd: Integer; // Hinter dem letzten abzuspielenden Frame
+    fReplayLastDeath: QWord; // GetTickCount64, als zuletzt ein Spieler zu sterben begann, 0 = in dieser Runde noch keiner
+    fReplayTarget: TScreenEnum; // Der Screen des Rundenendes, der nach dem Replay kommt
+    fReplayVictor: TVictor; // Dazu der Sieger (nur sMatchStatistik)
+    fReplayEndTick: QWord; // GetTickCount64 beim Ende des letzten Replays, danach wird Return kurz ignoriert
     fShowModTestHelp: Boolean; // True, die Hilfe des Mod Test Modus (F3) wird angezeigt
     fModTestMessage: String; // Rückmeldung zum zuletzt gesendeten Test Befehl
     fModTestMessageTimeStamp: QWord; // Zeitpunkt, an dem fModTestMessage gesetzt wurde
@@ -186,6 +214,7 @@ Type
     Function BrickWalkVisible(): Boolean;
     Procedure RenderOpenBorders();
     Procedure RenderFlash();
+    Procedure RenderReplayIntro(); // Action Replay: das Bild abdunkeln und groß "Replay"
     Procedure RenderFlameThrowers();
     Procedure RenderFieldHeader();
     Procedure RenderBomb(Const Bomb: TBombInfo; x, y, Layer: Single);
@@ -216,6 +245,13 @@ Type
     Procedure HandleUpdatePlayerStatistik(Const Stream: TMemoryStream);
     Procedure HandleServerStatistics(Const Stream: TMemoryStream);
     Procedure StoreLastMatchServer(); // Das Match ist zu Ende: der Launcher zeigt danach die Statistik dieses Servers
+    Procedure ReplaySetLength(Ms: Integer); // Action Replay: Länge setzen und den Puffer passend anlegen
+    Procedure ReplayRecord(Const Stream: TMemoryStream); // Action Replay: einen Schnappschuss mitschneiden
+    Function ReplayFrame(Index: Integer): Integer; // Action Replay: Index im Ringpuffer zum Index-ten Frame (0 = der älteste)
+    Function ReplayStart(Target: TScreenEnum; Victor: TVictor): Boolean; // Action Replay starten, false = kein Replay, dann gleich umschalten
+    Procedure ReplayStep(); // Action Replay: die fälligen Frames abspielen, am Ende ReplayFinish
+    Procedure ReplayFinish(); // Action Replay beenden und den Screen des Rundenendes zeigen
+    Procedure ReplayClear(); // Action Replay: Puffer leeren und ein laufendes Replay ohne Screenwechsel beenden
     Procedure HandlePlaySoundEffekt(Const Stream: TMemoryStream);
     Procedure HandleUpdateMasterId(Const Stream: TMemoryStream);
     Procedure HandleHurryUp();
@@ -325,6 +361,14 @@ Uses dglopengl
   , uatomic_statistics
   ;
 
+Const
+  ReplayIntroMs = 1500; // Action Replay: so lange wird das abgedunkelte Bild mit großem "Replay" gezeigt
+  ReplayFirstFrameMs = 1000; // Action Replay: so lange steht danach der erste Frame, bevor es losgeht
+  ReplayIntroScale = 5; // Action Replay: so groß ist "Replay" in der Ansage (die Atomic Schrift hat 10 x 14 Pixel pro Buchstabe)
+  ReplayHoldMs = 500; // Action Replay: so lange bleibt das letzte Bild stehen, dann kommt der Screen des Rundenendes
+  ReplayTailMs = 1500; // Action Replay: so viel wird nach dem letzten Tod noch gezeigt (Explosion, Beginn der Todesanimation)
+  ReplayReturnLockMs = 500; // Action Replay: so lange nach dem Ende wird Return ignoriert (Tastenwiederholung des Masters)
+
 (*
  * Gibt den Index von Value in aArray zurück, -1 wenn nicht enthalten.
  *)
@@ -414,6 +458,7 @@ Var
 Begin
   If Not fInitialized Then exit; // So Lange wir nicht Initialisiert sind, machen wir gar nix !
   EnterID := LogEnter('TGame.SwitchToScreen');
+  If fReplayActive Then ReplayClear(); // z.B. miCommandoBackToMainMenu während des Action Replays
   If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
     TJoinMenu(fScreens[sJoinNetwork]).SetServerIPs(Nil); // Reset IP in case of "join"
     fParamJoinIP := ''; // Reset last Join IP, this is needed, if player was server before, ..
@@ -821,7 +866,11 @@ Begin
     End;
     Case fgameState Of
       gs_MainMenu: Begin
-          If assigned(fActualScreen) Then Begin
+          // Hält der Master Return nach dem Action Replay noch gedrückt, würde die Tastenwiederholung gleich die nächste Runde starten
+          If (key = VK_RETURN) And (fReplayEndTick <> 0) And (GetTickCount64 - fReplayEndTick < ReplayReturnLockMs) Then Begin
+            key := 0;
+          End;
+          If assigned(fActualScreen) And (key <> 0) Then Begin
             fActualScreen.OnKeyDown(Sender, Key, Shift);
           End;
         End;
@@ -829,12 +878,18 @@ Begin
           If key = VK_ESCAPE Then Begin
             AskYesNo('Do you really want to quit?', @OnQuitGameConfirmed);
           End;
-          If key = VK_P Then Begin
-            SendChunk(miTogglePause, Nil);
-          End;
-          If fModTestMode Then CheckModTestKey(Key, Shift);
-          For k In TKeySet Do Begin
-            If fPlayerIndex[k] <> -1 Then CheckKeyDown(KeyboardkeyToAtomicKey(key, k), k);
+          If fReplayActive Then Begin
+            // Wie bei den anderen Screens des Rundenendes: nur der Master beendet das Action Replay, und zwar bei allen
+            If (key = VK_RETURN) And (fUserID = fMasterUserID) Then SendChunk(miSkipReplay, Nil);
+          End
+          Else Begin
+            If key = VK_P Then Begin
+              SendChunk(miTogglePause, Nil);
+            End;
+            If fModTestMode Then CheckModTestKey(Key, Shift);
+            For k In TKeySet Do Begin
+              If fPlayerIndex[k] <> -1 Then CheckKeyDown(KeyboardkeyToAtomicKey(key, k), k);
+            End;
           End;
         End;
     End;
@@ -1029,8 +1084,8 @@ End;
 
 Procedure TGame.FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 Begin
-  // Ist ein Dialog offen, wird er auch im Spiel mit dem Gamepad bedient
-  If (fgameState = gs_Gaming) And (Not fMessageDialog.Active) Then Begin
+  // Ist ein Dialog offen, wird er auch im Spiel mit dem Gamepad bedient, im Action Replay wie die Screens (erste Aktion = Return)
+  If (fgameState = gs_Gaming) And (Not fMessageDialog.Active) And (Not fReplayActive) Then Begin
     CheckKeyDown(aKey, aKeyset);
   End
   Else Begin
@@ -1462,6 +1517,9 @@ Begin
         Chunk.Data.Read(fHuntedAuraSelf, sizeof(fHuntedAuraSelf));
         fAiGameModes := 0;
         Chunk.Data.Read(fAiGameModes, sizeof(fAiGameModes));
+        i := 0;
+        Chunk.Data.Read(i, sizeof(i)); // Action Replay in ms, 0 = aus
+        ReplaySetLength(i);
         // Die Mods können auch noch kommen, wenn das Player Setup schon angezeigt wird
         If assigned(fScreens[sPlayerSetup]) Then Begin
           TPlayerSetupMenu(fScreens[sPlayerSetup]).GameMode := fGameMode;
@@ -1470,6 +1528,10 @@ Begin
       End;
     miStartGame: Begin
         HandleStartGame();
+      End;
+    miSkipReplay: Begin
+        // Der Master hat das Action Replay beendet, bei allen gleichzeitig
+        If fReplayActive Then ReplayFinish();
       End;
     miDrawGame: Begin
         HandleDrawGame();
@@ -1488,6 +1550,7 @@ Begin
         HandleServerStatistics(Chunk.Data);
       End;
     miUpdateGameData: Begin
+        If (fReplayMs > 0) And (fgameState = gs_Gaming) And (Not fReplayActive) Then ReplayRecord(Chunk.Data);
         HandleUpdateGameData(Chunk.Data);
       End;
     miHeartBeat: Begin
@@ -1839,6 +1902,7 @@ Var
   i: Integer;
   k: TKeySet;
 Begin
+  ReplayClear(); // Jede Runde hat ihr eigenes Replay, ein noch laufendes endet hier
   fHurry.Enabled := false;
   fFlashTimeStamp := 0;
   fOpenBordersSince[true] := 0; // Die Pfeile der offenen Grenzen stehen in jeder Runde wieder OpenBordersArrowTime
@@ -1872,6 +1936,7 @@ End;
 
 Procedure TGame.HandleDrawGame;
 Begin
+  If ReplayStart(sDrawGame, vRedTeam) Then exit;
   SwitchToScreen(sDrawGame);
 End;
 
@@ -1880,12 +1945,16 @@ Var
   i: Integer;
   OldValue: UInt16; // Bei Die, Zen, Locked in braucht es ebenfalls den Index
   OldAnim: TRenderAnimation;
+  WasDying: Boolean;
 Begin
   stream.Read(fPlayingTime_s, sizeof(fPlayingTime_s));
   For i := 0 To high(fPlayer) Do Begin
     OldValue := fPlayer[i].Info.Value;
     OldAnim := fPlayer[i].Info.Animation;
+    WasDying := fPlayer[i].Info.Dying;
     Stream.Read(fPlayer[i].Info, sizeof(fPlayer[i].Info));
+    // Action Replay: das Replay richtet sich am letzten Tod der Runde aus (nur live, nicht beim Abspielen)
+    If fPlayer[i].Info.Dying And (Not WasDying) And (Not fReplayActive) Then fReplayLastDeath := GetTickCount64;
     (*
      * Der Server sendet die OneTimeAnimations genau 1 mal
      * Wenn der Server aber schneller neu Sendet als der CLient Rendert
@@ -1959,6 +2028,7 @@ Var
 Begin
   v := vRedTeam;
   Stream.Read(v, SizeOf(v));
+  If ReplayStart(sMatchStatistik, v) Then exit;
   TMatchStatistikMenu(fScreens[sMatchStatistik]).Victor := v;
   SwitchToScreen(sMatchStatistik);
 End;
@@ -2460,6 +2530,48 @@ Begin
   glEnable(GL_DEPTH_TEST);
 End;
 
+Procedure TGame.RenderReplayIntro;
+Const
+  Text = 'Replay';
+  CharWidth = 10; // Die Atomic Schrift, siehe uatomicfont
+  CharHeight = 14;
+Var
+  m: TMatrix4x4;
+Begin
+  // 1. Das stehende letzte Bild der Runde abdunkeln (wie RenderFlash, nur schwarz)
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  UseColorShader;
+  SetShaderColor(0, 0, 0, 0.6);
+  glShaderBegin(GL_TRIANGLE_FAN);
+  glShaderVertex(0, 0, atomic_dialog_Layer);
+  glShaderVertex(GameWidth, 0, atomic_dialog_Layer);
+  glShaderVertex(GameWidth, GameHeight, atomic_dialog_Layer);
+  glShaderVertex(0, GameHeight, atomic_dialog_Layer);
+  glShaderEnd();
+  UseTextureShader;
+  glDisable(GL_BLEND);
+  glEnable(GL_DEPTH_TEST);
+  // 2. Groß "Replay" in der Mitte: die Transformation von Render, dann zur Mitte und vergrößern
+  m := IdentityMatrix4x4;
+  m := TranslateMatrix4x4(m, fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
+  m := ScaleMatrix4x4(m, fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
+  m := TranslateMatrix4x4(m, GameWidth / 2, GameHeight / 2, 0);
+  m := ScaleMatrix4x4(m, ReplayIntroScale, ReplayIntroScale, 1);
+  SetShaderTransform(m);
+  AtomicFont.Color := clYellow;
+  AtomicFont.BackColor := clBlack;
+  // Tiefe wie bei "Pause": die Schrift zeichnet die gelbe Ebene 0.025 vor der schwarzen, über 1.0 würde sie abgeschnitten
+  AtomicFont.Textout(-(length(Text) * CharWidth) Div 2, -CharHeight Div 2, atomic_dialog_Layer + atomic_EPSILON, Text);
+  // Wieder die Transformation von Render für alles, was danach kommt
+  m := IdentityMatrix4x4;
+  m := TranslateMatrix4x4(m, fViewPortInfo.TopLeft.X, fViewPortInfo.TopLeft.y, 0);
+  m := ScaleMatrix4x4(m, fViewPortInfo.Scale, fViewPortInfo.Scale, 1);
+  SetShaderTransform(m);
+End;
+
 Procedure TGame.RenderOpenBorders;
 
   Function ShowOpen(Open: Boolean; Index: Boolean): Boolean;
@@ -2827,6 +2939,13 @@ Var
 Begin
   Inherited Create;
   fOwner := Owner;
+  fReplayMs := 0;
+  fReplayFrames := Nil;
+  fReplayHead := 0;
+  fReplayCount := 0;
+  fReplayActive := false;
+  fReplayEndTick := 0;
+  fReplayLastDeath := 0;
   fSerialInit.aStep := -1;
   fSoundManager := TSoundManager.Create();
   fSoundInfo := TSoundInfo.Create();
@@ -2857,6 +2976,7 @@ Var
 Begin
   SDL_FreeSticks;
   Application.RemoveOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
+  ReplaySetLength(0);
   fSoundManager.free;
   fSoundManager := Nil;
   fArrows.free;
@@ -3420,6 +3540,8 @@ Begin
     Exit2d();
     exit;
   End;
+  // Action Replay: die fälligen Frames abspielen, am Ende wird in den Screen des Rundenendes gewechselt
+  If fReplayActive And (fgameState = gs_Gaming) Then ReplayStep();
   Case fgameState Of
     gs_MainMenu: Begin
         If assigned(fActualScreen) Then fActualScreen.Render;
@@ -3459,6 +3581,17 @@ Begin
           AtomicFont.Color := clYellow;
           AtomicFont.BackColor := clBlack;
           AtomicFont.Textout(320 - 2 * 14, GameHeight Div 2, atomic_dialog_Layer + atomic_EPSILON, 'Pause');
+        End;
+        If fReplayActive Then Begin
+          If fReplayPhase = rpIntro Then Begin
+            RenderReplayIntro();
+          End
+          Else Begin
+            glBindTexture(GL_TEXTURE_2D, 0);
+            AtomicFont.Color := clYellow;
+            AtomicFont.BackColor := clBlack;
+            AtomicFont.Textout(320 - 3 * 14, 40, atomic_dialog_Layer + atomic_EPSILON, 'Replay');
+          End;
         End;
         RenderFieldHeader();
         // TODO: Auslagern in eine eigene Procedur
@@ -3516,6 +3649,154 @@ Begin
       // If Connect returned True, we wait for Connection_Connect or Connection_Error callback
     End;
   End;
+End;
+
+Procedure TGame.ReplaySetLength(Ms: Integer);
+Var
+  i, n: Integer;
+Begin
+  If Ms < 0 Then Ms := 0;
+  (*
+   * Server und Client aktualisieren alle UpdateRate ms. Gebraucht werden Ms vor dem letzten Tod und alles danach bis
+   * zum Rundenende (der Server wartet bis zu AtomicDieTimeout), dazu etwas Reserve.
+   *)
+  n := 0;
+  If Ms > 0 Then n := (Ms + AtomicDieTimeout) Div UpdateRate + 25;
+  fReplayMs := Ms;
+  If n = length(fReplayFrames) Then exit;
+  fReplayActive := false;
+  For i := 0 To high(fReplayFrames) Do Begin
+    fReplayFrames[i].Data.free;
+  End;
+  setlength(fReplayFrames, n);
+  For i := 0 To high(fReplayFrames) Do Begin
+    fReplayFrames[i].Time := 0;
+    fReplayFrames[i].Data := TMemoryStream.Create;
+  End;
+  fReplayHead := 0;
+  fReplayCount := 0;
+End;
+
+Procedure TGame.ReplayRecord(Const Stream: TMemoryStream);
+Var
+  p: Int64;
+Begin
+  If length(fReplayFrames) = 0 Then exit;
+  p := Stream.Position;
+  fReplayFrames[fReplayHead].Time := GetTickCount64;
+  fReplayFrames[fReplayHead].Data.Clear;
+  fReplayFrames[fReplayHead].Data.CopyFrom(Stream, 0); // 0 = der ganze Stream
+  Stream.Position := p;
+  fReplayHead := (fReplayHead + 1) Mod length(fReplayFrames);
+  If fReplayCount < length(fReplayFrames) Then inc(fReplayCount);
+End;
+
+Function TGame.ReplayFrame(Index: Integer): Integer;
+Begin
+  result := (fReplayHead - fReplayCount + Index + length(fReplayFrames)) Mod length(fReplayFrames);
+End;
+
+Function TGame.ReplayStart(Target: TScreenEnum; Victor: TVictor): Boolean;
+Var
+  First, Last, Anchor, EndTime, StartTime: QWord;
+Begin
+  result := false;
+  If (fReplayMs <= 0) Or (fReplayCount < 2) Or (fgameState <> gs_Gaming) Or fReplayActive Then exit;
+  (*
+   * Der Ausschnitt: Nach dem letzten Tod wartet der Server noch bis zu AtomicDieTimeout, bevor die Runde endet.
+   * Deshalb richtet sich das Replay am letzten Tod aus: fReplayMs davor und ReplayTailMs danach (Explosion,
+   * Beginn der Todesanimation), das Warten danach wird nicht gezeigt. Ohne Tod im Puffer (Unentschieden durch
+   * Zeitablauf) die letzten fReplayMs vor dem Rundenende.
+   *)
+  First := fReplayFrames[ReplayFrame(0)].Time;
+  Last := fReplayFrames[ReplayFrame(fReplayCount - 1)].Time;
+  If (fReplayLastDeath >= First) And (fReplayLastDeath <= Last) Then Begin
+    Anchor := fReplayLastDeath;
+    EndTime := min(Last, fReplayLastDeath + ReplayTailMs);
+  End
+  Else Begin
+    Anchor := Last;
+    EndTime := Last;
+  End;
+  StartTime := First;
+  If Anchor - First > QWord(fReplayMs) Then StartTime := Anchor - QWord(fReplayMs);
+  // Die Frames dazu: fReplayPos = der erste, fReplayEnd = hinter dem letzten
+  fReplayPos := 0;
+  While (fReplayPos < fReplayCount - 2) And (fReplayFrames[ReplayFrame(fReplayPos)].Time < StartTime) Do Begin
+    inc(fReplayPos);
+  End;
+  fReplayEnd := fReplayCount;
+  While (fReplayEnd > fReplayPos + 2) And (fReplayFrames[ReplayFrame(fReplayEnd - 1)].Time > EndTime) Do Begin
+    dec(fReplayEnd);
+  End;
+  fReplayBase := fReplayFrames[ReplayFrame(fReplayPos)].Time;
+  fReplayTarget := Target;
+  fReplayVictor := Victor;
+  fReplayActive := true;
+  // Erst die Ansage über dem stehenden letzten Bild, siehe ReplayStep
+  fReplayPhase := rpIntro;
+  fReplayStart := GetTickCount64;
+  result := true;
+End;
+
+Procedure TGame.ReplayStep;
+Var
+  Elapsed, Last: QWord;
+  f: Integer;
+Begin
+  If Not fReplayActive Then exit;
+  Elapsed := GetTickCount64 - fReplayStart;
+  (*
+   * 1. rpIntro: das letzte Bild der Runde abgedunkelt mit großem "Replay" (RenderReplayIntro)
+   * 2. rpHold: zurück auf den ersten Frame des Replays, der steht kurz
+   * 3. rpPlay: abspielen in Originalgeschwindigkeit
+   *)
+  If fReplayPhase = rpIntro Then Begin
+    If Elapsed < ReplayIntroMs Then exit;
+    f := ReplayFrame(fReplayPos);
+    fReplayFrames[f].Data.Position := 0;
+    HandleUpdateGameData(fReplayFrames[f].Data);
+    inc(fReplayPos);
+    fReplayPhase := rpHold;
+    fReplayStart := GetTickCount64;
+    exit;
+  End;
+  If fReplayPhase = rpHold Then Begin
+    If Elapsed < ReplayFirstFrameMs Then exit;
+    fReplayPhase := rpPlay;
+    fReplayStart := GetTickCount64;
+    Elapsed := 0;
+  End;
+  // Alle Frames abspielen, die nach ihrem Abstand zum ersten Frame fällig sind (Originalgeschwindigkeit)
+  While fReplayPos < fReplayEnd Do Begin
+    f := ReplayFrame(fReplayPos);
+    If fReplayFrames[f].Time - fReplayBase > Elapsed Then break;
+    fReplayFrames[f].Data.Position := 0;
+    HandleUpdateGameData(fReplayFrames[f].Data);
+    inc(fReplayPos);
+  End;
+  // Nach dem letzten Frame noch kurz stehen lassen, dann kommt der Screen des Rundenendes
+  Last := fReplayFrames[ReplayFrame(fReplayEnd - 1)].Time - fReplayBase;
+  If (fReplayPos >= fReplayEnd) And (Elapsed >= Last + ReplayHoldMs) Then ReplayFinish();
+End;
+
+Procedure TGame.ReplayFinish;
+Begin
+  If Not fReplayActive Then exit;
+  fReplayActive := false;
+  fReplayCount := 0;
+  fReplayEndTick := GetTickCount64;
+  If fReplayTarget = sMatchStatistik Then Begin
+    TMatchStatistikMenu(fScreens[sMatchStatistik]).Victor := fReplayVictor;
+  End;
+  SwitchToScreen(fReplayTarget);
+End;
+
+Procedure TGame.ReplayClear;
+Begin
+  fReplayActive := false;
+  fReplayCount := 0;
+  fReplayLastDeath := 0;
 End;
 
 End.

@@ -2116,7 +2116,7 @@ Begin
     ord(Settings.BrickWalk) + ord(Settings.FlashDisease) + ord(Settings.WhiteBomb) +
     ord(Settings.FlameThrower) + ord(Settings.HitPoints) + ord(Settings.Ghosts) +
     ord(Settings.GloveAtStart) + ord(Settings.OpenBorders) + ord(Settings.Teleporters) +
-    ord(Settings.ItemConfig) + ord(Settings.CarryBomb) + ord(Settings.ModTestMode);
+    ord(Settings.ItemConfig) + ord(Settings.CarryBomb) + ord(Settings.ActionReplay) + ord(Settings.ModTestMode);
   Settings.Handicap.free;
   If Count = 0 Then Begin
     Button7.Caption := R_Mods;

@@ -22,6 +22,7 @@ Welche Mods zu welcher Spielerrunde passen, beantwortet die [Mods-FAQ](MODS_FAQ_
 - [Offene Grenzen](#offene-grenzen)
 - [Teleporter](#teleporter)
 - [Items & Krankheiten](#items--krankheiten)
+- [Action Replay](#action-replay)
 - [Die KI und die Mods](#die-ki-und-die-mods)
 - [Mod-Test-Modus](#mod-test-modus)
 - [atomic_mods.ini von Hand bearbeiten](#atomic_modsini-von-hand-bearbeiten)
@@ -357,6 +358,20 @@ Bitte beachten:
 | Blindgänger | `DiseaseWeightDudBombs` | 10 | 0 .. 100 |
 | Super langsam | `DiseaseWeightSuperSlow` | 10 | 0 .. 100 |
 | Super schlecht: Plätze tauschen (%) | `SuperBadSwapChance` | 10 | 0 .. 100 |
+
+## Action Replay
+
+Am Ende jeder Runde sehen alle Spieler die entscheidende Szene noch einmal, bevor das Rundenergebnis (oder "Unentschieden") erscheint: die eingestellten Sekunden vor dem letzten Tod der Runde und 1,5 s danach (die Explosion und der Beginn der Todesanimation). Die Wartezeit, bis der Server die Runde beendet, wird nicht gezeigt. Ohne Tod (Unentschieden durch Zeitablauf) sind es die letzten Sekunden vor dem Rundenende.
+
+- Jedes Spiel schneidet die letzten Sekunden selbst mit, der Server schickt dafür nichts zusätzlich.
+- Erst wird das letzte Bild der Runde abgedunkelt und groß "Replay" angezeigt, dann springt das Bild an den Anfang des Replays und steht eine Sekunde, dann läuft es ab. Das Replay läuft ohne Ton und in normaler Geschwindigkeit, oben steht "Replay".
+- Wie bei den anderen Screens nach einer Runde kann nur der Master es beenden: Return beendet es bei allen Spielern gleichzeitig. Die anderen Spieler können es nicht abbrechen.
+- Nach dem Replay wird Return eine halbe Sekunde ignoriert, damit ein gehaltenes Return des Masters nicht gleich die nächste Runde startet.
+
+| Einstellung | ini-Schlüssel | Standard | Bereich |
+|---|---|---|---|
+| Mod an / aus | `ActionReplay` | 0 (aus) | 0 / 1 |
+| Sekunden vor dem letzten Tod | `ActionReplaySec` | 5 | 1 .. 15 |
 
 ## Die KI und die Mods
 
