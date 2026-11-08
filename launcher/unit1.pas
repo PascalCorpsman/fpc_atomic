@@ -81,7 +81,7 @@ Type
     Timer1: TTimer;
     Timer2: TTimer;
     Procedure Button1Click(Sender: TObject);
-    Procedure Button2Click(Sender: TObject);
+    Procedure Panel1Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
@@ -790,7 +790,7 @@ Begin
     ((ActiveControl = Panel1) And (key = VK_SPACE)) Or
     ((key = VK_RETURN) And ((Shift - [ssCtrl, ssShift]) = []) And Not (ActiveControl Is TCustomButton) And Not ComboBox1.DroppedDown) Then Begin
     key := 0;
-    Button2Click(Nil);
+    Panel1Click(Nil);
   End;
 End;
 
@@ -861,7 +861,7 @@ Begin
   ini := Nil;
 End;
 
-Procedure TForm1.Button2Click(Sender: TObject);
+Procedure TForm1.Panel1Click(Sender: TObject);
 Var
   P: TProcessUTF8;
   sl: TStringList;

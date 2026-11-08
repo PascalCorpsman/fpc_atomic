@@ -27,24 +27,24 @@ object Form1: TForm1
     OnDblClick = Button12Click
   end
   object Button10: TButton
+    AnchorSideLeft.Control = Image1
     AnchorSideTop.Control = Image1
     AnchorSideTop.Side = asrBottom
-    AnchorSideLeft.Control = Image1
     Left = 8
     Height = 25
     Hint = 'Previous graphics set.'
     Top = 334
     Width = 28
     BorderSpacing.Top = 6
-    Caption = #9664
-    TabOrder = 8
+    Caption = '◀'
+    TabOrder = 14
     OnClick = Button10Click
   end
   object Label11: TLabel
-    AnchorSideTop.Control = Button10
-    AnchorSideTop.Side = asrCenter
     AnchorSideLeft.Control = Button10
     AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = Button10
+    AnchorSideTop.Side = asrCenter
     AnchorSideRight.Control = Button11
     Left = 40
     Height = 16
@@ -67,29 +67,29 @@ object Form1: TForm1
     Top = 334
     Width = 28
     Anchors = [akTop, akRight]
-    Caption = #9654
+    Caption = '▶'
     TabOrder = 9
     OnClick = Button10Click
   end
   object Button14: TButton
+    AnchorSideLeft.Control = Image1
     AnchorSideTop.Control = Button10
     AnchorSideTop.Side = asrBottom
-    AnchorSideLeft.Control = Image1
     Left = 8
     Height = 25
     Hint = 'Previous sound source.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'
     Top = 363
     Width = 28
     BorderSpacing.Top = 4
-    Caption = #9664
+    Caption = '◀'
     TabOrder = 10
     OnClick = Button14Click
   end
   object Label12: TLabel
-    AnchorSideTop.Control = Button14
-    AnchorSideTop.Side = asrCenter
     AnchorSideLeft.Control = Button14
     AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = Button14
+    AnchorSideTop.Side = asrCenter
     AnchorSideRight.Control = Button15
     Left = 40
     Height = 16
@@ -112,7 +112,7 @@ object Form1: TForm1
     Top = 363
     Width = 28
     Anchors = [akTop, akRight]
-    Caption = #9654
+    Caption = '▶'
     TabOrder = 11
     OnClick = Button14Click
   end
@@ -138,8 +138,8 @@ object Form1: TForm1
     Top = 10
     Width = 192
     Anchors = [akLeft, akRight, akBottom]
-    BevelOuter = bvNone
     BorderSpacing.Bottom = 4
+    BevelOuter = bvNone
     ClientHeight = 26
     ClientWidth = 192
     Color = clInfoBk
@@ -183,8 +183,8 @@ object Form1: TForm1
       BorderSpacing.Right = 4
       Caption = '×'
       Flat = True
-      ParentShowHint = False
       ShowHint = True
+      ParentShowHint = False
       OnClick = ButtonNewsCloseClick
     end
   end
@@ -194,20 +194,20 @@ object Form1: TForm1
     Top = 8
     Width = 328
     Caption = ' Player '
-    ClientHeight = 95
+    ClientHeight = 94
     ClientWidth = 326
     TabOrder = 0
     object Label1: TLabel
       Left = 8
       Height = 16
       Top = 8
-      Width = 74
+      Width = 71
       Caption = '&Player name'
       FocusControl = Edit1
     end
     object Edit1: TEdit
       Left = 120
-      Height = 26
+      Height = 30
       Top = 4
       Width = 198
       TabOrder = 0
@@ -240,57 +240,57 @@ object Form1: TForm1
     Top = 128
     Width = 328
     Caption = ' Game settings '
-    ClientHeight = 165
+    ClientHeight = 164
     ClientWidth = 326
     TabOrder = 1
     object CheckBox4: TCheckBox
       Left = 8
-      Height = 22
+      Height = 21
       Hint = 'Play the music (menu and game).'
       Top = 4
-      Width = 87
+      Width = 91
       Caption = 'Play mu&sic'
       TabOrder = 0
     end
     object CheckBox8: TCheckBox
       Left = 164
-      Height = 22
+      Height = 21
       Hint = 'Play the sound effects (explosions, items, voices, ...). The same as "Play sound effects" in Game options...'
       Top = 4
-      Width = 92
+      Width = 100
       Caption = 'Pla&y sounds'
       TabOrder = 1
     end
     object CheckBox2: TCheckBox
       Left = 8
-      Height = 22
+      Height = 21
       Hint = 'Start the game in fullscreen mode.'
       Top = 28
-      Width = 84
+      Width = 88
       Caption = '&Fullscreen'
       TabOrder = 2
     end
     object CheckBox5: TCheckBox
       Left = 164
-      Height = 22
+      Height = 21
       Hint = 'Stretch the game to fill the whole window. Off: keep the aspect ratio with black bars.'
       Top = 28
-      Width = 90
+      Width = 94
       Caption = 'Fill &window'
       TabOrder = 3
     end
     object CheckBox1: TCheckBox
       Left = 8
-      Height = 22
+      Height = 21
       Hint = 'Show the frames per second in the game.'
       Top = 52
-      Width = 82
+      Width = 86
       Caption = 'S&how FPS'
       TabOrder = 4
     end
     object CheckBox9: TCheckBox
       Left = 164
-      Height = 22
+      Height = 21
       Hint = 'Keep the game window above all other windows. Off: other windows can cover the game window.'
       Top = 52
       Width = 112
@@ -299,10 +299,10 @@ object Form1: TForm1
     end
     object CheckBox7: TCheckBox
       Left = 8
-      Height = 22
+      Height = 21
       Hint = 'Start the game window with the size and position of the last game. Off: centered with 640x480 (helps with several monitors or when the window is no longer visible).'
       Top = 76
-      Width = 192
+      Width = 196
       Caption = 'Re&member window position'
       TabOrder = 6
     end
@@ -352,15 +352,15 @@ object Form1: TForm1
     Top = 318
     Width = 328
     Caption = ' Network game (optional) '
-    ClientHeight = 163
+    ClientHeight = 162
     ClientWidth = 326
     TabOrder = 2
     object CheckBox10: TCheckBox
       Left = 8
-      Height = 22
+      Height = 21
       Hint = 'Join a game that waits for players in the local network. The launcher searches the network all the time, the box is checked when a game is found.'
       Top = 2
-      Width = 220
+      Width = 221
       Caption = 'Join a game in the local networ&k'
       Enabled = False
       TabOrder = 0
@@ -368,7 +368,7 @@ object Form1: TForm1
     end
     object ComboBox2: TComboBox
       Left = 8
-      Height = 26
+      Height = 28
       Hint = 'The games found in the local network (name of the host, address and port).'
       Top = 28
       Width = 310
@@ -379,10 +379,10 @@ object Form1: TForm1
     end
     object CheckBox3: TCheckBox
       Left = 8
-      Height = 22
+      Height = 21
       Hint = 'Join a game over the internet: the game connects to the router IP and port below. Not needed in the local network.'
       Top = 62
-      Width = 154
+      Width = 158
       Caption = '&Join through a router'
       TabOrder = 2
       OnChange = CheckBox3Change
@@ -391,13 +391,13 @@ object Form1: TForm1
       Left = 8
       Height = 16
       Top = 88
-      Width = 55
+      Width = 54
       Caption = 'Router &IP'
       FocusControl = Edit2
     end
     object Edit2: TEdit
       Left = 120
-      Height = 26
+      Height = 30
       Hint = 'IP address of the router of the player who hosts the game.'
       Top = 88
       Width = 198
@@ -414,7 +414,7 @@ object Form1: TForm1
     end
     object Edit3: TEdit
       Left = 120
-      Height = 26
+      Height = 30
       Hint = 'Port the router forwards to the server of the host (default 5521).'
       Top = 124
       Width = 198
@@ -428,7 +428,7 @@ object Form1: TForm1
     Top = 506
     Width = 528
     Caption = ' Installation '
-    ClientHeight = 63
+    ClientHeight = 62
     ClientWidth = 526
     TabOrder = 3
     object Label5: TLabel
@@ -494,10 +494,10 @@ object Form1: TForm1
   end
   object CheckBox6: TCheckBox
     Left = 10
-    Height = 22
+    Height = 21
     Hint = 'Do not close the launcher when the game starts, it comes back when the game is closed.'
     Top = 594
-    Width = 264
+    Width = 268
     Caption = 'Show the launcher again &after the game'
     TabOrder = 4
   end
@@ -515,7 +515,7 @@ object Form1: TForm1
     ParentColor = False
     TabOrder = 5
     TabStop = True
-    OnClick = Button2Click
+    OnClick = Panel1Click
     OnMouseEnter = Panel1MouseEnter
     OnMouseLeave = Panel1MouseEnter
     OnMouseMove = Panel1MouseMove
@@ -534,7 +534,7 @@ object Form1: TForm1
       Font.Style = [fsBold]
       Layout = tlCenter
       ParentFont = False
-      OnClick = Button2Click
+      OnClick = Panel1Click
       OnMouseEnter = Panel1MouseEnter
       OnMouseLeave = Panel1MouseEnter
       OnMouseMove = Panel1MouseMove
@@ -546,7 +546,7 @@ object Form1: TForm1
     Height = 16
     Hint = 'Open the game manual (MANUAL.md).'
     Top = 687
-    Width = 45
+    Width = 42
     Caption = 'Manual'
     Font.Color = clBlue
     Font.Style = [fsUnderline]
@@ -558,11 +558,11 @@ object Form1: TForm1
     AnchorSideLeft.Side = asrBottom
     AnchorSideTop.Control = Label8
     Cursor = crHandPoint
-    Left = 71
+    Left = 68
     Height = 16
     Hint = 'Open the folder with the settings, the logs and atomic_mods.ini.'
     Top = 687
-    Width = 79
+    Width = 77
     BorderSpacing.Left = 16
     Caption = 'Config folder'
     Font.Color = clBlue
@@ -593,7 +593,7 @@ object Form1: TForm1
   object ComboBox1: TComboBox
     AnchorSideRight.Control = Button3
     Left = 326
-    Height = 26
+    Height = 30
     Hint = 'The language of the launcher.'
     Top = 680
     Width = 110
