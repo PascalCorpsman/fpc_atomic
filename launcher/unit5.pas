@@ -38,6 +38,7 @@ Type
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
     CheckBox4: TCheckBox;
+    CheckBox5: TCheckBox;
     ComboBox1: TComboBox;
     ComboBox2: TComboBox;
     ComboBox3: TComboBox;
@@ -588,6 +589,7 @@ Begin
   SpinEdit1.Value := ini.ReadInteger(FPC_AtomicIniSection, 'Port', 5521);
   SpinEdit3.Value := ini.ReadInteger(FPC_AtomicIniSection, 'Volume', 10000) Div 100;
   CheckBox4.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true);
+  CheckBox5.Checked := ini.ReadBool('Launcher', 'ShowStatsAfterGame', true);
   ReadAssetSets(ini.ReadString('Launcher', 'AssetSet', ''));
   ReadSoundSets(ini.ReadString('Launcher', 'SoundSet', SoundSetAuto));
   ReadAiLibs(ini.ReadString('Launcher', 'AiLib', ''));
@@ -632,6 +634,7 @@ Begin
   // Das Spiel ändert die Lautstärke in 5 % Schritten (0 .. 10000)
   ini.WriteInteger(FPC_AtomicIniSection, 'Volume', SpinEdit3.Value * 100);
   ini.WriteBool(FPC_AtomicIniSection, 'PlaySoundEffects', CheckBox4.Checked);
+  ini.WriteBool('Launcher', 'ShowStatsAfterGame', CheckBox5.Checked); // Die Statistik nach einem beendeten Match (siehe TForm1.Timer1Timer)
   // Der Grafiksatz, die selbe Einstellung wie die Pfeile unter dem Bild im Hauptfenster
   If (ComboBox5.ItemIndex >= 0) And (ComboBox5.ItemIndex < fAssetFolders.Count) Then Begin
     ini.WriteString('Launcher', 'AssetSet', fAssetFolders[ComboBox5.ItemIndex]);

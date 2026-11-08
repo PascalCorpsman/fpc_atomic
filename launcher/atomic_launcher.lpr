@@ -24,7 +24,7 @@ Uses
   athreads,
 {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, unit1, unit2, unit3, unit4, unit5, unit6, unit7
+  Forms, unit1, unit2, unit3, unit4, unit5, unit6, unit7, unit8
 {$IFDEF LCLGTK2}
 {$WARNING 'Don''t use GTK2 compiles anymore, this feature will be removed in near future.'}
   , gtk2
@@ -48,6 +48,7 @@ Begin
   Application.CreateForm(TForm5, Form5);
   Application.CreateForm(TForm6, Form6);
   Application.CreateForm(TForm7, Form7);
+  Application.CreateForm(TForm8, Form8);
   Application.Run;
 End.
 

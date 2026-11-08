@@ -580,6 +580,16 @@ object Form1: TForm1
     TabOrder = 7
     OnClick = Button3Click
   end
+  object Button18: TButton
+    Left = 8
+    Height = 25
+    Hint = 'The highscore: the statistics of the games hosted on this PC and a copy from every other server you played on.'
+    Top = 425
+    Width = 192
+    Caption = 'Stat&istics...'
+    TabOrder = 8
+    OnClick = Button18Click
+  end
   object ComboBox1: TComboBox
     AnchorSideRight.Control = Button3
     Left = 326

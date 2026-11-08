@@ -107,6 +107,14 @@
         <UnitName Value="Unit7"/>
       </Unit>
       <Unit>
+        <Filename Value="unit8.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="Form8"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="Unit8"/>
+      </Unit>
+      <Unit>
         <Filename Value="uitemsedit.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

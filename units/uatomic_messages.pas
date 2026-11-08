@@ -65,6 +65,7 @@ Const
   miShowHurry = 235;
   miModInfo = 236; // Der Server teilt beim Login und nach miUpdateModSettings die Mod Einstellungen mit, die der Client braucht (Mod Test Modus, Geister Flackern)
   miFlash = 237; // Mod weißer Bildschirm: Der Bildschirm dieses Clients wird kurz weiß (Stärke, Dauer, Übergang)
+  miServerStatistics = 238; // Kopie der Statistik des Servers (beim Login und am Ende des Matches), der Client speichert sie für den Launcher
 
 Function MessageIdentifierToString(value: integer): String;
 Inline;
@@ -108,6 +109,7 @@ Begin
     miShowHurry: result := 'ShowHurry';
     miModInfo: result := 'ModInfo';
     miFlash: result := 'Flash';
+    miServerStatistics: result := 'ServerStatistics';
   End;
 End;
 

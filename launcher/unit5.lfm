@@ -1,11 +1,11 @@
 object Form5: TForm5
   Left = 400
-  Height = 445
+  Height = 471
   Top = 150
   Width = 768
   BorderStyle = bsDialog
   Caption = 'Form5'
-  ClientHeight = 445
+  ClientHeight = 471
   ClientWidth = 768
   Position = poMainFormCenter
   ShowHint = True
@@ -41,17 +41,24 @@ object Form5: TForm5
     Top = 90
     Caption = 'Play sound effects'
   end
+  object CheckBox5: TCheckBox
+    Hint = 'After a finished match the launcher opens the statistics of that server. Only if the launcher is shown again after the game.'
+    Left = 12
+    Height = 19
+    Top = 116
+    Caption = 'Show statistics after the game'
+  end
   object Label1: TLabel
     Left = 12
     Height = 15
-    Top = 124
+    Top = 150
     Caption = 'Scheme'
   end
   object ComboBox2: TComboBox
     Hint = 'The scheme sets the bricks, the start positions and the items (files in data/schemes).'
     Left = 230
     Height = 23
-    Top = 120
+    Top = 146
     Width = 190
     ItemHeight = 15
     Style = csDropDownList
@@ -60,14 +67,14 @@ object Form5: TForm5
   object Label8: TLabel
     Left = 12
     Height = 15
-    Top = 156
+    Top = 182
     Caption = 'Map'
   end
   object ComboBox4: TComboBox
     Hint = 'The map of the next game when hosting (files in data/maps).'
     Left = 230
     Height = 23
-    Top = 152
+    Top = 178
     Width = 190
     ItemHeight = 15
     Style = csDropDownList
@@ -85,7 +92,7 @@ object Form5: TForm5
     AnchorSideTop.Side = asrCenter
     Left = 436
     Height = 15
-    Top = 268
+    Top = 294
     Caption = 'Graphics set'
     FocusControl = ComboBox5
   end
@@ -95,7 +102,7 @@ object Form5: TForm5
     Hint = 'The graphics of the game: Original (from the CD) or a set from the graphics generator (folders in assets). Missing graphics of a set are taken from the original.'
     Left = 540
     Height = 23
-    Top = 264
+    Top = 290
     Width = 216
     BorderSpacing.Top = 12
     ItemHeight = 15
@@ -107,7 +114,7 @@ object Form5: TForm5
     AnchorSideTop.Side = asrCenter
     Left = 436
     Height = 15
-    Top = 300
+    Top = 326
     Caption = 'Sounds'
     FocusControl = ComboBox6
   end
@@ -117,7 +124,7 @@ object Form5: TForm5
     Hint = 'The sounds of the game.'#13#10'Automatic: the sounds of the selected graphics set'#13#10'(with "Original" the sounds from the CD).'#13#10'Original (CD): always the sounds from the CD.'#13#10'Or the sounds of a set from the graphics generator.'#13#10'Missing sounds of a set are taken from the original.'
     Left = 540
     Height = 23
-    Top = 296
+    Top = 322
     Width = 216
     BorderSpacing.Top = 9
     ItemHeight = 15
@@ -128,7 +135,7 @@ object Form5: TForm5
     AnchorSideTop.Side = asrCenter
     Left = 436
     Height = 15
-    Top = 332
+    Top = 358
     Caption = 'AI'
     FocusControl = ComboBox7
   end
@@ -138,7 +145,7 @@ object Form5: TForm5
     Hint = 'The ai of the computer players when you host a game.'#13#10'Original: the ai of FPC Atomic.'#13#10'Smart: plays smarter, its strength is set with the difficulty.'
     Left = 540
     Height = 23
-    Top = 328
+    Top = 354
     Width = 216
     BorderSpacing.Top = 9
     ItemHeight = 15
@@ -150,7 +157,7 @@ object Form5: TForm5
     AnchorSideTop.Side = asrCenter
     Left = 436
     Height = 15
-    Top = 364
+    Top = 390
     Caption = 'Difficulty'
     FocusControl = SpinEdit4
   end
@@ -160,7 +167,7 @@ object Form5: TForm5
     Hint = 'Strength of the smart ai: 0 = easy, 50 = normal, 100 = strong.'#13#10'More settings are in ai_smart.ini, see the manual of the smart ai.'
     Left = 540
     Height = 23
-    Top = 360
+    Top = 386
     Width = 100
     BorderSpacing.Top = 9
     Increment = 5
@@ -170,14 +177,14 @@ object Form5: TForm5
   object Label2: TLabel
     Left = 12
     Height = 15
-    Top = 188
+    Top = 214
     Caption = 'Play time'
   end
   object ComboBox3: TComboBox
     Hint = 'Time of a round. The hurry starts 80 s before the end. Infinity = no time limit and no hurry.'
     Left = 230
     Height = 23
-    Top = 184
+    Top = 210
     Width = 100
     ItemHeight = 15
     Style = csDropDownList
@@ -185,14 +192,14 @@ object Form5: TForm5
   object Label3: TLabel
     Left = 12
     Height = 15
-    Top = 220
+    Top = 246
     Caption = 'Wins to win the match'
   end
   object SpinEdit2: TSpinEdit
     Hint = 'How many rounds a player or team has to win to win the match.'
     Left = 230
     Height = 23
-    Top = 216
+    Top = 242
     Width = 100
     Increment = 1
     MaxValue = 99
@@ -201,14 +208,14 @@ object Form5: TForm5
   object Label4: TLabel
     Left = 12
     Height = 15
-    Top = 252
+    Top = 278
     Caption = 'Conveyor speed'
   end
   object ComboBox1: TComboBox
     Hint = 'Speed of the conveyor belts on maps that have them.'
     Left = 230
     Height = 23
-    Top = 248
+    Top = 274
     Width = 100
     ItemHeight = 15
     Style = csDropDownList
@@ -221,14 +228,14 @@ object Form5: TForm5
   object Label5: TLabel
     Left = 12
     Height = 15
-    Top = 284
+    Top = 310
     Caption = 'Network port'
   end
   object SpinEdit1: TSpinEdit
     Hint = 'TCP port of the server when hosting a game (default 5521).'
     Left = 230
     Height = 23
-    Top = 280
+    Top = 306
     Width = 100
     Increment = 1
     MaxValue = 65535
@@ -237,14 +244,14 @@ object Form5: TForm5
   object Label6: TLabel
     Left = 12
     Height = 15
-    Top = 316
+    Top = 342
     Caption = 'Volume (%)'
   end
   object SpinEdit3: TSpinEdit
     Hint = 'Sound volume, in the game it can also be changed with + and -.'
     Left = 230
     Height = 23
-    Top = 312
+    Top = 338
     Width = 100
     Increment = 5
     MaxValue = 100
@@ -253,7 +260,7 @@ object Form5: TForm5
   object Label7: TLabel
     Left = 12
     Height = 52
-    Top = 346
+    Top = 372
     Width = 408
     AutoSize = False
     Caption = 'The same settings as in the options of the game. Field and wins can also be changed in the game when hosting.'
@@ -264,7 +271,7 @@ object Form5: TForm5
     Left = 124
     Height = 15
     Hint = 'Open the manual of the game options and game modes (GAMEOPTIONS_MANUAL.md, with a link to the German version).'
-    Top = 413
+    Top = 439
     Caption = 'Manual'
     Font.Color = clBlue
     Font.Style = [fsUnderline]
@@ -275,7 +282,7 @@ object Form5: TForm5
     Hint = 'Reset the settings to the defaults of the game. Saved only with OK.'
     Left = 12
     Height = 25
-    Top = 408
+    Top = 434
     Width = 100
     Caption = '&Defaults'
     OnClick = Button1Click
@@ -284,7 +291,7 @@ object Form5: TForm5
     Hint = 'Save the settings, they apply to the next start of the game.'
     Left = 576
     Height = 25
-    Top = 408
+    Top = 434
     Width = 85
     Caption = 'OK'
     Default = True
@@ -294,7 +301,7 @@ object Form5: TForm5
     Hint = 'Close without saving.'
     Left = 671
     Height = 25
-    Top = 408
+    Top = 434
     Width = 85
     Cancel = True
     Caption = 'Cancel'

@@ -51,6 +51,9 @@ Type
   TServer = Class
   private
     fKickAllPlayer: boolean; // If True, the server kicks every player during the next "Idle"
+    fVictoryShown: Boolean; // Das Match ist zu Ende und gebucht, weitere miStartGame (z.B. Tastenwiederholung) werden ignoriert
+    fServerID: String; // Kennung dieses Servers (stats.txt [Server] ID), damit die Clients ihre Kopie der Statistik zuordnen können
+    fAliveMs: Array[0..length(PlayerColors) - 1] Of Integer; // Wie lange jeder Spieler in der aktuellen Runde gelebt hat (Statistik Spielzeit)
     fFrameLog: tFrameLog;
     fStatistik: TGameStatistik;
     fPlayerStatistics: TPlayerStatisticEngine;
@@ -172,6 +175,8 @@ Type
     Procedure SaveStatistics();
     Procedure LoadPlayerStatistics();
     Procedure SavePlayerStatistics();
+    Procedure SendServerStatistics(UID: integer); // Der Snapshot der Statistik (miServerStatistics), 0 = an alle
+    Procedure BookPlayTime(); // Am Rundenende: die Lebenszeit der Runde in die Statistik
   End;
 
 Implementation
@@ -464,16 +469,28 @@ Begin
           HandleDebugCommand(Chunk.Data, Chunk.UID);
         End;
       miStartGame: Begin
-          If fGameState = gsShowHighscore Then Begin
-            If MatchFinished() Then Begin
-              HandleShowVictory();
-            End
-            Else Begin
-              HandleStartRound();
-            End;
+          (*
+           * Nur der Master startet (so sendet es auch der Client), und nur aus dem Karten Setup oder dem Highscore.
+           * Hält der Master Return gedrückt, kommen mehrere miStartGame an, die dürfen weder die Match Siege
+           * doppelt zählen noch nach dem Victory Screen ein neues Match ohne Karte starten.
+           *)
+          If (Chunk.UID <> fSettings.MasterUid) Then Begin
+            log('Ignored start game from ' + inttostr(Chunk.UID), llWarning);
           End
           Else Begin
-            HandleStartGame();
+            Case fGameState Of
+              gsShowHighscore: Begin
+                  If Not fVictoryShown Then Begin
+                    If MatchFinished() Then Begin
+                      HandleShowVictory();
+                    End
+                    Else Begin
+                      HandleStartRound();
+                    End;
+                  End;
+                End;
+              gsMapSetup: HandleStartGame();
+            End;
           End;
         End;
     Else Begin
@@ -704,6 +721,7 @@ Begin
   m.Write(i, sizeof(i));
   SendChunk(miRequestLoginResult, m, UID);
   SendModInfo(UID); // Beim Master sind das noch die Defaults, seine Mods schickt er erst als Antwort auf miRequestLoginResult
+  SendServerStatistics(UID); // Auch wer vor dem Ende des Matches geht, hat so eine Kopie der Statistik
   // Allen Mitteilen das wir nen neuen Spieler haben
   RefreshAllPlayerStats(0); // Allen Anwesenden Mitteilen Welche Spieler es so gibt
   // Der Spieler ist Drin, nun müssen wir noch die Verfügbaren Karten von Beiden "Checken"
@@ -1030,6 +1048,7 @@ Var
 Begin
   EnterID := LogEnter('TServer.HandleStartGame');
   HandleStatisticCallback(ssMatchesStarted);
+  fVictoryShown := false;
   fPlayerStatistics.ResetPlayerIDs;
   // 1. Alle Player "Initialisieren
   For i := 0 To high(fPLayer) Do Begin
@@ -1038,12 +1057,13 @@ Begin
     If fPLayer[i].UID <> NoPlayer Then Begin
       If fPLayer[i].UID = AIPlayer Then Begin
         // Alle KI Spieler einer KI (und Stufe) werden auf einen abstrakten KI Spieler zusammengeführt.
-        fPlayerStatistics.InitPlayerID(i, AiStatisticName(i), ks0);
+        fPlayerStatistics.InitPlayerID(i, AiStatisticName(i), ks0, true);
       End
       Else Begin
         fPlayerStatistics.InitPlayerID(i,
           fPLayer[i].UserName,
-          fPLayer[i].Keyboard
+          fPLayer[i].Keyboard,
+          false
           );
       End;
     End;
@@ -1238,6 +1258,7 @@ Begin
 
   fActualField.Initialize(fPLayer, fSettings.Scheme, fSettings.TeamPlay);
   fRoundTimeMs := 0;
+  FillChar(fAliveMs, sizeof(fAliveMs), 0);
   // Spielmodus Hunter: Den ersten Gejagten bestimmen
   fHuntedIndex := -1;
   If HunterActive() Then Begin
@@ -1289,13 +1310,24 @@ Begin
 End;
 
 Procedure TServer.HandleShowVictory;
+Var
+  i: Integer;
 Begin
+  If fVictoryShown Then exit;
+  fVictoryShown := true;
+  // Statistik: genau einmal pro Match, deshalb hier und nicht in MatchFinished
+  For i := 0 To high(fPLayer) Do Begin
+    If (fPLayer[i].UID <> NoPlayer) And (fPLayer[i].Score >= fSettings.LastWinsToWinMatch) Then Begin
+      fPlayerStatistics.UpdatePlayerID(i, pssWonMatches);
+    End;
+  End;
   // Den Victory Screen auswählen
   // Der Gewinner wurde bereits in EndGameCheck bestimmt.
   SendChunk(miShowVictory, Nil, 0);
   // Abspeichern der Spielerstatistiken nach jedem Spiel !
   SavePlayerStatistics();
   SaveStatistics();
+  SendServerStatistics(0); // Danach, damit die Kopie bei den Clients schon das Ergebnis dieses Matches enthält
   fKickAllPlayer := true;
 End;
 
@@ -2804,6 +2836,10 @@ Var
   OldPosition: TVector2;
 Begin
   HandleStatisticCallback(ssFramesRendered);
+  For i := 0 To high(fPLayer) Do Begin
+    If (fPLayer[i].UID <> NoPlayer) And fPLayer[i].Info.Alive Then
+      fAliveMs[i] := min(fAliveMs[i] + FrameRate, high(Integer) - FrameRate);
+  End;
   // Die Teleporter am Rand (Mod) erscheinen erst nach TeleportersActiveSec
   fRoundTimeMs := min(fRoundTimeMs + FrameRate, high(Integer) - FrameRate);
   fActualField.UpdatePortals(fRoundTimeMs >= fModSettings.TeleportersActiveSec * 1000);
@@ -3287,6 +3323,7 @@ Begin
         End;
       End;
     End;
+    BookPlayTime();
     fGameState := gsShowHighscore;
     exit;
   End;
@@ -3359,6 +3396,7 @@ Begin
             End;
           End;
         End;
+        BookPlayTime();
         fGameState := gsShowHighscore;
       End
       Else Begin
@@ -3396,6 +3434,7 @@ Begin
             End;
           End;
         End;
+        BookPlayTime();
         fGameState := gsShowHighscore;
       End;
     End;
@@ -3412,6 +3451,7 @@ Begin
         fPlayerStatistics.UpdatePlayerID(i, pssDrawRounds);
       End;
     End;
+    BookPlayTime();
     fGameState := gsShowHighscore;
   End;
 End;
@@ -3428,9 +3468,8 @@ Begin
    *)
   For i := 0 To high(fPLayer) Do Begin
     If (fPLayer[i].UID <> NoPlayer) And (fPLayer[i].Score >= fSettings.LastWinsToWinMatch) Then Begin
-      result := true;
-      // Statistik ;)
-      fPlayerStatistics.UpdatePlayerID(i, pssWonMatches);
+      result := true; // Die Statistik bucht HandleShowVictory
+      break;
     End;
   End;
 End;
@@ -3687,28 +3726,27 @@ End;
 Procedure TServer.LoadStatistics;
 Var
   ini: TIniFile;
+  ss: TStatSelector;
+  g: TGUID;
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TServer.LoadStatistiks');
   ini := TIniFile.Create(GetAtomicStatsFile());
-  fStatistik.Total[ssMatchesStarted] := ini.ReadInt64('Total', 'MatchesStarted', 0);
-  fStatistik.Total[ssGamesStarted] := ini.ReadInt64('Total', 'GamesStarted', 0);
-  fStatistik.Total[ssFramesRendered] := ini.ReadInt64('Total', 'FramesRendered', 0);
-  fStatistik.Total[ssBombsDropped] := ini.ReadInt64('Total', 'BombsDropped', 0);
-  fStatistik.Total[ssPowerupsCollected] := ini.ReadInt64('Total', 'PowerupsCollected', 0);
-  fStatistik.Total[ssPlayerDeaths] := ini.ReadInt64('Total', 'PlayerDeaths', 0);
-  fStatistik.Total[ssBricksDestroyed] := ini.ReadInt64('Total', 'BricksDestroyed', 0);
-  fStatistik.Total[ssPowerUpDestroyed] := ini.ReadInt64('Total', 'PowerUpDestroyed', 0);
-  fStatistik.Total[ssTotalNetworkBytesIn] := ini.ReadInt64('Total', 'TotalNetworkBytesIn', 0);
-  fStatistik.Total[ssTotalNetworkBytesOut] := ini.ReadInt64('Total', 'TotalNetworkBytesOut', 0);
-  fStatistik.Total[ssTotalNetworkPacketsIn] := ini.ReadInt64('Total', 'TotalNetworkPacketsIn', 0);
-  fStatistik.Total[ssTotalNetworkPacketsOut] := ini.ReadInt64('Total', 'TotalNetworkPacketsOut', 0);
-
+  For ss In TStatSelector Do Begin
+    fStatistik.Total[ss] := ini.ReadInt64('Total', StatSelectorToString(ss), 0);
+  End;
+  fServerID := ini.ReadString('Server', 'ID', '');
+  ini.free;
   (*
    * Alles Aktuelle = 0 ;)
    *)
   FillChar(fStatistik.LastRun, sizeof(fStatistik.LastRun), 0);
-  ini.free;
+  If fServerID = '' Then Begin
+    // Der erste Start: die Kennung gleich speichern, der Launcher erkennt daran den eigenen Server
+    CreateGUID(g);
+    fServerID := copy(GUIDToString(g), 2, 36);
+    SaveStatistics();
+  End;
   LogLeave(EnterID);
 End;
 
@@ -3866,6 +3904,7 @@ End;
 Procedure TServer.SaveStatistics;
 Var
   ini: TIniFile;
+  ss: TStatSelector;
   EnterID: Integer;
   s: String;
 Begin
@@ -3878,31 +3917,13 @@ Begin
   End;
   ini := TIniFile.Create(s);
   Try
-    ini.writeInt64('Total', 'MatchesStarted', fStatistik.Total[ssMatchesStarted] + fStatistik.LastRun[ssMatchesStarted]);
-    ini.writeInt64('Total', 'GamesStarted', fStatistik.Total[ssGamesStarted] + fStatistik.LastRun[ssGamesStarted]);
-    ini.writeInt64('Total', 'FramesRendered', fStatistik.Total[ssFramesRendered] + fStatistik.LastRun[ssFramesRendered]);
-    ini.writeInt64('Total', 'BombsDropped', fStatistik.Total[ssBombsDropped] + fStatistik.LastRun[ssBombsDropped]);
-    ini.writeInt64('Total', 'PowerupsCollected', fStatistik.Total[ssPowerupsCollected] + fStatistik.LastRun[ssPowerupsCollected]);
-    ini.writeInt64('Total', 'PlayerDeaths', fStatistik.Total[ssPlayerDeaths] + fStatistik.LastRun[ssPlayerDeaths]);
-    ini.writeInt64('Total', 'BricksDestroyed', fStatistik.Total[ssBricksDestroyed] + fStatistik.LastRun[ssBricksDestroyed]);
-    ini.writeInt64('Total', 'PowerUpDestroyed', fStatistik.Total[ssPowerUpDestroyed] + fStatistik.LastRun[ssPowerUpDestroyed]);
-    ini.writeInt64('Total', 'TotalNetworkBytesIn', fStatistik.Total[ssTotalNetworkBytesIn] + fStatistik.LastRun[ssTotalNetworkBytesIn]);
-    ini.writeInt64('Total', 'TotalNetworkBytesOut', fStatistik.Total[ssTotalNetworkBytesOut] + fStatistik.LastRun[ssTotalNetworkBytesOut]);
-    ini.writeInt64('Total', 'TotalNetworkPacketsIn', fStatistik.Total[ssTotalNetworkPacketsIn] + fStatistik.LastRun[ssTotalNetworkPacketsIn]);
-    ini.writeInt64('Total', 'TotalNetworkPacketsOut', fStatistik.Total[ssTotalNetworkPacketsOut] + fStatistik.LastRun[ssTotalNetworkPacketsOut]);
-
-    ini.writeInt64('LastRun', 'MatchesStarted', fStatistik.LastRun[ssMatchesStarted]);
-    ini.writeInt64('LastRun', 'GamesStarted', fStatistik.LastRun[ssGamesStarted]);
-    ini.writeInt64('LastRun', 'FramesRendered', fStatistik.LastRun[ssFramesRendered]);
-    ini.writeInt64('LastRun', 'BombsDropped', fStatistik.LastRun[ssBombsDropped]);
-    ini.writeInt64('LastRun', 'PowerupsCollected', fStatistik.LastRun[ssPowerupsCollected]);
-    ini.writeInt64('LastRun', 'PlayerDeaths', fStatistik.LastRun[ssPlayerDeaths]);
-    ini.writeInt64('LastRun', 'BricksDestroyed', fStatistik.LastRun[ssBricksDestroyed]);
-    ini.writeInt64('LastRun', 'PowerUpDestroyed', fStatistik.LastRun[ssPowerUpDestroyed]);
-    ini.writeInt64('LastRun', 'TotalNetworkBytesIn', fStatistik.LastRun[ssTotalNetworkBytesIn]);
-    ini.writeInt64('LastRun', 'TotalNetworkBytesOut', fStatistik.LastRun[ssTotalNetworkBytesOut]);
-    ini.writeInt64('LastRun', 'TotalNetworkPacketsIn', fStatistik.LastRun[ssTotalNetworkPacketsIn]);
-    ini.writeInt64('LastRun', 'TotalNetworkPacketsOut', fStatistik.LastRun[ssTotalNetworkPacketsOut]);
+    ini.WriteString('Server', 'ID', fServerID);
+    For ss In TStatSelector Do Begin
+      ini.writeInt64('Total', StatSelectorToString(ss), fStatistik.Total[ss] + fStatistik.LastRun[ss]);
+    End;
+    For ss In TStatSelector Do Begin
+      ini.writeInt64('LastRun', StatSelectorToString(ss), fStatistik.LastRun[ss]);
+    End;
   Finally
     ini.free;
   End;
@@ -3925,6 +3946,45 @@ Begin
   EnterID := LogEnter('TServer.SavePlayerStatistiks');
   fPlayerStatistics.SavePlayerStatistics(GetAtomicPlayerStatsFile());
   LogLeave(EnterID);
+End;
+
+Procedure TServer.SendServerStatistics(UID: integer);
+Var
+  m: TMemoryStream;
+  sl: TStringList;
+  ss: TStatSelector;
+  i: Integer;
+Begin
+  (*
+   * Die Statistik liegt bei dem, der den Server laufen lässt. Damit ein Client sie auch später noch
+   * (im Launcher) ansehen kann, bekommt er eine Kopie, siehe TGame.HandleServerStatistics
+   * Version, Server ID, Rechnername, [Total] als "Key=Wert" Zeilen, Playerstats.csv
+   *)
+  sl := TStringList.Create;
+  For ss In TStatSelector Do Begin
+    sl.Add(StatSelectorToString(ss) + '=' + IntToStr(fStatistik.Total[ss] + fStatistik.LastRun[ss]));
+  End;
+  m := TMemoryStream.Create;
+  i := ServerStatisticsVersion;
+  m.Write(i, sizeof(i));
+  m.WriteAnsiString(fServerID);
+  m.WriteAnsiString(GetAtomicComputerName());
+  m.WriteAnsiString(sl.Text);
+  m.WriteAnsiString(fPlayerStatistics.AsText());
+  sl.free;
+  SendChunk(miServerStatistics, m, UID);
+End;
+
+Procedure TServer.BookPlayTime;
+Var
+  i: Integer;
+Begin
+  For i := 0 To high(fPLayer) Do Begin
+    If (fPLayer[i].UID <> NoPlayer) And (fAliveMs[i] > 0) Then Begin
+      fPlayerStatistics.UpdatePlayerID(i, pssPlayTimeMs, fAliveMs[i]);
+    End;
+    fAliveMs[i] := 0;
+  End;
 End;
 
 End.

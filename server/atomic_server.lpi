@@ -70,7 +70,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uatomic_statistics.pas"/>
+        <Filename Value="../units/uatomic_statistics.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

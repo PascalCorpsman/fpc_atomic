@@ -1,0 +1,196 @@
+object Form8: TForm8
+  Left = 400
+  Height = 480
+  Top = 150
+  Width = 820
+  Caption = 'Statistics'
+  ClientHeight = 480
+  ClientWidth = 820
+  Constraints.MinHeight = 300
+  Constraints.MinWidth = 380
+  Position = poMainFormCenter
+  ShowHint = True
+  LCLVersion = '4.8.0.0'
+  OnCreate = FormCreate
+  OnShow = FormShow
+  object Panel1: TPanel
+    Left = 0
+    Height = 72
+    Top = 0
+    Width = 820
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 72
+    ClientWidth = 820
+    TabOrder = 0
+    object Label1: TLabel
+      Left = 12
+      Height = 15
+      Top = 14
+      Caption = '&Server:'
+      FocusControl = ComboBox1
+    end
+    object ComboBox1: TComboBox
+      Hint = 'This computer: the games hosted here. Below: a copy of the statistics of every other server you played on, as of your last game there.'
+      Left = 80
+      Height = 23
+      Top = 10
+      Width = 420
+      ItemHeight = 15
+      Style = csDropDownList
+      TabOrder = 0
+      OnChange = ComboBox1Change
+    end
+    object Button1: TButton
+      Hint = 'Delete the copy of the statistics of this server.'
+      Left = 510
+      Height = 25
+      Top = 9
+      Width = 90
+      Caption = '&Remove'
+      TabOrder = 1
+      OnClick = Button1Click
+    end
+    object Button2: TButton
+      Hint = 'Open the folder with the statistics files.'
+      Left = 610
+      Height = 25
+      Top = 9
+      Width = 110
+      Caption = 'Open &folder'
+      TabOrder = 2
+      OnClick = Button2Click
+    end
+    object Label2: TLabel
+      Left = 12
+      Height = 15
+      Top = 46
+      Caption = '&Players:'
+      FocusControl = ComboBox2
+    end
+    object ComboBox2: TComboBox
+      Hint = 'Show all players, only humans or only the AI players.'
+      Left = 80
+      Height = 23
+      Top = 42
+      Width = 160
+      ItemHeight = 15
+      ItemIndex = 0
+      Items.Strings = (
+        'All players'
+        'Without AI'
+        'Only AI'
+      )
+      Style = csDropDownList
+      TabOrder = 3
+      Text = 'All players'
+      OnChange = CheckBox1Change
+    end
+    object CheckBox1: TCheckBox
+      Hint = 'Also show the columns about bombs, bricks, items and diseases.'
+      Left = 260
+      Height = 19
+      Top = 44
+      Caption = 'All &values'
+      TabOrder = 4
+      OnChange = CheckBox1Change
+    end
+    object CheckBox2: TCheckBox
+      Hint = 'A player counts once for every key set (keyboard 1 / 2). Checked: the same name is one row.'
+      Left = 380
+      Height = 19
+      Top = 44
+      Caption = '&Merge key sets'
+      Checked = True
+      State = cbChecked
+      TabOrder = 5
+      OnChange = CheckBox1Change
+    end
+  end
+  object PageControl1: TPageControl
+    Left = 8
+    Height = 352
+    Top = 72
+    Width = 804
+    ActivePage = TabSheet1
+    Align = alClient
+    BorderSpacing.Left = 8
+    BorderSpacing.Right = 8
+    TabIndex = 0
+    TabOrder = 1
+    object TabSheet1: TTabSheet
+      Caption = 'Players'
+      ClientHeight = 324
+      ClientWidth = 796
+      object StringGrid1: TStringGrid
+        Left = 0
+        Height = 324
+        Hint = 'Click a column header to sort, click again to reverse.'
+        Top = 0
+        Width = 796
+        Align = alClient
+        ColCount = 3
+        DefaultRowHeight = 20
+        FixedCols = 2
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRowSelect, goSmoothScroll, goCellHints, goHeaderHotTracking]
+        RowCount = 1
+        TabOrder = 0
+        OnGetCellHint = StringGrid1GetCellHint
+        OnHeaderClick = StringGrid1HeaderClick
+        OnPrepareCanvas = StringGrid1PrepareCanvas
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = 'Server'
+      ClientHeight = 324
+      ClientWidth = 796
+      object StringGrid2: TStringGrid
+        Left = 0
+        Height = 324
+        Top = 0
+        Width = 796
+        Align = alClient
+        ColCount = 3
+        DefaultRowHeight = 20
+        FixedCols = 1
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRowSelect, goSmoothScroll]
+        RowCount = 1
+        TabOrder = 0
+        OnPrepareCanvas = StringGrid2PrepareCanvas
+      end
+    end
+  end
+  object Panel2: TPanel
+    Left = 0
+    Height = 56
+    Top = 424
+    Width = 820
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 56
+    ClientWidth = 820
+    TabOrder = 2
+    object Label3: TLabel
+      Left = 12
+      Height = 30
+      Top = 6
+      Width = 690
+      Anchors = [akTop, akLeft, akRight]
+      AutoSize = False
+      Caption = 'Label3'
+      WordWrap = True
+    end
+    object Button3: TButton
+      Left = 718
+      Height = 25
+      Top = 12
+      Width = 90
+      Anchors = [akTop, akRight]
+      Cancel = True
+      Caption = '&Close'
+      Default = True
+      ModalResult = 11
+      TabOrder = 0
+    end
+  end
+end
