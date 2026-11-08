@@ -72,6 +72,13 @@ Function GetLANIPs(IncludeVirtual: Boolean = false): TNetworkAdapterList;
 Function IsVirtualAdapter(Const Adapter: TNetworkAdapter): Boolean;
 
 (*
+ * Windows: A UDP packet to a port where nobody listens (e.g. the search ping to 127.0.0.1 without
+ * a local server) makes the next receive on the socket fail with WSAECONNRESET (10054), lNet then
+ * closes the socket. This switches that off for the socket (SIO_UDP_CONNRESET). Elsewhere it does nothing.
+ *)
+Procedure IgnoreUdpConnReset(Handle: PtrInt);
+
+(*
  * Calculates from a given Address and Subnet Mask the Broadcast address for the net
  * e.g. 192.168.168.1, 255.255.255.0 -> 192.168.168.255
  * !! Attention !!
@@ -360,6 +367,29 @@ Begin
   End;
   result := format('%d.%d.%d.%d', [BroadcastAddr[0], BroadcastAddr[1], BroadcastAddr[2], BroadcastAddr[3]]);
 End;
+
+{$IFDEF Windows}
+Function WSAIoctl(s: PtrInt; dwIoControlCode: Cardinal; lpvInBuffer: Pointer; cbInBuffer: Cardinal;
+  lpvOutBuffer: Pointer; cbOutBuffer: Cardinal; lpcbBytesReturned: PCardinal; lpOverlapped: Pointer;
+  lpCompletionRoutine: Pointer): Integer; stdcall; external 'ws2_32.dll';
+
+Procedure IgnoreUdpConnReset(Handle: PtrInt);
+Const
+  SIO_UDP_CONNRESET = $9800000C;
+Var
+  Enable: LongBool;
+  Returned: Cardinal;
+Begin
+  Enable := false;
+  Returned := 0;
+  WSAIoctl(Handle, SIO_UDP_CONNRESET, @Enable, SizeOf(Enable), Nil, 0, @Returned, Nil, Nil);
+End;
+{$ELSE}
+
+Procedure IgnoreUdpConnReset(Handle: PtrInt);
+Begin
+End;
+{$ENDIF}
 
 End.
 

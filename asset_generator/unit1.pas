@@ -230,7 +230,7 @@ Type
     Procedure SaveProgress(Sender: TObject);
     Procedure SaveDone(Sender: TObject);
     Procedure EnableEditing(Value: Boolean);
-    Procedure SetStatus(Const s: String);
+    Procedure SetStatus(Const s: String; Busy: Boolean = false);
   public
   End;
 
@@ -729,7 +729,7 @@ Begin
     End;
     exit;
   End;
-  SetStatus(R_Rendering + '  ' + n.Caption);
+  SetStatus(R_Rendering + '  ' + n.Caption, true);
   n.Dirty := false;
   fJobNode := n;
   fJob := TAGAreaWorker.Create(fCtx, '', @JobDone);
@@ -1661,8 +1661,11 @@ Begin
       l.WordWrap := true;
       l.AutoSize := false;
       l.SetBounds(8, 8, w, 60);
-      If Node.Output = Nil Then
-        l.Caption := R_Rendering
+      If Node.Output = Nil Then Begin
+        l.Caption := R_Rendering;
+        l.Font.Size := 13;
+        l.Font.Style := [fsBold];
+      End
       Else
         l.Caption := R_NoParams;
       exit;
@@ -1704,6 +1707,12 @@ Begin
       b.Tag := i;
       b.OnChange := @ParamBarChange;
       fRowBars[i] := b;
+    End;
+    // Empty space below the last row, so the last slider can be scrolled into view completely (GTK trackbars are higher than 30)
+    With TBevel.Create(ScrollBoxParams) Do Begin
+      Parent := ScrollBoxParams;
+      Shape := bsSpacer;
+      SetBounds(0, length(Node.Params) * RowHeight + 8, 8, RowHeight Div 2);
     End;
     fUpdating := false;
   Finally
@@ -1903,8 +1912,19 @@ End;
 (* ------------------------------------------------------------------------ *)
 (* Save / close                                                             *)
 
-Procedure TForm1.SetStatus(Const s: String);
+Procedure TForm1.SetStatus(Const s: String; Busy: Boolean);
 Begin
+  // Busy (rendering): big and bold, so a change of a parameter is seen at once
+  If Busy Then Begin
+    LabelStatus.Font.Size := 13;
+    LabelStatus.Font.Style := [fsBold];
+    LabelStatus.Font.Color := clMaroon;
+  End
+  Else Begin
+    LabelStatus.Font.Size := 0;
+    LabelStatus.Font.Style := [];
+    LabelStatus.Font.Color := clDefault;
+  End;
   LabelStatus.Caption := s;
 End;
 

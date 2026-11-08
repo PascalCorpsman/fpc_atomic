@@ -28,8 +28,10 @@ Type
   TKeyGrabber = Class(TForm)
     Label1: TLabel;
     Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FormKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
   private
     fResKey: Word;
+    fDownKey: Word; // Die gedrückte Taste, übernommen wird sie erst beim Loslassen
   public
     Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
     Function GrabVkKey(): Word;
@@ -88,15 +90,17 @@ Begin
   label1.Left := 10;
   label1.caption := 'Press key to be grabbed' + LineEnding + 'ESC = Cancel';
   OnKeyDown := @FormKeyDown;
+  OnKeyUp := @FormKeyUp;
 End;
 
 Function TKeyGrabber.GrabVkKey: Word;
 Begin
   modalresult := mrNone;
   fResKey := VK_UNKNOWN;
+  fDownKey := VK_UNKNOWN;
   result := fResKey;
   ShowModal;
-  If ModalResult = mrNone Then exit;
+  If ModalResult <> mrOK Then exit;
   result := fResKey
 End;
 
@@ -104,8 +108,24 @@ End;
 Procedure TKeyGrabber.FormKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Begin
-  If key = VK_ESCAPE Then close;
-  fResKey := Key;
+  fDownKey := Key;
+  Key := 0;
+End;
+
+Procedure TKeyGrabber.FormKeyUp(Sender: TObject; Var Key: Word;
+  Shift: TShiftState);
+Begin
+  (*
+   * Erst beim Loslassen schließen: Sonst bekommt der aufrufende Dialog das Loslassen, GTK löst den fokussierten Knopf
+   * aber erst beim Loslassen aus (Space, Return) -> der Grabber ging sofort wieder auf (Endlosschleife).
+   *)
+  If (fDownKey = VK_UNKNOWN) Or (Key <> fDownKey) Then exit;
+  Key := 0;
+  If fDownKey = VK_ESCAPE Then Begin
+    ModalResult := mrCancel; // Abbrechen, die Taste bleibt wie sie war
+    exit;
+  End;
+  fResKey := fDownKey;
   ModalResult := mrOK;
 End;
 

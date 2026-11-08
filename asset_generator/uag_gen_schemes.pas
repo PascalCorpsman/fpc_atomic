@@ -37,7 +37,7 @@ Unit uag_gen_schemes;
 Interface
 
 Const
-  SchemeCount = 24;
+  SchemeCount = 25;
 
 Implementation
 
@@ -111,7 +111,9 @@ Const
     (FileName: 'ARENA'; Name: 'Arena (10)'; Family: fmArena; Sym: sym4; Density: 90; Fill: 100; Extra: 0; Spawn: spRim; Pu: ppNormal),
     (FileName: 'ZIGZAG'; Name: 'Zigzag (10)'; Family: fmZigzag; Sym: sym2; Density: 90; Fill: 100; Extra: 0; Spawn: spRim; Pu: ppJelly),
     (FileName: 'COURTYARDS'; Name: 'Courtyards (10)'; Family: fmCourtyards; Sym: sym4; Density: 90; Fill: 100; Extra: 0; Spawn: spRim; Pu: ppPurist),
-    (FileName: 'MINEFIELD'; Name: 'Minefield (10)'; Family: fmPillarsPlus; Sym: sym2; Density: 100; Fill: 80; Extra: 12; Spawn: spRim; Pu: ppTrigger)
+    (FileName: 'MINEFIELD'; Name: 'Minefield (10)'; Family: fmPillarsPlus; Sym: sym2; Density: 100; Fill: 80; Extra: 12; Spawn: spRim; Pu: ppTrigger),
+    // An empty field: no solid blocks and no bricks. The launcher falls back to it when there is no BASIC.SCH (ResolveSchemeFile)
+    (FileName: 'CLEAR'; Name: 'Clear (empty field)'; Family: fmOpen; Sym: sym4; Density: 0; Fill: 0; Extra: 0; Spawn: spRim; Pu: ppNormal)
     );
 
   PuNames: Array[0..12] Of String = (

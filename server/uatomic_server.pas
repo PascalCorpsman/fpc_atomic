@@ -176,7 +176,7 @@ Type
 
 Implementation
 
-Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global;
+Uses FileUtil, uvectormath, math, IniFiles, uai, uatomic_global, uip;
 
 { TServer }
 
@@ -245,6 +245,8 @@ Begin
     LogLeave(EnterID);
     exit;
   End;
+  // Windows: Eine Antwort an einen Client, der nicht mehr lauscht, würde sonst den UDP Socket schließen (Fehler 10054), danach fand keiner mehr den Server
+  IgnoreUdpConnReset(fUDP.Iterator.Handle);
   If Not fChunkManager.Listen(Port, bind) Then Begin
     log('Error could not listen on port: ' + inttostr(port), llFatal);
     LogLeave(EnterID);
@@ -1689,6 +1691,9 @@ Begin
     If (Not fPLayer[i].Info.Alive) Or fPLayer[i].Info.Dying Or fPLayer[i].Flying Then Continue;
     If (fPLayer[i].FlameThrowerFuel <= 0) Or (Not fPLayer[i].FlameThrowerFiring) Or (fPLayer[i].StunTimer > 0) Then Continue;
     If fActualField.CarriedBombIndex(i) <> -1 Then Continue; // Mod Bomben tragen: Mit einer Bombe in den Händen wird nicht gefeuert
+    // Erst nach FlameThrowerHoldTime wird gefeuert, kürzer ist es die normale zweite Aktion
+    fPLayer[i].FlameThrowerHeldMs := fPLayer[i].FlameThrowerHeldMs + FrameRate;
+    If fPLayer[i].FlameThrowerHeldMs < FlameThrowerHoldTime Then Continue;
     fPLayer[i].FlameThrowerFuel := max(0, fPLayer[i].FlameThrowerFuel - FrameRate);
     dx := 0;
     dy := 0;
@@ -1944,7 +1949,9 @@ Begin
       SetPlayerPowers(OldIndex, p);
     End
     Else Begin
-      fPLayer[OldIndex].RespawnBeforeHunted := fModSettings.HuntedLoseItems = HuntedLoseItemsRestore;
+      // Beim Respawn bekommt er p (bei HuntedLoseItemsScheme sind das die Werte vom Respawn), so behält er mit HunterKeepItems nicht die Items des Gejagten
+      fPLayer[OldIndex].PowersBeforeHunted := p;
+      fPLayer[OldIndex].RespawnBeforeHunted := true;
     End;
   End;
   For i := 0 To high(fPLayer) Do Begin
@@ -2047,7 +2054,7 @@ Begin
       SetHunted(i); // HuntedLostKeep: Er ist weiterhin der Gejagte und bekommt die Items wieder
     End
     Else If fPLayer[i].RespawnBeforeHunted Then Begin
-      // HuntedLoseItemsRestore: Der frühere Gejagte startet mit seinem Zustand von bevor er der Gejagte wurde
+      // Der frühere Gejagte startet mit seinem Zustand von bevor er der Gejagte wurde (bzw. den Werten des Schemes), mit HunterKeepItems ein Jäger mit seinen Items
       SetPlayerPowers(i, fPLayer[i].PowersBeforeHunted);
       fPLayer[i].RespawnBeforeHunted := false;
     End;
@@ -2452,8 +2459,11 @@ Begin
           End;
         End;
       akSecondAction: Begin
-          fPLayer[Player].FlameThrowerFiring := true; // Mod Flammenwerfer, so lange bis die Taste los gelassen wird
-          If (Not (dNoBombs In fPLayer[Player].Disease)) Then Begin
+          // Mod Flammenwerfer, so lange bis die Taste los gelassen wird (die Tastenwiederholung startet die Zeit nicht neu)
+          If Not fPLayer[Player].FlameThrowerFiring Then fPLayer[Player].FlameThrowerHeldMs := 0;
+          fPLayer[Player].FlameThrowerFiring := true;
+          // Mod Flammenwerfer: Mit Tank entscheidet erst das Loslassen, ob es die normale zweite Aktion war (kurz) oder Feuern (lang)
+          If (Not (dNoBombs In fPLayer[Player].Disease)) And (fPLayer[Player].FlameThrowerFuel <= 0) Then Begin
             If Double Then Begin
               fPLayer[Player].Action := aaSecondDouble;
             End
@@ -2467,6 +2477,11 @@ Begin
   Else Begin
     If key = akSecondAction Then Begin
       // Mod Flammenwerfer: Der Client meldet das Loslassen der zweiten Aktion, das darf die Bewegung nicht stoppen
+      // Kurz gedrückt ist es die normale zweite Aktion (z.B. Zeitbomben zünden)
+      If fPLayer[Player].FlameThrowerFiring And (fPLayer[Player].FlameThrowerFuel > 0) And
+        (fPLayer[Player].FlameThrowerHeldMs < FlameThrowerHoldTime) And (Not (dNoBombs In fPLayer[Player].Disease)) Then Begin
+        fPLayer[Player].Action := aaSecond;
+      End;
       fPLayer[Player].FlameThrowerFiring := false;
     End
     Else If key = akFirstAction Then Begin
@@ -2782,6 +2797,7 @@ Var
   OldCounter: UInt16;
   WillBeGhost: Boolean;
   DieTime: Integer;
+  pu: TPowerUps;
   ModeInfo: TAiModeInfo;
   Stunned: Boolean;
   StunMoveState: TMoveState;
@@ -3031,6 +3047,20 @@ Begin
         If fPLayer[i].Info.Counter > DieTime Then Begin
           fPLayer[i].Info.Alive := false; // Wir sind gestorben und die Animation ist nun auch durch..
           fPLayer[i].Info.Dying := false;
+          (*
+           * Spielmodus Hunter mit HunterKeepItems: Ein toter Jäger bekommt seine Items beim Respawn zurück, sie werden deshalb nicht auf dem Feld verteilt.
+           * Der Gejagte und der frühere Gejagte (RespawnBeforeHunted) folgen ihren eigenen Regeln.
+           *)
+          If HunterRespawnActive() And fModSettings.HunterKeepItems And (i <> fHuntedIndex) And (Not fPLayer[i].RespawnBeforeHunted) Then Begin
+            fPLayer[i].PowersBeforeHunted := fPLayer[i].Powers;
+            If dSuperSlow In fPLayer[i].Disease Then Begin
+              fPLayer[i].PowersBeforeHunted.Speed := fPLayer[i].BeforeSlowDiseaseSpeed;
+            End;
+            fPLayer[i].RespawnBeforeHunted := true;
+            For pu In TPowerUps Do Begin
+              fPLayer[i].PowerUpCounter[pu] := 0;
+            End;
+          End;
           fActualField.RepopulatePlayersCollectedPowerUps(fPLayer, i);
           If HunterRespawnActive() Then Begin
             fPLayer[i].RespawnTimer := max(1, fModSettings.HunterRespawnMs - DieTime); // Mindestens 1, 0 = kein Respawn ausstehend

@@ -75,6 +75,7 @@ One player is the **hunted**. He gets (almost) all items, all other players hunt
 | Respawn | `HunterRespawn` | 1 (on) | Dead players come back, the round ends when the time is over, there is no hurry |
 | Respawn after (ms) | `HunterRespawnMs` | 3000 | 0 .. 60000, counts from the moment of death (at least 4 s) |
 | Invulnerable after respawn (ms) | `HunterRespawnInvulnMs` | 2000 | 0 .. 60000 |
+| Dead players keep their items | `HunterKeepItems` | 1 (on) | Only with respawn. On: a dead hunter comes back with all his items, they are not spread on the field (flamethrower fuel is not kept). Off: he comes back with the start values of the scheme. The hunted and the old hunted follow their own rules ("The old hunted gets"). |
 | The hunted gets no diseases | `HuntedNoDiseases` | 1 (on) | Diseases (also the positive ones of the mods), slow and swap have no effect on the hunted, he is not infected by others and nobody swaps places with him |
 | Gold color | `HuntedGold` | 1 (on) | The hunted is drawn in gold |
 | Aura | `HuntedAura` | 1 (on) | A pulsing aura around the hunted |
