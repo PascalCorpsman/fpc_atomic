@@ -19,9 +19,13 @@
  * Projekt -> Projekteinstellungen -> Compilereinstellungen -> Benutzerdefinierte Einstellungen
  *      -dClient
  *      -dServer
+ *      -dLauncher
+ *      -dCD_Data_Extractor
  *)
 {.$define Client}
 {.$define Server}
+{.$define Launcher}
+{.$define CD_Data_Extractor}
 
 (*
  * Auf die Schnelle alles in Release Mode umstellen, kann auch via -dRelease
@@ -41,7 +45,7 @@
 
 {$IFNDEF Release}
 (*
- * Aktiviert die Auswertung von OpenGL Fehlern nach jedem Rendering
+ * Aktiviert die Auswertung von OpenGL Fehlern nach jedem Rendering und die Anzeige der Ai Position
  *)
 {$DEFINE DebuggMode}
 
@@ -49,12 +53,6 @@
  * Wenn Aktiviert, dann loggt sich der Client automatisch in einen Server ein (wenn Parameter -d) gesetzt wurde
  *)
 {$DEFINE AUTOMODE}
-
-(*
- * Wenn Aktiviert, dann gibt es nur 3 anstatt der typischerweise 10 Spieler
- * -> Zum Entwickeln schneller
- *)
-{$DEFINE Only3Player}
 
 (*
  * Wenn Aktiviert, dann wird nur die 1. Karte geladen und nicht alle
