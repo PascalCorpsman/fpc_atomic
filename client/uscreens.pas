@@ -1139,6 +1139,10 @@ Begin
       1: Tgame(fOwner).Settings.RandomStart := Not Tgame(fOwner).Settings.RandomStart;
       2: Begin
           key := 0;
+          If Tgame(fOwner).Settings.Fullscreen Then Begin
+            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
+            Exit;
+          End;
           InputBoxForm := TInputBoxForm.CreateNew(Nil);
           InputBoxForm.Caption := 'Edit';
           TInputBoxForm(InputBoxForm).label1.caption := 'Enter Nodename';
@@ -1152,7 +1156,7 @@ Begin
               LogShow('Invalid username, need to be less 20 chars and no special chars.', llWarning);
             End;
           End;
-          InputBoxForm.free;
+          InputBoxForm.Free;
           InputBoxForm := Nil;
         End;
       3: Begin
@@ -1173,6 +1177,10 @@ Begin
         End;
       4: Begin // Scheme File
           key := 0;
+          If Tgame(fOwner).Settings.Fullscreen Then Begin
+            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
+            Exit;
+          End;
           SchemQuestionForm := TSchemQuestionForm.CreateNew(Nil);
           TSchemQuestionForm(SchemQuestionForm).LoadSchemes(Tgame(fOwner).Settings.SchemeFile);
           SchemQuestionForm.ShowModal;
@@ -1205,9 +1213,13 @@ Begin
       7: Tgame(fOwner).Settings.PlaySounds := Not Tgame(fOwner).Settings.PlaySounds;
       8: Begin
           key := 0;
+          If Tgame(fOwner).Settings.Fullscreen Then Begin
+            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
+            Exit;
+          End;
           // Der Dialog und der Wizzard initialisieren SDL selbst neu, dabei würden die offenen Controller ungültig
           SDL_Quit;
-          KeyboardDialog := TKeyboardDialog.CreateNew(Nil);
+          KeyboardDialog := TKeyboardDialog.CreateNew(Form1);
           TKeyboardDialog(KeyboardDialog).LoadKeys(Tgame(fOwner).Settings.Keys[ks0], Tgame(fOwner).Settings.Keys[ks1]);
           If TKeyboardDialog(KeyboardDialog).Execute() Then Begin
             Tgame(fOwner).Settings.Keys[ks0] := TKeyboardDialog(KeyboardDialog).GetKeys(ks0);
@@ -1223,6 +1235,10 @@ Begin
         End;
       9: Begin
           key := 0;
+          If Tgame(fOwner).Settings.Fullscreen Then Begin
+            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
+            Exit;
+          End;
           InputBoxForm := TInputBoxForm.CreateNew(Nil);
           InputBoxForm.Caption := 'Edit';
           TInputBoxForm(InputBoxForm).label1.caption := 'Enter port';
