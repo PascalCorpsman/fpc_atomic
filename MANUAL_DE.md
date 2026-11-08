@@ -67,6 +67,20 @@ Neben den Originalgrafiken von der CD kann das Spiel eigene Grafiksätze nutzen,
 ## Spieloptionen und Spielmodi
 Die Spieloptionen (Teamspiel, Schema, Karte, Spielzeit, ...) lassen sich im Optionen-Menü des Spiels oder im Launcher unter **Spieloptionen...** einstellen. Neben dem klassischen Spiel gibt es den Spielmodus **Hunter**: Ein Spieler ist der Gejagte mit (fast) allen Items, wer ihn erwischt, wird der neue Gejagte. Den Spielmodus wählt man im Launcher unter **Spielmodus...**. Alle Optionen und Modi erklärt die [Anleitung der Spieloptionen](GAMEOPTIONS_MANUAL_DE.md) ([englische Version](GAMEOPTIONS_MANUAL.md)).
 
+## Statistik (Highscore)
+Der Server führt eine Statistik zu jedem Spieler: gespielte und gewonnene Matches und Runden, Kills, Tode, Eigentore, Spielzeit, Bomben, Items, Krankheiten und mehr. Der Launcher zeigt sie unter **Statistik...** (neben "Schließen").
+
+- **Dieser Computer** sind die auf diesem PC gehosteten Spiele (die Dateien `Playerstats.csv` und `stats.txt` im Konfigurationsordner).
+- Die Statistik zählt immer der Server, ein Spiel bei jemand anderem wird also auf dem PC des Hosts gezählt. Bei jedem Beitritt schickt der Server eine Kopie seiner Statistik, zu Beginn und am Ende eines Matches. Der Launcher zeigt diese Kopien unter "Dieser Computer" mit dem Namen des Server-PCs, der Adresse und dem Datum deines letzten Spiels dort. **Entfernen** löscht eine solche Kopie.
+- Ein Klick auf einen Spaltenkopf sortiert, ein zweiter dreht die Reihenfolge um. **#** sortiert wieder nach Siegen. Sieg-% und K/D gibt es erst ab 3 Matches, sonst stünde ein Spieler mit 1 von 1 gewonnenem Match ganz oben.
+- **Spieler** zeigt alle Spieler, nur Menschen oder nur die KI-Spieler. KI-Spieler sind grau, alle Plätze einer KI und Stufe zählen zusammen (z.B. "Smart Nitro"). Der eigene Name ist fett.
+- **Tastenbelegungen zusammenfassen**: Ein Spieler zählt je Tastenbelegung (Tastatur 1 / 2) extra, angehakt ist der gleiche Name eine Zeile.
+- **Alle Werte** zeigt auch die Spalten zu Bomben, Blöcken, Items und Krankheiten. Die Seite **Server** zeigt die Gesamtwerte des Servers (Matches, Runden, Spielzeit, Netzwerk).
+
+Ist "Launcher nach dem Spiel wieder anzeigen" angehakt, öffnet der Launcher nach dem Spiel automatisch die Statistik des Servers, auf dem das letzte Match zu Ende ging (die eigene, wenn du gehostet hast, sonst die Kopie des anderen Servers). Abschalten lässt sich das unter **Spieloptionen...** mit "Statistik nach dem Spiel anzeigen".
+
+Ein Spieler ist an Name und Tastenbelegung zu erkennen: Ein neuer Name beginnt eine neue Zeile, und auf anderen Servern kann jeder jeden Namen benutzen. Kills von KI-Spielern zählen mit. Die Werte sind also nur zum Spaß.
+
 ## Einen Client über das Internet mit einem lokalen Server verbinden
 So verbindet man einen Client über das Internet mit einem Server:
 

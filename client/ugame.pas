@@ -131,6 +131,7 @@ Type
     fFlashIntensity: Integer; // in %
     fFlashMs: Integer; // Dauer in ms
     fFlashFadeMs: Integer; // Übergang zurück in ms
+    fServerStatsID: String; // Die Kennung des Servers aus dem letzten miServerStatistics, '' = unbekannt (alter Server)
     fShowModTestHelp: Boolean; // True, die Hilfe des Mod Test Modus (F3) wird angezeigt
     fModTestMessage: String; // Rückmeldung zum zuletzt gesendeten Test Befehl
     fModTestMessageTimeStamp: QWord; // Zeitpunkt, an dem fModTestMessage gesetzt wurde
@@ -213,6 +214,8 @@ Type
     Procedure HandleSetPause(Value: Boolean);
     Procedure HandleSwitchToMatchStatistik(Const Stream: TMemoryStream);
     Procedure HandleUpdatePlayerStatistik(Const Stream: TMemoryStream);
+    Procedure HandleServerStatistics(Const Stream: TMemoryStream);
+    Procedure StoreLastMatchServer(); // Das Match ist zu Ende: der Launcher zeigt danach die Statistik dieses Servers
     Procedure HandlePlaySoundEffekt(Const Stream: TMemoryStream);
     Procedure HandleUpdateMasterId(Const Stream: TMemoryStream);
     Procedure HandleHurryUp();
@@ -316,6 +319,9 @@ Uses dglopengl
   , usdl_input
   , uopengl_shaderprimitives
   , uassetpath
+  , IniFiles
+  , DateUtils
+  , uatomic_statistics
   ;
 
 (*
@@ -1465,7 +1471,11 @@ Begin
         HandleSwitchToMatchStatistik(Chunk.data);
       End;
     miShowVictory: Begin
+        StoreLastMatchServer();
         SwitchToScreen(sVictory);
+      End;
+    miServerStatistics: Begin
+        HandleServerStatistics(Chunk.Data);
       End;
     miUpdateGameData: Begin
         HandleUpdateGameData(Chunk.Data);
@@ -1535,6 +1545,87 @@ Begin
   End;
   If DoLog Then
     LogLeave(EnterID);
+End;
+
+Procedure TGame.HandleServerStatistics(Const Stream: TMemoryStream);
+Var
+  Version: integer;
+  ID, Computer, Totals, Players, Dir, LocalID: String;
+  ini: TIniFile;
+  sl: TStringList;
+  i: integer;
+Begin
+  (*
+   * Die Statistik liegt beim Server, der Launcher zeigt eine Kopie davon an (siehe TServer.SendServerStatistics)
+   *)
+  Version := 0;
+  Stream.Read(Version, SizeOf(Version));
+  If Version <> ServerStatisticsVersion Then Begin
+    log('Unknown server statistics version ' + inttostr(Version), llWarning);
+    exit;
+  End;
+  ID := Stream.ReadAnsiString;
+  Computer := Stream.ReadAnsiString;
+  Totals := Stream.ReadAnsiString;
+  Players := Stream.ReadAnsiString;
+  // Die Kennung wird zum Dateinamen, also nur das, was eine GUID enthält
+  If (ID = '') Or (length(ID) > 64) Then exit;
+  For i := 1 To length(ID) Do Begin
+    If Not (ID[i] In ['0'..'9', 'A'..'F', 'a'..'f', '-']) Then exit;
+  End;
+  fServerStatsID := ID;
+  // Der eigene Server (selbst gehostet): dessen Dateien liest der Launcher direkt
+  ini := TIniFile.Create(GetAtomicStatsFile());
+  LocalID := ini.ReadString('Server', 'ID', '');
+  ini.free;
+  If ID = LocalID Then exit;
+  Dir := GetAtomicServerStatsDir();
+  If Not ForceDirectories(Dir) Then Begin
+    log('Unable to create: ' + Dir, llError);
+    exit;
+  End;
+  Try
+    sl := TStringList.Create;
+    Try
+      sl.Text := Players;
+      sl.SaveToFile(Dir + ID + '.csv');
+      sl.Text := Totals;
+      ini := TIniFile.Create(Dir + ID + '.ini');
+      Try
+        ini.WriteString('Server', 'Name', Computer);
+        ini.WriteString('Server', 'Address', fParamJoinIP + ':' + inttostr(fParamJoinPort));
+        ini.WriteInt64('Server', 'LastPlayed', DateTimeToUnix(LocalTimeToUniversal(Now)));
+        For i := 0 To sl.Count - 1 Do Begin
+          If sl.Names[i] <> '' Then ini.WriteString('Total', sl.Names[i], sl.ValueFromIndex[i]);
+        End;
+      Finally
+        ini.free;
+      End;
+    Finally
+      sl.free;
+    End;
+  Except
+    On e: Exception Do log('Unable to store server statistics: ' + e.Message, llError);
+  End;
+End;
+
+Procedure TGame.StoreLastMatchServer;
+Var
+  ini: TIniFile;
+Begin
+  If fServerStatsID = '' Then exit; // Ein alter Server ohne Statistik Kopie
+  Try
+    If Not ForceDirectories(GetAtomicServerStatsDir()) Then exit;
+    ini := TIniFile.Create(GetAtomicServerStatsDir() + LastMatchFile);
+    Try
+      ini.WriteString('LastMatch', 'ServerID', fServerStatsID);
+      ini.WriteInt64('LastMatch', 'Time', DateTimeToUnix(LocalTimeToUniversal(Now)));
+    Finally
+      ini.free;
+    End;
+  Except
+    On e: Exception Do log('Unable to store last match: ' + e.Message, llError);
+  End;
 End;
 
 Procedure TGame.HandleRefreshPlayerStats(Const Stream: TMemoryStream);

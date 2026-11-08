@@ -32,10 +32,15 @@ Type
    *)
 Function GetAtomicConfigFile(): String;
 
-{$IFDEF Server}
+(*
+ * Die Statistik des Servers (schreibt der Server, der Launcher zeigt sie an)
+ *)
 Function GetAtomicStatsFile(): String;
 Function GetAtomicPlayerStatsFile(): String;
-{$ENDIF}
+(*
+ * Die Kopien der Statistik anderer Server, auf denen gespielt wurde (schreibt der Client, der Launcher zeigt sie an)
+ *)
+Function GetAtomicServerStatsDir(): String;
 (*
  * Die Mod Einstellungen, Client (schickt sie als Master an den Server) und Launcher (Mods Dialog).
  * Gibt es die Datei noch nicht, wird einmalig eine vorhandene atomic_server.ini übernommen (dort standen die Mods früher).
@@ -106,8 +111,6 @@ Begin
   TearDown;
 End;
 
-{$IFDEF Server}
-
 Function GetAtomicStatsFile: String;
 Begin
   Setup;
@@ -122,7 +125,12 @@ Begin
   TearDown;
 End;
 
-{$ENDIF}
+Function GetAtomicServerStatsDir(): String;
+Begin
+  Setup;
+  result := IncludeTrailingPathDelimiter(GetAppConfigDir(false)) + 'server_stats' + PathDelim;
+  TearDown;
+End;
 
 Function GetAtomicModsIniFile(): String;
 Var

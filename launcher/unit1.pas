@@ -41,6 +41,7 @@ Type
     Button15: TButton;
     Button16: TButton;
     Button17: TButton;
+    Button18: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -88,6 +89,7 @@ Type
     Procedure Button14Click(Sender: TObject);
     Procedure Button16Click(Sender: TObject);
     Procedure Button17Click(Sender: TObject);
+    Procedure Button18Click(Sender: TObject);
     Procedure Image1Click(Sender: TObject);
     Procedure LabelNewsClick(Sender: TObject);
     Procedure ShiftLeftColumn(Delta: Integer); // verschiebt das Bild (die Zeilen darunter hängen daran), merkt sich die Summe in fLeftColumnShift
@@ -116,6 +118,7 @@ Type
     GameDataFound: Boolean; // True, wenn CheckForFiles nichts vermisst, dann ist der Launch Knopf blau
     CanGenerate: Boolean; // True, wenn Spieldaten fehlen und der Grafik-Generator einen Satz erzeugen kann (Einrichtung fett), dann ist der Launch Knopf auch blau
     GameProcess: TProcessUTF8; // Das laufende Spiel, wenn der Launcher danach wieder erscheinen soll (CheckBox6), sonst Nil
+    GameStartTime: Int64; // Wann das Spiel gestartet wurde (Unix Zeit UTC), danach zeigt der Launcher die Statistik eines beendeten Matches
     fLanguageCodes: Array Of String;
     fAssetFolders: TStringList; // Die Grafiksätze, [0] = '' = Original, sonst der Ordner unter assets/
     fAssetNames: TStringList; // Dazu die angezeigten Namen (AssetSetDisplayName)
@@ -152,6 +155,8 @@ Type
     Procedure SelectSoundSet(Index: integer);
     Procedure UpdateSoundCaption();
     Procedure UpdateSoundTestButton();
+    Procedure ShowStatistics(Const SelectID: String);
+    Procedure ShowStatisticsAfterGame();
     Procedure StopSoundTest();
     Procedure ReleaseSoundTest();
     Procedure OnSoundTestFinished(Sender: TObject);
@@ -184,8 +189,8 @@ Implementation
 
 {$R *.lfm}
 
-Uses Math, process, Unit2, Unit3, Unit4, Unit5, Unit6, Unit7, LCLType, lclintf
-  , ukeyboarddialog, uatomic_common, uatomic_global, ulanguage, ulayout, uupdatecheck, uassetpath, usmartsettings
+Uses Math, process, DateUtils, Unit2, Unit3, Unit4, Unit5, Unit6, Unit7, Unit8, LCLType, lclintf
+  , ukeyboarddialog, uatomic_common, uatomic_global, uatomic_statistics, ulanguage, ulayout, uupdatecheck, uassetpath, usmartsettings
 {$IFDEF Windows}
   , LResources
   , ssl_openssl_lib, ssl_openssl, blcksock
@@ -849,6 +854,7 @@ Begin
   If CheckBox6.Checked Then Begin
     // Der Launcher wartet versteckt, bis das Spiel beendet ist, und erscheint dann wieder (siehe Timer1Timer)
     p.Options := [];
+    GameStartTime := DateTimeToUnix(LocalTimeToUniversal(Now));
     p.Execute;
     GameProcess := p;
     Hide;
@@ -875,6 +881,43 @@ Begin
   UpdateStatus();
   Show;
   BringToFront;
+  ShowStatisticsAfterGame();
+End;
+
+Procedure TForm1.ShowStatistics(Const SelectID: String);
+Begin
+  StoreSettings(); // Der eigene Name kommt aus Edit1
+  Form8.Execute(ini, trim(Edit1.Text), SelectID);
+  ini.UpdateFile;
+End;
+
+Procedure TForm1.ShowStatisticsAfterGame;
+Var
+  m: TIniFile;
+  ID: String;
+  t: Int64;
+Begin
+  (*
+   * Ging während des Spiels ein Match zu Ende, zeigt der Launcher die Statistik des Servers, auf dem es gespielt wurde:
+   * Der Client merkt sich den Server in server_stats/last_match.ini (TGame.StoreLastMatchServer). War es der eigene,
+   * kommt "Dieser Computer", sonst die Kopie des anderen Servers.
+   *)
+  If Not ini.ReadBool('Launcher', 'ShowStatsAfterGame', true) Then exit;
+  If Not FileExists(GetAtomicServerStatsDir() + LastMatchFile) Then exit;
+  m := TIniFile.Create(GetAtomicServerStatsDir() + LastMatchFile);
+  Try
+    ID := m.ReadString('LastMatch', 'ServerID', '');
+    t := m.ReadInt64('LastMatch', 'Time', 0);
+  Finally
+    m.free;
+  End;
+  If (t < GameStartTime) Or (Not Form8.HasSource(ID)) Then exit;
+  ShowStatistics(ID);
+End;
+
+Procedure TForm1.Button18Click(Sender: TObject);
+Begin
+  ShowStatistics('');
 End;
 
 Procedure TForm1.Button1Click(Sender: TObject);
@@ -2082,6 +2125,11 @@ Begin
   Language.AddIgnoredIdentifier('Form5.ComboBox4.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox5.Items');
   Language.AddIgnoredIdentifier('Form5.ComboBox6.Items');
+  Language.AddIgnoredComponent(Form8.StringGrid1); // Form8: Spalten, Quellen und Hinweis setzt der Dialog
+  Language.AddIgnoredComponent(Form8.StringGrid2);
+  Language.AddIgnoredIdentifier('Form8.ComboBox1.Items');
+  Language.AddIgnoredIdentifier('Form8.ComboBox1.Text');
+  Language.AddIgnoredIdentifier('Form8.Label3.Caption');
   ApplyLanguage();
   // Nur ein Hinweis neben "Updates...", ohne Klick wird nichts heruntergeladen
   If CheckUpdatesOnStart Then Begin

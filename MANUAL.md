@@ -67,6 +67,20 @@ Besides the original graphics from the CD the game can use own graphics sets, co
 ## Game options and game modes
 The game options (team play, scheme, map, play time, ...) are set in the options menu of the game or in the launcher with "Game options...". Besides the classic game there is the game mode **Hunter**: one player is the hunted with (almost) all items, whoever gets him becomes the new hunted. The game mode is chosen in the launcher with "Game mode...". All options and modes are explained in the [game options manual](GAMEOPTIONS_MANUAL.md) ([German version](GAMEOPTIONS_MANUAL_DE.md)).
 
+## Statistics (highscore)
+The server counts statistics for every player: matches and rounds played and won, kills, deaths, own goals, play time, bombs, items, diseases and more. The launcher shows them with **Statistics...** (next to "Close").
+
+- **This computer** are the games hosted on this PC (the files `Playerstats.csv` and `stats.txt` in the config folder).
+- The statistics are always counted by the server, so a game you joined elsewhere is counted on the PC of the host. Every time you join a server, it sends a copy of its statistics, at the start and when a match ends. The launcher lists these copies below "This computer" with the name of the server PC, the address and the date of your last game there. **Remove** deletes such a copy.
+- Click a column header to sort, click again to reverse the order. **#** sorts by matches won again. Win % and K/D are only shown from 3 matches on, otherwise a player with 1 of 1 match won would be on top.
+- **Players** shows all players, only humans or only the AI players. AI players are grey, all slots of an AI and level count together (e.g. "Smart Nitro"). Your own name is bold.
+- **Merge key sets**: a player counts once per key set (keyboard 1 / 2), checked the same name is one row.
+- **All values** also shows the columns about bombs, bricks, items and diseases. The tab **Server** shows the totals of the server (matches, rounds, play time, network).
+
+If "Show the launcher again after the game" is checked, the launcher opens the statistics of the server of the last finished match automatically (your own when you hosted, otherwise the copy of the other server). This can be switched off in **Game options...** with "Show statistics after the game".
+
+A player is identified by name and key set: a new name starts a new row, and on other servers everybody can use any name. Kills of AI players count too. So the values are just for fun.
+
 ## Connecting a Client over the Internet to a local server
 To connect a client to a server over the Internet, follow these steps: 
 
