@@ -357,8 +357,8 @@
       {
         "file":
         {
-          "HASH":"cbbf73b4c4c3ec109050dd6bce95b719",
-          "SIZE":"49261",
+          "HASH":"2e8b77505d5a0ff7590752323fd03fde",
+          "SIZE":"49939",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.de",
           "Filename":"launcher_lang.de"
         }
@@ -366,8 +366,8 @@
       {
         "file":
         {
-          "HASH":"f3aa04b0746e856922e212cf47925fba",
-          "SIZE":"46228",
+          "HASH":"42e8dff53d854e52bd539c80aac06ed8",
+          "SIZE":"46684",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.en",
           "Filename":"launcher_lang.en"
         }
@@ -375,8 +375,8 @@
       {
         "file":
         {
-          "HASH":"00c023884089b6d96aeffbde4b4c4699",
-          "SIZE":"50539",
+          "HASH":"f13d8dc582791cdc940c139efbc4491e",
+          "SIZE":"51207",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.es",
           "Filename":"launcher_lang.es"
         }
@@ -384,8 +384,8 @@
       {
         "file":
         {
-          "HASH":"30468e16a96b2ffed1e117eebb5b33cb",
-          "SIZE":"51713",
+          "HASH":"dae827282ec648be55880d12a94af351",
+          "SIZE":"52391",
           "URL":"https:\/\/github.com\/PascalCorpsman\/fpc_atomic\/raw\/main\/launcher_lang.fr",
           "Filename":"launcher_lang.fr"
         }
