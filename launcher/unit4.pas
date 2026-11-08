@@ -40,6 +40,11 @@ Type
     Button4: TButton;
     Button5: TButton;
     Button6: TButton;
+    Button7: TButton;
+    Button8: TButton;
+    Button9: TButton;
+    Button10: TButton;
+    Button11: TButton;
     CheckBox1: TCheckBox;
     CheckBox2: TCheckBox;
     CheckBox3: TCheckBox;
@@ -52,6 +57,7 @@ Type
     CheckBox25: TCheckBox;
     CheckBox26: TCheckBox;
     ComboBox1: TComboBox;
+    ComboBox2: TComboBox;
     CheckBox9: TCheckBox;
     CheckBox10: TCheckBox;
     CheckBox11: TCheckBox;
@@ -168,6 +174,7 @@ Type
     Label105: TLabel;
     Label106: TLabel;
     Label107: TLabel;
+    Label108: TLabel;
     Label3: TLabel;
     Label4: TLabel;
     Label5: TLabel;
@@ -269,6 +276,12 @@ Type
     Procedure Button2Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
     Procedure Button5Click(Sender: TObject);
+    Procedure Button7Click(Sender: TObject);
+    Procedure Button8Click(Sender: TObject);
+    Procedure Button9Click(Sender: TObject);
+    Procedure Button10Click(Sender: TObject);
+    Procedure Button11Click(Sender: TObject);
+    Procedure ComboBox2Select(Sender: TObject);
     Procedure Label62Click(Sender: TObject);
     Procedure CheckBox1Change(Sender: TObject);
     Procedure CheckListBox1ClickCheck(Sender: TObject);
@@ -287,6 +300,14 @@ Type
     fItemShareLabels: Array[TPowerUps] Of TLabel;
     fDiseaseWeightEdits: Array[dSuperSlow..dDudBombs] Of TSpinEdit;
     fDiseaseShareLabels: Array[dSuperSlow..dDudBombs] Of TLabel;
+    fPresetFiles: TStringList; // Die Dateien der Presets in der Reihenfolge von ComboBox2, Objects <> Nil = mitgeliefert (schreibgeschützt)
+    Procedure ReadPresets(Const SelectFile: String);
+    Function SelectedPresetFile(): String;
+    Function SelectedPresetBuiltIn(): Boolean;
+    Function FindUserPreset(Const aName: String): String; // Datei des eigenen Presets mit diesem Namen, sonst ''
+    Function AskPresetName(Const Title, Default: String; Out aName: String): Boolean;
+    Procedure UpdatePresetButtons();
+    Procedure LoadPreset(Const Filename: String);
     Procedure UpdateItemShares();
     Procedure SettingsToControls();
     Function ControlsToSettings(): Boolean; // False, wenn eine Eingabe ungültig ist (dann wurde schon eine Meldung angezeigt)
@@ -304,7 +325,48 @@ Implementation
 
 {$R *.lfm}
 
-Uses uatomic_global, ulanguage, uitemsedit, ulayout;
+Uses uatomic_global, ulanguage, uitemsedit, ulayout, uassetpath, FileUtil;
+
+Function UserPresetDir(): String;
+Begin
+  result := ExtractFilePath(GetAtomicModsIniFile()) + 'mod_presets' + PathDelim;
+End;
+
+// Die mitgelieferten Presets liegen im Programmordner, '' wenn das der selbe Ordner ist wie der der eigenen
+Function BuiltInPresetDir(): String;
+Begin
+  result := AppDir() + 'mod_presets' + PathDelim;
+  If SameFileName(ExpandFileName(result), ExpandFileName(UserPresetDir())) Then result := '';
+End;
+
+// Dateiname für einen Preset Namen, nur Zeichen die überall gehen
+Function PresetFileName(Const Name: String): String;
+Var
+  i: Integer;
+Begin
+  result := '';
+  For i := 1 To length(Name) Do Begin
+    If Name[i] In ['a'..'z', 'A'..'Z', '0'..'9', '-', '_', ' '] Then
+      result := result + Name[i]
+    Else
+      result := result + '_';
+  End;
+  result := trim(result);
+  If result = '' Then result := 'preset';
+End;
+
+// Eine noch nicht vorhandene Datei für Name im Ordner der eigenen Presets
+Function NewPresetFile(Const Name: String): String;
+Var
+  n: Integer;
+Begin
+  result := UserPresetDir() + PresetFileName(Name) + '.ini';
+  n := 2;
+  While FileExists(result) Do Begin
+    result := UserPresetDir() + PresetFileName(Name) + ' ' + IntToStr(n) + '.ini';
+    inc(n);
+  End;
+End;
 
 Function ValidHandicapName(aName: String): Boolean;
 Begin
@@ -459,12 +521,14 @@ Begin
   StringGrid1.Cells[0, 0] := R_PlayerName;
   StringGrid1.Cells[1, 0] := R_HitPoints;
   PageControl1.ActivePageIndex := 0;
+  fPresetFiles := TStringList.Create;
 End;
 
 Procedure TForm4.FormDestroy(Sender: TObject);
 Begin
   fSettings.Handicap.free;
   fSettings.Handicap := Nil;
+  fPresetFiles.free;
 End;
 
 Procedure TForm4.FormShow(Sender: TObject);
@@ -472,6 +536,7 @@ Begin
   // Immer den aktuellen Stand der Datei zeigen, falls sie von Hand geändert wurde
   LoadModSettingsFromFile(GetAtomicModsIniFile(), fSettings);
   SettingsToControls();
+  ReadPresets('');
   ShowModPage(PageControl1.ActivePage);
   FitLayout(self); // Platz für die Texte im aktuellen Widgetset und in der aktuellen Sprache
 End;
@@ -514,6 +579,241 @@ Begin
   If StringGrid1.Row >= StringGrid1.FixedRows Then Begin
     StringGrid1.DeleteRow(StringGrid1.Row);
   End;
+End;
+
+Procedure TForm4.ReadPresets(Const SelectFile: String);
+Var
+  Files, Keys: TStringList;
+  sr: TSearchRec;
+  i, BuiltIn: Integer;
+  Dir, s: String;
+Begin
+  // Mitgelieferte zuerst, dann die eigenen, jeweils nach Namen sortiert
+  Files := TStringList.Create;
+  Keys := TStringList.Create;
+  Try
+    For BuiltIn := 1 Downto 0 Do Begin
+      If BuiltIn = 1 Then
+        Dir := BuiltInPresetDir()
+      Else
+        Dir := UserPresetDir();
+      If Dir = '' Then Continue;
+      If FindFirst(Dir + '*.ini', faAnyFile, sr) = 0 Then Begin
+        Repeat
+          If (sr.Attr And faDirectory) = 0 Then Begin
+            Files.Add(Dir + sr.Name);
+            // Sortierschlüssel: mitgeliefert vor eigenen, dann der Name, Objects = Index in Files
+            Keys.AddObject(IntToStr(1 - BuiltIn) + LowerCase(ModPresetName(Dir + sr.Name)), TObject(PtrInt(Files.Count - 1)));
+            If BuiltIn = 1 Then Files.Objects[Files.Count - 1] := TObject(PtrInt(1));
+          End;
+        Until FindNext(sr) <> 0;
+      End;
+      FindClose(sr);
+    End;
+    Keys.Sort;
+    fPresetFiles.Clear;
+    ComboBox2.Items.Clear;
+    For i := 0 To Keys.Count - 1 Do Begin
+      fPresetFiles.AddObject(Files[PtrInt(Keys.Objects[i])], Files.Objects[PtrInt(Keys.Objects[i])]);
+      s := ModPresetName(fPresetFiles[i]);
+      If assigned(fPresetFiles.Objects[i]) Then s := s + ' (' + R_PresetBuiltIn + ')';
+      ComboBox2.Items.Add(s);
+    End;
+  Finally
+    Keys.free;
+    Files.free;
+  End;
+  ComboBox2.ItemIndex := -1;
+  For i := 0 To fPresetFiles.Count - 1 Do Begin
+    If (SelectFile <> '') And SameFileName(fPresetFiles[i], SelectFile) Then ComboBox2.ItemIndex := i;
+  End;
+  UpdatePresetButtons();
+End;
+
+Function TForm4.SelectedPresetFile: String;
+Begin
+  result := '';
+  If (ComboBox2.ItemIndex >= 0) And (ComboBox2.ItemIndex < fPresetFiles.Count) Then result := fPresetFiles[ComboBox2.ItemIndex];
+End;
+
+Function TForm4.SelectedPresetBuiltIn: Boolean;
+Begin
+  result := (SelectedPresetFile() <> '') And assigned(fPresetFiles.Objects[ComboBox2.ItemIndex]);
+End;
+
+Function TForm4.FindUserPreset(Const aName: String): String;
+Var
+  i: Integer;
+Begin
+  result := '';
+  For i := 0 To fPresetFiles.Count - 1 Do Begin
+    If (Not assigned(fPresetFiles.Objects[i])) And SameText(ModPresetName(fPresetFiles[i]), aName) Then Begin
+      result := fPresetFiles[i];
+      exit;
+    End;
+  End;
+End;
+
+Function TForm4.AskPresetName(Const Title, Default: String; Out aName: String): Boolean;
+Begin
+  aName := Default;
+  result := InputQuery(Title, R_PresetName, aName);
+  aName := trim(aName);
+  If result And (aName = '') Then Begin
+    showmessage(R_PresetNoName);
+    result := false;
+  End;
+End;
+
+Procedure TForm4.UpdatePresetButtons;
+Var
+  Selected: Boolean;
+Begin
+  Selected := SelectedPresetFile() <> '';
+  // Mitgelieferte Presets lassen sich nur laden, exportieren und unter neuem Namen speichern
+  Button8.Enabled := Selected And Not SelectedPresetBuiltIn();
+  Button9.Enabled := Selected And Not SelectedPresetBuiltIn();
+  Button10.Enabled := Selected;
+End;
+
+Procedure TForm4.LoadPreset(Const Filename: String);
+Begin
+  // Erst die Eingaben übernehmen, damit Mod Test Modus und Handicaps so bleiben wie gerade im Dialog
+  If Not ControlsToSettings() Then exit;
+  ApplyModPreset(Filename, fSettings);
+  SettingsToControls();
+  ShowModPage(PageControl1.ActivePage);
+End;
+
+Procedure TForm4.ComboBox2Select(Sender: TObject);
+Begin
+  UpdatePresetButtons();
+  If SelectedPresetFile() <> '' Then LoadPreset(SelectedPresetFile());
+End;
+
+Procedure TForm4.Button7Click(Sender: TObject);
+Var
+  aName, Filename, Default: String;
+Begin
+  // Speichern als: die Mods aus dem Dialog unter einem (neuen oder vorhandenen) Namen
+  If Not ControlsToSettings() Then exit;
+  Default := '';
+  If (SelectedPresetFile() <> '') And Not SelectedPresetBuiltIn() Then Default := ModPresetName(SelectedPresetFile());
+  If Not AskPresetName(R_PresetSaveTitle, Default, aName) Then exit;
+  Filename := FindUserPreset(aName);
+  If Filename <> '' Then Begin
+    If MessageDlg(format(RF_PresetOverwrite, [aName]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes Then exit;
+  End
+  Else Begin
+    Filename := NewPresetFile(aName);
+  End;
+  If Not SaveModPreset(Filename, aName, fSettings) Then Begin
+    showmessage(R_WriteFailed + LineEnding + Filename);
+    exit;
+  End;
+  ReadPresets(Filename);
+End;
+
+Procedure TForm4.Button8Click(Sender: TObject);
+Var
+  aName, Filename, Other: String;
+Begin
+  // Umbenennen: der Name in der Datei, die Datei selbst heißt danach wie der Name, wenn der frei ist
+  Filename := SelectedPresetFile();
+  If (Filename = '') Or SelectedPresetBuiltIn() Then exit;
+  If Not AskPresetName(R_PresetRenameTitle, ModPresetName(Filename), aName) Then exit;
+  Other := FindUserPreset(aName);
+  If (Other <> '') And Not SameFileName(Other, Filename) Then Begin
+    showmessage(format(RF_PresetExists, [aName]));
+    exit;
+  End;
+  If Not SetModPresetName(Filename, aName) Then Begin
+    showmessage(R_WriteFailed + LineEnding + Filename);
+    exit;
+  End;
+  Other := UserPresetDir() + PresetFileName(aName) + '.ini';
+  If (Not SameFileName(Other, Filename)) And (Not FileExists(Other)) And RenameFile(Filename, Other) Then Filename := Other;
+  ReadPresets(Filename);
+End;
+
+Procedure TForm4.Button9Click(Sender: TObject);
+Var
+  Filename: String;
+Begin
+  // Löschen, nur eigene Presets
+  Filename := SelectedPresetFile();
+  If (Filename = '') Or SelectedPresetBuiltIn() Then exit;
+  If MessageDlg(format(RF_PresetDelete, [ModPresetName(Filename)]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes Then exit;
+  If Not DeleteFile(Filename) Then Begin
+    showmessage(R_WriteFailed + LineEnding + Filename);
+    exit;
+  End;
+  ReadPresets('');
+End;
+
+Procedure TForm4.Button10Click(Sender: TObject);
+Var
+  sd: TSaveDialog;
+Begin
+  // Exportieren: das gewählte Preset als Datei, z.B. zum Weitergeben
+  If SelectedPresetFile() = '' Then exit;
+  sd := TSaveDialog.Create(self);
+  Try
+    sd.Title := R_PresetExportTitle;
+    sd.Filter := R_PresetFilter;
+    sd.DefaultExt := 'ini';
+    sd.FileName := PresetFileName(ModPresetName(SelectedPresetFile())) + '.ini';
+    sd.Options := sd.Options + [ofOverwritePrompt];
+    If Not sd.Execute Then exit;
+    If Not CopyFile(SelectedPresetFile(), sd.FileName) Then Begin
+      showmessage(R_WriteFailed + LineEnding + sd.FileName);
+    End;
+  Finally
+    sd.free;
+  End;
+End;
+
+Procedure TForm4.Button11Click(Sender: TObject);
+Var
+  od: TOpenDialog;
+  aName, Filename: String;
+  Preset: TModSettings;
+Begin
+  // Importieren: eine Preset Datei in die eigenen Presets übernehmen und gleich laden
+  od := TOpenDialog.Create(self);
+  Try
+    od.Title := R_PresetImportTitle;
+    od.Filter := R_PresetFilter;
+    If Not od.Execute Then exit;
+    If Not IsModPresetFile(od.FileName) Then Begin
+      showmessage(R_PresetInvalidFile + LineEnding + od.FileName);
+      exit;
+    End;
+    aName := ModPresetName(od.FileName);
+    Filename := FindUserPreset(aName);
+    If Filename <> '' Then Begin
+      If MessageDlg(format(RF_PresetOverwrite, [aName]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes Then exit;
+    End
+    Else Begin
+      Filename := NewPresetFile(aName);
+    End;
+    // Über die Settings neu schreiben: nur [Preset] und [Mods], ungültige Werte werden dabei auf ihre Grenzen gezogen
+    Preset.Handicap := Nil;
+    ModSettingsDefaults(Preset);
+    Try
+      ApplyModPreset(od.FileName, Preset);
+      If Not SaveModPreset(Filename, aName, Preset) Then Begin
+        showmessage(R_WriteFailed + LineEnding + Filename);
+        exit;
+      End;
+    Finally
+      Preset.Handicap.free;
+    End;
+  Finally
+    od.free;
+  End;
+  ReadPresets(Filename);
+  LoadPreset(Filename);
 End;
 
 Procedure TForm4.Label62Click(Sender: TObject);
