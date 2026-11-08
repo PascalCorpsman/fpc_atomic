@@ -531,6 +531,8 @@ Begin
   End;
   game.OnNeedHideCursor := @HideCursor;
   game.OnNeedShowCursor := @ShowCursor;
+  // Launcher Option "StayOnTop" (Default aus), vor dem ersten Anzeigen, damit das Fenster nicht neu erzeugt wird
+  If IniPropStorage1.ReadBoolean('StayOnTop', false) Then FormStyle := fsStayOnTop;
   RestoreWindowBounds; // Nicht in Load_Atomic_Settings, das wird auch aus den Optionen heraus aufgerufen
   Load_Atomic_Settings;
 {$IFDEF AUTOMODE}
@@ -669,7 +671,7 @@ Begin
   End;
 {$ENDIF}
   // Erst wenn das Spiel fertig initialisiert ist, vorher würde SwitchToScreen nichts tun bzw. wieder ins Hauptmenü wechseln
-  If (Not ConnectParamsHandled) And GameInitialized Then Begin
+  If (Not ConnectParamsHandled) And GameInitialized And Game.ReadyForParams Then Begin
     ConnectParamsHandled := true;
     (*
      * Im Falle, dass ein Spieler übers internet beitreten will, geht das typische UDP Suchen nicht
@@ -1011,6 +1013,11 @@ End;
 
 Procedure TForm1.SetFullScreen(Value: Boolean);
 Begin
+  (*
+   * Beim Verlassen zuerst merken: Das Ändern von WindowState löst (je nach Widgetset sofort) FormResize aus, das mit dem alten
+   * fWishFullscreen = true das Fenster gleich wieder auf Vollbild stellte. Das Verlassen des Vollbilds brauchte dann mehrere Versuche.
+   *)
+  If Not value Then fWishFullscreen := false;
   If value Then Begin
 {$IFDEF Windows}
     If WindowState = wsMaximized Then WindowState := wsNormal; // Sonst bleibt ein vorher maximiertes Fenster auf die Arbeitsfläche begrenzt

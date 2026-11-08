@@ -147,7 +147,7 @@ A part of the items below the bricks are **flamethrowers**. They look like a red
 - Items in the beam burn at once, like with a flame. This can be switched off, then the beam goes over them.
 - An opponent who stays in the beam for a set time without a break is hit like by a flame. Leaving the beam resets the time. Team mates are only hurt with friendly fire switched on, the beam never hurts the player firing it.
 - The fuel is only used up while firing. When it is empty, the flamethrower is gone. More flamethrower items add fuel.
-- While the player has fuel, the second action does not trigger or punch bombs.
+- While the player has fuel, a **short press** of the second action (released within 0.2 seconds) is the normal second action: it triggers the own trigger bombs and punches. Only **holding it longer** fires the beam, so it starts 0.2 seconds after the key is pressed.
 - The player can walk normally while firing, the beam turns with the player.
 - If the key is released while the game window has no focus (e.g. Alt+Tab), the game does not notice it: the beam keeps firing until the key is pressed and released again in the game.
 - In the mod test mode F4 (all items) also gives fuel.

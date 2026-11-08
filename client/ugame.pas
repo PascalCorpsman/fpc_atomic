@@ -288,6 +288,7 @@ Type
      * Meldungen und Ja / Nein Abfragen direkt im Spiel (statt als LCL-Fenster)
      *)
     Function MessageDialogReady: Boolean; // False, solange die Textur des Dialogs nicht geladen ist
+    Function ReadyForParams: Boolean; // True, wenn das Laden fertig ist und kein Disconnect mehr aussteht (-host, -join, -ip)
     Procedure ShowMessageDialog(Msg: String; Level: TLogLevel);
     Procedure AskYesNo(Question: String; OnYes: TNotifyEvent);
   End;
@@ -594,6 +595,15 @@ End;
 Function TGame.MessageDialogReady: Boolean;
 Begin
   result := fMessageDialog.Ready;
+End;
+
+Function TGame.ReadyForParams: Boolean;
+Begin
+  (*
+   * Am Ende des Ladens wechselt das Spiel ins Hauptmenü, das merkt einen Disconnect vor (DoDisconnect im OnIdle).
+   * Der hat die Suche von -join gleich wieder gestoppt, das Spiel wartete dann für immer auf einen Server.
+   *)
+  result := fInitialized And Not fNeedDisconnect;
 End;
 
 Procedure TGame.ShowMessageDialog(Msg: String; Level: TLogLevel);
@@ -1665,7 +1675,7 @@ Begin
   If Not found Then Begin
     // Während des Spieler Setups ist es möglich dass der Spieler kurzzeitig nicht in den Players steht !
     If fActualScreen <> fScreens[sPlayerSetup] Then Begin
-      LogShow('Error user not known anymore to server, exiting actual session', llError);
+      LogShow('Error: the server no longer knows this player, leaving the current session.', llError);
       SwitchToScreen(sMainScreen);
       LogLeave(EnterID);
       exit;
@@ -2688,6 +2698,9 @@ Begin
           LogShow('Error, could not start UDP Server.', llError);
           SwitchToScreen(sMainScreen);
           LogLeave(EnterID);
+        End
+        Else Begin
+          IgnoreUdpConnReset(fUDPPingData.Connection.Iterator.Handle);
         End;
       End;
       // The broadcast address of every network (also VPN), 255.255.255.255 as fallback and the own machine
@@ -2705,10 +2718,10 @@ Begin
     End;
     LogLeave(EnterID);
   End;
-  // If we do not find a Local game after 2 tries, bring up the "Ask for IP Dialog"
-  // First Try is in ms 0
-  // Second Try is in ms 500
-  If fUDPPingData.StartTickValue + 550 <= GetTickCount64 Then Begin
+  // If we do not find a Local game after 3 tries, bring up the "Ask for IP Dialog"
+  // Tries are in ms 0, 500 and 1000, the answer may need a while (WLAN, several adapters)
+  // An answer that comes while the dialog is open closes it again (Join -> StopJoinQuestion)
+  If fUDPPingData.StartTickValue + 1550 <= GetTickCount64 Then Begin
     fUDPPingData.StartTickValue := GetTickCount64 + 1000 * 60 * 60; // Only poll once, by forwarding the next poll 1h this should be the case ;)
     key := VK_J;
     fScreens[sMainScreen].OnKeyDown(Nil, key, []);
@@ -2799,6 +2812,9 @@ Begin
     // For localhost, OnIdle will retry
   End
   Else Begin
+    // The attempt is running, the retry in OnIdle comes only after ConnectionRetryInterval. A retry right away would
+    // replace the connection to an already running server before it reports back, the server then loses the player.
+    fLastConnectionAttempt := GetTickCount64;
     // Close a maybe openened join dialog ..
     TMainMenu(fScreens[sMainScreen]).StopJoinQuestion;
   End;
@@ -2895,6 +2911,10 @@ Begin
     fUDPPingData.Connection.OnError := @OnUDPConnection_Error;
     If Not fUDPPingData.Connection.Connect(LADDR_ANY, UDPPingPort) Then Begin
       LogShow('Error, could not start UDP Server.', llError);
+    End
+    Else Begin
+      // Der Ping an 127.0.0.1 ohne lokalen Server ließ unter Windows sonst den Socket mit Fehler 10054 abstürzen
+      IgnoreUdpConnReset(fUDPPingData.Connection.Iterator.Handle);
     End;
   End;
   LogLeave(EnterID);

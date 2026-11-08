@@ -137,6 +137,7 @@ Begin
   kg := TKeyGrabber.CreateNew(Nil);
   key := kg.GrabVKKey();
   kg.free;
+  If key = VK_UNKNOWN Then exit; // Abgebrochen (ESC, Fenster geschlossen), die alte Taste bleibt
   index := Tbutton(Sender).Tag;
   Case index Of
     1: fkeys[ks0].KeyUp := key;

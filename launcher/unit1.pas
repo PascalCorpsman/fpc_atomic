@@ -20,7 +20,7 @@ Interface
 
 Uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  Buttons, IniFiles, UTF8Process, ulauncher, ulaunchersound;
+  Buttons, IniFiles, UTF8Process, ulauncher, ulaunchersound, ulanscan;
 
 Type
 
@@ -50,6 +50,8 @@ Type
     CheckBox6: TCheckBox;
     CheckBox7: TCheckBox;
     CheckBox8: TCheckBox;
+    CheckBox9: TCheckBox;
+    CheckBox10: TCheckBox;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
@@ -71,11 +73,13 @@ Type
     Label11: TLabel;
     Label12: TLabel;
     ComboBox1: TComboBox;
+    ComboBox2: TComboBox;
     Panel1: TPanel;
     PanelNews: TPanel;
     LabelNews: TLabel;
     ButtonNewsClose: TSpeedButton;
     Timer1: TTimer;
+    Timer2: TTimer;
     Procedure Button1Click(Sender: TObject);
     Procedure Button2Click(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
@@ -98,6 +102,7 @@ Type
     Procedure Label9Click(Sender: TObject);
     Procedure ComboBox1Change(Sender: TObject);
     Procedure CheckBox3Change(Sender: TObject);
+    Procedure CheckBox10Change(Sender: TObject);
     Procedure Edit1Change(Sender: TObject);
     Procedure FormCloseQuery(Sender: TObject; Var CanClose: Boolean);
     Procedure FormCreate(Sender: TObject);
@@ -105,6 +110,7 @@ Type
     Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure Panel1MouseEnter(Sender: TObject);
     Procedure Timer1Timer(Sender: TObject);
+    Procedure Timer2Timer(Sender: TObject);
     Procedure Panel1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
   private
     fLeftColumnShift: Integer; // um so viel ist die linke Spalte ohne Hinweis nach oben gerückt (negativ)
@@ -133,12 +139,17 @@ Type
     fJobTimer: TTimer; // Liest deren Ausgabe und merkt, wenn sie fertig sind
     fCloseAfterJobs: Boolean; // Der Launcher wurde geschlossen, während noch Stile erzeugt werden: danach beenden
     fLaunchCaption, fLaunchShown: String; // Der übersetzte Text des Start Knopfs (Label7) und der zuletzt gesetzte (mit Spielmodus)
+    fLanScanner: TLanScanner; // Sucht ständig nach Spielen im lokalen Netz (Timer2)
+    fLanUpdating: Boolean; // True, während UpdateLanGames CheckBox10 setzt (dann ist es kein Klick des Users)
+    fLanKeys: TStringList; // IP:Port der Einträge von ComboBox2, damit die Auswahl beim Aktualisieren am selben Spiel bleibt
+    fLanUserUnchecked: Boolean; // Der User hat CheckBox10 selbst abgewählt, dann wird es nicht mehr automatisch gesetzt
 
     Procedure LoadLanguages();
     Procedure LoadSettings();
     Procedure UpdateStatus();
     Procedure UpdateModsCaption();
     Procedure UpdateGameModeCaption();
+    Procedure UpdateLanGames();
     Procedure StoreSettings();
     Procedure ApplyLanguage();
 
@@ -301,6 +312,13 @@ Begin
     If ParamStr(i) = '-port' Then edit3.text := ParamStr(i + 1);
   End;
   CheckBox3Change(Nil);
+  // Spiele im lokalen Netz suchen, gefunden -> CheckBox10 wird gesetzt und Launch tritt dem Spiel direkt bei
+  fLanUpdating := false;
+  fLanUserUnchecked := false;
+  fLanKeys := TStringList.Create;
+  fLanScanner := TLanScanner.Create;
+  UpdateLanGames();
+  Timer2.Enabled := true;
 End;
 
 Procedure TForm1.Button3Click(Sender: TObject);
@@ -331,7 +349,8 @@ Begin
   Finally
     p.free;
   End;
-  UpdateStatus();
+  // Mit den CD-Daten gibt es das Original und sein Seitenbild, auch wenn der Extraktor aus dem Update Dialog kam (SelectAssetSet -> LoadSideImage, UpdateStatus)
+  ReadAssetSets();
 End;
 
 Procedure TForm1.Button5Click(Sender: TObject);
@@ -683,6 +702,68 @@ Begin
   Edit2.Enabled := CheckBox3.Checked;
   Label3.Enabled := CheckBox3.Checked;
   Edit3.Enabled := CheckBox3.Checked;
+  // Über den Router oder im lokalen Netz beitreten, nicht beides
+  If CheckBox3.Checked Then CheckBox10.Checked := false;
+End;
+
+Procedure TForm1.CheckBox10Change(Sender: TObject);
+Begin
+  If CheckBox10.Checked Then
+    CheckBox3.Checked := false
+  Else If Not fLanUpdating Then
+    fLanUserUnchecked := true;
+End;
+
+Procedure TForm1.Timer2Timer(Sender: TObject);
+Begin
+  If fLanScanner.Poll Then UpdateLanGames();
+End;
+
+Procedure TForm1.UpdateLanGames;
+Var
+  Games: TLanGames;
+  Key: String;
+  i, Index: Integer;
+  WasEmpty: Boolean;
+Begin
+  If Not assigned(fLanScanner) Then exit; // ApplyLanguage beim Laden der Einstellungen, vor dem Anlegen in FormCreate
+  // Die Liste neu füllen, die Auswahl bleibt am selben Spiel (IP:Port)
+  Games := fLanScanner.Games;
+  WasEmpty := Not ComboBox2.Enabled;
+  Key := '';
+  If (ComboBox2.ItemIndex >= 0) And (ComboBox2.ItemIndex < fLanKeys.Count) Then Key := fLanKeys[ComboBox2.ItemIndex];
+  fLanUpdating := true;
+  Try
+    Index := 0;
+    ComboBox2.Items.BeginUpdate;
+    Try
+      ComboBox2.Items.Clear;
+      fLanKeys.Clear;
+      If length(Games) = 0 Then Begin
+        ComboBox2.Items.Add(R_LanSearching);
+      End
+      Else Begin
+        For i := 0 To high(Games) Do Begin
+          ComboBox2.Items.Add(format(R_LanGame, [Games[i].Name, Games[i].IP, Games[i].Port]));
+          fLanKeys.Add(LanGameKey(Games[i]));
+          If fLanKeys[i] = Key Then Index := i;
+        End;
+      End;
+    Finally
+      ComboBox2.Items.EndUpdate;
+    End;
+    ComboBox2.ItemIndex := Index;
+    ComboBox2.Enabled := length(Games) <> 0;
+    CheckBox10.Enabled := length(Games) <> 0;
+    If length(Games) = 0 Then Begin
+      CheckBox10.Checked := false;
+    End
+    Else If WasEmpty And (Not CheckBox3.Checked) And (Not fLanUserUnchecked) Then Begin
+      CheckBox10.Checked := true;
+    End;
+  Finally
+    fLanUpdating := false;
+  End;
 End;
 
 Procedure TForm1.Edit1Change(Sender: TObject);
@@ -771,6 +852,11 @@ Begin
   fAssetFolders := Nil;
   fAssetNames.free;
   fAssetNames := Nil;
+  Timer2.Enabled := false;
+  fLanScanner.Free;
+  fLanScanner := Nil;
+  fLanKeys.Free;
+  fLanKeys := Nil;
   ini.free;
   ini := Nil;
 End;
@@ -823,6 +909,7 @@ Begin
   End;
   // Run the App ;)
   ReleaseSoundTest(); // Das Spiel braucht das Audiogerät
+  Timer2.Enabled := false; // Keine Suche, solange das Spiel läuft
   p := TProcessUTF8.Create(Nil);
   p.Options := [poDetached];
   p.Executable := 'fpc_atomic'{$IFDEF Windows} + '.exe'{$ENDIF};
@@ -836,6 +923,13 @@ Begin
     p.Parameters.Add(Edit2.Text);
     p.Parameters.Add('-port');
     p.Parameters.Add(Edit3.Text);
+  End
+  Else If CheckBox10.Checked And (ComboBox2.ItemIndex >= 0) And (ComboBox2.ItemIndex <= high(fLanScanner.Games)) Then Begin
+    // Dem im lokalen Netz gefundenen Spiel direkt beitreten
+    p.Parameters.Add('-ip');
+    p.Parameters.Add(fLanScanner.Games[ComboBox2.ItemIndex].IP);
+    p.Parameters.Add('-port');
+    p.Parameters.Add(inttostr(fLanScanner.Games[ComboBox2.ItemIndex].Port));
   End
   Else If GetKeyState(VK_SHIFT) < 0 Then Begin
     // Shift + Launch: Das Spiel tritt sofort einem Netzwerkspiel bei (sucht im lokalen Netz, sonst fragt es nach IP und Port)
@@ -879,6 +973,7 @@ Begin
   ini := TIniFile.Create(GetAtomicConfigFile());
   LoadSettings();
   UpdateStatus();
+  Timer2.Enabled := true;
   Show;
   BringToFront;
   ShowStatisticsAfterGame();
@@ -1479,8 +1574,7 @@ Begin
     Case r Of
       mrYes: If SetupGenerate(false, n) Then break;
       mrNo: Begin
-          Button4Click(Nil);
-          ReadAssetSets(); // Mit den CD-Daten gibt es das Original (und das Seitenbild)
+          Button4Click(Nil); // Liest auch die Grafiksätze und das Seitenbild neu
           break;
         End;
     Else
@@ -1899,6 +1993,7 @@ Begin
   CheckBox8.Checked := ini.ReadBool(FPC_AtomicIniSection, 'PlaySoundEffects', true); // Wie "Soundeffekte abspielen" in den Spieloptionen
   CheckBox5.Checked := Not ini.ReadBool(FPC_AtomicIniSection, 'Proportional', true);
   CheckBox7.Checked := ini.ReadBool(FPC_AtomicIniSection, 'RememberWindow', true);
+  CheckBox9.Checked := ini.ReadBool(FPC_AtomicIniSection, 'StayOnTop', false);
   edit1.text := ini.ReadString(FPC_AtomicIniSection, 'NodeName', 'Player 1');
   ProtocollVersion := ini.ReadInteger(FPC_AtomicIniSection, 'ProtocollVersion', -1);
   Version := strtofloatdef(ini.ReadString(FPC_AtomicIniSection, 'Version', '-1'), -1, fm);
@@ -2107,6 +2202,7 @@ Begin
   Language.AddIgnoredIdentifier('Form1.Button16.Hint');
   Language.AddIgnoredIdentifier('Form1.ButtonNewsClose.Caption'); // Nur das Zeichen ×
   Language.AddIgnoredIdentifier('Form1.ComboBox1.Items');
+  Language.AddIgnoredIdentifier('Form1.ComboBox2.Items'); // Die gefundenen Spiele, setzt UpdateLanGames
   Language.AddIgnoredComponent(Form3.ListView1);
   For i := 0 To Form3.ComponentCount - 1 Do Begin // Form3: zur Laufzeit gesetzt (Labels ohne Caption im Designer, Knöpfe)
     If (Form3.Components[i] Is TLabel) And (TLabel(Form3.Components[i]).Caption = '') Then
@@ -2189,6 +2285,7 @@ Begin
   UpdateStatus();
   UpdateModsCaption();
   UpdateGameModeCaption();
+  UpdateLanGames(); // Der Text "suche ..." kommt aus der Sprache
   If fAssetNames.Count > 0 Then Begin
     fAssetNames[0] := R_AssetSetOriginal; // Der Name von Original kommt aus der Sprache
     // Die Sätze der Einrichtung heißen wie ihr Stil in der Sprache
@@ -2217,6 +2314,7 @@ Begin
   ini.WriteBool(FPC_AtomicIniSection, 'PlaySoundEffects', CheckBox8.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'Proportional', Not CheckBox5.Checked);
   ini.WriteBool(FPC_AtomicIniSection, 'RememberWindow', CheckBox7.Checked);
+  ini.WriteBool(FPC_AtomicIniSection, 'StayOnTop', CheckBox9.Checked);
   ini.WriteString(FPC_AtomicIniSection, 'NodeName', trim(edit1.text));
 
   ini.WriteString('Launcher', 'Router_IP', edit2.text);

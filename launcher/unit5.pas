@@ -528,7 +528,7 @@ Begin
   CheckBox1.Checked := false;
   CheckBox2.Checked := true;
   CheckBox3.Checked := false;
-  SetScheme('BASIC.SCH');
+  SetScheme(ResolveSchemeFile('BASIC.SCH')); // Ohne CD Daten gibt es kein BASIC.SCH, dann CLEAR.SCH der generierten Schemes
   SetMap(''); // Ohne gespeicherte Karte nimmt das Spiel die Zufallskarte (Name '' und Hash 0)
   SetPlayTime(2 * 60 + 30);
   SpinEdit2.Value := 3;
@@ -581,7 +581,7 @@ Begin
   CheckBox1.Checked := ini.ReadBool(FPC_AtomicIniSection, 'TeamPlay', false);
   CheckBox2.Checked := ini.ReadBool(FPC_AtomicIniSection, 'RandomStart', true);
   CheckBox3.Checked := ini.ReadBool(FPC_AtomicIniSection, 'LostPlayersRevertToAI', false);
-  SetScheme(ini.ReadString(FPC_AtomicIniSection, 'SchemeFile', 'BASIC.SCH'));
+  SetScheme(ini.ReadString(FPC_AtomicIniSection, 'SchemeFile', ResolveSchemeFile('BASIC.SCH')));
   SetMap(ini.ReadString(FPC_AtomicIniSection, 'LastPlayedField', ''));
   SetPlayTime(ini.ReadInteger(FPC_AtomicIniSection, 'PlayTime', 2 * 60 + 30));
   SpinEdit2.Value := ini.ReadInteger(FPC_AtomicIniSection, 'LastWinsToWinMatch', 3);
