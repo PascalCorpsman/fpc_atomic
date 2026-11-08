@@ -220,7 +220,13 @@ End;
 
 Function FormatPlayTime(ms: QWord): String;
 Begin
-  result := format('%d:%.2d', [ms Div 3600000, (ms Div 60000) Mod 60]);
+  // Mit Einheit, "0:03" würde man sonst als 3 Sekunden lesen
+  If ms < 3600000 Then Begin
+    result := format('%d:%.2d min', [ms Div 60000, (ms Div 1000) Mod 60]);
+  End
+  Else Begin
+    result := format('%d:%.2d h', [ms Div 3600000, (ms Div 60000) Mod 60]);
+  End;
 End;
 
 Function FormatBytes(b: QWord): String;
@@ -251,7 +257,7 @@ Function ColumnMinSample(c: TStatColumn): String;
 Begin
   Case c Of
     scRank, scName, scKeys, scWinRate, scKD: result := '';
-    scPlayTime: result := '888:88';
+    scPlayTime: result := '88:88 min';
     scLastPlayed: result := DateToStr(EncodeDate(2088, 12, 28));
   Else
     result := FormatFloat('#,##0', 888888);
@@ -306,6 +312,11 @@ Begin
     scKD: Begin
         result := p.stats[pssPlayedMatches] >= MinMatchesForRate;
         If result Then Value := p.stats[pssKills] / max(1, p.stats[pssDeaths]);
+      End;
+    scPlayTime: Begin
+        // Die Spielzeit wird erst seit der Statistik im Launcher gezählt, ältere Einträge haben keine
+        result := p.stats[pssPlayTimeMs] > 0;
+        Value := p.stats[pssPlayTimeMs];
       End;
   Else
     Value := p.stats[ColumnSelector[c]];
