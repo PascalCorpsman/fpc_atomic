@@ -103,6 +103,7 @@ object Form4: TForm4
       'Teleporters'
       'Items & diseases'
       'Carry bombs'
+      'Action replay'
       'Mod test mode'
     )
     ItemHeight = 22
@@ -1885,6 +1886,68 @@ object Form4: TForm4
           Width = 250
           Caption = 'Explode after the max. carry time'
           TabOrder = 4
+        end
+      end
+    end
+    object TabSheet16: TTabSheet
+      Caption = 'TabSheet16'
+      ClientHeight = 330
+      ClientWidth = 478
+      object CheckBox27: TCheckBox
+        Left = 8
+        Height = 21
+        Hint = 'On: at the end of every round all players see the last seconds again.'
+        Top = 8
+        Width = 117
+        Caption = 'Action replay'
+        Font.Style = [fsBold]
+        ParentFont = False
+        TabOrder = 0
+        OnChange = CheckBox1Change
+      end
+      object Label109: TLabel
+        Left = 8
+        Height = 48
+        Top = 34
+        Width = 460
+        AutoSize = False
+        Caption = 'At the end of every round all players see the last seconds again, without sound. Only the master can stop it with Return, then it stops for everyone.'
+        WordWrap = True
+      end
+      object Panel16: TPanel
+        Left = 0
+        Height = 236
+        Top = 88
+        Width = 468
+        BevelOuter = bvNone
+        ClientHeight = 236
+        ClientWidth = 468
+        TabOrder = 1
+        object Label110: TLabel
+          Left = 8
+          Height = 16
+          Top = 14
+          Width = 72
+          Caption = 'Length (s)'
+        end
+        object SpinEdit58: TSpinEdit
+          Left = 364
+          Height = 30
+          Hint = 'How many seconds before the last death of the round are shown again (then 1.5 s after it). Without a death: before the end of the round.'
+          Top = 10
+          Width = 96
+          MinValue = 1
+          TabOrder = 0
+          Value = 5
+        end
+        object Label111: TLabel
+          Left = 8
+          Height = 64
+          Top = 50
+          Width = 452
+          AutoSize = False
+          Caption = 'The players do not need to do anything: each game records the last seconds by itself and shows them before the round result.'
+          WordWrap = True
         end
       end
     end

@@ -468,6 +468,15 @@ Begin
       miDebugCommand: Begin
           HandleDebugCommand(Chunk.Data, Chunk.UID);
         End;
+      miSkipReplay: Begin
+          // Nur der Master beendet das Action Replay, und zwar bei allen gleichzeitig (wie das Weiterschalten der anderen Screens)
+          If (Chunk.UID = fSettings.MasterUid) And (fGameState = gsShowHighscore) Then Begin
+            SendChunk(miSkipReplay, Nil, 0);
+          End
+          Else Begin
+            log('Ignored skip replay from ' + inttostr(Chunk.UID), llWarning);
+          End;
+        End;
       miStartGame: Begin
           (*
            * Nur der Master startet (so sendet es auch der Client), und nur aus dem Karten Setup oder dem Highscore.
@@ -3807,6 +3816,7 @@ End;
 Procedure TServer.SendModInfo(UID: integer);
 Var
   m: TMemoryStream;
+  i: Integer;
 Begin
   // Ob der Mod Test Modus an ist (nur der Master darf Test Befehle ausführen), wie Geister flackern und wie durchsichtig "durch Blöcke laufen" ist
   m := TMemoryStream.Create;
@@ -3819,6 +3829,10 @@ Begin
   m.Write(fModSettings.HuntedAura, sizeof(fModSettings.HuntedAura));
   m.Write(fModSettings.HuntedAuraSelf, sizeof(fModSettings.HuntedAuraSelf));
   m.Write(AiGameModesMask, sizeof(AiGameModesMask));
+  // Action Replay: Länge in ms, 0 = aus (die Clients schneiden mit und spielen am Rundenende ab)
+  i := 0;
+  If fModSettings.ActionReplay Then i := fModSettings.ActionReplaySec * 1000;
+  m.Write(i, sizeof(i));
   SendChunk(miModInfo, m, UID);
 End;
 
@@ -3838,6 +3852,7 @@ Begin
   If fModSettings.CarryBomb Then result := result + ', carry bombs';
   If fModSettings.OpenBorders Then result := result + ', open borders';
   If fModSettings.Teleporters Then result := result + ', teleporters';
+  If fModSettings.ActionReplay Then result := result + ', action replay';
   If fModSettings.ItemConfig Then result := result + ', items & diseases';
   If fModSettings.GameMode = gmHunter Then result := result + ', hunter';
   If fModSettings.ModTestMode Then result := result + ', mod test mode';
