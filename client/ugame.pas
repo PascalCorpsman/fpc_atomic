@@ -180,6 +180,7 @@ Type
     FOnMouseDownCapture, FOnMouseupCapture: TMouseEvent;
     FOnDblClickCapture: TNotifyEvent;
     FOnKeyDownCapture, FOnKeyUpCapture: TKeyEvent;
+    FOnKeyPressCapture: TKeyPressEvent;
 
     fChunkManager: TChunkManager;
     fUDPPingData: TUDPPingData;
@@ -194,6 +195,7 @@ Type
 
     Procedure FOnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
     Procedure FOnKeyUp(Sender: TObject; Var Key: Word; Shift: TShiftState);
+    Procedure FOnKeyPress(Sender: TObject; Var Key: Char); // Die Zeichen für die Eingaben im Dialog (TMessageDialog.HandleChar)
     Procedure FOnSDLKeyDown(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
     Procedure FOnSDLKeyUp(Const aKey: TAtomicKey; Const aKeyset: TKeySet);
 
@@ -327,6 +329,7 @@ Type
     Function ReadyForParams: Boolean; // True, wenn das Laden fertig ist und kein Disconnect mehr aussteht (-host, -join, -ip)
     Procedure ShowMessageDialog(Msg: String; Level: TLogLevel);
     Procedure AskYesNo(Question: String; OnYes: TNotifyEvent);
+    Property MessageDialog: TMessageDialog read fMessageDialog; // Für Eingaben und Auswahllisten im Spiel (AskInput, AskList)
   End;
 
 Var
@@ -460,6 +463,8 @@ Begin
   EnterID := LogEnter('TGame.SwitchToScreen');
   If fReplayActive Then ReplayClear(); // z.B. miCommandoBackToMainMenu während des Action Replays
   If (TargetScreen = sHost) Or (TargetScreen = sJoinNetwork) Then Begin
+    // Zurück im Hauptmenü steht die Bombe dann auf Host bzw. Join, auch wenn das Spiel direkt so gestartet wurde (-host, -join)
+    If TargetScreen = sHost Then TMainMenu(fScreens[sMainScreen]).CursorPos := 1 Else TMainMenu(fScreens[sMainScreen]).CursorPos := 2;
     TJoinMenu(fScreens[sJoinNetwork]).SetServerIPs(Nil); // Reset IP in case of "join"
     fParamJoinIP := ''; // Reset last Join IP, this is needed, if player was server before, ..
     If assigned(OnNeedHideCursor) Then OnNeedHideCursor(Nil);
@@ -1079,6 +1084,14 @@ Begin
   End;
   If assigned(FOnKeyUpCapture) Then Begin
     FOnKeyUpCapture(sender, key, shift);
+  End;
+End;
+
+Procedure TGame.FOnKeyPress(Sender: TObject; Var Key: Char);
+Begin
+  If fMessageDialog.Active Then fMessageDialog.HandleChar(Key);
+  If assigned(FOnKeyPressCapture) Then Begin
+    FOnKeyPressCapture(Sender, Key);
   End;
 End;
 
@@ -3110,6 +3123,8 @@ Begin
         Application.AddOnKeyDownBeforeHandler(@OnApplicationKeyDownBefore);
         FOnKeyUpCapture := fOwner.OnKeyUp;
         fOwner.OnKeyUp := @FOnKeyUp;
+        FOnKeyPressCapture := fOwner.OnKeyPress;
+        fOwner.OnKeyPress := @FOnKeyPress;
         fOnResizeCapture := fOwner.OnResize;
         fOwner.OnResize := @FOnResize;
 

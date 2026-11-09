@@ -78,30 +78,16 @@ Type
     Procedure QuitToMainScreen(Ask: Boolean); // Zurück ins Hauptmenü, mit Ask = True wird vorher im Spiel nachgefragt
   End;
 
-  { TJoinQuestionForm }
-
-  TJoinQuestionForm = Class(TForm)
-  private
-    Edit1: TEdit;
-    Edit2: TEdit;
-    Label1: TLabel;
-    Label2: TLabel;
-    Button1: TButton;
-    Button2: TButton;
-    Procedure EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-    Procedure FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-  public
-    Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
-  End;
-
   { TMainMenu }
 
   TMainMenu = Class(TScreen)
   private
     fCursor: TOpenGL_Animation;
-    fCursorPos: integer; // Position der "Bombe" in Menüpunkten
-    fJoinQuestionForm: TJoinQuestionForm;
+    fCursorPos: integer; // Position der "Bombe" in Menüpunkten, bleibt erhalten solange das Spiel läuft (Reset setzt sie nicht zurück)
+    Procedure OnJoinEntered(Sender: TObject; Const Values: TStringArray);
+    Procedure OnJoinCanceled(Sender: TObject);
   public
+    Property CursorPos: integer read fCursorPos write fCursorPos;
     Procedure OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState); override;
     Procedure OnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
 
@@ -233,9 +219,11 @@ Type
   private
     fcursorTex: TGraphikItem;
     fCursorPos: integer; // Position des "Kopfes" in Menüpunkten
-    SchemQuestionForm: TForm;
     KeyboardDialog: TForm;
-    InputBoxForm: TForm;
+    fSchemes: TStringArray; // Die Auswahl im Dialog Scheme (OnSchemeSelected)
+    Procedure OnNodeNameEntered(Sender: TObject; Const Values: TStringArray);
+    Procedure OnPortEntered(Sender: TObject; Const Values: TStringArray);
+    Procedure OnSchemeSelected(Sender: TObject; Index: Integer);
   public
     Procedure OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState); override;
     Procedure OnMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -260,212 +248,34 @@ Uses LCLType, Math, Graphics, Dialogs, fileutil, StrUtils
   , uopengl_shaderprimitives
   , usdl_input
   , uassetpath
+  , umessagedialog
   ;
 
-Type
+Const
+  JoinDialogTag = 1; // Der Dialog nach IP und Port (TMainMenu), StopJoinQuestion schließt ihn wieder
+  DigitChars = ['0'..'9'];
+  HostChars = ['a'..'z', 'A'..'Z', '0'..'9', '.', '-', '_', ':']; // IP Adresse (auch IPv6) oder Rechnername
+  NodeNameChars = ['a'..'z', 'A'..'Z', '0'..'9', '_', ' ']; // Siehe ValidNodeName
 
-  { TSchemQuestionForm }
-
-  TSchemQuestionForm = Class(TForm)
-    Procedure FormButton1Click(Sender: TObject);
-    Procedure FormShow(Sender: Tobject);
-    Procedure ListboxKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-  private
-    Listbox1: TListbox;
-    Button1: TButton;
-  protected
-    Procedure KeyDown(Var Key: Word; Shift: TShiftState); override;
-  public
-    Procedure LoadSchemes(SelectedScheme: String);
-    // Weil die Form keine Ressource hat, muss sie mittels CreateNew erzeugt werden, was auch immer das für einen unterschied macht ...
-    Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
+(*
+ * Die Schemes in data/schemes, sortiert (wie im Launcher)
+ *)
+Function ReadSchemes(): TStringArray;
+Var
+  sl: TStringList;
+  i: Integer;
+Begin
+  result := Nil;
+  sl := FindAllfiles(AssetDataDir() + 'schemes', '*.sch', false);
+  For i := 0 To sl.Count - 1 Do Begin
+    sl[i] := ExtractFileName(sl[i]);
   End;
-
-  { TInputBoxForm }
-
-  TInputBoxForm = Class(Tform) // Need to emulate lcl.Inputbox, so that SDL-Input can "skip" it ..
-    Procedure FormShow(Sender: Tobject);
-    Procedure EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-  private
-    Label1: TLabel;
-    Edit1: TEdit;
-    Button1: TButton;
-    Button2: TButton;
-  protected
-    Procedure KeyDown(Var Key: Word; Shift: TShiftState); override;
-  public
-    // Weil die Form keine Ressource hat, muss sie mittels CreateNew erzeugt werden, was auch immer das für einen unterschied macht ...
-    Constructor CreateNew(AOwner: TComponent; Num: Integer = 0); override;
+  sl.Sort;
+  setlength(result, sl.Count);
+  For i := 0 To sl.Count - 1 Do Begin
+    result[i] := sl[i];
   End;
-
-  { TInputBoxForm }
-
-Procedure TInputBoxForm.FormShow(Sender: Tobject);
-Begin
-  edit1.SetFocus;
-End;
-
-Procedure TInputBoxForm.EditKeyDown(Sender: TObject; Var Key: Word;
-  Shift: TShiftState);
-Begin
-  If (key = VK_RETURN) Then button2.Click;
-  If (key = VK_ESCAPE) Then button1.Click;
-End;
-
-Procedure TInputBoxForm.KeyDown(Var Key: Word; Shift: TShiftState);
-Begin
-  If (key = VK_RETURN) Then button2.Click;
-  If (key = VK_ESCAPE) Then button1.Click;
-End;
-
-Constructor TInputBoxForm.CreateNew(AOwner: TComponent; Num: Integer);
-Begin
-  Inherited CreateNew(AOwner, Num);
-  caption := 'TInputBoxForm';
-  width := 654;
-  height := 97;
-  FormStyle := fsSystemStayOnTop;
-  PopupMode := pmAuto; // Über dem Spielfenster, siehe TSchemQuestionForm
-  Constraints.MaxWidth := Width;
-  Constraints.MinWidth := Width;
-  Constraints.MaxHeight := Height;
-  Constraints.MinHeight := Height;
-  BorderIcons := [biSystemMenu];
-  Position := poScreenCenter;
-  label1 := TLabel.Create(self);
-  label1.name := 'Label1';
-  label1.Parent := self;
-  label1.Top := 8;
-  label1.Left := 8;
-  label1.Caption := 'Label1';
-  edit1 := TEdit.Create(self);
-  edit1.name := 'Edit1';
-  edit1.Parent := self;
-  edit1.Top := 24;
-  edit1.left := 8;
-  edit1.width := width - 16;
-  edit1.OnKeyDown := @EditKeyDown;
-  edit1.Text := 'Edit1';
-  button1 := TButton.Create(self);
-  button1.Name := 'Button1';
-  button1.Parent := self;
-  button1.ModalResult := mrCancel;
-  button1.Top := 57;
-  button1.Left := 492;
-  button1.Width := 73;
-  button1.Height := 33;
-  button1.Caption := 'Cancel';
-  button2 := TButton.Create(self);
-  button2.Name := 'Button2';
-  button2.Parent := self;
-  button2.ModalResult := mrOK;
-  button2.Top := 57;
-  button2.Left := 573;
-  button2.Width := 73;
-  button2.Height := 33;
-  button2.Caption := 'OK';
-End;
-
-{ TJoinQuestionForm }
-
-Constructor TJoinQuestionForm.CreateNew(AOwner: TComponent; Num: Integer);
-Begin
-  Inherited CreateNew(AOwner, Num);
-  caption := 'Enter IP-Settings';
-  width := 312;
-  height := 163;
-  Position := poScreenCenter;
-  FormStyle := fsSystemStayOnTop;
-  PopupMode := pmAuto; // Über dem Spielfenster, siehe TSchemQuestionForm
-  Constraints.MaxWidth := Width;
-  Constraints.MinWidth := Width;
-  Constraints.MaxHeight := Height;
-  Constraints.MinHeight := Height;
-
-  Edit1 := TEdit.Create(self);
-  edit1.name := 'Edit1';
-  edit1.Parent := self;
-  edit1.Top := 32;
-  edit1.Left := 16;
-  edit1.Width := 288;
-  edit1.Text := '127.0.0.1';
-
-  Edit2 := TEdit.Create(self);
-  edit2.name := 'Edit2';
-  edit2.Parent := self;
-  edit2.Top := 88;
-  edit2.Left := 16;
-  edit2.Width := 288;
-  edit2.Text := '9876';
-
-  label1 := TLabel.Create(self);
-  label1.Name := 'Label1';
-  label1.Parent := self;
-  label1.caption := 'IP';
-  label1.top := 8;
-  label1.Left := 8;
-
-  label2 := TLabel.Create(self);
-  label2.Name := 'Label2';
-  label2.Parent := self;
-  label2.caption := 'Port';
-  label2.top := 64;
-  label2.Left := 8;
-
-  Button1 := TButton.Create(self);
-  Button1.Name := 'Button1';
-  Button1.Parent := self;
-  Button1.caption := 'OK';
-  Button1.ModalResult := mrOK;
-  Button1.Default := True; // Make Enter key trigger this button (when focus is on button)
-  Button1.Top := 128;
-  Button1.Left := 229;
-
-  Button2 := TButton.Create(self);
-  Button2.Name := 'Button2';
-  Button2.Parent := self;
-  Button2.caption := 'Cancel';
-  Button2.ModalResult := mrCancel;
-  Button2.Cancel := True; // Make Esc key trigger this button
-  Button2.Top := 128;
-  Button2.Left := 16;
-
-  // Add keyboard support: Enter = OK everywhere
-  // Set handlers on Edit fields to catch Enter when focus is in Edit
-  Edit1.OnKeyDown := @EditKeyDown;
-  Edit2.OnKeyDown := @EditKeyDown;
-  // Set handler on form to catch Enter when focus is on form (not on Edit or Button)
-  OnKeyDown := @FormKeyDown;
-  KeyPreview := True; // Enable form-level key handling
-End;
-
-Procedure TJoinQuestionForm.EditKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-Begin
-  If key = VK_RETURN Then Begin
-    // Enter in Edit field = OK button
-    // Strategy: Set focus to OK button, then trigger it programmatically
-    Key := 0; // Prevent default behavior (newline in Edit)
-    Button1.SetFocus; // Focus the OK button first
-    // Now trigger the button click programmatically
-    Button1.Click; // This will set ModalResult := mrOK and close the form
-  End;
-  // Esc is handled automatically by Button2.Cancel := True
-End;
-
-Procedure TJoinQuestionForm.FormKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
-Begin
-  If key = VK_RETURN Then Begin
-    // Enter on form (when focus is NOT on Button1) = OK button
-    // Strategy: Set focus to OK button, then trigger it programmatically
-    If ActiveControl <> Button1 Then Begin
-      Key := 0; // Prevent default behavior
-      Button1.SetFocus; // Focus the OK button first
-      // Now trigger the button click programmatically
-      Button1.Click; // This will set ModalResult := mrOK and close the form
-    End;
-    // If focus is on Button1, let default behavior (Default := True) handle it
-  End;
-  // Esc is handled automatically by Button2.Cancel := True
+  sl.free;
 End;
 
 { TVictoryMenu }
@@ -614,105 +424,6 @@ End;
 Procedure TDrawGameMenu.Reset;
 Begin
   Inherited Reset;
-End;
-
-{ TSchemQuestionForm }
-
-Constructor TSchemQuestionForm.CreateNew(AOwner: TComponent; Num: Integer);
-Begin
-  Inherited CreateNew(AOwner, Num);
-  caption := 'Please select a scheme';
-  Width := 350;
-  height := 350;
-  FormStyle := fsSystemStayOnTop;
-  // Über dem Spielfenster, das (Launcher Option) selbst immer im Vordergrund sein kann, sonst wäre der modale Dialog unter Linux nicht erreichbar
-  PopupMode := pmAuto;
-  Constraints.MinHeight := height;
-  Constraints.MaxHeight := height;
-  Constraints.MinWidth := Width;
-  Constraints.MaxWidth := Width;
-  BorderIcons := [biSystemMenu];
-  position := poScreenCenter;
-  Button1 := TButton.Create(self);
-  button1.name := 'Button1';
-  Button1.Parent := self;
-  Button1.Align := alBottom;
-  button1.caption := 'OK';
-  button1.OnClick := @FormButton1Click;
-  Listbox1 := TListBox.Create(self);
-  Listbox1.Name := 'Listbox1';
-  Listbox1.Parent := self;
-  Listbox1.Align := alClient;
-  Listbox1.OnKeyDown := @ListboxKeyDown;
-
-  OnShow := @FormShow;
-End;
-
-Procedure TSchemQuestionForm.FormButton1Click(Sender: TObject);
-Begin
-  If Listbox1.ItemIndex <> -1 Then Begin
-    ModalResult := mrOK;
-  End
-  Else Begin
-    ModalResult := mrCancel; // Anscheinend haben wir keine Scheme files, dann versuchen wir auch nicht sie zu speichern
-  End;
-End;
-
-Procedure TSchemQuestionForm.FormShow(Sender: Tobject);
-Begin
-  Listbox1.SetFocus;
-  (*
-   * Die TopRow Eigenschaft darf erst gesetzt werden, wenn die Listbox dabei ist sich zu zeichnen
-   * im LoadSchemes geht das nicht ..
-   *)
-  If Listbox1.ItemIndex <> -1 Then Begin
-    Listbox1.TopIndex := Listbox1.ItemIndex;
-  End;
-End;
-
-Procedure TSchemQuestionForm.ListboxKeyDown(Sender: TObject; Var Key: Word;
-  Shift: TShiftState);
-Begin
-  If key = VK_RETURN Then Begin
-    key := 0; // Den Key Löschen, da der Button1.Click das Formular Platt macht und der Key sonst in TScreen nochmal ausgewertet wird.
-    button1.Click;
-  End;
-  If key = VK_ESCAPE Then ModalResult := mrCancel;
-End;
-
-Procedure TSchemQuestionForm.KeyDown(Var Key: Word;
-  Shift: TShiftState);
-Begin
-  If key = VK_RETURN Then Begin
-    FormButton1Click(self);
-  End;
-  If key = VK_ESCAPE Then ModalResult := mrCancel; // Wie in der Listbox: Abbrechen, das Scheme bleibt
-  If Listbox1.Items.Count <> 0 Then Begin
-    If (key = VK_UP) Then Listbox1.ItemIndex := max(0, Listbox1.ItemIndex - 1);
-    If (key = VK_DOWN) Then Listbox1.ItemIndex := min(Listbox1.Items.Count - 1, Listbox1.ItemIndex + 1);
-  End;
-End;
-
-Procedure TSchemQuestionForm.LoadSchemes(SelectedScheme: String);
-Var
-  p: String;
-  sl: TStringList;
-  i: Integer;
-Begin
-  p := AssetDataDir() + 'schemes';
-  sl := FindAllfiles(p, '*.sch', false);
-  Listbox1.Clear;
-  Listbox1.Sorted := true;
-  For i := 0 To sl.Count - 1 Do Begin
-    Listbox1.Items.Add(ExtractFileName(sl[i]));
-  End;
-  For i := 0 To Listbox1.Items.Count - 1 Do Begin
-    If lowercase(SelectedScheme) = lowercase(Listbox1.Items[i]) Then Begin
-      Listbox1.ItemIndex := i;
-      break;
-    End;
-  End;
-  sl.free;
 End;
 
 { TFieldSetupMenu }
@@ -1101,19 +812,10 @@ End;
 Procedure TOptionsMenu.OnKeyDown(Sender: TObject; Var Key: Word;
   Shift: TShiftState);
 Var
-  nn: String;
+  sel, i: Integer;
+  WasFullscreen: Boolean;
 Begin
-  // in SDL-Mode forward the keys to the dialogs
-  If assigned(SchemQuestionForm) Then Begin
-    TSchemQuestionForm(SchemQuestionForm).KeyDown(key, shift);
-    Key := 0;
-    Exit;
-  End;
-  If assigned(InputBoxForm) Then Begin
-    TInputBoxForm(InputBoxForm).KeyDown(key, shift);
-    Key := 0;
-    Exit;
-  End;
+  // Name, Port und Scheme sind Dialoge im Spiel (TMessageDialog), die bekommen ihre Tasten schon vorher in TGame.FOnKeyDown
   If assigned(KeyboardDialog) Then Begin
     // No forwarding in keyboard dialog, just ignore..
     Key := 0;
@@ -1139,28 +841,8 @@ Begin
       1: Tgame(fOwner).Settings.RandomStart := Not Tgame(fOwner).Settings.RandomStart;
       2: Begin
           key := 0;
-{$IFDEF Linux}
-          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
-          If Tgame(fOwner).Settings.Fullscreen Then Begin
-            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
-            Exit;
-          End;
-{$ENDIF}
-          InputBoxForm := TInputBoxForm.CreateNew(Nil);
-          InputBoxForm.Caption := 'Edit';
-          TInputBoxForm(InputBoxForm).label1.caption := 'Enter Nodename';
-          TInputBoxForm(InputBoxForm).Edit1.text := Tgame(fOwner).Settings.NodeName;
-          If InputBoxForm.ShowModal = mrOK Then Begin
-            nn := trim(TInputBoxForm(InputBoxForm).Edit1.text);
-            If ValidNodeName(nn) Then Begin
-              Tgame(fOwner).Settings.NodeName := nn;
-            End
-            Else Begin
-              LogShow('Invalid username, need to be less 20 chars and no special chars.', llWarning);
-            End;
-          End;
-          InputBoxForm.Free;
-          InputBoxForm := Nil;
+          // Im Spiel statt als LCL Fenster, das ging im Vollbild nicht (OnNodeNameEntered)
+          Tgame(fOwner).MessageDialog.AskInput('Edit', [DialogField('Enter Nodename', Tgame(fOwner).Settings.NodeName, 19, NodeNameChars)], @OnNodeNameEntered);
         End;
       3: Begin
           If key In [VK_RETURN, VK_ADD, VK_RIGHT] Then Begin
@@ -1180,21 +862,18 @@ Begin
         End;
       4: Begin // Scheme File
           key := 0;
-{$IFDEF Linux}
-          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
-          If Tgame(fOwner).Settings.Fullscreen Then Begin
-            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
-            Exit;
+          // Im Spiel statt als LCL Fenster (OnSchemeSelected)
+          fSchemes := ReadSchemes();
+          sel := 0;
+          For i := 0 To high(fSchemes) Do Begin
+            If lowercase(fSchemes[i]) = lowercase(Tgame(fOwner).Settings.SchemeFile) Then sel := i;
           End;
-{$ENDIF}
-          SchemQuestionForm := TSchemQuestionForm.CreateNew(Nil);
-          TSchemQuestionForm(SchemQuestionForm).LoadSchemes(Tgame(fOwner).Settings.SchemeFile);
-          SchemQuestionForm.ShowModal;
-          If SchemQuestionForm.ModalResult = mrOK Then Begin
-            Tgame(fOwner).Settings.SchemeFile := TSchemQuestionForm(SchemQuestionForm).Listbox1.Items[TSchemQuestionForm(SchemQuestionForm).Listbox1.ItemIndex];
+          If length(fSchemes) = 0 Then Begin
+            Tgame(fOwner).ShowMessageDialog('No schemes found.', llWarning);
+          End
+          Else Begin
+            Tgame(fOwner).MessageDialog.AskList('Select scheme', fSchemes, sel, @OnSchemeSelected);
           End;
-          SchemQuestionForm.free;
-          SchemQuestionForm := Nil;
         End;
       5: Begin
           // Play Time ist in 30s schritten von 90s bis 10 min, Play Time = 0 -> Unendlich und rollierend als Menü
@@ -1219,13 +898,12 @@ Begin
       7: Tgame(fOwner).Settings.PlaySounds := Not Tgame(fOwner).Settings.PlaySounds;
       8: Begin
           key := 0;
-{$IFDEF Linux}
-          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
-          If Tgame(fOwner).Settings.Fullscreen Then Begin
-            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
-            Exit;
-          End;
-{$ENDIF}
+          (*
+           * Die Tastenbelegung bleibt ein LCL Dialog (Tasten fangen, Gamepad Assistent). Über dem Vollbild macht der
+           * Probleme (unter Linux Absturz), deshalb wird das Vollbild für die Dauer des Dialogs verlassen.
+           *)
+          WasFullscreen := Tgame(fOwner).Settings.Fullscreen;
+          If WasFullscreen Then Form1.SetFullScreen(false);
           // Der Dialog und der Wizzard initialisieren SDL selbst neu, dabei würden die offenen Controller ungültig
           SDL_Quit;
           KeyboardDialog := TKeyboardDialog.CreateNew(Form1);
@@ -1241,26 +919,12 @@ Begin
             SDL_Init;
             SDL_CreateSticks(Tgame(fOwner).Settings.Keys);
           End;
+          If WasFullscreen Then Form1.SetFullScreen(true);
         End;
       9: Begin
           key := 0;
-{$IFDEF Linux}
-          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
-          If Tgame(fOwner).Settings.Fullscreen Then Begin
-            Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
-            Exit;
-          End;
-{$ENDIF}
-          InputBoxForm := TInputBoxForm.CreateNew(Nil);
-          InputBoxForm.Caption := 'Edit';
-          TInputBoxForm(InputBoxForm).label1.caption := 'Enter port';
-          TInputBoxForm(InputBoxForm).Edit1.text := inttostr(Tgame(fOwner).Settings.Port);
-          If InputBoxForm.ShowModal = mrOK Then Begin
-            nn := TInputBoxForm(InputBoxForm).Edit1.text;
-            Tgame(fOwner).Settings.Port := strtointdef(nn, 1234);
-          End;
-          InputBoxForm.free;
-          InputBoxForm := Nil;
+          // Im Spiel statt als LCL Fenster (OnPortEntered)
+          Tgame(fOwner).MessageDialog.AskInput('Edit', [DialogField('Enter port', inttostr(Tgame(fOwner).Settings.Port), 5, DigitChars)], @OnPortEntered);
         End;
       10: Tgame(fOwner).Settings.ShowFPS := Not Tgame(fOwner).Settings.ShowFPS;
       11: Begin
@@ -1297,9 +961,8 @@ Begin
   fBackFile := 'options.png';
   fSoundFile := ''; // Die Optionen haben keinen Extra "Sound"
   fCursorFile := 'options_cursor.png';
-  SchemQuestionForm := Nil;
   KeyboardDialog := Nil;
-  InputBoxForm := Nil;
+  fSchemes := Nil;
 End;
 
 Procedure TOptionsMenu.LoadFromDisk(ResPath: String);
@@ -1357,35 +1020,45 @@ Begin
   fCursorPos := 0;
 End;
 
+Procedure TOptionsMenu.OnNodeNameEntered(Sender: TObject;
+  Const Values: TStringArray);
+Var
+  nn: String;
+Begin
+  nn := trim(Values[0]);
+  If ValidNodeName(nn) Then Begin
+    Tgame(fOwner).Settings.NodeName := nn;
+  End
+  Else Begin
+    LogShow('Invalid username, need to be less 20 chars and no special chars.', llWarning);
+  End;
+End;
+
+Procedure TOptionsMenu.OnPortEntered(Sender: TObject;
+  Const Values: TStringArray);
+Begin
+  Tgame(fOwner).Settings.Port := strtointdef(Values[0], 1234);
+End;
+
+Procedure TOptionsMenu.OnSchemeSelected(Sender: TObject; Index: Integer);
+Begin
+  If (Index >= 0) And (Index <= high(fSchemes)) Then Begin
+    Tgame(fOwner).Settings.SchemeFile := fSchemes[Index];
+  End;
+End;
+
 { TMainMenu }
 
 Procedure TMainMenu.OnKeyDown(Sender: TObject; Var Key: Word; Shift: TShiftState);
 Begin
   If key = VK_J Then Begin
     key := 0;
-    If assigned(fJoinQuestionForm) Then exit; // Der Dialog ist schon offen ;)
-    // Frage IP und Port zum Game.JoinViaParams(ip, port);  ab !
-    fJoinQuestionForm := TJoinQuestionForm.CreateNew(Nil, 0);
-    fJoinQuestionForm.Edit1.Text := TGame(fOwner).Settings.Router_IP;
-    fJoinQuestionForm.Edit2.Text := TGame(fOwner).Settings.Router_Port;
-    // TODO:  Wie macht man dialog tatsächlich modal gegenüber Form1 ?, zumindest unter Linux geht das so nicht ..
-    Case fJoinQuestionForm.ShowModal Of
-      mrOK: Begin
-          TGame(fOwner).JoinViaParams(fJoinQuestionForm.Edit1.Text, strtointdef(fJoinQuestionForm.Edit2.Text, 9876));
-          // Remember last settings, for next game ;)
-          TGame(fOwner).Settings.Router_IP := fJoinQuestionForm.Edit1.Text;
-          TGame(fOwner).Settings.Router_Port := inttostr(strtointdef(fJoinQuestionForm.Edit2.Text, 9876));
-        End;
-      mrAbort: Begin
-          // CLient found a server, does not need the Join Question Dialog anymore ..
-        End
-    Else Begin
-        // User Canceled or did something else -> go back to main screen
-        TGame(fOwner).SwitchToScreen(sMainScreen);
-      End;
-    End;
-    fJoinQuestionForm.free;
-    fJoinQuestionForm := Nil;
+    If TGame(fOwner).MessageDialog.IsOpen(JoinDialogTag) Then exit; // Der Dialog ist schon offen ;)
+    // Frage IP und Port zum Game.JoinViaParams(ip, port);  ab ! (im Spiel, OnJoinEntered, Abbrechen: OnJoinCanceled)
+    TGame(fOwner).MessageDialog.AskInput('Join network game', [
+      DialogField('IP address or host name', TGame(fOwner).Settings.Router_IP, 60, HostChars),
+        DialogField('Port', TGame(fOwner).Settings.Router_Port, 5, DigitChars)],
+        @OnJoinEntered, @OnJoinCanceled, JoinDialogTag);
   End;
   If key = VK_DOWN Then Begin
     fCursorPos := (fCursorPos + 1) Mod 7; // Feature Request by Community, rotating navigation
@@ -1436,7 +1109,7 @@ Begin
   fSoundFile := 'mainmenu_sound.wav';
   fCursorFile := 'mainmenu_cursor.ani';
   fCursor := TOpenGL_Animation.Create;
-  fJoinQuestionForm := Nil;
+  fCursorPos := 0;
 End;
 
 Destructor TMainMenu.Destroy;
@@ -1460,14 +1133,29 @@ End;
 Procedure TMainMenu.Reset;
 Begin
   Inherited Reset;
-  fCursorPos := 0;
+  // fCursorPos bleibt: zurück im Hauptmenü steht die Bombe wieder auf dem zuletzt gewählten Punkt
 End;
 
 Procedure TMainMenu.StopJoinQuestion;
 Begin
-  If assigned(fJoinQuestionForm) Then Begin
-    fJoinQuestionForm.ModalResult := mrAbort;
-  End;
+  // Die Suche hat doch noch einen Server gefunden, die Frage nach IP und Port ist dann überflüssig
+  Tgame(fOwner).MessageDialog.Remove(JoinDialogTag);
+End;
+
+Procedure TMainMenu.OnJoinEntered(Sender: TObject; Const Values: TStringArray);
+Var
+  Port: Integer;
+Begin
+  Port := strtointdef(Values[1], 9876);
+  TGame(fOwner).JoinViaParams(trim(Values[0]), Port);
+  // Remember last settings, for next game ;)
+  TGame(fOwner).Settings.Router_IP := trim(Values[0]);
+  TGame(fOwner).Settings.Router_Port := inttostr(Port);
+End;
+
+Procedure TMainMenu.OnJoinCanceled(Sender: TObject);
+Begin
+  TGame(fOwner).SwitchToScreen(sMainScreen);
 End;
 
 { TScreen }
