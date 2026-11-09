@@ -1139,10 +1139,13 @@ Begin
       1: Tgame(fOwner).Settings.RandomStart := Not Tgame(fOwner).Settings.RandomStart;
       2: Begin
           key := 0;
+{$IFDEF Linux}
+          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
           If Tgame(fOwner).Settings.Fullscreen Then Begin
             Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
             Exit;
           End;
+{$ENDIF}
           InputBoxForm := TInputBoxForm.CreateNew(Nil);
           InputBoxForm.Caption := 'Edit';
           TInputBoxForm(InputBoxForm).label1.caption := 'Enter Nodename';
@@ -1177,10 +1180,13 @@ Begin
         End;
       4: Begin // Scheme File
           key := 0;
+{$IFDEF Linux}
+          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
           If Tgame(fOwner).Settings.Fullscreen Then Begin
             Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
             Exit;
           End;
+{$ENDIF}
           SchemQuestionForm := TSchemQuestionForm.CreateNew(Nil);
           TSchemQuestionForm(SchemQuestionForm).LoadSchemes(Tgame(fOwner).Settings.SchemeFile);
           SchemQuestionForm.ShowModal;
@@ -1213,10 +1219,13 @@ Begin
       7: Tgame(fOwner).Settings.PlaySounds := Not Tgame(fOwner).Settings.PlaySounds;
       8: Begin
           key := 0;
+{$IFDEF Linux}
+          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
           If Tgame(fOwner).Settings.Fullscreen Then Begin
             Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
             Exit;
           End;
+{$ENDIF}
           // Der Dialog und der Wizzard initialisieren SDL selbst neu, dabei würden die offenen Controller ungültig
           SDL_Quit;
           KeyboardDialog := TKeyboardDialog.CreateNew(Form1);
@@ -1235,10 +1244,13 @@ Begin
         End;
       9: Begin
           key := 0;
+{$IFDEF Linux}
+          // Ein LCL Dialog über dem SDL Vollbild bringt unter Linux das Spiel zum Absturz, unter Windows geht er
           If Tgame(fOwner).Settings.Fullscreen Then Begin
             Tgame(fOwner).ShowMessageDialog('This setting can only be edited in windowed mode.', llInfo);
             Exit;
           End;
+{$ENDIF}
           InputBoxForm := TInputBoxForm.CreateNew(Nil);
           InputBoxForm.Caption := 'Edit';
           TInputBoxForm(InputBoxForm).label1.caption := 'Enter port';

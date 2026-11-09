@@ -190,7 +190,7 @@ Resourcestring
   R_StatLastRun = 'Last server run';
   R_StatMatchesStarted = 'Matches started';
   R_StatGamesStarted = 'Rounds started';
-  R_StatFramesRendered = 'Play time (h:mm)';
+  R_StatFramesRendered = 'Play time';
   R_StatBombsDropped = 'Bombs placed';
   R_StatPowerupsCollected = 'Items collected';
   R_StatPlayerDeaths = 'Player deaths';
@@ -239,7 +239,7 @@ Resourcestring
   R_StatHintDeaths = 'How often the player died.';
   R_StatHintKD = 'Kills per death. Only from %d matches on.';
   R_StatHintFriendlyFire = 'Killed yourself or a team mate.';
-  R_StatHintPlayTime = 'Time alive in the rounds (h:mm).';
+  R_StatHintPlayTime = 'Time alive in the rounds, without the death animation. – = not recorded yet (older entries).';
   R_StatHintLastPlayed = 'Start of the last match of the player on this server.';
   R_StatHintPlacedBombs = 'Bombs placed.';
   R_StatHintTriggeredBombs = 'Bombs set off with the trigger.';

@@ -124,6 +124,7 @@ Type
     Procedure ShowCursor(Sender: TObject);
     Procedure SetupFrame;
     Procedure RestoreWindowBounds;
+    Procedure OnModalEnd(Sender: TObject); // Nach dem letzten modalen Dialog das Vollbild wieder herstellen (siehe FormResize)
 {$IFDEF Windows}
     Procedure SetWindowFrame(FrameVisible: Boolean);
 {$ENDIF}
@@ -408,6 +409,7 @@ Begin
   InitLogger();
   GameInitialized := false;
   LogShowHandler := @ShowUserMessage;
+  Application.AddOnModalEndHandler(@OnModalEnd);
 
   Randomize;
   ConnectParamsHandled := false;
@@ -547,6 +549,7 @@ Var
   EnterID: Integer;
 Begin
   EnterID := LogEnter('TForm1.FormDestroy');
+  Application.RemoveOnModalEndHandler(@OnModalEnd);
   If OpenGLControl1.MakeCurrent Then Begin
     OpenGL_GraphikEngine_FinalizeShaderSystem;
     OpenGL_ShaderPrimitives_FinalizeShaderSystem;
@@ -1049,7 +1052,20 @@ End;
 
 Procedure TForm1.FormResize(Sender: TObject);
 Begin
-  If fWishFullscreen Then Begin
+  (*
+   * Solange ein modaler Dialog (Name, Schema, Tasten, Port, ...) offen ist, nicht ins Vollbild zurück zwingen:
+   * Der Dialog hat den Fokus, der Fenstermanager nimmt dem Spielfenster dabei ggf. das Vollbild oder legt es nach hinten,
+   * das Zurückzwingen holt es wieder vor den Dialog und so weiter. Unter Windows flackerte das Bild,
+   * unter Linux ist das der Verdacht für den Absturz. Danach stellt OnModalEnd das Vollbild wieder her.
+   *)
+  If fWishFullscreen And (Application.ModalLevel = 0) Then Begin
+    WindowState := wsFullScreen;
+  End;
+End;
+
+Procedure TForm1.OnModalEnd(Sender: TObject);
+Begin
+  If fWishFullscreen And (WindowState <> wsFullScreen) Then Begin
     WindowState := wsFullScreen;
   End;
 End;

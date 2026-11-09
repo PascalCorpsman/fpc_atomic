@@ -2846,7 +2846,8 @@ Var
 Begin
   HandleStatisticCallback(ssFramesRendered);
   For i := 0 To high(fPLayer) Do Begin
-    If (fPLayer[i].UID <> NoPlayer) And fPLayer[i].Info.Alive Then
+    // Die Todesanimation zählt nicht mit (Alive ist bis zu AtomicDieTimeout danach noch gesetzt)
+    If (fPLayer[i].UID <> NoPlayer) And fPLayer[i].Info.Alive And (Not fPLayer[i].Info.Dying) Then
       fAliveMs[i] := min(fAliveMs[i] + FrameRate, high(Integer) - FrameRate);
   End;
   // Die Teleporter am Rand (Mod) erscheinen erst nach TeleportersActiveSec
