@@ -33,6 +33,7 @@ Type
     UpDownIndex, LeftRightIndex: integer; // -1 = nur mit dem Hat steuern
     UpDirection, LeftDirection: Integer;
     IsGameController: Boolean;
+    StickAsDPad: Boolean; // Gamecontroller ohne D-Pad Buttons (z.B. 8BitDo SFC30), das Steuerkreuz liegt im SDL Mapping auf dem linken Stick
   End;
 
   TWizzardState = (
@@ -358,13 +359,20 @@ Begin
     SetError(R_WizOpenFailed);
     exit;
   End;
+  Device.StickAsDPad := false;
   If Device.IsGameController Then Begin
     gc := TSDL_GameController(fsdlJoyStick);
     If (Not gc.ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_UP]) Or (Not gc.ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_DOWN]) Or
       (Not gc.ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_LEFT]) Or (Not gc.ButtonAvailable[SDL_CONTROLLER_BUTTON_DPAD_RIGHT]) Then Begin
-      CloseDevice;
-      SetError(R_WizNoDPad);
-      exit;
+      // Manche Mappings legen das Steuerkreuz auf den linken Stick (leftx / lefty), dann wird damit gesteuert
+      If gc.AxisAvailable[SDL_CONTROLLER_AXIS_LEFTX] And gc.AxisAvailable[SDL_CONTROLLER_AXIS_LEFTY] Then Begin
+        Device.StickAsDPad := true;
+      End
+      Else Begin
+        CloseDevice;
+        SetError(R_WizNoDPad);
+        exit;
+      End;
     End;
   End;
   // Der NameIndex muss so gezählt werden wie in ResolveGameControllerNameToIndex / ResolveJoystickNameToIndex

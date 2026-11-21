@@ -284,6 +284,8 @@ Begin
       fkeys[aKeySet].Name := Info.Name;
       fkeys[aKeySet].NameIndex := Info.Nameindex;
       fkeys[aKeySet].IsGameController := Info.IsGameController;
+      // Ohne D-Pad Buttons wird nur mit dem linken Stick gesteuert, der darf dann nicht abgeschaltet sein
+      If Info.StickAsDPad Then fkeys[aKeySet].UseAnalogStick := true;
       fkeys[aKeySet].ButtonIndex[0] := Info.FirstButtonIndex;
       fkeys[aKeySet].ButtonIndex[1] := Info.SecondButtonIndex;
       fkeys[aKeySet].ButtonsIdle[0] := IdleButton(Info.ButtonsIdle, Info.FirstButtonIndex);
